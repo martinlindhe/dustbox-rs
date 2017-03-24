@@ -39,8 +39,8 @@ struct Parameters {
 
 #[derive(Debug)]
 enum Parameter {
-    Reg(usize), // index into CPU.r16
     Imm(u16),
+    Reg(usize), // index into CPU.r16
 }
 
 
@@ -100,8 +100,22 @@ impl CPU {
                 // mov sreg, r/m16
                 let x = self.sreg_rm16();
 
-                // XXX execute MOV. dst is always a register, src is reg or imm
-                self.r16[x.dst as usize].set_u16(x.src as u16);
+                // XXX execute MOV. dst is always a register, src is always imm
+                match x.dst {
+                    Parameter::Reg(r) => {
+                        match x.src {
+                            Parameter::Imm(imm) => {
+                                self.r16[r].set_u16(imm);
+                            }
+                            _ => {
+                                println!("!! XXX should ALSO be impossible - PANIC");
+                            }
+                        }
+                    }
+                    _ => {
+                        println!("!! XXX should be impossible - PANIC");
+                    }
+                }
                 println!("XXX IMPL: mov sreg_rm16 {:?}", x);
             }
             0xB0...0xB7 => {
@@ -156,7 +170,7 @@ impl CPU {
     }
 
 
-    // decode Sreg, r/m16
+    // decode Sreg, r/m16, returns dst=reg, src=imm
     fn sreg_rm16(&mut self) -> Parameters {
         let mut res = self.rm16_sreg();
         let tmp = res.src;
@@ -165,7 +179,7 @@ impl CPU {
         res
     }
 
-    // decode r/m16, Sreg
+    // decode r/m16, Sreg, returns dst=imm, src=reg
     fn rm16_sreg(&mut self) -> Parameters {
         let x = self.read_mod_reg_rm();
 
