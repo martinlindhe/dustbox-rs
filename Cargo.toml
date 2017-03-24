@@ -3,4 +3,7 @@ name = "x86emu"
 version = "0.1.0"
 authors = ["name"]
 
+[lib]
+name = "x86emu"
+
 [dependencies]
