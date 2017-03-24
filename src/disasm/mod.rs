@@ -64,6 +64,12 @@ impl Disassembly {
         self.pc += 1;
         let s = match b {
             0x48...0x4F => format!("dec {}", r16(b & 7)),
+            0x8E => {
+                // XXX
+                // op.Cmd = "mov"
+                // op.parameterSregRm16(data)
+                format!("MOV XXXX SregRm16")
+            }
             0xB0...0xB7 => format!("mov {}, {:02X}", r8(b & 7), self.read_u8()),
             0xB8...0xBF => format!("mov {}, {:04X}", r16(b & 7), self.read_u16()),
             0xCD => format!("int {:02X}", self.read_u8()),
@@ -116,5 +122,3 @@ fn r16(reg: u8) -> &'static str {
         _ => "?",
     }
 }
-
-

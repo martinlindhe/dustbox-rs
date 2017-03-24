@@ -83,6 +83,7 @@ impl CPU {
             }
             0xCD => {
                 // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
+                // http://wiki.osdev.org/Interrupt_Vector_Table
                 println!("XXX IMPL: int {:02X}", self.read_u8());
             }
             _ => println!("UNHANDLED OP {:02X} AT {:04X}", b, self.pc - 1),
