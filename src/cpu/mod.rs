@@ -97,11 +97,15 @@ impl CPU {
                self.r16[BX].u16(),
                self.r16[CX].u16(),
                self.r16[DX].u16());
-        println!("  sp:{:04X} bp:{:04X} si:{:04X} di:{:04X}",
-                 self.r16[SP].u16(),
-                 self.r16[BP].u16(),
-                 self.r16[SI].u16(),
-                 self.r16[DI].u16());
+        print!("  sp:{:04X} bp:{:04X} si:{:04X} di:{:04X}",
+               self.r16[SP].u16(),
+               self.r16[BP].u16(),
+               self.r16[SI].u16(),
+               self.r16[DI].u16());
+
+        print!("   es:XXXX cs:XXXX ss:XXXX ds:XXXX fs:XXXX gs:XXXX"); // XXX
+
+        println!("");
     }
 
     fn read_u8(&mut self) -> u8 {
