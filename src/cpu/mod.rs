@@ -220,8 +220,7 @@ impl CPU {
             }
             _ => {
                 // XXX x.rm is general purpose r16
-                let val = self.r16[x.rm as usize].u16();
-                params.dst = Parameter::Imm(val);
+                params.dst = Parameter::Reg(x.rm as usize);
             }
         };
 
