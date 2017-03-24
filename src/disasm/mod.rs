@@ -29,7 +29,7 @@ impl Disassembly {
         let mut count = 0;
         let mut res = vec![];
         loop {
-            let op = self.disasm_instruction_struct();
+            let op = self.disasm_instruction();
             res.push(format!("{:04X}: {}", op.offset, op.text));
             count += op.length as usize;
             if count >= data.len() {
@@ -58,12 +58,7 @@ impl Disassembly {
         }
     }
 
-    fn disasm_instruction(&mut self) -> String {
-        let s = self.disasm_instruction_struct();
-        s.text
-    }
-
-    fn disasm_instruction_struct(&mut self) -> Instruction {
+    fn disasm_instruction(&mut self) -> Instruction {
         let b = self.memory[self.pc as usize];
         let offset = self.pc;
         self.pc += 1;

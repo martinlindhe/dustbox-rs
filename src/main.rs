@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
-//mod cpu;
-mod disasm;
+mod cpu;
 
 mod tools;
 
@@ -10,6 +9,12 @@ fn main() {
     // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
     let data = tools::read_binary("samples/hellodos/hello.com");
 
-    let mut disasm = disasm::Disassembly::new();
-    println!("{}", disasm.disassemble(&data, 0x0100));
+    let mut cpu = cpu::CPU::new();
+    cpu.load_rom(&data, 0x100);
+
+    for _ in 0..3 {
+        cpu.execute_instruction();
+        // XXX disasm of current pos...
+        cpu.print_registers(); // XXX a repl loop: "r 1" == run 1 instruction, "r" == dump registers
+    }
 }
