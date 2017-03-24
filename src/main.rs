@@ -16,7 +16,7 @@ fn main() {
     let mut disasm = disasm::Disassembly::new();
     disasm.load_rom(&data, 0x100);
 
-    for _ in 0..3 {
+    for _ in 0..5 {
         disasm.pc = cpu.pc;
         let op = disasm.disasm_instruction();
         println!("{:04X}: {}", op.offset, op.text);

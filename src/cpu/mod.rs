@@ -39,7 +39,8 @@ struct Parameters {
 
 #[derive(Debug)]
 enum Parameter {
-    Imm(u16),
+    Imm8(u8),
+    Imm16(u16),
     Reg(usize), // index into CPU.r16
 }
 
@@ -98,37 +99,16 @@ impl CPU {
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
             0x8E => {
                 // mov sreg, r/m16
-                let x = self.sreg_rm16();
-
-                // XXX execute MOV. dst is always a register, src is always imm
-                match x.dst {
-                    Parameter::Reg(r) => {
-                        match x.src {
-                            Parameter::Imm(imm) => {
-                                self.r16[r].set_u16(imm);
-                            }
-                            _ => {
-                                println!("!! XXX should ALSO be impossible - PANIC");
-                            }
-                        }
-                    }
-                    _ => {
-                        println!("!! XXX should be impossible - PANIC");
-                    }
-                }
-                println!("XXX IMPL: mov sreg_rm16 {:?}", x);
+                let p = self.sreg_rm16();
+                self.mov_r16(&p);
             }
             0xB0...0xB7 => {
                 // mov r8, u8
-                let val = self.read_u8();
-                let reg = (b & 7) as usize;
-
-                let lor = reg & 3;
-                if reg & 4 == 0 {
-                    self.r16[lor].lo = val;
-                } else {
-                    self.r16[lor].hi = val;
-                }
+                let p = Parameters {
+                    dst: Parameter::Reg((b & 7) as usize),
+                    src: Parameter::Imm8(self.read_u8()),
+                };
+                self.mov_u8(&p);
             }
             0xB8...0xBF => {
                 // mov r16, u16
@@ -143,6 +123,63 @@ impl CPU {
             }
             _ => println!("UNHANDLED OP {:02X} AT {:04X}", b, self.pc - 1),
         };
+    }
+
+
+    fn mov_u8(&mut self, p: &Parameters) {
+        match p.src {
+            Parameter::Imm8(imm) => {
+                match p.dst {
+                    Parameter::Reg(dst_r) => {
+                        let lor = dst_r & 3;
+                        if dst_r & 4 == 0 {
+                            self.r16[lor].lo = imm;
+                        } else {
+                            self.r16[lor].hi = imm;
+                        }
+                    }
+                    Parameter::Imm8(imm2) => {
+                        println!("mov_u8 PARAM Imm8 PANIC");
+                    }
+                    Parameter::Imm16(imm2) => {
+                        println!("mov_u8 PARAM Imm16 PANIC");
+                    }
+                }
+            }
+            Parameter::Reg(r) => {
+                println!("mov_u8 PARAM-ONE Reg PANIC");
+            }
+            Parameter::Imm16(imm2) => {
+                println!("mov_u8 PARAM-ONE Imm16 PANIC");
+            }
+        }
+    }
+
+    fn mov_r16(&mut self, x: &Parameters) {
+
+        // XXX execute MOV. dst is always a register, src is always imm
+        match x.dst {
+            Parameter::Reg(r) => {
+                match x.src {
+                    Parameter::Imm16(imm) => {
+                        self.r16[r].set_u16(imm);
+                    }
+                    Parameter::Reg(r_src) => {
+                        let val = self.r16[r_src].u16();
+                        self.r16[r].set_u16(val);
+                    }
+                    Parameter::Imm8(imm) => {
+                        println!("!! XXX Imm8-SUB unhandled - PANIC {:?}", imm);
+                    }
+                }
+            }
+            Parameter::Imm16(imm) => {
+                println!("!! XXX Imm16 unhandled - PANIC {:?}", imm);
+            }
+            Parameter::Imm8(imm) => {
+                println!("!! XXX Imm8 unhandled - PANIC {:?}", imm);
+            }
+        }
     }
 
     pub fn print_registers(&mut self) {
@@ -185,7 +222,7 @@ impl CPU {
 
         let mut params = Parameters {
             src: Parameter::Reg(8 + (x.reg as usize)),
-            dst: Parameter::Imm(0),
+            dst: Parameter::Imm16(0),
         };
 
         match x.md {
@@ -199,7 +236,7 @@ impl CPU {
                     // XXX read value of amode(x.rm) into pos
                     let pos = 0;
                 }
-                params.dst = Parameter::Imm(self.peek_u16_at(pos));
+                params.dst = Parameter::Imm16(self.peek_u16_at(pos));
             }
             1 => {
                 // [reg+d8]
@@ -207,7 +244,7 @@ impl CPU {
                 let mut pos = 0;
                 pos += self.read_s8() as u16; // XXX handle signed properly
 
-                params.dst = Parameter::Imm(self.peek_u16_at(pos));
+                params.dst = Parameter::Imm16(self.peek_u16_at(pos));
             }
             2 => {
                 // [reg+d16]
@@ -216,10 +253,10 @@ impl CPU {
                 let mut pos = 0;
                 pos += self.read_s16() as u16; // XXX handle signed properly
 
-                params.dst = Parameter::Imm(self.peek_u16_at(pos));
+                params.dst = Parameter::Imm16(self.peek_u16_at(pos));
             }
             _ => {
-                // XXX x.rm is general purpose r16
+                // general purpose r16
                 params.dst = Parameter::Reg(x.rm as usize);
             }
         };
