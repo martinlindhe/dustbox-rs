@@ -4,4 +4,9 @@
 
 
     mov es, ax ; 
+
+    mov bx, 0x123;
     mov ss, bx ;
+
+    ; mov [0x8080], bx ; [u16]
+    ; mov [ax+0x4], cx

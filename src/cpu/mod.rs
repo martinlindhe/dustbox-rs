@@ -4,13 +4,23 @@
 pub struct CPU {
     pub pc: u16,
     memory: [u8; 0x10000],
-    r16: [Register16; 8],
+    // 8 low = r16, 8 hi = es,cs,ss,ds,fs,gs
+    r16: [Register16; 16],
 }
 
 #[derive(Debug, Copy, Clone)] // XXX only need Copy ??
 struct Register16 {
     hi: u8,
     lo: u8,
+}
+impl Register16 {
+    fn set_u16(&mut self, val: u16) {
+        self.hi = (val >> 8) as u8;
+        self.lo = (val & 0xff) as u8;
+    }
+    fn u16(&self) -> u16 {
+        (self.hi as u16) << 8 | self.lo as u16
+    }
 }
 
 
@@ -29,16 +39,11 @@ struct Parameters {
 
 #[derive(Debug)]
 enum Parameter {
-    Reg(usize),
+    Reg(usize), // index into CPU.r16
     Imm(u16),
-    Addr(u16),
 }
 
-impl Register16 {
-    fn u16(&self) -> u16 {
-        (self.hi as u16) << 8 | self.lo as u16
-    }
-}
+
 
 // r16
 const AX: usize = 0;
@@ -49,14 +54,19 @@ const SP: usize = 4;
 const BP: usize = 5;
 const SI: usize = 6;
 const DI: usize = 7;
-
+const ES: usize = 8;
+const CS: usize = 9;
+const SS: usize = 10;
+const DS: usize = 11;
+const FS: usize = 12;
+const GS: usize = 13;
 
 impl CPU {
     pub fn new() -> CPU {
         CPU {
             pc: 0,
             memory: [0; 0x10000],
-            r16: [Register16 { hi: 0, lo: 0 }; 8],
+            r16: [Register16 { hi: 0, lo: 0 }; 16],
         }
     }
 
@@ -87,10 +97,15 @@ impl CPU {
         match b {
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
             0x8E => {
+                // mov sreg, r/m16
                 let x = self.sreg_rm16();
+
+                // XXX execute MOV. dst is always a register, src is reg or imm
+                self.r16[x.dst as usize].set_u16(x.src as u16);
                 println!("XXX IMPL: mov sreg_rm16 {:?}", x);
             }
             0xB0...0xB7 => {
+                // mov r8, u8
                 let val = self.read_u8();
                 let reg = (b & 7) as usize;
 
@@ -129,7 +144,13 @@ impl CPU {
                self.r16[SI].u16(),
                self.r16[DI].u16());
 
-        print!("   es:XXXX cs:XXXX ss:XXXX ds:XXXX fs:XXXX gs:XXXX"); // XXX
+        print!("   es:{:04X} cs:{:04X} ss:{:04X} ds:{:04X} fs:{:04X} gs:{:04X}",
+               self.r16[ES].u16(),
+               self.r16[CS].u16(),
+               self.r16[SS].u16(),
+               self.r16[DS].u16(),
+               self.r16[FS].u16(),
+               self.r16[GS].u16());
 
         println!("");
     }
@@ -149,8 +170,8 @@ impl CPU {
         let x = self.read_mod_reg_rm();
 
         let mut params = Parameters {
-            src: Parameter::Reg(x.reg as usize), // XXX x.reg i sreg
-            dst: Parameter::Addr(0),
+            src: Parameter::Reg(8 + (x.reg as usize)),
+            dst: Parameter::Imm(0),
         };
 
         match x.md {
@@ -164,7 +185,7 @@ impl CPU {
                     // XXX read value of amode(x.rm) into pos
                     let pos = 0;
                 }
-                params.dst = Parameter::Addr(self.peek_u16_at(pos));
+                params.dst = Parameter::Imm(self.peek_u16_at(pos));
             }
             1 => {
                 // [reg+d8]
@@ -172,7 +193,7 @@ impl CPU {
                 let mut pos = 0;
                 pos += self.read_s8() as u16; // XXX handle signed properly
 
-                params.dst = Parameter::Addr(self.peek_u16_at(pos));
+                params.dst = Parameter::Imm(self.peek_u16_at(pos));
             }
             2 => {
                 // [reg+d16]
@@ -181,11 +202,12 @@ impl CPU {
                 let mut pos = 0;
                 pos += self.read_s16() as u16; // XXX handle signed properly
 
-                params.dst = Parameter::Addr(self.peek_u16_at(pos));
+                params.dst = Parameter::Imm(self.peek_u16_at(pos));
             }
             _ => {
                 // XXX x.rm is general purpose r16
-                params.dst = Parameter::Reg(x.rm as usize);
+                let val = self.r16[x.rm as usize].u16();
+                params.dst = Parameter::Imm(val);
             }
         };
 
