@@ -1,5 +1,5 @@
 
-org  0x100        ; .com files always start 256 bytes into the segment
+    org  0x100        ; .com files always start 256 bytes into the segment
 
     mov     ax, 012h    ;VGA mode
     int     10h         ;640 x 480 16 colors.

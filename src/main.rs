@@ -8,7 +8,7 @@ mod tools;
 fn main() {
 
     // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
-    let data = tools::read_binary("samples/vgafill/vgafill.com");
+    let data = tools::read_binary("samples/adrmode/adrmode.com");
 
     let mut cpu = cpu::CPU::new();
     cpu.load_rom(&data, 0x100);
@@ -16,7 +16,7 @@ fn main() {
     let mut disasm = disasm::Disassembly::new();
     disasm.load_rom(&data, 0x100);
 
-    for _ in 0..6 {
+    for _ in 0..2 {
         disasm.pc = cpu.pc;
         let op = disasm.disasm_instruction();
         println!("{:04X}: {}", op.offset, op.text);

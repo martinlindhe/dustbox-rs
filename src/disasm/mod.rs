@@ -151,16 +151,15 @@ impl Disassembly {
         b
     }
 
-    fn read_s8(&mut self) -> i8 {
-        self.read_u8() as i8
-    }
-
     fn read_u16(&mut self) -> u16 {
         let lo = self.read_u8();
         let hi = self.read_u8();
         (hi as u16) << 8 | lo as u16
     }
 
+    fn read_s8(&mut self) -> i8 {
+        self.read_u8() as i8
+    }
 
     fn read_s16(&mut self) -> i16 {
         self.read_u16() as i16

@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(unused_variables)]
 
 pub struct CPU {
     pub pc: u16,
@@ -6,10 +7,31 @@ pub struct CPU {
     r16: [Register16; 8],
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)] // XXX only need Copy ??
 struct Register16 {
     hi: u8,
     lo: u8,
+}
+
+
+
+struct ModRegRm {
+    md: u8, // NOTE: "mod" is reserved in rust
+    reg: u8,
+    rm: u8,
+}
+
+#[derive(Debug)]
+struct Parameters {
+    src: Parameter,
+    dst: Parameter,
+}
+
+#[derive(Debug)]
+enum Parameter {
+    Reg(usize),
+    Imm(u16),
+    Addr(u16),
 }
 
 impl Register16 {
@@ -64,6 +86,10 @@ impl CPU {
         self.pc += 1;
         match b {
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
+            0x8E => {
+                let x = self.sreg_rm16();
+                println!("XXX IMPL: mov sreg_rm16 {:?}", x);
+            }
             0xB0...0xB7 => {
                 let val = self.read_u8();
                 let reg = (b & 7) as usize;
@@ -108,6 +134,73 @@ impl CPU {
         println!("");
     }
 
+
+    // decode Sreg, r/m16
+    fn sreg_rm16(&mut self) -> Parameters {
+        let mut res = self.rm16_sreg();
+        let tmp = res.src;
+        res.src = res.dst;
+        res.dst = tmp;
+        res
+    }
+
+    // decode r/m16, Sreg
+    fn rm16_sreg(&mut self) -> Parameters {
+        let x = self.read_mod_reg_rm();
+
+        let mut params = Parameters {
+            src: Parameter::Reg(x.reg as usize), // XXX x.reg i sreg
+            dst: Parameter::Addr(0),
+        };
+
+        match x.md {
+            0 => {
+                // [reg]
+                let mut pos = 0;
+                if x.rm == 6 {
+                    // [u16]
+                    pos = self.read_u16();
+                } else {
+                    // XXX read value of amode(x.rm) into pos
+                    let pos = 0;
+                }
+                params.dst = Parameter::Addr(self.peek_u16_at(pos));
+            }
+            1 => {
+                // [reg+d8]
+                // XXX read value of amode(x.rm) into pos
+                let mut pos = 0;
+                pos += self.read_s8() as u16; // XXX handle signed properly
+
+                params.dst = Parameter::Addr(self.peek_u16_at(pos));
+            }
+            2 => {
+                // [reg+d16]
+                // XXX read value of amode(x.rm) into pos
+
+                let mut pos = 0;
+                pos += self.read_s16() as u16; // XXX handle signed properly
+
+                params.dst = Parameter::Addr(self.peek_u16_at(pos));
+            }
+            _ => {
+                // XXX x.rm is general purpose r16
+                params.dst = Parameter::Reg(x.rm as usize);
+            }
+        };
+
+        params
+    }
+
+    fn read_mod_reg_rm(&mut self) -> ModRegRm {
+        let b = self.read_u8();
+        ModRegRm {
+            md: b >> 6,
+            reg: (b >> 3) & 7,
+            rm: b & 7,
+        }
+    }
+
     fn read_u8(&mut self) -> u8 {
         let b = self.memory[self.pc as usize];
         self.pc += 1;
@@ -118,5 +211,46 @@ impl CPU {
         let lo = self.read_u8();
         let hi = self.read_u8();
         (hi as u16) << 8 | lo as u16
+    }
+
+    fn read_s8(&mut self) -> i8 {
+        self.read_u8() as i8
+    }
+
+    fn read_s16(&mut self) -> i16 {
+        self.read_u16() as i16
+    }
+
+    fn peek_u16_at(&mut self, pos: u16) -> u16 {
+        0 // XXX implement
+    }
+}
+
+
+
+fn sreg(reg: u8) -> &'static str {
+    match reg {
+        0 => "es",
+        1 => "cs",
+        2 => "ss",
+        3 => "ds",
+        4 => "fs",
+        5 => "gs",
+        _ => "?",
+    }
+}
+
+// 16 bit addressing modes
+fn amode(reg: u8) -> &'static str {
+    match reg {
+        0 => "bx+si",
+        1 => "bx+di",
+        2 => "bp+si",
+        3 => "bp+di",
+        4 => "si",
+        5 => "di",
+        6 => "bp",
+        7 => "bx",
+        _ => "?",
     }
 }
