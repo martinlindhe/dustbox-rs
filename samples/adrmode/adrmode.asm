@@ -2,6 +2,12 @@
 
     org  0x100        ; .com files always start 256 bytes into the segment
 
+
+; test loading of data
+    mov cx, 0x123
+    mov es, cx
+
+; --
     mov cl, 0x99 ;
 
     mov ax, 0x444; 

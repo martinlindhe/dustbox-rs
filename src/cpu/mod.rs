@@ -98,9 +98,11 @@ impl CPU {
         match b {
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
             /*0x8B => {
+                // mov r16, r/m16
                 let x = self.r16_rm16();
                 println!("XXX mov {}, {}", x.dst, x.src);
-            }*/
+            }
+            */
             0x8E => {
                 // mov sreg, r/m16
                 let p = self.sreg_rm16();
@@ -210,8 +212,7 @@ impl CPU {
         println!("");
     }
 
-
-    // decode Sreg, r/m16, returns dst=reg, src=imm
+    // decode Sreg, r/m16
     fn sreg_rm16(&mut self) -> Parameters {
         let mut res = self.rm16_sreg();
         let tmp = res.src;
@@ -220,54 +221,74 @@ impl CPU {
         res
     }
 
-    // decode r/m16, Sreg, returns dst=imm, src=reg
+    // decode r/m16, Sreg
     fn rm16_sreg(&mut self) -> Parameters {
         let x = self.read_mod_reg_rm();
-
-        let mut params = Parameters {
+        Parameters {
             src: Parameter::Reg(8 + (x.reg as usize)),
-            dst: Parameter::Imm16(0),
-        };
+            dst: self.rm16(x.rm, x.md),
+        }
+    }
 
-        match x.md {
+    // decode rm16
+    fn rm16(&mut self, rm: u8, md: u8) -> Parameter {
+        match md {
             0 => {
                 // [reg]
                 let mut pos = 0;
-                if x.rm == 6 {
+                if rm == 6 {
                     // [u16]
                     pos = self.read_u16();
                 } else {
+                    println!("XXX FIXME [u16] or [reg+u16] ??!?!?!");
                     // XXX read value of amode(x.rm) into pos
                     let pos = 0;
                 }
-                params.dst = Parameter::Imm16(self.peek_u16_at(pos));
+                Parameter::Imm16(self.peek_u16_at(pos))
             }
             1 => {
                 // [reg+d8]
                 // XXX read value of amode(x.rm) into pos
+                println!("XXX FIXME rm16 [reg+d8]");
                 let mut pos = 0;
                 pos += self.read_s8() as u16; // XXX handle signed properly
 
-                params.dst = Parameter::Imm16(self.peek_u16_at(pos));
+                Parameter::Imm16(self.peek_u16_at(pos))
             }
             2 => {
                 // [reg+d16]
                 // XXX read value of amode(x.rm) into pos
-
+                println!("XXX FIXME rm16 [reg+d16]");
                 let mut pos = 0;
                 pos += self.read_s16() as u16; // XXX handle signed properly
 
-                params.dst = Parameter::Imm16(self.peek_u16_at(pos));
+                Parameter::Imm16(self.peek_u16_at(pos))
             }
             _ => {
                 // general purpose r16
-                params.dst = Parameter::Reg(x.rm as usize);
+                Parameter::Reg(rm as usize)
             }
-        };
-
-        params
+        }
+    }
+    /*
+    // decode r16, r/m16
+    fn r16_rm16(&mut self) -> Parameters {
+        let mut res = self.rm16_r16();
+        let tmp = res.src;
+        res.src = res.dst;
+        res.dst = tmp;
+        res
     }
 
+    // decode r/m16, r16
+    fn rm16_r16(&mut self) -> Parameters {
+        let x = self.read_mod_reg_rm();
+        Parameters {
+            src: r16(x.reg).to_string(),
+            dst: self.rm16(x.rm, x.md),
+        }
+    }
+*/
     fn read_mod_reg_rm(&mut self) -> ModRegRm {
         let b = self.read_u8();
         ModRegRm {
@@ -329,4 +350,22 @@ fn amode(reg: u8) -> &'static str {
         7 => "bx",
         _ => "?",
     }
+}
+
+#[test]
+fn can_execute_sr_r16() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB9, 0x23, 0x01, // mov cx,0x123
+        0x8E, 0xC1,       // mov es,cx   | sr, r16
+    ];
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction();
+    assert_eq!(0x103, cpu.pc);
+    assert_eq!(0x123, cpu.r16[CX].u16());
+
+    cpu.execute_instruction();
+    assert_eq!(0x105, cpu.pc);
+    assert_eq!(0x123, cpu.r16[ES].u16());
 }
