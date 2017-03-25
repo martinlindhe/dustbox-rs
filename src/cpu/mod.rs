@@ -13,6 +13,7 @@ struct Register16 {
     hi: u8,
     lo: u8,
 }
+
 impl Register16 {
     fn set_u16(&mut self, val: u16) {
         self.hi = (val >> 8) as u8;
@@ -97,12 +98,12 @@ impl CPU {
         self.pc += 1;
         match b {
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
-            /*0x8B => {
+            0x8B => {
                 // mov r16, r/m16
-                let x = self.r16_rm16();
-                println!("XXX mov {}, {}", x.dst, x.src);
+                let p = self.r16_rm16();
+                println!("XXX {:?}", p);
+                self.mov_r16(&p);
             }
-            */
             0x8E => {
                 // mov sreg, r/m16
                 let p = self.sreg_rm16();
@@ -162,8 +163,6 @@ impl CPU {
     }
 
     fn mov_r16(&mut self, x: &Parameters) {
-
-        // XXX execute MOV. dst is always a register, src is always imm
         match x.dst {
             Parameter::Reg(r) => {
                 match x.src {
@@ -172,6 +171,7 @@ impl CPU {
                     }
                     Parameter::Reg(r_src) => {
                         let val = self.r16[r_src].u16();
+                        println!("XXX set reg to reg, {} {} {}", r, r_src, val);
                         self.r16[r].set_u16(val);
                     }
                     Parameter::Imm8(imm) => {
@@ -270,7 +270,7 @@ impl CPU {
             }
         }
     }
-    /*
+
     // decode r16, r/m16
     fn r16_rm16(&mut self) -> Parameters {
         let mut res = self.rm16_r16();
@@ -284,11 +284,11 @@ impl CPU {
     fn rm16_r16(&mut self) -> Parameters {
         let x = self.read_mod_reg_rm();
         Parameters {
-            src: r16(x.reg).to_string(),
+            src: Parameter::Reg(x.reg as usize),
             dst: self.rm16(x.rm, x.md),
         }
     }
-*/
+
     fn read_mod_reg_rm(&mut self) -> ModRegRm {
         let b = self.read_u8();
         ModRegRm {
@@ -368,4 +368,22 @@ fn can_execute_sr_r16() {
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.pc);
     assert_eq!(0x123, cpu.r16[ES].u16());
+}
+
+#[test]
+fn can_execute_r16_r16() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x23, 0x01, // mov ax,0x123
+        0x8B, 0xE0,       // mov sp,ax   | r16, r16
+    ];
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction();
+    assert_eq!(0x103, cpu.pc);
+    assert_eq!(0x123, cpu.r16[AX].u16());
+
+    cpu.execute_instruction();
+    assert_eq!(0x105, cpu.pc);
+    assert_eq!(0x123, cpu.r16[SP].u16());
 }
