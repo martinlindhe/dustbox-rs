@@ -1,4 +1,8 @@
 #![allow(dead_code)]
+#[macro_use(assert_diff)]
+
+
+extern crate difference;
 
 mod cpu;
 mod disasm;

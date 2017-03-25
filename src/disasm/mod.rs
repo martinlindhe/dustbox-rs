@@ -1,4 +1,5 @@
 
+
 pub struct Disassembly {
     pub pc: u16,
     rom: Vec<u8>,
@@ -87,6 +88,7 @@ impl Disassembly {
             0xB0...0xB7 => format!("mov {}, {:02X}", r8(b & 7), self.read_u8()),
             0xB8...0xBF => format!("mov {}, {:04X}", r16(b & 7), self.read_u16()),
             0xCD => format!("int {:02X}", self.read_u8()),
+            0xE8 => format!("call {:04X}", self.read_rel16()),
             _ => format!("UNHANDLED OP {:02X} AT {:04X}", b, offset),
         };
 
@@ -180,6 +182,11 @@ impl Disassembly {
         (hi as u16) << 8 | lo as u16
     }
 
+    fn read_rel16(&mut self) -> u16 {
+        let val = self.read_u16() as i16;
+        (self.pc as i16 + val) as u16
+    }
+
     fn read_s8(&mut self) -> i8 {
         self.read_u8() as i8
     }
@@ -247,11 +254,23 @@ fn amode(reg: u8) -> &'static str {
 #[test]
 fn can_disassemble_basic_instructions() {
     let mut disasm = Disassembly::new();
-    let code: Vec<u8> = vec![0xBA, 0x0B, 0x01, 0xB4, 0x09, 0xCD, 0x21];
+    let code: Vec<u8> = vec![
+        0xE8, 0x05, 0x00, // call l_0x108   ; call a later offset
+        0xBA, 0x0B, 0x01, // mov dx,0x10b
+        0xB4, 0x09,       // mov ah,0x9
+        0xCD, 0x21,       // l_0x108: int 0x21
+        0xE8, 0xFB, 0xFF, // call l_0x108   ; call an earlier offset
+    ];
     let res = disasm.disassemble(&code, 0x100);
 
-    assert_eq!("0100: mov dx, 010B
-0103: mov ah, 09
-0105: int 21",
-               res);
+
+    assert_diff!("0100: call 0108
+0103: mov dx, 010B
+0106: mov ah, 09
+0108: int 21
+010A: call 0108",
+                 &res,
+                 "\n",
+                 0);
+
 }

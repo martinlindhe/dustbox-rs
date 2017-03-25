@@ -101,7 +101,6 @@ impl CPU {
             0x8B => {
                 // mov r16, r/m16
                 let p = self.r16_rm16();
-                println!("XXX {:?}", p);
                 self.mov_r16(&p);
             }
             0x8E => {
@@ -124,10 +123,14 @@ impl CPU {
                 self.r16[reg].hi = self.read_u8();
             }
             0xCD => {
+                // int u8
                 // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
                 // http://wiki.osdev.org/Interrupt_Vector_Table
                 println!("XXX IMPL: int {:02X}", self.read_u8());
             }
+            /*0xE8 => {
+                // call s16 ?!?!
+            }*/
             _ => println!("UNHANDLED OP {:02X} AT {:04X}", b, self.pc - 1),
         };
     }
