@@ -3,9 +3,10 @@
 #![allow(unused_imports)]
 #[macro_use]
 
-extern crate difference;
+// extern crate difference;
 extern crate log;
 extern crate badlog;
+
 
 pub mod disasm;
 pub mod cpu;

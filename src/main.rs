@@ -5,7 +5,7 @@
 
 extern crate log;
 extern crate colog;
-extern crate difference;
+// extern crate difference;
 
 mod cpu;
 mod disasm;

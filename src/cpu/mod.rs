@@ -3,7 +3,7 @@
 
 pub struct CPU {
     pub pc: u16,
-    memory: [u8; 0x10000],
+    memory: Vec<u8>,
     // 8 low = r16, 8 hi = es,cs,ss,ds,fs,gs
     r16: [Register16; 16],
 }
@@ -67,7 +67,7 @@ impl CPU {
     pub fn new() -> CPU {
         CPU {
             pc: 0,
-            memory: [0; 0x10000],
+            memory: vec![0u8; 0x10000 * 64], // = 4 MB. maybe shoudl allocate .?1
             r16: [Register16 { hi: 0, lo: 0 }; 16],
         }
     }
@@ -128,13 +128,29 @@ impl CPU {
                 // http://wiki.osdev.org/Interrupt_Vector_Table
                 error!("XXX IMPL: int {:02X}", self.read_u8());
             }
-            /*0xE8 => {
-                // call s16 ?!?!
-            }*/
+            0xE8 => {
+                // call s16
+                let temp_ip = (self.read_s16() + (self.pc as i16)) as u16;
+                let old_ip = self.pc;
+                self.push16(old_ip);
+                self.pc = temp_ip;
+            }
             _ => error!("UNHANDLED OP {:02X} AT {:04X}", b, self.pc - 1),
         };
     }
 
+    fn push16(&mut self, data: u16) {
+        // self.sp -= 2; // XXX should be really 16-bit internally with setter for hi/lo
+        error!("XXX also decrease SP");
+
+        let offset = (self.r16[SS].u16() as usize) * 16 + (self.r16[SP].u16() as usize);
+        warn!("push16 to {:04X}:{:04X}  =>  {:06X}",
+              self.r16[SS].u16(),
+              self.r16[SP].u16(),
+              offset);
+
+        self.write_u16(offset, data);
+    }
 
     fn mov_u8(&mut self, p: &Parameters) {
         match p.src {
@@ -301,7 +317,8 @@ impl CPU {
     }
 
     fn read_u8(&mut self) -> u8 {
-        let b = self.memory[self.pc as usize];
+        let offset = (self.r16[CS].u16() as usize) + self.pc as usize;
+        let b = self.memory[offset];
         self.pc += 1;
         b
     }
@@ -321,7 +338,19 @@ impl CPU {
     }
 
     fn peek_u16_at(&mut self, pos: u16) -> u16 {
-        0 // XXX implement
+        error!("XXX implement peek_u16_at");
+        0
+    }
+
+    fn write_u16(&mut self, offset: usize, data: u16) {
+        let hi = (data >> 8) as u8;
+        let lo = (data & 0xff) as u8;
+        self.write_u8(offset, lo);
+        self.write_u8(offset + 1, hi);
+    }
+
+    fn write_u8(&mut self, offset: usize, data: u8) {
+        self.memory[offset] = data;
     }
 }
 

@@ -264,7 +264,13 @@ fn can_disassemble_basic_instructions() {
     ];
     let res = disasm.disassemble(&code, 0x100);
 
-
+    assert_eq!("0100: call 0108
+0103: mov dx, 010B
+0106: mov ah, 09
+0108: int 21
+010A: call 0108",
+               res);
+    /*
     assert_diff!("0100: call 0108
 0103: mov dx, 010B
 0106: mov ah, 09
@@ -273,5 +279,5 @@ fn can_disassemble_basic_instructions() {
                  &res,
                  "\n",
                  0);
-
+*/
 }
