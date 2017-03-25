@@ -76,6 +76,7 @@ impl Disassembly {
         self.pc += 1;
         let s = match b {
             0x48...0x4F => format!("dec {}", r16(b & 7)),
+            0x50...0x57 => format!("push {}", r16(b & 7)),
             0x8B => {
                 let x = self.r16_rm16();
                 format!("mov {}, {}", x.dst, x.src)

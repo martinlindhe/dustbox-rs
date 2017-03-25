@@ -102,6 +102,10 @@ impl CPU {
         self.pc += 1;
         match b {
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
+            0x50...0x57 => {
+                let val = self.r16[(b & 7) as usize].val;
+                self.push16(val);
+            }
             0x8B => {
                 // mov r16, r/m16
                 let p = self.r16_rm16();
