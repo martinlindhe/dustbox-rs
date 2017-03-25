@@ -76,6 +76,10 @@ impl Disassembly {
         self.pc += 1;
         let s = match b {
             0x48...0x4F => format!("dec {}", r16(b & 7)),
+            0x8B => {
+                let x = self.r16_rm16();
+                format!("mov {}, {}", x.dst, x.src)
+            }
             0x8E => {
                 let x = self.sreg_rm16();
                 format!("mov {}, {}", x.dst, x.src)
@@ -105,35 +109,54 @@ impl Disassembly {
     // decode r/m16, Sreg
     fn rm16_sreg(&mut self) -> Parameters {
         let x = self.read_mod_reg_rm();
-
-        let mut params = Parameters {
+        Parameters {
             src: sreg(x.reg).to_string(),
-            dst: "".to_string(),
-        };
+            dst: self.rm16(x.rm, x.md),
+        }
+    }
 
-        match x.md {
+    // decode r16, r/m16
+    fn r16_rm16(&mut self) -> Parameters {
+        let mut res = self.rm16_r16();
+        let tmp = res.src;
+        res.src = res.dst;
+        res.dst = tmp;
+        res
+    }
+
+    // decode r/m16, r16
+    fn rm16_r16(&mut self) -> Parameters {
+        let x = self.read_mod_reg_rm();
+        Parameters {
+            src: r16(x.reg).to_string(),
+            dst: self.rm16(x.rm, x.md),
+        }
+    }
+
+
+    // decode r/m16
+    fn rm16(&mut self, rm: u8, md: u8) -> String {
+        match md {
             0 => {
                 // [reg]
-                if x.rm == 6 {
-                    params.dst = format!("[{:04X}]", self.read_u16());
+                if rm == 6 {
+                    format!("[{:04X}]", self.read_u16())
                 } else {
-                    params.dst = format!("[{}]", amode(x.rm));
+                    format!("[{}]", amode(rm))
                 }
             }
             1 => {
                 // [reg+d8]
                 // XXX signed value formatting!?=!?1§1
-                params.dst = format!("[{}{:02X}]", amode(x.rm), self.read_s8());
+                format!("[{}{:02X}]", amode(rm), self.read_s8())
             }
             2 => {
                 // [reg+d16]
                 // XXX signed value formatting!?=!?1§1
-                params.dst = format!("[{}{:04X}]", amode(x.rm), self.read_s16());
+                format!("[{}{:04X}]", amode(rm), self.read_s16())
             }
-            _ => params.dst = r16(x.rm).to_string(),
-        };
-
-        params
+            _ => r16(rm).to_string(),
+        }
     }
 
     fn read_mod_reg_rm(&mut self) -> ModRegRm {

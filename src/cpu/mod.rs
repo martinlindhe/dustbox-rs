@@ -97,6 +97,10 @@ impl CPU {
         self.pc += 1;
         match b {
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
+            /*0x8B => {
+                let x = self.r16_rm16();
+                println!("XXX mov {}, {}", x.dst, x.src);
+            }*/
             0x8E => {
                 // mov sreg, r/m16
                 let p = self.sreg_rm16();
