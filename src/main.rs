@@ -8,7 +8,9 @@ mod tools;
 fn main() {
 
     // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
-    let data = tools::read_binary("samples/adrmode/adrmode.com");
+    //let app = "samples/adrmode/adrmode.com";
+    let app = "games/Beast (1984)(Dan Baker)/beast.com";
+    let data = tools::read_binary(app);
 
     let mut cpu = cpu::CPU::new();
     cpu.load_rom(&data, 0x100);
