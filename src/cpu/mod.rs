@@ -101,8 +101,14 @@ impl CPU {
         let b = self.memory[self.pc as usize];
         self.pc += 1;
         match b {
+            0x06 => {
+                // push es
+                let val = self.r16[ES].val;
+                self.push16(val);
+            }
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
             0x50...0x57 => {
+                // push r16
                 let val = self.r16[(b & 7) as usize].val;
                 self.push16(val);
             }
@@ -142,6 +148,10 @@ impl CPU {
                 self.push16(old_ip);
                 self.pc = temp_ip;
             }
+            0xFA => {
+                // cli
+                error!("TODO - cli - clear intterrupts??");
+            }
             _ => error!("UNHANDLED OP {:02X} AT {:04X}", b, self.pc - 1),
         };
     }
@@ -149,10 +159,10 @@ impl CPU {
     fn push16(&mut self, data: u16) {
         self.r16[SP].val -= 2;
         let offset = (self.r16[SS].u16() as usize) * 16 + (self.r16[SP].u16() as usize);
-        warn!("push16 to {:04X}:{:04X}  =>  {:06X}",
+        /*warn!("push16 to {:04X}:{:04X}  =>  {:06X}",
               self.r16[SS].u16(),
               self.r16[SP].u16(),
-              offset);
+              offset);*/
 
         self.write_u16(offset, data);
     }

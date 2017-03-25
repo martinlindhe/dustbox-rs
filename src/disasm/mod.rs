@@ -75,20 +75,22 @@ impl Disassembly {
         let offset = self.pc;
         self.pc += 1;
         let s = match b {
-            0x48...0x4F => format!("dec {}", r16(b & 7)),
-            0x50...0x57 => format!("push {}", r16(b & 7)),
+            0x06 => format!("push  es"),
+            0x48...0x4F => format!("dec   {}", r16(b & 7)),
+            0x50...0x57 => format!("push  {}", r16(b & 7)),
             0x8B => {
                 let x = self.r16_rm16();
-                format!("mov {}, {}", x.dst, x.src)
+                format!("mov   {}, {}", x.dst, x.src)
             }
             0x8E => {
                 let x = self.sreg_rm16();
-                format!("mov {}, {}", x.dst, x.src)
+                format!("mov   {}, {}", x.dst, x.src)
             }
-            0xB0...0xB7 => format!("mov {}, {:02X}", r8(b & 7), self.read_u8()),
-            0xB8...0xBF => format!("mov {}, {:04X}", r16(b & 7), self.read_u16()),
-            0xCD => format!("int {:02X}", self.read_u8()),
-            0xE8 => format!("call {:04X}", self.read_rel16()),
+            0xB0...0xB7 => format!("mov   {}, {:02X}", r8(b & 7), self.read_u8()),
+            0xB8...0xBF => format!("mov   {}, {:04X}", r16(b & 7), self.read_u16()),
+            0xCD => format!("int   {:02X}", self.read_u8()),
+            0xE8 => format!("call  {:04X}", self.read_rel16()),
+            0xFA => format!("cli"),
             _ => {
                 error!("UNHANDLED OP {:02X} AT {:04X}", b, offset);
                 format!("UNHANDLED OP {:02X} AT {:04X}", b, offset)
@@ -262,6 +264,7 @@ fn can_disassemble_basic_instructions() {
         0xB4, 0x09,       // mov ah,0x9
         0xCD, 0x21,       // l_0x108: int 0x21
         0xE8, 0xFB, 0xFF, // call l_0x108   ; call an earlier offset
+        0x26, 0x8B, 0x05, // mov ax,[es:di]
     ];
     let res = disasm.disassemble(&code, 0x100);
 
@@ -269,7 +272,8 @@ fn can_disassemble_basic_instructions() {
 0103: mov dx, 010B
 0106: mov ah, 09
 0108: int 21
-010A: call 0108",
+010A: call 0108
+010D: mov ax,[es:di]",
                res);
     /*
     assert_diff!("0100: call 0108
