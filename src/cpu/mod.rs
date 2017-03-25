@@ -85,7 +85,7 @@ impl CPU {
             max = 0x10000;
         }
         let min = offset as usize;
-        println!("loading rom to {:04X}..{:04X}", min, max);
+        info!("loading rom to {:04X}..{:04X}", min, max);
 
         for i in min..max {
             let rom_pos = i - (offset as usize);
@@ -126,12 +126,12 @@ impl CPU {
                 // int u8
                 // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
                 // http://wiki.osdev.org/Interrupt_Vector_Table
-                println!("XXX IMPL: int {:02X}", self.read_u8());
+                error!("XXX IMPL: int {:02X}", self.read_u8());
             }
             /*0xE8 => {
                 // call s16 ?!?!
             }*/
-            _ => println!("UNHANDLED OP {:02X} AT {:04X}", b, self.pc - 1),
+            _ => error!("UNHANDLED OP {:02X} AT {:04X}", b, self.pc - 1),
         };
     }
 
@@ -149,18 +149,18 @@ impl CPU {
                         }
                     }
                     Parameter::Imm8(imm2) => {
-                        println!("mov_u8 PARAM Imm8 PANIC");
+                        error!("mov_u8 PARAM Imm8 PANIC");
                     }
                     Parameter::Imm16(imm2) => {
-                        println!("mov_u8 PARAM Imm16 PANIC");
+                        error!("mov_u8 PARAM Imm16 PANIC");
                     }
                 }
             }
             Parameter::Reg(r) => {
-                println!("mov_u8 PARAM-ONE Reg PANIC");
+                error!("mov_u8 PARAM-ONE Reg PANIC");
             }
             Parameter::Imm16(imm2) => {
-                println!("mov_u8 PARAM-ONE Imm16 PANIC");
+                error!("mov_u8 PARAM-ONE Imm16 PANIC");
             }
         }
     }
@@ -174,19 +174,18 @@ impl CPU {
                     }
                     Parameter::Reg(r_src) => {
                         let val = self.r16[r_src].u16();
-                        println!("XXX set reg to reg, {} {} {}", r, r_src, val);
                         self.r16[r].set_u16(val);
                     }
                     Parameter::Imm8(imm) => {
-                        println!("!! XXX Imm8-SUB unhandled - PANIC {:?}", imm);
+                        error!("!! XXX Imm8-SUB unhandled - PANIC {:?}", imm);
                     }
                 }
             }
             Parameter::Imm16(imm) => {
-                println!("!! XXX Imm16 unhandled - PANIC {:?}", imm);
+                error!("!! XXX Imm16 unhandled - PANIC {:?}", imm);
             }
             Parameter::Imm8(imm) => {
-                println!("!! XXX Imm8 unhandled - PANIC {:?}", imm);
+                error!("!! XXX Imm8 unhandled - PANIC {:?}", imm);
             }
         }
     }
@@ -243,7 +242,7 @@ impl CPU {
                     // [u16]
                     pos = self.read_u16();
                 } else {
-                    println!("XXX FIXME [u16] or [reg+u16] ??!?!?!");
+                    error!("XXX FIXME [u16] or [reg+u16] ??!?!?!");
                     // XXX read value of amode(x.rm) into pos
                     let pos = 0;
                 }
@@ -252,7 +251,7 @@ impl CPU {
             1 => {
                 // [reg+d8]
                 // XXX read value of amode(x.rm) into pos
-                println!("XXX FIXME rm16 [reg+d8]");
+                error!("XXX FIXME rm16 [reg+d8]");
                 let mut pos = 0;
                 pos += self.read_s8() as u16; // XXX handle signed properly
 
@@ -261,7 +260,7 @@ impl CPU {
             2 => {
                 // [reg+d16]
                 // XXX read value of amode(x.rm) into pos
-                println!("XXX FIXME rm16 [reg+d16]");
+                error!("XXX FIXME rm16 [reg+d16]");
                 let mut pos = 0;
                 pos += self.read_s16() as u16; // XXX handle signed properly
 

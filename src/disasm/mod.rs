@@ -1,5 +1,4 @@
 
-
 pub struct Disassembly {
     pub pc: u16,
     rom: Vec<u8>,
@@ -89,7 +88,10 @@ impl Disassembly {
             0xB8...0xBF => format!("mov {}, {:04X}", r16(b & 7), self.read_u16()),
             0xCD => format!("int {:02X}", self.read_u8()),
             0xE8 => format!("call {:04X}", self.read_rel16()),
-            _ => format!("UNHANDLED OP {:02X} AT {:04X}", b, offset),
+            _ => {
+                error!("UNHANDLED OP {:02X} AT {:04X}", b, offset);
+                format!("UNHANDLED OP {:02X} AT {:04X}", b, offset)
+            }
         };
 
         Instruction {
@@ -135,7 +137,6 @@ impl Disassembly {
         }
     }
 
-
     // decode r/m16
     fn rm16(&mut self, rm: u8, md: u8) -> String {
         match md {
@@ -149,12 +150,12 @@ impl Disassembly {
             }
             1 => {
                 // [reg+d8]
-                // XXX signed value formatting!?=!?1§1
+                error!("XXX [reg+d8] signed value formatting!?=!?1§1");
                 format!("[{}{:02X}]", amode(rm), self.read_s8())
             }
             2 => {
                 // [reg+d16]
-                // XXX signed value formatting!?=!?1§1
+                error!("XXX [reg+d16] signed value formatting!?=!?1§1");
                 format!("[{}{:04X}]", amode(rm), self.read_s16())
             }
             _ => r16(rm).to_string(),

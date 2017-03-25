@@ -1,7 +1,10 @@
 #![allow(dead_code)]
-#[macro_use(assert_diff)]
+#![allow(unused_attributes)]
+#![allow(unused_imports)]
+#[macro_use]
 
-
+extern crate log;
+extern crate colog;
 extern crate difference;
 
 mod cpu;
@@ -9,7 +12,10 @@ mod disasm;
 
 mod tools;
 
+
 fn main() {
+
+    drop(colog::init());
 
     // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
     //let app = "samples/adrmode/adrmode.com";
@@ -25,7 +31,7 @@ fn main() {
     for _ in 0..5 {
         disasm.pc = cpu.pc;
         let op = disasm.disasm_instruction();
-        println!("{:04X}: {}", op.offset, op.text);
+        info!("{:04X}: {}", op.offset, op.text);
 
         cpu.execute_instruction();
         cpu.print_registers(); // XXX a repl loop: "r 1" == run 1 instruction, "r" == dump registers
