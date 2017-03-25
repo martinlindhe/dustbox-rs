@@ -10,17 +10,21 @@ pub struct CPU {
 
 #[derive(Debug, Copy, Clone)] // XXX only need Copy ??
 struct Register16 {
-    hi: u8,
-    lo: u8,
+    val: u16,
 }
 
 impl Register16 {
+    fn set_hi(&mut self, val: u8) {
+        self.val = (self.val & 0xFF) + ((val as u16) << 8);
+    }
+    fn set_lo(&mut self, val: u8) {
+        self.val = (self.val & 0xFF00) + val as u16;
+    }
     fn set_u16(&mut self, val: u16) {
-        self.hi = (val >> 8) as u8;
-        self.lo = (val & 0xff) as u8;
+        self.val = val;
     }
     fn u16(&self) -> u16 {
-        (self.hi as u16) << 8 | self.lo as u16
+        self.val
     }
 }
 
@@ -68,7 +72,7 @@ impl CPU {
         CPU {
             pc: 0,
             memory: vec![0u8; 0x10000 * 64], // = 4 MB. maybe shoudl allocate .?1
-            r16: [Register16 { hi: 0, lo: 0 }; 16],
+            r16: [Register16 { val: 0 }; 16],
         }
     }
 
@@ -119,8 +123,7 @@ impl CPU {
             0xB8...0xBF => {
                 // mov r16, u16
                 let reg = (b & 7) as usize;
-                self.r16[reg].lo = self.read_u8();
-                self.r16[reg].hi = self.read_u8();
+                self.r16[reg].val = self.read_u16();
             }
             0xCD => {
                 // int u8
@@ -140,9 +143,7 @@ impl CPU {
     }
 
     fn push16(&mut self, data: u16) {
-        // self.sp -= 2; // XXX should be really 16-bit internally with setter for hi/lo
-        error!("XXX also decrease SP");
-
+        self.r16[SP].val -= 2;
         let offset = (self.r16[SS].u16() as usize) * 16 + (self.r16[SP].u16() as usize);
         warn!("push16 to {:04X}:{:04X}  =>  {:06X}",
               self.r16[SS].u16(),
@@ -159,9 +160,9 @@ impl CPU {
                     Parameter::Reg(dst_r) => {
                         let lor = dst_r & 3;
                         if dst_r & 4 == 0 {
-                            self.r16[lor].lo = imm;
+                            self.r16[lor].set_lo(imm);
                         } else {
-                            self.r16[lor].hi = imm;
+                            self.r16[lor].set_hi(imm);
                         }
                     }
                     Parameter::Imm8(imm2) => {
