@@ -9,11 +9,6 @@ pub struct CPU {
     flags: Flags,
 }
 
-#[derive(Debug, Copy, Clone)] // XXX only need Copy ??
-struct Register16 {
-    val: u16,
-}
-
 // https://en.wikipedia.org/wiki/FLAGS_register
 struct Flags {
     carry: bool, // 0: carry flag
@@ -39,6 +34,12 @@ struct Flags {
     virtual_interrupt_pending: bool, // 20: Virtual interrupt pending (Pentium+)
     cpuid: bool, // 21: Able to use CPUID instruction (Pentium+)
                  // 22-31: reserved
+}
+
+
+#[derive(Debug, Copy, Clone)] // XXX only need Copy ??
+struct Register16 {
+    val: u16,
 }
 
 impl Register16 {
@@ -224,11 +225,8 @@ impl CPU {
             }
             0xB0...0xB7 => {
                 // mov r8, u8
-                let p = Parameters {
-                    dst: Parameter::Reg((b & 7) as usize),
-                    src: Parameter::Imm8(self.read_u8()),
-                };
-                self.mov_u8(&p);
+                let val = self.read_u8();
+                self.mov_r8_u8((b & 7) as usize, val);
             }
             0xB8...0xBF => {
                 // mov r16, u16
@@ -282,36 +280,29 @@ impl CPU {
         data
     }
 
-    fn mov_u8(&mut self, p: &Parameters) {
-        match p.dst {
-            Parameter::Reg(dst_r) => {
-                match p.src {
-                    Parameter::Imm8(imm) => {
-                        let lor = dst_r & 3;
-                        if dst_r & 4 == 0 {
-                            self.r16[lor].set_lo(imm);
-                        } else {
-                            self.r16[lor].set_hi(imm);
-                        }
-                    }
-
-                    Parameter::Reg(r) => {
-                        error!("mov_u8 PARAM-ONE Reg PANIC");
-                    }
-                    Parameter::Imm16(imm2) => {
-                        error!("mov_u8 PARAM-ONE Imm16 PANIC");
-                    }
-                }
-            }
-            Parameter::Imm8(imm2) => {
-                error!("mov_u8 PARAM Imm8 PANIC");
-            }
-            Parameter::Imm16(imm2) => {
-                error!("mov_u8 PARAM Imm16 PANIC");
-            }
+    fn mov_r8_u8(&mut self, r: usize, imm: u8) {
+        let lor = r & 3;
+        if r & 4 == 0 {
+            self.r16[lor].set_lo(imm);
+        } else {
+            self.r16[lor].set_hi(imm);
         }
     }
 
+    // calculates imm from parameter
+    fn u8_value(&mut self, p: &Parameter) -> u8 {
+        match p {
+            &Parameter::Imm8(imm) => imm,
+            &Parameter::Reg(r) => {
+                error!("mov_u8 PARAM-ONE Reg PANIC");
+                0
+            }
+            &Parameter::Imm16(imm2) => {
+                error!("mov_u8 PARAM-ONE Imm16 PANIC");
+                0
+            }
+        }
+    }
 
     fn mov_r8(&mut self, x: &Parameters) {
         error!("XXX impl mov_r8");
@@ -705,4 +696,24 @@ fn can_handle_stack() {
     assert_eq!(0x8888, cpu.r16[AX].u16());
     assert_eq!(0x8888, cpu.r16[DS].u16());
     assert_eq!(0x8888, cpu.r16[ES].u16());
+}
+
+
+
+#[test]
+fn can_execute_mov() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB2, 0x13, // mov dl,0x13
+        0x88, 0xD0, // mov al,dl
+    ];
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction(); // mov dl,0x13
+    assert_eq!(0x102, cpu.pc);
+    assert_eq!(0x13, cpu.r16[DX].lo_u8());
+
+    cpu.execute_instruction(); // mov al,dl
+    assert_eq!(0x104, cpu.pc);
+    assert_eq!(0x13, cpu.r16[AX].lo_u8());
 }
