@@ -69,11 +69,16 @@ const GS: usize = 13;
 
 impl CPU {
     pub fn new() -> CPU {
-        CPU {
+        let mut cpu = CPU {
             pc: 0,
             memory: vec![0u8; 0x10000 * 64], // = 4 MB. maybe shoudl allocate .?1
             r16: [Register16 { val: 0 }; 16],
-        }
+        };
+
+        // intializes the cpu as if to run .com programs, info from http://www.delorie.com/djgpp/doc/rbinter/id/51/29.html
+        cpu.r16[SP].val = 0xFFF0; // XXX offset of last word available in first 64k segment
+
+        cpu
     }
 
     pub fn reset(&mut self) {
@@ -104,6 +109,15 @@ impl CPU {
             0x06 => {
                 // push es
                 let val = self.r16[ES].val;
+                self.push16(val);
+            }
+            0x07 => {
+                // pop es
+                self.r16[ES].val = self.pop16();
+            }
+            0x1E => {
+                // push ds
+                let val = self.r16[DS].val;
                 self.push16(val);
             }
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
@@ -165,6 +179,13 @@ impl CPU {
               offset);*/
 
         self.write_u16(offset, data);
+    }
+
+    fn pop16(&mut self) -> u16 {
+        let offset = (self.r16[SS].u16() as usize) * 16 + (self.r16[SP].u16() as usize);
+        let data = self.peek_u16_at(offset);
+        self.r16[SP].val += 2;
+        data
     }
 
     fn mov_u8(&mut self, p: &Parameters) {
@@ -277,7 +298,7 @@ impl CPU {
                     // XXX read value of amode(x.rm) into pos
                     let pos = 0;
                 }
-                Parameter::Imm16(self.peek_u16_at(pos))
+                Parameter::Imm16(self.peek_u16_at(pos as usize))
             }
             1 => {
                 // [reg+d8]
@@ -286,7 +307,7 @@ impl CPU {
                 let mut pos = 0;
                 pos += self.read_s8() as u16; // XXX handle signed properly
 
-                Parameter::Imm16(self.peek_u16_at(pos))
+                Parameter::Imm16(self.peek_u16_at(pos as usize))
             }
             2 => {
                 // [reg+d16]
@@ -295,7 +316,7 @@ impl CPU {
                 let mut pos = 0;
                 pos += self.read_s16() as u16; // XXX handle signed properly
 
-                Parameter::Imm16(self.peek_u16_at(pos))
+                Parameter::Imm16(self.peek_u16_at(pos as usize))
             }
             _ => {
                 // general purpose r16
@@ -352,9 +373,14 @@ impl CPU {
         self.read_u16() as i16
     }
 
-    fn peek_u16_at(&mut self, pos: u16) -> u16 {
-        error!("XXX implement peek_u16_at");
-        0
+     fn peek_u8_at(&mut self, pos: usize) -> u8 {
+        self.memory[pos]
+    }
+
+    fn peek_u16_at(&mut self, pos: usize) -> u16 {
+        let lo = self.peek_u8_at(pos);
+        let hi = self.peek_u8_at(pos+1);
+        (hi as u16) << 8 | lo as u16
     }
 
     fn write_u16(&mut self, offset: usize, data: u16) {
@@ -432,4 +458,30 @@ fn can_execute_r16_r16() {
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.pc);
     assert_eq!(0x123, cpu.r16[SP].u16());
+}
+
+#[test]
+fn can_handle_stack() {
+     let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x88, 0x88, // mov ax,0x8888
+        0x8E, 0xD8,       // mov ds,ax
+        0x1E,             // push ds
+        0x07,             // pop es
+    ];
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction(); // mov
+    cpu.execute_instruction(); // mov
+
+    assert_eq!(0xFFF0, cpu.r16[SP].u16());
+    cpu.execute_instruction(); // push
+    assert_eq!(0xFFEE, cpu.r16[SP].u16());
+    cpu.execute_instruction(); // pop
+    assert_eq!(0xFFF0, cpu.r16[SP].u16());
+
+    assert_eq!(0x107, cpu.pc);
+    assert_eq!(0x8888, cpu.r16[AX].u16());
+    assert_eq!(0x8888, cpu.r16[DS].u16());
+    assert_eq!(0x8888, cpu.r16[ES].u16());
 }

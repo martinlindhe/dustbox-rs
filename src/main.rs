@@ -19,7 +19,8 @@ fn main() {
 
     // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
     //let app = "samples/adrmode/adrmode.com";
-    let app = "games/Beast (1984)(Dan Baker)/beast.com";
+    //let app = "games/Beast (1984)(Dan Baker)/beast.com";
+    let app = "samples/bar/bar.com";
     let data = tools::read_binary(app);
 
     let mut cpu = cpu::CPU::new();

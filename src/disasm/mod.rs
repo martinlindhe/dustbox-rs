@@ -76,6 +76,8 @@ impl Disassembly {
         self.pc += 1;
         let s = match b {
             0x06 => format!("push  es"),
+            0x07 => format!("pop   es"),
+            0x1E => format!("push  ds"),
             0x48...0x4F => format!("dec   {}", r16(b & 7)),
             0x50...0x57 => format!("push  {}", r16(b & 7)),
             0x8B => {
@@ -264,7 +266,7 @@ fn can_disassemble_basic_instructions() {
         0xB4, 0x09,       // mov ah,0x9
         0xCD, 0x21,       // l_0x108: int 0x21
         0xE8, 0xFB, 0xFF, // call l_0x108   ; call an earlier offset
-        0x26, 0x8B, 0x05, // mov ax,[es:di]
+        /*0x26,*/ 0x8B, 0x05, // mov ax,[es:di]  - XXX 0x26 means next instr uses segment ES
     ];
     let res = disasm.disassemble(&code, 0x100);
 
