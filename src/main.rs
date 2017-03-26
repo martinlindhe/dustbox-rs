@@ -29,7 +29,7 @@ fn main() {
     let mut disasm = disasm::Disassembly::new();
     disasm.load_rom(&data, 0x100);
 
-    for _ in 0..12 {
+    for _ in 0..340 {
         disasm.pc = cpu.pc;
         let op = disasm.disasm_instruction();
         info!("{:04X}: {}", op.offset, op.text);

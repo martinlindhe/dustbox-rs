@@ -79,19 +79,25 @@ impl Disassembly {
             0x07 => format!("pop   es"),
             0x1E => format!("push  ds"),
             0x31 => {
-                let x = self.rm16_r16();
-                format!("xor   {}, {}", x.dst, x.src)
+                let p = self.rm16_r16();
+                format!("xor   {}, {}", p.dst, p.src)
             }
             0x40...0x47 => format!("inc   {}", r16(b & 7)),
             0x48...0x4F => format!("dec   {}", r16(b & 7)),
             0x50...0x57 => format!("push  {}", r16(b & 7)),
+            0x88 => {
+                // mov r8, r/m8
+                let p = self.r8_rm8();
+                format!("mov   {}, {}", p.dst, p.src)
+
+            }
             0x8B => {
-                let x = self.r16_rm16();
-                format!("mov   {}, {}", x.dst, x.src)
+                let p = self.r16_rm16();
+                format!("mov   {}, {}", p.dst, p.src)
             }
             0x8E => {
-                let x = self.sreg_rm16();
-                format!("mov   {}, {}", x.dst, x.src)
+                let p = self.sreg_rm16();
+                format!("mov   {}, {}", p.dst, p.src)
             }
             0xAA => format!("stosb"),
             0xAB => format!("stosw"),
@@ -145,6 +151,14 @@ impl Disassembly {
         res
     }
 
+    fn r8_rm8(&mut self) -> Parameters {
+        let x = self.read_mod_reg_rm();
+        Parameters {
+            src: r8(x.reg).to_string(),
+            dst: self.decode_rm8(x.rm, x.md),
+        }
+    }
+
     // decode r/m16, r16
     fn rm16_r16(&mut self) -> Parameters {
         let x = self.read_mod_reg_rm();
@@ -175,6 +189,30 @@ impl Disassembly {
                 format!("[{}{:04X}]", amode(rm), self.read_s16())
             }
             _ => r16(rm).to_string(),
+        }
+    }
+
+    fn decode_rm8(&mut self, rm: u8, md: u8) -> String {
+        match md {
+            0 => {
+                // [reg]
+                if rm == 6 {
+                    format!("[{:04X}]", self.read_u16())
+                } else {
+                    format!("[{}]", amode(rm))
+                }
+            }
+            1 => {
+                // [reg+d8]
+                error!("XXX [reg+d8] signed value formatting!?=!?1§1");
+                format!("[{}{:02X}]", amode(rm), self.read_s8())
+            }
+            2 => {
+                // [reg+d16]
+                error!("XXX [reg+d16] signed value formatting!?=!?1§1");
+                format!("[{}{:04X}]", amode(rm), self.read_s16())
+            }
+            _ => r8(rm).to_string(),
         }
     }
 
@@ -316,4 +354,16 @@ fn can_disassemble_xor() {
     assert_eq!("0100: xor   cx, ax
 0102: xor   ax, cx",
                res);
+}
+
+
+#[test]
+fn can_disassemble_mov() {
+    let mut disasm = Disassembly::new();
+    let code: Vec<u8> = vec![
+        0x88, 0xC8, // mov al, cl
+    ];
+    let res = disasm.disassemble(&code, 0x100);
+
+    assert_eq!("0100: mov   al, cl", res);
 }

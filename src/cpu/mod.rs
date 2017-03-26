@@ -195,6 +195,12 @@ impl CPU {
                 let val = self.r16[(b & 7) as usize].val;
                 self.push16(val);
             }
+            0x88 => {
+                // mov r8, r/m8
+                let p = self.r8_rm8();
+                error!("XXX mov   {:?}, {:?}", p.dst, p.src);
+                self.mov_r8(&p);
+            }
             0x8B => {
                 // mov r16, r/m16
                 let p = self.r16_rm16();
@@ -235,10 +241,13 @@ impl CPU {
                 // http://wiki.osdev.org/Interrupt_Vector_Table
                 error!("XXX IMPL: int {:02X}", self.read_u8());
             }
-            0xE2 =>{
+            0xE2 => {
                 // loop rel8
-                error!("XXXX LOOP - should decrease cx or something... and check flags");
-                self.pc = self.read_rel8();
+                let dst = self.read_rel8();
+                self.r16[CX].val -= 1;
+                if self.r16[CX].val != 0 {
+                    self.pc = dst;
+                }
             }
             0xE8 => {
                 // call s16
@@ -274,10 +283,10 @@ impl CPU {
     }
 
     fn mov_u8(&mut self, p: &Parameters) {
-        match p.src {
-            Parameter::Imm8(imm) => {
-                match p.dst {
-                    Parameter::Reg(dst_r) => {
+        match p.dst {
+            Parameter::Reg(dst_r) => {
+                match p.src {
+                    Parameter::Imm8(imm) => {
                         let lor = dst_r & 3;
                         if dst_r & 4 == 0 {
                             self.r16[lor].set_lo(imm);
@@ -285,21 +294,51 @@ impl CPU {
                             self.r16[lor].set_hi(imm);
                         }
                     }
-                    Parameter::Imm8(imm2) => {
-                        error!("mov_u8 PARAM Imm8 PANIC");
+
+                    Parameter::Reg(r) => {
+                        error!("mov_u8 PARAM-ONE Reg PANIC");
                     }
                     Parameter::Imm16(imm2) => {
-                        error!("mov_u8 PARAM Imm16 PANIC");
+                        error!("mov_u8 PARAM-ONE Imm16 PANIC");
                     }
                 }
             }
-            Parameter::Reg(r) => {
-                error!("mov_u8 PARAM-ONE Reg PANIC");
+            Parameter::Imm8(imm2) => {
+                error!("mov_u8 PARAM Imm8 PANIC");
             }
             Parameter::Imm16(imm2) => {
-                error!("mov_u8 PARAM-ONE Imm16 PANIC");
+                error!("mov_u8 PARAM Imm16 PANIC");
             }
         }
+    }
+
+
+    fn mov_r8(&mut self, x: &Parameters) {
+        error!("XXX impl mov_r8");
+        /*
+        match x.dst {
+            Parameter::Reg(r) => {
+                match x.src {
+                    Parameter::Imm16(imm) => {
+                        self.r16[r].set_u16(imm);
+                    }
+                    Parameter::Reg(r_src) => {
+                        let val = self.r16[r_src].u16();
+                        self.r16[r].set_u16(val);
+                    }
+                    Parameter::Imm8(imm) => {
+                        error!("!! XXX mov_r16 Imm8-SUB unhandled - PANIC {:?}", imm);
+                    }
+                }
+            }
+            Parameter::Imm16(imm) => {
+                error!("!! XXX mov_r16 Imm16 unhandled - PANIC {:?}", imm);
+            }
+            Parameter::Imm8(imm) => {
+                error!("!! XXX mov_r16 Imm8 unhandled - PANIC {:?}", imm);
+            }
+        }
+        */
     }
 
     fn mov_r16(&mut self, x: &Parameters) {
@@ -396,6 +435,47 @@ impl CPU {
         }
     }
 
+    // decode rm8
+    fn rm8(&mut self, rm: u8, md: u8) -> Parameter {
+        match md {
+            0 => {
+                // [reg]
+                let mut pos = 0;
+                if rm == 6 {
+                    // [u16]
+                    pos = self.read_u16();
+                } else {
+                    error!("XXX FIXME rm8 [u16] or [reg+u16] ??!?!?!");
+                    // XXX read value of amode(x.rm) into pos
+                    let pos = 0;
+                }
+                Parameter::Imm16(self.peek_u16_at(pos as usize))
+            }
+            1 => {
+                // [reg+d8]
+                // XXX read value of amode(x.rm) into pos
+                error!("XXX FIXME rm8 [reg+d8]");
+                let mut pos = 0;
+                pos += self.read_s8() as u16; // XXX handle signed properly
+
+                Parameter::Imm16(self.peek_u16_at(pos as usize))
+            }
+            2 => {
+                // [reg+d16]
+                // XXX read value of amode(x.rm) into pos
+                error!("XXX FIXME rm8 [reg+d16]");
+                let mut pos = 0;
+                pos += self.read_s16() as u16; // XXX handle signed properly
+
+                Parameter::Imm16(self.peek_u16_at(pos as usize))
+            }
+            _ => {
+                // general purpose r16
+                Parameter::Reg(rm as usize) // XXX r8
+            }
+        }
+    }
+
     // decode rm16
     fn rm16(&mut self, rm: u8, md: u8) -> Parameter {
         match md {
@@ -434,6 +514,25 @@ impl CPU {
                 // general purpose r16
                 Parameter::Reg(rm as usize)
             }
+        }
+    }
+
+
+    // decode r8, r/m8
+    fn r8_rm8(&mut self) -> Parameters {
+        let mut res = self.rm8_r8();
+        let tmp = res.src;
+        res.src = res.dst;
+        res.dst = tmp;
+        res
+    }
+
+    // decode r/m8, r8
+    fn rm8_r8(&mut self) -> Parameters {
+        let x = self.read_mod_reg_rm();
+        Parameters {
+            src: Parameter::Reg(x.reg as usize), // XXX 8 bit reg
+            dst: self.rm8(x.rm, x.md),
         }
     }
 
