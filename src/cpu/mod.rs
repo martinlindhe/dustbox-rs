@@ -235,10 +235,15 @@ impl CPU {
                 // http://wiki.osdev.org/Interrupt_Vector_Table
                 error!("XXX IMPL: int {:02X}", self.read_u8());
             }
+            0xE2 =>{
+                // loop rel8
+                error!("XXXX LOOP - should decrease cx or something... and check flags");
+                self.pc = self.read_rel8();
+            }
             0xE8 => {
                 // call s16
-                let temp_ip = (self.read_s16() + (self.pc as i16)) as u16;
                 let old_ip = self.pc;
+                let temp_ip = self.read_rel16();
                 self.push16(old_ip);
                 self.pc = temp_ip;
             }
@@ -478,6 +483,16 @@ impl CPU {
 
     fn read_s16(&mut self) -> i16 {
         self.read_u16() as i16
+    }
+
+    fn read_rel8(&mut self) -> u16 {
+        let val = self.read_u8() as i8;
+        (self.pc as i16 + (val as i16)) as u16
+    }
+
+    fn read_rel16(&mut self) -> u16 {
+        let val = self.read_u16() as i16;
+        (self.pc as i16 + val) as u16
     }
 
     fn peek_u8_at(&mut self, pos: usize) -> u8 {

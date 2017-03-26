@@ -102,6 +102,7 @@ impl Disassembly {
             0xB0...0xB7 => format!("mov   {}, {:02X}", r8(b & 7), self.read_u8()),
             0xB8...0xBF => format!("mov   {}, {:04X}", r16(b & 7), self.read_u16()),
             0xCD => format!("int   {:02X}", self.read_u8()),
+            0xE2 => format!("loop  {:04X}", self.read_rel8()),
             0xE8 => format!("call  {:04X}", self.read_rel16()),
             0xFA => format!("cli"),
             _ => {
@@ -196,6 +197,11 @@ impl Disassembly {
         let lo = self.read_u8();
         let hi = self.read_u8();
         (hi as u16) << 8 | lo as u16
+    }
+
+    fn read_rel8(&mut self) -> u16 {
+        let val = self.read_u8() as i8;
+        (self.pc as i16 + (val as i16)) as u16
     }
 
     fn read_rel16(&mut self) -> u16 {
