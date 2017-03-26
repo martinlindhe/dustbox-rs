@@ -6,11 +6,39 @@ pub struct CPU {
     memory: Vec<u8>,
     // 8 low = r16, 8 hi = es,cs,ss,ds,fs,gs
     r16: [Register16; 16],
+    flags: Flags,
 }
 
 #[derive(Debug, Copy, Clone)] // XXX only need Copy ??
 struct Register16 {
     val: u16,
+}
+
+// https://en.wikipedia.org/wiki/FLAGS_register
+struct Flags {
+    carry: bool, // 0: carry flag
+    reserved1: bool, // 1: Reserved, always 1 in EFLAGS
+    parity: bool, // 2: parity flag
+    reserved3: bool,
+    adjust: bool, // 4: adjust flag
+    reserved5: bool,
+    zero: bool, // 6: zero flag
+    sign: bool, // 7: sign flag
+    trap: bool, // 8: trap flag (single step)
+    interrupt_enable: bool, // 9: interrupt enable flag
+    direction: bool, // 10: direction flag (control with cld, std)
+    overflow: bool, // 11: overflow
+    iopl12: bool, // 12: I/O privilege level (286+ only), always 1 on 8086 and 186
+    iopl13: bool, // 13 --""---
+    nested_task: bool, // 14: Nested task flag (286+ only), always 1 on 8086 and 186
+    reserved15: bool, // 15: Reserved, always 1 on 8086 and 186, always 0 on later models
+    resume: bool, // 16: Resume flag (386+ only)
+    virtual_mode: bool, // 17: Virtual 8086 mode flag (386+ only)
+    alignment_check: bool, // 18: Alignment check (486SX+ only)
+    virtual_interrupt: bool, // 19: Virtual interrupt flag (Pentium+)
+    virtual_interrupt_pending: bool, // 20: Virtual interrupt pending (Pentium+)
+    cpuid: bool, // 21: Able to use CPUID instruction (Pentium+)
+                 // 22-31: reserved
 }
 
 impl Register16 {
@@ -22,6 +50,12 @@ impl Register16 {
     }
     fn set_u16(&mut self, val: u16) {
         self.val = val;
+    }
+    fn lo_u8(&mut self) -> u8 {
+        (self.val & 0xFF) as u8
+    }
+    fn hi_u8(&mut self) -> u8 {
+        (self.val >> 8) as u8
     }
     fn u16(&self) -> u16 {
         self.val
@@ -73,9 +107,34 @@ impl CPU {
             pc: 0,
             memory: vec![0u8; 0x10000 * 64], // = 4 MB. maybe shoudl allocate .?1
             r16: [Register16 { val: 0 }; 16],
+            flags: Flags {
+                carry: false, // 0: carry flag
+                reserved1: false, // 1: Reserved, always 1 in EFLAGS
+                parity: false, // 2: parity flag
+                reserved3: false,
+                adjust: false, // 4: adjust flag
+                reserved5: false,
+                zero: false, // 6: zero flag
+                sign: false, // 7: sign flag
+                trap: false, // 8: trap flag (single step)
+                interrupt_enable: false, // 9: interrupt enable flag
+                direction: false, // 10: direction flag (control with cld, std)
+                overflow: false, // 11: overflow
+                iopl12: false, // 12: I/O privilege level (286+ only), always 1 on 8086 and 186
+                iopl13: false, // 13 --""---
+                nested_task: false, // 14: Nested task flag (286+ only), always 1 on 8086 and 186
+                reserved15: false, // 15: Reserved, always 1 on 8086 and 186, always 0 on later models
+                resume: false, // 16: Resume flag (386+ only)
+                virtual_mode: false, // 17: Virtual 8086 mode flag (386+ only)
+                alignment_check: false, // 18: Alignment check (486SX+ only)
+                virtual_interrupt: false, // 19: Virtual interrupt flag (Pentium+)
+                virtual_interrupt_pending: false, // 20: Virtual interrupt pending (Pentium+)
+                cpuid: false, // 21: Able to use CPUID instruction (Pentium+)
+            },
         };
 
-        // intializes the cpu as if to run .com programs, info from http://www.delorie.com/djgpp/doc/rbinter/id/51/29.html
+        // intializes the cpu as if to run .com programs, info from
+        // http://www.delorie.com/djgpp/doc/rbinter/id/51/29.html
         cpu.r16[SP].val = 0xFFF0; // XXX offset of last word available in first 64k segment
 
         cpu
@@ -120,6 +179,16 @@ impl CPU {
                 let val = self.r16[DS].val;
                 self.push16(val);
             }
+            0x31 => {
+                // xor r16, r/m16
+                let p = self.rm16_r16();
+                self.xor_r16(&p);
+            }
+            0x40...0x47 => {
+                // inc r16
+                self.r16[(b & 7) as usize].val += 1;
+                // XXX flags
+            }
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
             0x50...0x57 => {
                 // push r16
@@ -135,6 +204,17 @@ impl CPU {
                 // mov sreg, r/m16
                 let p = self.sreg_rm16();
                 self.mov_r16(&p);
+            }
+            0xAA => {
+                // For legacy mode, store AL at address ES:(E)DI;
+                let offset = (self.r16[ES].val as usize) * 16 + (self.r16[DI].val as usize);
+                let data = self.r16[AX].lo_u8(); // = AL
+                self.write_u8(offset, data);
+                if !self.flags.direction {
+                    self.r16[DI].val += 1;
+                } else {
+                    self.r16[DI].val -= 1;
+                }
             }
             0xB0...0xB7 => {
                 // mov r8, u8
@@ -166,7 +246,7 @@ impl CPU {
                 // cli
                 error!("TODO - cli - clear intterrupts??");
             }
-            _ => error!("UNHANDLED OP {:02X} AT {:04X}", b, self.pc - 1),
+            _ => error!("cpu: unknown op {:02X} at {:04X}", b, self.pc - 1),
         };
     }
 
@@ -229,18 +309,45 @@ impl CPU {
                         self.r16[r].set_u16(val);
                     }
                     Parameter::Imm8(imm) => {
-                        error!("!! XXX Imm8-SUB unhandled - PANIC {:?}", imm);
+                        error!("!! XXX mov_r16 Imm8-SUB unhandled - PANIC {:?}", imm);
                     }
                 }
             }
             Parameter::Imm16(imm) => {
-                error!("!! XXX Imm16 unhandled - PANIC {:?}", imm);
+                error!("!! XXX mov_r16 Imm16 unhandled - PANIC {:?}", imm);
             }
             Parameter::Imm8(imm) => {
-                error!("!! XXX Imm8 unhandled - PANIC {:?}", imm);
+                error!("!! XXX mov_r16 Imm8 unhandled - PANIC {:?}", imm);
             }
         }
     }
+
+    fn xor_r16(&mut self, x: &Parameters) {
+        match x.dst {
+            Parameter::Reg(r) => {
+                match x.src {
+                    Parameter::Imm16(imm) => {
+                        error!("!! XXX xor_r16 Imm16-SUB unhandled - PANIC {:?}", imm);
+                    }
+                    Parameter::Reg(r_src) => {
+                        // XXX should set flags
+                        let val = self.r16[r].val ^ self.r16[r_src].val;
+                        self.r16[r].set_u16(val);
+                    }
+                    Parameter::Imm8(imm) => {
+                        error!("!! XXX xor_r16 Imm8-SUB unhandled - PANIC {:?}", imm);
+                    }
+                }
+            }
+            Parameter::Imm16(imm) => {
+                error!("!! XXX xor_r16 Imm16 unhandled - PANIC {:?}", imm);
+            }
+            Parameter::Imm8(imm) => {
+                error!("!! XXX xor_r16 Imm8 unhandled - PANIC {:?}", imm);
+            }
+        }
+    }
+
 
     pub fn print_registers(&mut self) {
         print!("pc:{:04X}  ax:{:04X} bx:{:04X} cx:{:04X} dx:{:04X}",
@@ -373,13 +480,13 @@ impl CPU {
         self.read_u16() as i16
     }
 
-     fn peek_u8_at(&mut self, pos: usize) -> u8 {
+    fn peek_u8_at(&mut self, pos: usize) -> u8 {
         self.memory[pos]
     }
 
     fn peek_u16_at(&mut self, pos: usize) -> u16 {
         let lo = self.peek_u8_at(pos);
-        let hi = self.peek_u8_at(pos+1);
+        let hi = self.peek_u8_at(pos + 1);
         (hi as u16) << 8 | lo as u16
     }
 
@@ -462,7 +569,7 @@ fn can_execute_r16_r16() {
 
 #[test]
 fn can_handle_stack() {
-     let mut cpu = CPU::new();
+    let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB8, 0x88, 0x88, // mov ax,0x8888
         0x8E, 0xD8,       // mov ds,ax
