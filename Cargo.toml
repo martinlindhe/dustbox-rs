@@ -6,4 +6,4 @@ authors = ["name"]
 [dependencies]
 difference = "1.0.*"
 colog = { git = "https://github.com/chrivers/rust-colog" }
-log = "0.3"
+log = "*"

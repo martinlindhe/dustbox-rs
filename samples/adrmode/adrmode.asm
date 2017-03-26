@@ -3,6 +3,9 @@
     org  0x100        ; .com files always start 256 bytes into the segment
 
 
+xor cx, ax
+xor ax, cx
+
 mov ax, 0x8888
 mov ds, ax
 push ds
