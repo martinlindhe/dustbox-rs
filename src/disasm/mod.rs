@@ -1,3 +1,4 @@
+use difference;
 
 pub struct Disassembly {
     pub pc: usize, 

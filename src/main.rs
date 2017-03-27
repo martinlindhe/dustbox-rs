@@ -5,8 +5,8 @@
 
 extern crate log;
 extern crate colog;
-// extern crate difference;
 extern crate regex;
+extern crate difference;
 
 mod cpu;
 mod disasm;
@@ -42,6 +42,10 @@ fn main() {
 
         let parts: Vec<String> = line.split(" ").map(|s| s.trim_right().to_string()).collect();
         match parts[0].as_ref() {
+            "reset" => {
+                info!("Resetting CPU");
+                cpu.reset();
+            }
             "r" => {
                 cpu.print_registers();
             }
@@ -62,7 +66,7 @@ fn main() {
             }
             "" => {}
             _ => {
-                println!("Not a command: {} ... {}", parts[0], line);
+                println!("Unknown command: {}", parts[0]);
             }
         }
     }
