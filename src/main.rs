@@ -6,14 +6,17 @@
 extern crate log;
 extern crate colog;
 // extern crate difference;
+extern crate regex;
 
 mod cpu;
 mod disasm;
-
 mod tools;
 
 
-use std::fmt::Write;
+//use std::fmt::Write;
+use std::io::{self, stdout, BufRead, Write};
+use regex::Regex;
+use std::process::exit;
 
 fn main() {
 
@@ -28,6 +31,43 @@ fn main() {
     let mut cpu = cpu::CPU::new();
     cpu.load_rom(&data, 0x100);
 
+    let stdin = io::stdin();
+
+    loop {
+        print!("{:06X}> ", cpu.pc);
+        let _ = stdout().flush();
+
+        let mut line = String::new();
+        stdin.lock().read_line(&mut line).unwrap();
+
+        let parts: Vec<String> = line.split(" ").map(|s| s.trim_right().to_string()).collect();
+        match parts[0].as_ref() {
+            "r" => {
+                cpu.print_registers();
+            }
+            "e" => {
+                if parts.len() < 2 {
+                    error!("Required parameter omitted: number of instructions");
+                } else {
+                    let n = parts[1].parse::<i32>().unwrap();
+                    info!("Executing {} instructions", n);
+                    for _ in 0..n {
+                        cpu.execute_instruction();
+                    }
+                }
+            }
+            "exit" | "quit" | "q" => {
+                info!("Exiting ...");
+                exit(0);
+            }
+            "" => {}
+            _ => {
+                println!("Not a command: {} ... {}", parts[0], line);
+            }
+        }
+    }
+    /*
+
     let mut disasm = disasm::Disassembly::new();
 
     for _ in 0..340 {
@@ -38,6 +78,7 @@ fn main() {
         info!("{}", text);
 
         cpu.execute_instruction();
-        cpu.print_registers(); // XXX a repl loop: "r 1" == run 1 instruction, "r" == dump registers
+        cpu.print_registers(); 
     }
+*/
 }
