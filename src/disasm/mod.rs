@@ -1,14 +1,15 @@
 
 pub struct Disassembly {
-    pub pc: u16,
-    rom: Vec<u8>,
-    memory: [u8; 0x10000],
+    pub pc: usize,
+    //rom: Vec<u8>,
+    //memory: [u8; 0x10000],
 }
 
 pub struct Instruction {
-    pub offset: u16,
-    pub length: u16,
+    pub offset: usize,
+    pub length: usize,
     pub text: String,
+    pub bytes: Vec<u8>,
 }
 
 struct ModRegRm {
@@ -27,22 +28,26 @@ impl Disassembly {
     pub fn new() -> Disassembly {
         Disassembly {
             pc: 0,
-            memory: [0; 0x10000],
-            rom: vec![],
+            //memory: [0; 0x10000],
+            //rom: vec![],
         }
     }
 
     // loads data into a 64k area starting at offset, then disassembles all of it
-    pub fn disassemble(&mut self, data: &Vec<u8>, offset: u16) -> String {
-        self.load_rom(data, offset);
+    pub fn disassemble(&mut self, data: &Vec<u8>, offset: usize) -> String {
 
         // TODO LATER: could use rust iter features
+
+
+        //let data = disasm.read_u8_slice(op.offset as usize, op.length);
+        //info!("{:04X}: {}   {}", op.offset, tools::to_hex_string(&data), op.text);
+
 
         let mut count = 0;
         let mut res = vec![];
         loop {
-            let op = self.disasm_instruction();
-            res.push(format!("{:04X}: {}", op.offset, op.text));
+            let op = self.disasm_instruction(data);
+            res.push(format!("{:04X}: {}   {}", op.offset, to_hex_string(&op.bytes), op.text));
             count += op.length as usize;
             if count >= data.len() {
                 break;
@@ -52,26 +57,8 @@ impl Disassembly {
         res.join("\n")
     }
 
-    pub fn load_rom(&mut self, data: &Vec<u8>, offset: u16) {
-        self.rom = data.clone();
-        self.pc = offset;
-
-        // copy up to 64k of rom
-        let mut max = (offset as usize) + data.len();
-        if max > 0x10000 {
-            max = 0x10000;
-        }
-        let min = offset as usize;
-        // println!("loading rom to {:04X}..{:04X}", min, max);
-
-        for i in min..max {
-            let rom_pos = i - (offset as usize);
-            self.memory[i] = self.rom[rom_pos];
-        }
-    }
-
-    pub fn disasm_instruction(&mut self) -> Instruction {
-        let b = self.memory[self.pc as usize];
+    pub fn disasm_instruction(&mut self, data: &Vec<u8>) -> Instruction {
+        let b = data[self.pc];
         let offset = self.pc;
         self.pc += 1;
         let s = match b {
@@ -121,6 +108,7 @@ impl Disassembly {
             offset: offset,
             length: self.pc - offset,
             text: s,
+            bytes: self.read_u8_slice(offset, self.pc - offset),
         }
     }
 
@@ -308,6 +296,11 @@ fn amode(reg: u8) -> &'static str {
         7 => "bx",
         _ => "?",
     }
+}
+
+pub fn to_hex_string(bytes: &Vec<u8>) -> String {
+    let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
+    strs.join(" ")
 }
 
 #[test]

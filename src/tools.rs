@@ -25,7 +25,3 @@ pub fn read_binary(path: &str) -> Vec<u8> {
     buffer
 }
 
-pub fn to_hex_string(bytes: &Vec<u8>) -> String {
-    let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
-    strs.join(" ")
-}

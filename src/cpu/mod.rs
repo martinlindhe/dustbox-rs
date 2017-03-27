@@ -124,7 +124,7 @@ impl CPU {
                 iopl12: false, // 12: I/O privilege level (286+ only), always 1 on 8086 and 186
                 iopl13: false, // 13 --""---
                 nested_task: false, // 14: Nested task flag (286+ only), always 1 on 8086 and 186
-                reserved15: false, // 15: Reserved, always 1 on 8086 and 186, always 0 on later models
+                reserved15: false, // 15: Reserved, always 1 on 8086 and 186, 0 on later models
                 resume: false, // 16: Resume flag (386+ only)
                 virtual_mode: false, // 17: Virtual 8086 mode flag (386+ only)
                 alignment_check: false, // 18: Alignment check (486SX+ only)
@@ -289,17 +289,31 @@ impl CPU {
         }
     }
 
-    // calculates imm from parameter
+    // calculates imm from src parameter
     fn u8_value(&mut self, p: &Parameter) -> u8 {
         match p {
-            &Parameter::Imm8(imm) => imm,
             &Parameter::Reg(r) => {
                 error!("mov_u8 PARAM-ONE Reg PANIC");
                 0
             }
+            &Parameter::Imm8(imm) => imm,
             &Parameter::Imm16(imm2) => {
                 error!("mov_u8 PARAM-ONE Imm16 PANIC");
                 0
+            }
+        }
+    }
+
+    // calculates imm from src parameter
+    fn u16_value(&mut self, p: &Parameter) -> u16  {
+         match p {
+            &Parameter::Reg(r_src) => self.r16[r_src].u16(),
+            &Parameter::Imm8(imm) => {
+                error!("!! XXX mov_r16 Imm8-SUB unhandled - PANIC {:?}", imm);
+                0
+            }
+            &Parameter::Imm16(imm) => {
+                imm
             }
         }
     }
@@ -335,18 +349,8 @@ impl CPU {
     fn mov_r16(&mut self, x: &Parameters) {
         match x.dst {
             Parameter::Reg(r) => {
-                match x.src {
-                    Parameter::Imm16(imm) => {
-                        self.r16[r].set_u16(imm);
-                    }
-                    Parameter::Reg(r_src) => {
-                        let val = self.r16[r_src].u16();
-                        self.r16[r].set_u16(val);
-                    }
-                    Parameter::Imm8(imm) => {
-                        error!("!! XXX mov_r16 Imm8-SUB unhandled - PANIC {:?}", imm);
-                    }
-                }
+                let imm = self.u16_value(&x.src);
+                self.r16[r].set_u16(imm);
             }
             Parameter::Imm16(imm) => {
                 error!("!! XXX mov_r16 Imm16 unhandled - PANIC {:?}", imm);
@@ -605,6 +609,16 @@ impl CPU {
     fn write_u8(&mut self, offset: usize, data: u8) {
         self.memory[offset] = data;
     }
+
+    // used by disassembler
+    pub fn read_u8_slice(&mut self, offset:usize, length: usize) -> Vec<u8> {
+        let mut res = vec![0u8; length];
+        for i in  offset..offset+length {
+            res[i-offset] = self.memory[i];
+        }
+        res
+    }
+
 }
 
 

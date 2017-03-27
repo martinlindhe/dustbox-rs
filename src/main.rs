@@ -13,6 +13,8 @@ mod disasm;
 mod tools;
 
 
+use std::fmt::Write;
+
 fn main() {
 
     drop(colog::init());
@@ -27,12 +29,12 @@ fn main() {
     cpu.load_rom(&data, 0x100);
 
     let mut disasm = disasm::Disassembly::new();
-    disasm.load_rom(&data, 0x100);
 
     for _ in 0..340 {
-        disasm.pc = cpu.pc;
-        let op = disasm.disasm_instruction();
-        info!("{:04X}: {}", op.offset, op.text);
+        disasm.pc = cpu.pc as usize;
+        let data = cpu.read_u8_slice(disasm.pc, 10);
+        let text = disasm.disassemble(&data, disasm.pc);
+        info!("{}", text);
 
         cpu.execute_instruction();
         cpu.print_registers(); // XXX a repl loop: "r 1" == run 1 instruction, "r" == dump registers
