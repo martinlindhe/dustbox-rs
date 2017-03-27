@@ -305,16 +305,14 @@ impl CPU {
     }
 
     // calculates imm from src parameter
-    fn u16_value(&mut self, p: &Parameter) -> u16  {
-         match p {
+    fn u16_value(&mut self, p: &Parameter) -> u16 {
+        match p {
             &Parameter::Reg(r_src) => self.r16[r_src].u16(),
             &Parameter::Imm8(imm) => {
                 error!("!! XXX mov_r16 Imm8-SUB unhandled - PANIC {:?}", imm);
                 0
             }
-            &Parameter::Imm16(imm) => {
-                imm
-            }
+            &Parameter::Imm16(imm) => imm,
         }
     }
 
@@ -611,14 +609,13 @@ impl CPU {
     }
 
     // used by disassembler
-    pub fn read_u8_slice(&mut self, offset:usize, length: usize) -> Vec<u8> {
+    pub fn read_u8_slice(&mut self, offset: usize, length: usize) -> Vec<u8> {
         let mut res = vec![0u8; length];
-        for i in  offset..offset+length {
-            res[i-offset] = self.memory[i];
+        for i in offset..offset + length {
+            res[i - offset] = self.memory[i];
         }
         res
     }
-
 }
 
 

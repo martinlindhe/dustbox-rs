@@ -1,6 +1,6 @@
 
 pub struct Disassembly {
-    pub pc: usize,
+    pub pc: usize, 
     //rom: Vec<u8>,
     //memory: [u8; 0x10000],
 }
@@ -27,7 +27,7 @@ struct Parameters {
 impl Disassembly {
     pub fn new() -> Disassembly {
         Disassembly {
-            pc: 0,
+            pc: 0, 
             //memory: [0; 0x10000],
             //rom: vec![],
         }
@@ -38,16 +38,14 @@ impl Disassembly {
 
         // TODO LATER: could use rust iter features
 
-
-        //let data = disasm.read_u8_slice(op.offset as usize, op.length);
-        //info!("{:04X}: {}   {}", op.offset, tools::to_hex_string(&data), op.text);
-
-
         let mut count = 0;
         let mut res = vec![];
         loop {
             let op = self.disasm_instruction(data);
-            res.push(format!("{:04X}: {}   {}", op.offset, to_hex_string(&op.bytes), op.text));
+            res.push(format!("{:04X}: {}   {}",
+                             op.offset,
+                             to_hex_string(&op.bytes),
+                             op.text));
             count += op.length as usize;
             if count >= data.len() {
                 break;
@@ -66,7 +64,7 @@ impl Disassembly {
             0x07 => format!("pop   es"),
             0x1E => format!("push  ds"),
             0x31 => {
-                let p = self.rm16_r16();
+                let p = self.rm16_r16(&data);
                 format!("xor   {}, {}", p.dst, p.src)
             }
             0x40...0x47 => format!("inc   {}", r16(b & 7)),
@@ -74,16 +72,16 @@ impl Disassembly {
             0x50...0x57 => format!("push  {}", r16(b & 7)),
             0x88 => {
                 // mov r8, r/m8
-                let p = self.r8_rm8();
+                let p = self.r8_rm8(&data);
                 format!("mov   {}, {}", p.dst, p.src)
 
             }
             0x8B => {
-                let p = self.r16_rm16();
+                let p = self.r16_rm16(&data);
                 format!("mov   {}, {}", p.dst, p.src)
             }
             0x8E => {
-                let p = self.sreg_rm16();
+                let p = self.sreg_rm16(&data);
                 format!("mov   {}, {}", p.dst, p.src)
             }
             0xAA => format!("stosb"),
@@ -92,11 +90,11 @@ impl Disassembly {
             0xAD => format!("lodsw"),
             0xAE => format!("scasb"),
             0xAF => format!("scasw"),
-            0xB0...0xB7 => format!("mov   {}, {:02X}", r8(b & 7), self.read_u8()),
-            0xB8...0xBF => format!("mov   {}, {:04X}", r16(b & 7), self.read_u16()),
-            0xCD => format!("int   {:02X}", self.read_u8()),
-            0xE2 => format!("loop  {:04X}", self.read_rel8()),
-            0xE8 => format!("call  {:04X}", self.read_rel16()),
+            0xB0...0xB7 => format!("mov   {}, {:02X}", r8(b & 7), self.read_u8(&data)),
+            0xB8...0xBF => format!("mov   {}, {:04X}", r16(b & 7), self.read_u16(&data)),
+            0xCD => format!("int   {:02X}", self.read_u8(&data)),
+            0xE2 => format!("loop  {:04X}", self.read_rel8(&data)),
+            0xE8 => format!("call  {:04X}", self.read_rel16(&data)),
             0xFA => format!("cli"),
             _ => {
                 error!("disasm: unknown op {:02X} at {:04X}", b, offset);
@@ -104,17 +102,28 @@ impl Disassembly {
             }
         };
 
+        let length = self.pc - offset;
         Instruction {
             offset: offset,
-            length: self.pc - offset,
+            length: length,
             text: s,
-            bytes: self.read_u8_slice(offset, self.pc - offset),
+            bytes: self.read_u8_slice(&data, length),
         }
     }
 
+    // used by disassembler
+    fn read_u8_slice(&mut self, data: &Vec<u8>, length: usize) -> Vec<u8> {
+        let mut res = vec![0u8; length];
+        for i in 0..length {
+            res[i] = data[i];
+        }
+        res
+    }
+
+
     // decode Sreg, r/m16
-    fn sreg_rm16(&mut self) -> Parameters {
-        let mut res = self.rm16_sreg();
+    fn sreg_rm16(&mut self, data: &Vec<u8>) -> Parameters {
+        let mut res = self.rm16_sreg(data);
         let tmp = res.src;
         res.src = res.dst;
         res.dst = tmp;
@@ -122,46 +131,46 @@ impl Disassembly {
     }
 
     // decode r/m16, Sreg
-    fn rm16_sreg(&mut self) -> Parameters {
-        let x = self.read_mod_reg_rm();
+    fn rm16_sreg(&mut self, data: &Vec<u8>) -> Parameters {
+        let x = self.read_mod_reg_rm(data);
         Parameters {
             src: sreg(x.reg).to_string(),
-            dst: self.decode_rm16(x.rm, x.md),
+            dst: self.decode_rm16(data, x.rm, x.md),
         }
     }
 
     // decode r16, r/m16
-    fn r16_rm16(&mut self) -> Parameters {
-        let mut res = self.rm16_r16();
+    fn r16_rm16(&mut self, data: &Vec<u8>) -> Parameters {
+        let mut res = self.rm16_r16(data);
         let tmp = res.src;
         res.src = res.dst;
         res.dst = tmp;
         res
     }
 
-    fn r8_rm8(&mut self) -> Parameters {
-        let x = self.read_mod_reg_rm();
+    fn r8_rm8(&mut self, data: &Vec<u8>) -> Parameters {
+        let x = self.read_mod_reg_rm(data);
         Parameters {
             src: r8(x.reg).to_string(),
-            dst: self.decode_rm8(x.rm, x.md),
+            dst: self.decode_rm8(data, x.rm, x.md),
         }
     }
 
     // decode r/m16, r16
-    fn rm16_r16(&mut self) -> Parameters {
-        let x = self.read_mod_reg_rm();
+    fn rm16_r16(&mut self, data: &Vec<u8>) -> Parameters {
+        let x = self.read_mod_reg_rm(data);
         Parameters {
             src: r16(x.reg).to_string(),
-            dst: self.decode_rm16(x.rm, x.md),
+            dst: self.decode_rm16(data, x.rm, x.md),
         }
     }
 
-    fn decode_rm16(&mut self, rm: u8, md: u8) -> String {
+    fn decode_rm16(&mut self, data: &Vec<u8>, rm: u8, md: u8) -> String {
         match md {
             0 => {
                 // [reg]
                 if rm == 6 {
-                    format!("[{:04X}]", self.read_u16())
+                    format!("[{:04X}]", self.read_u16(data))
                 } else {
                     format!("[{}]", amode(rm))
                 }
@@ -169,23 +178,23 @@ impl Disassembly {
             1 => {
                 // [reg+d8]
                 error!("XXX [reg+d8] signed value formatting!?=!?1§1");
-                format!("[{}{:02X}]", amode(rm), self.read_s8())
+                format!("[{}{:02X}]", amode(rm), self.read_s8(data))
             }
             2 => {
                 // [reg+d16]
                 error!("XXX [reg+d16] signed value formatting!?=!?1§1");
-                format!("[{}{:04X}]", amode(rm), self.read_s16())
+                format!("[{}{:04X}]", amode(rm), self.read_s16(data))
             }
             _ => r16(rm).to_string(),
         }
     }
 
-    fn decode_rm8(&mut self, rm: u8, md: u8) -> String {
+    fn decode_rm8(&mut self, data: &Vec<u8>, rm: u8, md: u8) -> String {
         match md {
             0 => {
                 // [reg]
                 if rm == 6 {
-                    format!("[{:04X}]", self.read_u16())
+                    format!("[{:04X}]", self.read_u16(data))
                 } else {
                     format!("[{}]", amode(rm))
                 }
@@ -193,19 +202,19 @@ impl Disassembly {
             1 => {
                 // [reg+d8]
                 error!("XXX [reg+d8] signed value formatting!?=!?1§1");
-                format!("[{}{:02X}]", amode(rm), self.read_s8())
+                format!("[{}{:02X}]", amode(rm), self.read_s8(data))
             }
             2 => {
                 // [reg+d16]
                 error!("XXX [reg+d16] signed value formatting!?=!?1§1");
-                format!("[{}{:04X}]", amode(rm), self.read_s16())
+                format!("[{}{:04X}]", amode(rm), self.read_s16(data))
             }
             _ => r8(rm).to_string(),
         }
     }
 
-    fn read_mod_reg_rm(&mut self) -> ModRegRm {
-        let b = self.read_u8();
+    fn read_mod_reg_rm(&mut self, data: &Vec<u8>) -> ModRegRm {
+        let b = self.read_u8(data);
         ModRegRm {
             md: b >> 6,
             reg: (b >> 3) & 7,
@@ -213,34 +222,34 @@ impl Disassembly {
         }
     }
 
-    fn read_u8(&mut self) -> u8 {
-        let b = self.memory[self.pc as usize];
+    fn read_u8(&mut self, data: &Vec<u8>) -> u8 {
+        let b = data[self.pc as usize];
         self.pc += 1;
         b
     }
 
-    fn read_u16(&mut self) -> u16 {
-        let lo = self.read_u8();
-        let hi = self.read_u8();
+    fn read_u16(&mut self, data: &Vec<u8>) -> u16 {
+        let lo = self.read_u8(data);
+        let hi = self.read_u8(data);
         (hi as u16) << 8 | lo as u16
     }
 
-    fn read_rel8(&mut self) -> u16 {
-        let val = self.read_u8() as i8;
+    fn read_rel8(&mut self, data: &Vec<u8>) -> u16 {
+        let val = self.read_u8(data) as i8;
         (self.pc as i16 + (val as i16)) as u16
     }
 
-    fn read_rel16(&mut self) -> u16 {
-        let val = self.read_u16() as i16;
+    fn read_rel16(&mut self, data: &Vec<u8>) -> u16 {
+        let val = self.read_u16(data) as i16;
         (self.pc as i16 + val) as u16
     }
 
-    fn read_s8(&mut self) -> i8 {
-        self.read_u8() as i8
+    fn read_s8(&mut self, data: &Vec<u8>) -> i8 {
+        self.read_u8(data) as i8
     }
 
-    fn read_s16(&mut self) -> i16 {
-        self.read_u16() as i16
+    fn read_s16(&mut self, data: &Vec<u8>) -> i16 {
+        self.read_u16(data) as i16
     }
 }
 

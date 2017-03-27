@@ -31,9 +31,10 @@ fn main() {
     let mut disasm = disasm::Disassembly::new();
 
     for _ in 0..340 {
-        disasm.pc = cpu.pc as usize;
-        let data = cpu.read_u8_slice(disasm.pc, 10);
-        let text = disasm.disassemble(&data, disasm.pc);
+        let pc = cpu.pc as usize;
+        disasm.pc = pc;
+        let data = cpu.read_u8_slice(pc, 10);
+        let text = disasm.disassemble(&data, pc);
         info!("{}", text);
 
         cpu.execute_instruction();
