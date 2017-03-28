@@ -126,6 +126,7 @@ enum Op {
     Mov16(),
     Pop16(),
     Push16(),
+    Retn(),
     Stosb(),
     Xor16(),
     Unknown(),
@@ -362,23 +363,17 @@ impl CPU {
             }
             Op::Pop16() => {
                 // single parameter (dst)
-
-                let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
-                let data = self.peek_u16_at(offset);
-
-                warn!("pop16 {:04X}  from {:04X}:{:04X}  =>  {:06X}",
-                      data,
-                      self.sreg16[SS].val,
-                      self.r16[SP].val,
-                      offset);
-
-                self.r16[SP].val += 2;
+                let data = self.pop16();
                 self.write_u16_param(&op.dst, data);
             }
             Op::Push16() => {
                 // single parameter (dst)
                 let data = self.get_parameter_value(&op.dst) as u16;
                 self.push16(data);
+            }
+            Op::Retn() => {
+                // ret near (no arguments)
+                self.ip = self.pop16();
             }
             Op::Stosb() => {
                 // no parameters
@@ -485,6 +480,11 @@ impl CPU {
                 p.command = Op::Mov16();
                 p.dst = Parameter::Reg16((b & 7) as usize);
                 p.src = Parameter::Imm16(self.read_u16());
+                p
+            }
+	        0xC3 => {
+                // ret [near]
+		        p.command = Op::Retn();
                 p
             }
             0xCD => {
@@ -743,12 +743,23 @@ impl CPU {
         self.r16[SP].val -= 2;
         let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
         warn!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}",
-            data,
-            self.sreg16[SS].val,
-            self.r16[SP].val,
-            offset);
-
+                data,
+                self.sreg16[SS].val,
+                self.r16[SP].val,
+                offset);
         self.write_u16(offset, data);
+    }
+
+    fn pop16(&mut self) -> u16 {
+        let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
+        let data = self.peek_u16_at(offset);
+        warn!("pop16 {:04X}  from {:04X}:{:04X}  =>  {:06X}",
+                data,
+                self.sreg16[SS].val,
+                self.r16[SP].val,
+                offset);
+        self.r16[SP].val += 2;
+        data
     }
 
     fn read_mod_reg_rm(&mut self) -> ModRegRm {

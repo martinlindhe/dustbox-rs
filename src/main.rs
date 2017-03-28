@@ -107,20 +107,18 @@ fn main() {
                 warn!("Executing until we hit a breakpoint");
 
                 loop {
-                    let op = cpu.disasm_instruction();
-                    info!("{}", op.pretty_string());
+                    cpu.execute_instruction();
+                    let offset = cpu.ip as usize;
 
                     // if op.offset is in list, break
                     let mut list_iter = list.iter();
-                    match list_iter.find(|&&x| x == op.offset) {
+                    match list_iter.find(|&&x| x == offset) {
                         Some(n) => {
                             warn!("Breakpoint reached {:04X}", n);
                             break;
                         }
                         None => {}
                     }
-
-                    cpu.execute_instruction();
                 }
             }
             "exit" | "quit" | "q" => {
