@@ -54,6 +54,9 @@ fn main() {
                 let op = cpu.disasm_instruction();
                 info!("{}", op.pretty_string());
             }
+            "v" => {
+                info!("Executed {} instructions", cpu.instruction_count);
+            }
             "e" => {
                 let n = if parts.len() < 2 {
                     1
@@ -70,7 +73,7 @@ fn main() {
 
             }
             "exit" | "quit" | "q" => {
-                info!("Exiting ...");
+                info!("Exiting ... {} instructions was executed", cpu.instruction_count);
                 exit(0);
             }
             "" => {}

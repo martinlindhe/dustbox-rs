@@ -3,6 +3,7 @@
 
 pub struct CPU {
     pub ip: u16,
+    pub instruction_count: usize,
     memory: Vec<u8>,
     // 8 low = r16, 8 hi = es,cs,ss,ds,fs,gs
     r16: [Register16; 8], // general purpose registers
@@ -114,6 +115,8 @@ enum Parameter {
 #[derive(Debug)]
 enum Op {
     Inc16(),
+    Int(),
+    Loop(),
     Mov16(),
     Pop16(),
     Push16(),
@@ -145,6 +148,7 @@ impl CPU {
     pub fn new() -> CPU {
         let mut cpu = CPU {
             ip: 0,
+            instruction_count: 0,
             memory: vec![0u8; 0x10000 * 64],
             r16: [Register16 { val: 0 }; 8],
             sreg16: [Register16 { val: 0 }; 6],
@@ -187,6 +191,7 @@ impl CPU {
 
     pub fn reset(&mut self) {
         self.ip = 0;
+        self.instruction_count = 0;
         // XXX clear memory
     }
 
@@ -235,6 +240,7 @@ impl CPU {
         match *p {
             Parameter::Reg16(r) => self.r16[r].val as usize,
             Parameter::SReg16(r) => self.sreg16[r].val as usize,
+            Parameter::Imm8(imm) => imm as usize,
             Parameter::Imm16(imm) => imm as usize,
             _ => {
                 error!("get_parameter_value error: unhandled parameter: {:?}", p);
@@ -273,12 +279,30 @@ impl CPU {
     }
 
     fn execute(&mut self, op: &Parameters) {
+        self.instruction_count += 1;
         match op.command {
             Op::Inc16() => {
                 let mut data = self.get_parameter_value(&op.dst) as u16;
                 data += 1;
                 error!("XXX inc - FLAGS!");
                 self.write_u16_param(&op.dst, data);
+            }
+            Op::Int() => {
+                // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
+                // http://wiki.osdev.org/Interrupt_Vector_Table
+                let int = self.get_parameter_value(&op.dst) as u8;
+                error!("XXX IMPL: int {:02X}", int);
+            }
+            Op::Loop() => {
+                let dst = self.get_parameter_value(&op.dst) as u16;
+                self.r16[CX].val -= 1;
+                if self.r16[CX].val != 0 {
+                    self.ip = dst;
+                } else {
+                    info!("NOTE: loop branch not taken, cx == 0");
+                }
+                // XXX flags ???
+
             }
             Op::Mov16() => {
                 // two parameters (dst=reg)
@@ -391,6 +415,17 @@ impl CPU {
                 p.src = Parameter::Imm16(self.read_u16());
                 p
             }
+            0xCD => {
+                p.command = Op::Int();
+                p.dst = Parameter::Imm8(self.read_u8());
+                p
+            }
+            0xE2 => {
+                // loop rel8
+                p.command = Op::Loop();
+                p.dst = Parameter::Imm16(self.read_rel8());
+                p
+            }
             /*
             0x06 => {
                 // push es
@@ -423,20 +458,6 @@ impl CPU {
                 // mov r8, u8
                 let val = self.read_u8();
                 self.mov_r8_u8((b & 7) as usize, val);
-            }
-            0xCD => {
-                // int u8
-                // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
-                // http://wiki.osdev.org/Interrupt_Vector_Table
-                error!("XXX IMPL: int {:02X}", self.read_u8());
-            }
-            0xE2 => {
-                // loop rel8
-                let dst = self.read_rel8();
-                self.r16[CX].val -= 1;
-                if self.r16[CX].val != 0 {
-                    self.ip = dst;
-                }
             }
             0xE8 => {
                 // call s16
