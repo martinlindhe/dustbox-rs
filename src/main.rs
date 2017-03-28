@@ -61,7 +61,7 @@ fn main() {
                 let n = if parts.len() < 2 {
                     1
                 } else {
-                    parts[1].parse::<i32>().unwrap()
+                    parts[1].parse::<usize>().unwrap()
                 };
 
                 info!("Executing {} instructions", n);
@@ -70,7 +70,58 @@ fn main() {
                     info!("{}", op.pretty_string());
                     cpu.execute_instruction();
                 }
+            }
+            "bp" | "breakpoint" => {
+                // breakpoints
+                // XXX: "bp remove 0x123"
+                // XXX: "bp clear" = remove all breakpoints
+                if parts.len() < 2 {
+                    error!("breakpoint: not enough arguments");
+                } else {
+                    match parts[1].as_ref() {
+                        "add" | "set" => {
+                            let bp = parse_number_string(&parts[2]);
+                            cpu.add_breakpoint(bp);
+                            info!("Breakpoint added: {:04X}", bp);
+                        }
+                        "clear" => {
+                            error!("XXX clear breakpoints");
+                        }
+                        "list" => {
+                            error!("XXX LIST BREAKPOINTS");
+                            let list = cpu.get_breakpoints(); // .sort();
+                            // XXXX sort list
 
+                            let strs: Vec<String> = list.iter().map(|b| format!("{:04X}", b)).collect();
+                            let formatted_list = strs.join(" ");
+                            warn!("breakpoints: {}", formatted_list);
+                        }
+                        _ => {
+                            error!("unknown breakpoint subcommand: {}", parts[1])
+                        }
+                    }
+                }
+            }
+            "run" => {
+                let list = cpu.get_breakpoints();
+                warn!("Executing until we hit a breakpoint");
+
+                loop {
+                    let op = cpu.disasm_instruction();
+                    info!("{}", op.pretty_string());
+
+                    // if op.offset is in list, break
+                    let mut list_iter = list.iter();
+                    match list_iter.find(|&&x| x == op.offset) {
+                        Some(n) => {
+                            warn!("Breakpoint reached {:04X}", n);
+                            break;
+                        }
+                        None => {}
+                    }
+
+                    cpu.execute_instruction();
+                }
             }
             "exit" | "quit" | "q" => {
                 info!("Exiting ... {} instructions was executed", cpu.instruction_count);
@@ -97,4 +148,14 @@ fn main() {
         cpu.print_registers();
     }
 */
+}
+
+fn parse_number_string(s: &str) -> usize {
+    if &s[0..2] == "0x" {
+        let x = usize::from_str_radix(&s[2..], 16).unwrap();
+        x
+    } else {
+        // decimal
+        s.parse::<usize>().unwrap()
+    }
 }

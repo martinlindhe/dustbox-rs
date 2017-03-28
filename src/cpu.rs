@@ -9,6 +9,7 @@ pub struct CPU {
     r16: [Register16; 8], // general purpose registers
     sreg16: [Register16; 6], // es,cs,ss,ds,fs,gs
     flags: Flags,
+    breakpoints: Vec<usize>,
 }
 
 // https://en.wikipedia.org/wiki/FLAGS_register
@@ -181,6 +182,7 @@ impl CPU {
                 virtual_interrupt_pending: false, // 20: Virtual interrupt pending (Pentium+)
                 cpuid: false, // 21: Able to use CPUID instruction (Pentium+)
             },
+            breakpoints: vec![0; 0],
         };
 
         // intializes the cpu as if to run .com programs, info from
@@ -192,6 +194,14 @@ impl CPU {
         cpu.sreg16[DS].val = 0xDEAD; // XXX just for testing
 
         cpu
+    }
+
+    pub fn add_breakpoint(&mut self, bp: usize) {
+        self.breakpoints.push(bp);
+    }
+
+    pub fn get_breakpoints(&self) -> Vec<usize> {
+        self.breakpoints.clone()
     }
 
     pub fn reset(&mut self) {
