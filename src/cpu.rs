@@ -113,9 +113,11 @@ enum Parameter {
 
 #[derive(Debug)]
 enum Op {
+    Inc16(),
     Mov16(),
     Pop16(),
     Push16(),
+    Stosb(),
     Xor16(),
     Unknown(),
 }
@@ -272,6 +274,12 @@ impl CPU {
 
     fn execute(&mut self, op: &Parameters) {
         match op.command {
+            Op::Inc16() => {
+                let mut data = self.get_parameter_value(&op.dst) as u16;
+                data += 1;
+                error!("XXX inc - FLAGS!");
+                self.write_u16_param(&op.dst, data);
+            }
             Op::Mov16() => {
                 // two parameters (dst=reg)
                 let data = self.get_parameter_value(&op.src) as u16;
@@ -307,6 +315,18 @@ impl CPU {
 
                 self.write_u16(offset, data);
             }
+            Op::Stosb() => {
+                // no parameters
+                // store AL at ES:(E)DI
+                let offset = (self.sreg16[ES].val as usize) * 16 + (self.r16[DI].val as usize);
+                let data = self.r16[AX].lo_u8(); // = AL
+                self.write_u8(offset, data);
+                if !self.flags.direction {
+                    self.r16[DI].val += 1;
+                } else {
+                    self.r16[DI].val -= 1;
+                }
+            }
             Op::Xor16() => {
                 // two parameters (dst=reg)
                 error!("XXX XOR - FLAGS");
@@ -317,7 +337,7 @@ impl CPU {
                 self.write_u16_param(&op.dst, val);
             }
             _ => {
-                error!("ERROR Op::execute {:?}", op.command);
+                error!("execute error - unhandled: {:?}", op.command);
             }
         }
     }
@@ -352,6 +372,18 @@ impl CPU {
                 p.src = part.src;
                 p
             }
+            0x40...0x47 => {
+                // inc r16
+                p.command = Op::Inc16();
+                p.dst = Parameter::Reg16((b & 7) as usize);
+                p
+
+            }
+            0xAA => {
+                // stosb
+                p.command = Op::Stosb();
+                p
+            }
             0xB8...0xBF => {
                 // mov r16, u16
                 p.command = Op::Mov16();
@@ -364,11 +396,6 @@ impl CPU {
                 // push es
                 let val = self.r16[ES].val;
                 self.push16(val);
-            }
-            0x40...0x47 => {
-                // inc r16
-                self.r16[(b & 7) as usize].val += 1;
-                // XXX flags
             }
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
             0x50...0x57 => {
@@ -391,18 +418,6 @@ impl CPU {
                 // mov sreg, r/m16
                 let p = self.sreg_rm16();
                 self.mov_r16(&p);
-            }
-            0xAA => {
-                // stosb
-                // For legacy mode, store AL at address ES:(E)DI;
-                let offset = (self.r16[ES].val as usize) * 16 + (self.r16[DI].val as usize);
-                let data = self.r16[AX].lo_u8(); // = AL
-                self.write_u8(offset, data);
-                if !self.flags.direction {
-                    self.r16[DI].val += 1;
-                } else {
-                    self.r16[DI].val -= 1;
-                }
             }
             0xB0...0xB7 => {
                 // mov r8, u8
