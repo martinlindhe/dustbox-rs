@@ -113,6 +113,7 @@ enum Parameter {
 
 #[derive(Debug)]
 enum Op {
+    Mov16(),
     Pop16(),
     Push16(),
     Unknown(),
@@ -230,6 +231,7 @@ impl CPU {
     fn get_parameter_value(&self, p: &Parameter) -> usize {
         match *p {
             Parameter::SReg16(r) => self.sreg16[r].val as usize,
+            Parameter::Imm16(imm) => imm as usize,
             _ => {
                 error!("error unhandled parameter: {:?}", p);
                 0
@@ -268,6 +270,12 @@ impl CPU {
 
     fn execute(&mut self, op: &Parameters) {
         match op.command {
+            Op::Mov16() => {
+                // two parameters (dst=reg)
+                let data = self.get_parameter_value(&op.src) as u16;
+                self.write_u16_param(&op.dst, data);
+
+            }
             Op::Pop16() => {
                 // single parameter (dst)
 
@@ -326,7 +334,13 @@ impl CPU {
                 p.dst = Parameter::SReg16(DS);
                 p
             }
-
+            0xB8...0xBF => {
+                // mov r16, u16
+                p.command = Op::Mov16();
+                p.dst = Parameter::Reg16((b & 7) as usize);
+                p.src = Parameter::Imm16(self.read_u16());
+                p
+            }
             /*
             0x06 => {
                 // push es
@@ -381,11 +395,6 @@ impl CPU {
                 // mov r8, u8
                 let val = self.read_u8();
                 self.mov_r8_u8((b & 7) as usize, val);
-            }
-            0xB8...0xBF => {
-                // mov r16, u16
-                let reg = (b & 7) as usize;
-                self.r16[reg].val = self.read_u16();
             }
             0xCD => {
                 // int u8
