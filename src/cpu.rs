@@ -261,7 +261,7 @@ impl CPU {
                 } else {
                     self.r16[lor].hi_u8() as usize
                 }
-            },
+            }
             Parameter::Reg16(r) => self.r16[r].val as usize,
             Parameter::SReg16(r) => self.sreg16[r].val as usize,
             Parameter::Imm8(imm) => imm as usize,
@@ -482,9 +482,9 @@ impl CPU {
                 p.src = Parameter::Imm16(self.read_u16());
                 p
             }
-	        0xC3 => {
+            0xC3 => {
                 // ret [near]
-		        p.command = Op::Retn();
+                p.command = Op::Retn();
                 p
             }
             0xCD => {
@@ -528,7 +528,7 @@ impl CPU {
                 p
             }
             0xFE => {
-                 // byte size
+                // byte size
                 self.decode_fe()
             }
             _ => {
@@ -542,7 +542,7 @@ impl CPU {
     fn decode_81(&mut self) -> Parameters {
         // 81C7C000          add di,0xc0    md=3 ....
         let x = self.read_mod_reg_rm();
-        let mut p = Parameters{
+        let mut p = Parameters {
             command: Op::Unknown(),
             dst: Parameter::Reg16(x.rm as usize),
             src: Parameter::Imm16(self.read_u16()),
@@ -573,7 +573,7 @@ impl CPU {
             case 7:
                 op.Cmd = "cmp"
             }*/
-            _ => { 
+            _ => {
                 error!("decode_81 error: unknown reg {}", x.reg);
             }
         }
@@ -583,7 +583,7 @@ impl CPU {
     // byte size
     fn decode_fe(&mut self) -> Parameters {
         let x = self.read_mod_reg_rm();
-        let mut p = Parameters{
+        let mut p = Parameters {
             command: Op::Unknown(),
             dst: self.rm8(x.rm, x.md),
             src: Parameter::Empty(),
@@ -595,7 +595,7 @@ impl CPU {
             1 => {
                 p.command = Op::Dec8();
             }
-            _ => { 
+            _ => {
                 error!("decode_fe error: unknown reg {}", x.reg);
             }
         }
@@ -693,9 +693,7 @@ impl CPU {
 
                 Parameter::Imm16(self.peek_u16_at(pos as usize))
             }
-            _ => {
-                Parameter::Reg8(rm as usize)
-            }
+            _ => Parameter::Reg8(rm as usize),
         }
     }
 
@@ -733,31 +731,31 @@ impl CPU {
 
                 Parameter::Imm16(self.peek_u16_at(pos as usize))
             }
-            _ => {
-                Parameter::Reg16(rm as usize)
-            }
+            _ => Parameter::Reg16(rm as usize),
         }
     }
 
     fn push16(&mut self, data: u16) {
         self.r16[SP].val -= 2;
         let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
-        warn!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}",
-                data,
-                self.sreg16[SS].val,
-                self.r16[SP].val,
-                offset);
+        warn!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}       instr {}",
+              data,
+              self.sreg16[SS].val,
+              self.r16[SP].val,
+              offset,
+              self.instruction_count);
         self.write_u16(offset, data);
     }
 
     fn pop16(&mut self) -> u16 {
         let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
         let data = self.peek_u16_at(offset);
-        warn!("pop16 {:04X}  from {:04X}:{:04X}  =>  {:06X}",
-                data,
-                self.sreg16[SS].val,
-                self.r16[SP].val,
-                offset);
+        warn!("pop16 {:04X}  from {:04X}:{:04X}  =>  {:06X}       instr {}",
+              data,
+              self.sreg16[SS].val,
+              self.r16[SP].val,
+              offset,
+              self.instruction_count);
         self.r16[SP].val += 2;
         data
     }

@@ -41,7 +41,9 @@ fn main() {
         let mut line = String::new();
         stdin.lock().read_line(&mut line).unwrap();
 
-        let parts: Vec<String> = line.split(" ").map(|s| s.trim_right().to_string()).collect();
+        let parts: Vec<String> = line.split(" ")
+            .map(|s| s.trim_right().to_string())
+            .collect();
         match parts[0].as_ref() {
             "reset" => {
                 info!("Resetting CPU");
@@ -92,13 +94,12 @@ fn main() {
                             let list = cpu.get_breakpoints(); // .sort();
                             // XXXX sort list
 
-                            let strs: Vec<String> = list.iter().map(|b| format!("{:04X}", b)).collect();
+                            let strs: Vec<String> =
+                                list.iter().map(|b| format!("{:04X}", b)).collect();
                             let formatted_list = strs.join(" ");
                             warn!("breakpoints: {}", formatted_list);
                         }
-                        _ => {
-                            error!("unknown breakpoint subcommand: {}", parts[1])
-                        }
+                        _ => error!("unknown breakpoint subcommand: {}", parts[1]),
                     }
                 }
             }
@@ -122,7 +123,8 @@ fn main() {
                 }
             }
             "exit" | "quit" | "q" => {
-                info!("Exiting ... {} instructions was executed", cpu.instruction_count);
+                info!("Exiting ... {} instructions was executed",
+                      cpu.instruction_count);
                 exit(0);
             }
             "" => {}
