@@ -24,7 +24,8 @@ fn main() {
 
     // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
     //let app = "samples/adrmode/adrmode.com";
-    let app = "games/Beast (1984)(Dan Baker)/beast.com";
+    //let app = "games/Beast (1984)(Dan Baker)/beast.com";
+    let app = "games/Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com";
     //let app = "samples/bar/bar.com";
     let data = tools::read_binary(app);
 
@@ -151,6 +152,7 @@ fn main() {
 }
 
 fn parse_number_string(s: &str) -> usize {
+    // XXX return Option, none = failed to parse
     if &s[0..2] == "0x" {
         let x = usize::from_str_radix(&s[2..], 16).unwrap();
         x

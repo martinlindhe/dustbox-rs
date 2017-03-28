@@ -118,9 +118,11 @@ enum Parameter {
 enum Op {
     Add16(),
     CallNear(),
+    Cli(),
     Dec8(),
     Inc16(),
     Int(),
+    JmpNear(),
     Loop(),
     Mov8(),
     Mov16(),
@@ -321,6 +323,10 @@ impl CPU {
                 self.push16(old_ip);
                 self.ip = temp_ip;
             }
+            Op::Cli() => {
+                info!("flag.interrupt_enable disabled");
+                self.flags.interrupt_enable = false;
+            }
             Op::Dec8() => {
                 // single parameter (dst)
                 let mut data = self.get_parameter_value(&op.dst) as u8;
@@ -339,6 +345,9 @@ impl CPU {
                 // http://wiki.osdev.org/Interrupt_Vector_Table
                 let int = self.get_parameter_value(&op.dst) as u8;
                 error!("XXX IMPL: int {:02X}", int);
+            }
+            Op::JmpNear() => {
+                self.ip = self.get_parameter_value(&op.dst) as u16;
             }
             Op::Loop() => {
                 let dst = self.get_parameter_value(&op.dst) as u16;
@@ -526,9 +535,16 @@ impl CPU {
                 p.dst = Parameter::Imm16(self.read_rel16());
                 p
             }
+            0xE9 => {
+                // jmp near rel16
+                p.command = Op::JmpNear();
+                let x = self.read_rel16();
+                p.dst = Parameter::Imm16(x);
+                p
+            }
             0xFA => {
                 // cli
-                error!("TODO - cli - clear intterrupts??");
+                p.command = Op::Cli();
                 p
             }
             0xFE => {
