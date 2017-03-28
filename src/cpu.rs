@@ -65,6 +65,14 @@ impl Register16 {
 }
 
 
+#[derive(Debug)]
+pub struct Instruction {
+    pub offset: usize,
+    pub length: usize,
+    pub text: String,
+    pub bytes: Vec<u8>,
+}
+
 
 struct ModRegRm {
     md: u8, // NOTE: "mod" is reserved in rust
@@ -210,10 +218,33 @@ impl CPU {
         }
     }
 
-
     pub fn execute_instruction(&mut self) {
         let op = self.decode_instruction();
         self.execute(&op);
+    }
+
+    pub fn disasm_instruction(&mut self) -> Instruction {
+        let old_ip = self.ip;
+        let op = self.decode_instruction();
+        let length = self.ip - old_ip;
+        self.ip = old_ip;
+
+        let text = match op.dst {
+            Parameter::Empty() => format!("{:?}", op.command),
+            _ => {
+                match op.src {
+                    Parameter::Empty() => format!("{:?}  {:?}", op.command, op.dst),
+                    _ => format!("{:?}  {:?}, {:?}", op.command, op.dst, op.src),
+                }
+            }
+        };
+
+        Instruction {
+            offset: old_ip as usize,
+            length: length as usize,
+            text: text,
+            bytes: self.read_u8_slice(old_ip as usize, length as usize),
+        }
     }
 
     fn execute(&mut self, op: &Parameters) {

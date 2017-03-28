@@ -51,8 +51,8 @@ fn main() {
                 cpu.print_registers();
             }
             "d" | "disasm" => {
-                let op = opcodes::lookup_opcode(9); // XXX get op info
-                warn!("XXX disasm WIP: {}", op);
+                let op = cpu.disasm_instruction();
+                warn!("XXX disasm WIP: {:?}", op);
             }
             "e" => {
                 let n = if parts.len() < 2 {
