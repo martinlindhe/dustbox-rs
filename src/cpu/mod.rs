@@ -2,10 +2,11 @@
 #![allow(unused_variables)]
 
 pub struct CPU {
-    pub pc: u16,
+    pub ip: u16,
     memory: Vec<u8>,
     // 8 low = r16, 8 hi = es,cs,ss,ds,fs,gs
-    r16: [Register16; 16],
+    r16: [Register16; 8], // general purpose registers
+    sreg16: [Register16; 6], // es,cs,ss,ds,fs,gs
     flags: Flags,
 }
 
@@ -73,6 +74,7 @@ struct ModRegRm {
 
 #[derive(Debug)]
 struct Parameters {
+    command: Op,
     src: Parameter,
     dst: Parameter,
 }
@@ -82,8 +84,15 @@ enum Parameter {
     Imm8(u8),
     Imm16(u16),
     Reg(usize), // index into CPU.r16
+    SReg16(usize), // index into cpu.sreg16
+    Empty(),
 }
 
+#[derive(Debug)]
+enum Op {
+    Push16(),
+    Unknown(),
+}
 
 
 // r16
@@ -95,19 +104,22 @@ const SP: usize = 4;
 const BP: usize = 5;
 const SI: usize = 6;
 const DI: usize = 7;
-const ES: usize = 8;
-const CS: usize = 9;
-const SS: usize = 10;
-const DS: usize = 11;
-const FS: usize = 12;
-const GS: usize = 13;
+
+// sreg16
+const ES: usize = 0;
+const CS: usize = 1;
+const SS: usize = 2;
+const DS: usize = 3;
+const FS: usize = 4;
+const GS: usize = 5;
 
 impl CPU {
     pub fn new() -> CPU {
         let mut cpu = CPU {
-            pc: 0,
+            ip: 0,
             memory: vec![0u8; 0x10000 * 64],
-            r16: [Register16 { val: 0 }; 16],
+            r16: [Register16 { val: 0 }; 8],
+            sreg16: [Register16 { val: 0 }; 6],
             flags: Flags {
                 carry: false, // 0: carry flag
                 reserved1: false, // 1: Reserved, always 1 in EFLAGS
@@ -136,19 +148,19 @@ impl CPU {
 
         // intializes the cpu as if to run .com programs, info from
         // http://www.delorie.com/djgpp/doc/rbinter/id/51/29.html
-        cpu.r16[SS].val = 0x0000;
+        cpu.sreg16[SS].val = 0x0000;
         cpu.r16[SP].val = 0xFFF0; // XXX offset of last word available in first 64k segment
 
         cpu
     }
 
     pub fn reset(&mut self) {
-        self.pc = 0;
+        self.ip = 0;
         // XXX clear memory
     }
 
     pub fn load_rom(&mut self, data: &Vec<u8>, offset: u16) {
-        self.pc = offset;
+        self.ip = offset;
 
         // copy up to 64k of rom
         let mut max = (offset as usize) + data.len();
@@ -164,13 +176,89 @@ impl CPU {
         }
     }
 
+    pub fn print_registers(&mut self) {
+        print!("ip:{:04X}  ax:{:04X} bx:{:04X} cx:{:04X} dx:{:04X}",
+               self.ip,
+               self.r16[AX].u16(),
+               self.r16[BX].u16(),
+               self.r16[CX].u16(),
+               self.r16[DX].u16());
+        print!("  sp:{:04X} bp:{:04X} si:{:04X} di:{:04X}",
+               self.r16[SP].u16(),
+               self.r16[BP].u16(),
+               self.r16[SI].u16(),
+               self.r16[DI].u16());
+
+        print!("   es:{:04X} cs:{:04X} ss:{:04X} ds:{:04X} fs:{:04X} gs:{:04X}",
+               self.sreg16[ES].u16(),
+               self.sreg16[CS].u16(),
+               self.sreg16[SS].u16(),
+               self.sreg16[DS].u16(),
+               self.sreg16[FS].u16(),
+               self.sreg16[GS].u16());
+
+        println!("");
+    }
+
+    fn get_parameter_value(&self, p: &Parameter) -> usize {
+        match *p {
+            Parameter::SReg16(r) => self.sreg16[r].val as usize,
+            _ => {
+                error!("error unhandled parameter: {:?}", p);
+                0
+            }
+        }
+    }
+
+
     pub fn execute_instruction(&mut self) {
-        // XXX have a decode_instruction() step first that fetches arguments,
-        // -- so we can use it to build disassembly
-        // -- will this be bad for speed?
-        let b = self.memory[self.pc as usize];
-        self.pc += 1;
+        let op = self.decode_instruction();
+        self.execute(&op);
+    }
+
+    fn execute(&mut self, op: &Parameters) {
+        match op.command {
+            Op::Push16() => {
+                // single parameter (dst)
+                error!("YAY executing push, params {:?}, {:?}", op.dst, op.src);
+
+                let data = self.get_parameter_value(&op.dst) as u16;
+
+                self.r16[SP].val -= 2;
+                let offset = (self.sreg16[SS].u16() as usize) * 16 + (self.r16[SP].u16() as usize);
+                warn!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}",
+                      data,
+                      self.sreg16[SS].u16(),
+                      self.r16[SP].u16(),
+                      offset);
+
+                self.write_u16(offset, data);
+            }
+            _ => {
+                error!("ERROR Op::execute {:?}", op.command);
+            }
+        }
+    }
+
+
+    fn decode_instruction(&mut self) -> Parameters {
+        let b = self.memory[self.ip as usize];
+        self.ip += 1;
+        let mut p = Parameters {
+            command: Op::Unknown(),
+            dst: Parameter::Empty(),
+            src: Parameter::Empty(),
+        };
+
         match b {
+            0x1E => {
+                // push ds
+                p.command = Op::Push16();
+                p.dst = Parameter::SReg16(DS);
+                p
+            }
+
+            /*
             0x06 => {
                 // push es
                 let val = self.r16[ES].val;
@@ -179,11 +267,6 @@ impl CPU {
             0x07 => {
                 // pop es
                 self.r16[ES].val = self.pop16();
-            }
-            0x1E => {
-                // push ds
-                let val = self.r16[DS].val;
-                self.push16(val);
             }
             0x31 => {
                 // xor r16, r/m16
@@ -250,34 +333,31 @@ impl CPU {
                 let dst = self.read_rel8();
                 self.r16[CX].val -= 1;
                 if self.r16[CX].val != 0 {
-                    self.pc = dst;
+                    self.ip = dst;
                 }
             }
             0xE8 => {
                 // call s16
-                let old_ip = self.pc;
+                let old_ip = self.ip;
                 let temp_ip = self.read_rel16();
                 self.push16(old_ip);
-                self.pc = temp_ip;
+                self.ip = temp_ip;
             }
+            */
             0xFA => {
                 // cli
                 error!("TODO - cli - clear intterrupts??");
+                p
             }
-            _ => error!("cpu: unknown op {:02X} at {:04X}", b, self.pc - 1),
-        };
+            _ => {
+                error!("cpu: unknown op {:02X} at {:04X}", b, self.ip - 1);
+                p
+            }
+        }
+
     }
 
-    fn push16(&mut self, data: u16) {
-        self.r16[SP].val -= 2;
-        let offset = (self.r16[SS].u16() as usize) * 16 + (self.r16[SP].u16() as usize);
-        /*warn!("push16 to {:04X}:{:04X}  =>  {:06X}",
-              self.r16[SS].u16(),
-              self.r16[SP].u16(),
-              offset);*/
-
-        self.write_u16(offset, data);
-    }
+    /*
 
     fn pop16(&mut self) -> u16 {
         let offset = (self.r16[SS].u16() as usize) * 16 + (self.r16[SP].u16() as usize);
@@ -389,31 +469,6 @@ impl CPU {
                 error!("!! XXX xor_r16 Imm8 unhandled - PANIC {:?}", imm);
             }
         }
-    }
-
-
-    pub fn print_registers(&mut self) {
-        print!("pc:{:04X}  ax:{:04X} bx:{:04X} cx:{:04X} dx:{:04X}",
-               self.pc,
-               self.r16[AX].u16(),
-               self.r16[BX].u16(),
-               self.r16[CX].u16(),
-               self.r16[DX].u16());
-        print!("  sp:{:04X} bp:{:04X} si:{:04X} di:{:04X}",
-               self.r16[SP].u16(),
-               self.r16[BP].u16(),
-               self.r16[SI].u16(),
-               self.r16[DI].u16());
-
-        print!("   es:{:04X} cs:{:04X} ss:{:04X} ds:{:04X} fs:{:04X} gs:{:04X}",
-               self.r16[ES].u16(),
-               self.r16[CS].u16(),
-               self.r16[SS].u16(),
-               self.r16[DS].u16(),
-               self.r16[FS].u16(),
-               self.r16[GS].u16());
-
-        println!("");
     }
 
     // decode Sreg, r/m16
@@ -552,6 +607,7 @@ impl CPU {
             dst: self.rm16(x.rm, x.md),
         }
     }
+*/
 
     fn read_mod_reg_rm(&mut self) -> ModRegRm {
         let b = self.read_u8();
@@ -563,9 +619,9 @@ impl CPU {
     }
 
     fn read_u8(&mut self) -> u8 {
-        let offset = (self.r16[CS].u16() as usize) + self.pc as usize;
+        let offset = (self.r16[CS].u16() as usize) + self.ip as usize;
         let b = self.memory[offset];
-        self.pc += 1;
+        self.ip += 1;
         b
     }
 
@@ -585,12 +641,12 @@ impl CPU {
 
     fn read_rel8(&mut self) -> u16 {
         let val = self.read_u8() as i8;
-        (self.pc as i16 + (val as i16)) as u16
+        (self.ip as i16 + (val as i16)) as u16
     }
 
     fn read_rel16(&mut self) -> u16 {
         let val = self.read_u16() as i16;
-        (self.pc as i16 + val) as u16
+        (self.ip as i16 + val) as u16
     }
 
     fn peek_u8_at(&mut self, pos: usize) -> u8 {

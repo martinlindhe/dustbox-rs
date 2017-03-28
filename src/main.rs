@@ -35,7 +35,7 @@ fn main() {
     let stdin = io::stdin();
 
     loop {
-        print!("{:06X}> ", cpu.pc);
+        print!("{:06X}> ", cpu.ip);
         let _ = stdout().flush();
 
         let mut line = String::new();
@@ -55,15 +55,17 @@ fn main() {
                 warn!("XXX disasm WIP: {}", op);
             }
             "e" => {
-                if parts.len() < 2 {
-                    error!("Required parameter omitted: number of instructions");
+                let n = if parts.len() < 2 {
+                    1
                 } else {
-                    let n = parts[1].parse::<i32>().unwrap();
-                    info!("Executing {} instructions", n);
-                    for _ in 0..n {
-                        cpu.execute_instruction();
-                    }
+                    parts[1].parse::<i32>().unwrap()
+                };
+
+                info!("Executing {} instructions", n);
+                for _ in 0..n {
+                    cpu.execute_instruction();
                 }
+
             }
             "exit" | "quit" | "q" => {
                 info!("Exiting ...");
@@ -87,7 +89,7 @@ fn main() {
         info!("{}", text);
 
         cpu.execute_instruction();
-        cpu.print_registers(); 
+        cpu.print_registers();
     }
 */
 }

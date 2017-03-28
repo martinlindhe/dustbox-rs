@@ -5,6 +5,8 @@ use std::process::exit;
 pub fn read_binary(path: &str) -> Vec<u8> {
     let mut buffer: Vec<u8> = Vec::new();
 
+    info!("Reading rom from {}", path);
+
     let mut f = match File::open(path) {
         Ok(x) => x,
         Err(why) => {
@@ -24,4 +26,3 @@ pub fn read_binary(path: &str) -> Vec<u8> {
 
     buffer
 }
-
