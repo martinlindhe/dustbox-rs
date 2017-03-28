@@ -116,6 +116,7 @@ enum Op {
     Mov16(),
     Pop16(),
     Push16(),
+    Xor16(),
     Unknown(),
 }
 
@@ -132,7 +133,7 @@ const DI: usize = 7;
 
 // sreg16
 const ES: usize = 0;
-const CS: usize = 1;
+pub const CS: usize = 1;
 const SS: usize = 2;
 const DS: usize = 3;
 const FS: usize = 4;
@@ -207,33 +208,34 @@ impl CPU {
     pub fn print_registers(&mut self) {
         print!("ip:{:04X}  ax:{:04X} bx:{:04X} cx:{:04X} dx:{:04X}",
                self.ip,
-               self.r16[AX].u16(),
-               self.r16[BX].u16(),
-               self.r16[CX].u16(),
-               self.r16[DX].u16());
+               self.r16[AX].val,
+               self.r16[BX].val,
+               self.r16[CX].val,
+               self.r16[DX].val);
         print!("  sp:{:04X} bp:{:04X} si:{:04X} di:{:04X}",
-               self.r16[SP].u16(),
-               self.r16[BP].u16(),
-               self.r16[SI].u16(),
-               self.r16[DI].u16());
+               self.r16[SP].val,
+               self.r16[BP].val,
+               self.r16[SI].val,
+               self.r16[DI].val);
 
         print!("   es:{:04X} cs:{:04X} ss:{:04X} ds:{:04X} fs:{:04X} gs:{:04X}",
-               self.sreg16[ES].u16(),
-               self.sreg16[CS].u16(),
-               self.sreg16[SS].u16(),
-               self.sreg16[DS].u16(),
-               self.sreg16[FS].u16(),
-               self.sreg16[GS].u16());
+               self.sreg16[ES].val,
+               self.sreg16[CS].val,
+               self.sreg16[SS].val,
+               self.sreg16[DS].val,
+               self.sreg16[FS].val,
+               self.sreg16[GS].val);
 
         println!("");
     }
 
     fn get_parameter_value(&self, p: &Parameter) -> usize {
         match *p {
+            Parameter::Reg16(r) => self.r16[r].val as usize,
             Parameter::SReg16(r) => self.sreg16[r].val as usize,
             Parameter::Imm16(imm) => imm as usize,
             _ => {
-                error!("error unhandled parameter: {:?}", p);
+                error!("get_parameter_value error: unhandled parameter: {:?}", p);
                 0
             }
         }
@@ -305,6 +307,15 @@ impl CPU {
 
                 self.write_u16(offset, data);
             }
+            Op::Xor16() => {
+                // two parameters (dst=reg)
+                error!("XXX XOR - FLAGS");
+
+                let src = self.get_parameter_value(&op.src) as u16;
+                let dst = self.get_parameter_value(&op.dst) as u16;
+                let val = dst ^ src;
+                self.write_u16_param(&op.dst, val);
+            }
             _ => {
                 error!("ERROR Op::execute {:?}", op.command);
             }
@@ -313,8 +324,7 @@ impl CPU {
 
 
     fn decode_instruction(&mut self) -> Parameters {
-        let b = self.memory[self.ip as usize];
-        self.ip += 1;
+        let b = self.read_u8();
         let mut p = Parameters {
             command: Op::Unknown(),
             dst: Parameter::Empty(),
@@ -322,16 +332,24 @@ impl CPU {
         };
 
         match b {
-             0x07 => {
+            0x07 => {
                 // pop es
                 p.command = Op::Pop16();
                 p.dst = Parameter::SReg16(ES);
                 p
             }
-             0x1E => {
+            0x1E => {
                 // push ds
                 p.command = Op::Push16();
                 p.dst = Parameter::SReg16(DS);
+                p
+            }
+            0x31 => {
+                // xor r16, r/m16
+                let part = self.r16_rm16();
+                p.command = Op::Xor16();
+                p.dst = part.dst;
+                p.src = part.src;
                 p
             }
             0xB8...0xBF => {
@@ -346,11 +364,6 @@ impl CPU {
                 // push es
                 let val = self.r16[ES].val;
                 self.push16(val);
-            }
-            0x31 => {
-                // xor r16, r/m16
-                let p = self.rm16_r16();
-                self.xor_r16(&p);
             }
             0x40...0x47 => {
                 // inc r16
@@ -512,32 +525,6 @@ impl CPU {
         }
     }
 
-    fn xor_r16(&mut self, x: &Parameters) {
-        match x.dst {
-            Parameter::Reg(r) => {
-                match x.src {
-                    Parameter::Imm16(imm) => {
-                        error!("!! XXX xor_r16 Imm16-SUB unhandled - PANIC {:?}", imm);
-                    }
-                    Parameter::Reg(r_src) => {
-                        // XXX should set flags
-                        let val = self.r16[r].val ^ self.r16[r_src].val;
-                        self.r16[r].set_u16(val);
-                    }
-                    Parameter::Imm8(imm) => {
-                        error!("!! XXX xor_r16 Imm8-SUB unhandled - PANIC {:?}", imm);
-                    }
-                }
-            }
-            Parameter::Imm16(imm) => {
-                error!("!! XXX xor_r16 Imm16 unhandled - PANIC {:?}", imm);
-            }
-            Parameter::Imm8(imm) => {
-                error!("!! XXX xor_r16 Imm8 unhandled - PANIC {:?}", imm);
-            }
-        }
-    }
-
     // decode Sreg, r/m16
     fn sreg_rm16(&mut self) -> Parameters {
         let mut res = self.rm16_sreg();
@@ -597,6 +584,44 @@ impl CPU {
         }
     }
 
+    // decode r8, r/m8
+    fn r8_rm8(&mut self) -> Parameters {
+        let mut res = self.rm8_r8();
+        let tmp = res.src;
+        res.src = res.dst;
+        res.dst = tmp;
+        res
+    }
+
+    // decode r/m8, r8
+    fn rm8_r8(&mut self) -> Parameters {
+        let x = self.read_mod_reg_rm();
+        Parameters {
+            src: Parameter::Reg(x.reg as usize), // XXX 8 bit reg
+            dst: self.rm8(x.rm, x.md),
+        }
+    }
+*/
+
+    // decode r16, r/m16
+    fn r16_rm16(&mut self) -> Parameters {
+        let mut res = self.rm16_r16();
+        let tmp = res.src;
+        res.src = res.dst;
+        res.dst = tmp;
+        res
+    }
+
+    // decode r/m16, r16
+    fn rm16_r16(&mut self) -> Parameters {
+        let x = self.read_mod_reg_rm();
+        Parameters {
+            command: Op::Unknown(),
+            src: Parameter::Reg16(x.reg as usize),
+            dst: self.rm16(x.rm, x.md),
+        }
+    }
+
     // decode rm16
     fn rm16(&mut self, rm: u8, md: u8) -> Parameter {
         match md {
@@ -632,49 +657,10 @@ impl CPU {
                 Parameter::Imm16(self.peek_u16_at(pos as usize))
             }
             _ => {
-                // general purpose r16
-                Parameter::Reg(rm as usize)
+                Parameter::Reg16(rm as usize)
             }
         }
     }
-
-
-    // decode r8, r/m8
-    fn r8_rm8(&mut self) -> Parameters {
-        let mut res = self.rm8_r8();
-        let tmp = res.src;
-        res.src = res.dst;
-        res.dst = tmp;
-        res
-    }
-
-    // decode r/m8, r8
-    fn rm8_r8(&mut self) -> Parameters {
-        let x = self.read_mod_reg_rm();
-        Parameters {
-            src: Parameter::Reg(x.reg as usize), // XXX 8 bit reg
-            dst: self.rm8(x.rm, x.md),
-        }
-    }
-
-    // decode r16, r/m16
-    fn r16_rm16(&mut self) -> Parameters {
-        let mut res = self.rm16_r16();
-        let tmp = res.src;
-        res.src = res.dst;
-        res.dst = tmp;
-        res
-    }
-
-    // decode r/m16, r16
-    fn rm16_r16(&mut self) -> Parameters {
-        let x = self.read_mod_reg_rm();
-        Parameters {
-            src: Parameter::Reg(x.reg as usize),
-            dst: self.rm16(x.rm, x.md),
-        }
-    }
-*/
 
     fn read_mod_reg_rm(&mut self) -> ModRegRm {
         let b = self.read_u8();
@@ -685,9 +671,14 @@ impl CPU {
         }
     }
 
+    pub fn get_offset(&self) -> usize {
+        (self.sreg16[CS].val as usize) + self.ip as usize
+    }
+
     fn read_u8(&mut self) -> u8 {
-        let offset = (self.r16[CS].u16() as usize) + self.ip as usize;
+        let offset = self.get_offset();
         let b = self.memory[offset];
+        // info!("___ DBG: read u8 {:02X} from {:06X} ... {:04X}:{:04X}", b, offset, self.sreg16[CS].val, self.ip);
         self.ip += 1;
         b
     }
@@ -848,8 +839,8 @@ fn can_handle_stack() {
 
     assert_eq!(0x107, cpu.ip);
     assert_eq!(0x8888, cpu.r16[AX].u16());
-    assert_eq!(0x8888, cpu.r16[DS].u16());
-    assert_eq!(0x8888, cpu.r16[ES].u16());
+    assert_eq!(0x8888, cpu.sreg16[DS].u16());
+    assert_eq!(0x8888, cpu.sreg16[ES].u16());
 }
 
 

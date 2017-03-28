@@ -34,7 +34,8 @@ fn main() {
     let stdin = io::stdin();
 
     loop {
-        print!("{:06X}> ", cpu.ip);
+        let offset = cpu.get_offset();
+        print!("{:06X}> ", offset);
         let _ = stdout().flush();
 
         let mut line = String::new();
@@ -62,6 +63,8 @@ fn main() {
 
                 info!("Executing {} instructions", n);
                 for _ in 0..n {
+                    let op = cpu.disasm_instruction();
+                    info!("{}", op.pretty_string());
                     cpu.execute_instruction();
                 }
 
