@@ -114,6 +114,7 @@ enum Parameter {
 
 #[derive(Debug)]
 enum Op {
+    CallNear(),
     Inc16(),
     Int(),
     Loop(),
@@ -281,6 +282,13 @@ impl CPU {
     fn execute(&mut self, op: &Parameters) {
         self.instruction_count += 1;
         match op.command {
+            Op::CallNear() => {
+                // call near rel
+                let old_ip = self.ip;
+                let temp_ip = self.get_parameter_value(&op.dst) as u16;
+                self.push16(old_ip);
+                self.ip = temp_ip;
+            }
             Op::Inc16() => {
                 let mut data = self.get_parameter_value(&op.dst) as u16;
                 data += 1;
@@ -328,16 +336,7 @@ impl CPU {
             Op::Push16() => {
                 // single parameter (dst)
                 let data = self.get_parameter_value(&op.dst) as u16;
-
-                self.r16[SP].val -= 2;
-                let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
-                warn!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}",
-                      data,
-                      self.sreg16[SS].val,
-                      self.r16[SP].val,
-                      offset);
-
-                self.write_u16(offset, data);
+                self.push16(data);
             }
             Op::Stosb() => {
                 // no parameters
@@ -401,7 +400,20 @@ impl CPU {
                 p.command = Op::Inc16();
                 p.dst = Parameter::Reg16((b & 7) as usize);
                 p
-
+            }
+            0x50...0x57 => {
+                // push r16
+                p.command = Op::Push16();
+                p.dst = Parameter::Reg16((b & 7) as usize);
+                p
+            }
+            0x8E => {
+                // mov sreg, r/m16
+                let part = self.sreg_rm16();
+                p.command = Op::Mov16();
+                p.dst = part.dst;
+                p.src = part.src;
+                p
             }
             0xAA => {
                 // stosb
@@ -426,6 +438,12 @@ impl CPU {
                 p.dst = Parameter::Imm16(self.read_rel8());
                 p
             }
+            0xE8 => {
+                // call near s16
+                p.command = Op::CallNear();
+                p.dst = Parameter::Imm16(self.read_rel16());
+                p
+            }
             /*
             0x06 => {
                 // push es
@@ -433,11 +451,6 @@ impl CPU {
                 self.push16(val);
             }
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
-            0x50...0x57 => {
-                // push r16
-                let val = self.r16[(b & 7) as usize].val;
-                self.push16(val);
-            }
             0x88 => {
                 // mov r8, r/m8
                 let p = self.r8_rm8();
@@ -449,22 +462,10 @@ impl CPU {
                 let p = self.r16_rm16();
                 self.mov_r16(&p);
             }
-            0x8E => {
-                // mov sreg, r/m16
-                let p = self.sreg_rm16();
-                self.mov_r16(&p);
-            }
             0xB0...0xB7 => {
                 // mov r8, u8
                 let val = self.read_u8();
                 self.mov_r8_u8((b & 7) as usize, val);
-            }
-            0xE8 => {
-                // call s16
-                let old_ip = self.ip;
-                let temp_ip = self.read_rel16();
-                self.push16(old_ip);
-                self.ip = temp_ip;
             }
             */
             0xFA => {
@@ -561,24 +562,6 @@ impl CPU {
         }
     }
 
-    // decode Sreg, r/m16
-    fn sreg_rm16(&mut self) -> Parameters {
-        let mut res = self.rm16_sreg();
-        let tmp = res.src;
-        res.src = res.dst;
-        res.dst = tmp;
-        res
-    }
-
-    // decode r/m16, Sreg
-    fn rm16_sreg(&mut self) -> Parameters {
-        let x = self.read_mod_reg_rm();
-        Parameters {
-            src: Parameter::Reg(8 + (x.reg as usize)),
-            dst: self.rm16(x.rm, x.md),
-        }
-    }
-
     // decode rm8
     fn rm8(&mut self, rm: u8, md: u8) -> Parameter {
         match md {
@@ -639,6 +622,25 @@ impl CPU {
     }
 */
 
+    // decode Sreg, r/m16
+    fn sreg_rm16(&mut self) -> Parameters {
+        let mut res = self.rm16_sreg();
+        let tmp = res.src;
+        res.src = res.dst;
+        res.dst = tmp;
+        res
+    }
+
+    // decode r/m16, Sreg
+    fn rm16_sreg(&mut self) -> Parameters {
+        let x = self.read_mod_reg_rm();
+        Parameters {
+            command: Op::Unknown(),
+            src: Parameter::SReg16(x.reg as usize),
+            dst: self.rm16(x.rm, x.md),
+        }
+    }
+
     // decode r16, r/m16
     fn r16_rm16(&mut self) -> Parameters {
         let mut res = self.rm16_r16();
@@ -696,6 +698,18 @@ impl CPU {
                 Parameter::Reg16(rm as usize)
             }
         }
+    }
+
+    fn push16(&mut self, data: u16) {
+        self.r16[SP].val -= 2;
+        let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
+        warn!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}",
+            data,
+            self.sreg16[SS].val,
+            self.r16[SP].val,
+            offset);
+
+        self.write_u16(offset, data);
     }
 
     fn read_mod_reg_rm(&mut self) -> ModRegRm {
