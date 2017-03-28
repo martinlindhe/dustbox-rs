@@ -107,6 +107,7 @@ struct Parameters {
 enum Parameter {
     Imm8(u8),
     Imm16(u16),
+    Reg8(usize), // index into the low 4 of CPU.r16
     Reg16(usize), // index into CPU.r16
     SReg16(usize), // index into cpu.sreg16
     Empty(),
@@ -118,6 +119,7 @@ enum Op {
     Inc16(),
     Int(),
     Loop(),
+    Mov8(),
     Mov16(),
     Pop16(),
     Push16(),
@@ -237,8 +239,16 @@ impl CPU {
         println!("");
     }
 
-    fn get_parameter_value(&self, p: &Parameter) -> usize {
+    fn get_parameter_value(&mut self, p: &Parameter) -> usize {
         match *p {
+            Parameter::Reg8(r) => {
+                let lor = r & 3;
+                if r & 4 == 0 {
+                    self.r16[lor].lo_u8() as usize
+                } else {
+                    self.r16[lor].hi_u8() as usize
+                }
+            },
             Parameter::Reg16(r) => self.r16[r].val as usize,
             Parameter::SReg16(r) => self.sreg16[r].val as usize,
             Parameter::Imm8(imm) => imm as usize,
@@ -310,7 +320,11 @@ impl CPU {
                     info!("NOTE: loop branch not taken, cx == 0");
                 }
                 // XXX flags ???
-
+            }
+            Op::Mov8() => {
+                // two parameters (dst=reg)
+                let data = self.get_parameter_value(&op.src) as u8;
+                self.write_u8_param(&op.dst, data);
             }
             Op::Mov16() => {
                 // two parameters (dst=reg)
@@ -407,6 +421,14 @@ impl CPU {
                 p.dst = Parameter::Reg16((b & 7) as usize);
                 p
             }
+            0x88 => {
+                // mov r/m8, r8
+                let part = self.rm8_r8();
+                p.command = Op::Mov8();
+                p.dst = part.dst;
+                p.src = part.src;
+                p
+            }
             0x8E => {
                 // mov sreg, r/m16
                 let part = self.sreg_rm16();
@@ -451,12 +473,6 @@ impl CPU {
                 self.push16(val);
             }
             //0x48...0x4F => format!("dec {}", r16(b & 7)),
-            0x88 => {
-                // mov r8, r/m8
-                let p = self.r8_rm8();
-                error!("XXX mov   {:?}, {:?}", p.dst, p.src);
-                self.mov_r8(&p);
-            }
             0x8B => {
                 // mov r16, r/m16
                 let p = self.r16_rm16();
@@ -561,47 +577,7 @@ impl CPU {
             }
         }
     }
-
-    // decode rm8
-    fn rm8(&mut self, rm: u8, md: u8) -> Parameter {
-        match md {
-            0 => {
-                // [reg]
-                let mut pos = 0;
-                if rm == 6 {
-                    // [u16]
-                    pos = self.read_u16();
-                } else {
-                    error!("XXX FIXME rm8 [u16] or [reg+u16] ??!?!?!");
-                    // XXX read value of amode(x.rm) into pos
-                    let pos = 0;
-                }
-                Parameter::Imm16(self.peek_u16_at(pos as usize))
-            }
-            1 => {
-                // [reg+d8]
-                // XXX read value of amode(x.rm) into pos
-                error!("XXX FIXME rm8 [reg+d8]");
-                let mut pos = 0;
-                pos += self.read_s8() as u16; // XXX handle signed properly
-
-                Parameter::Imm16(self.peek_u16_at(pos as usize))
-            }
-            2 => {
-                // [reg+d16]
-                // XXX read value of amode(x.rm) into pos
-                error!("XXX FIXME rm8 [reg+d16]");
-                let mut pos = 0;
-                pos += self.read_s16() as u16; // XXX handle signed properly
-
-                Parameter::Imm16(self.peek_u16_at(pos as usize))
-            }
-            _ => {
-                // general purpose r16
-                Parameter::Reg(rm as usize) // XXX r8
-            }
-        }
-    }
+*/
 
     // decode r8, r/m8
     fn r8_rm8(&mut self) -> Parameters {
@@ -616,11 +592,11 @@ impl CPU {
     fn rm8_r8(&mut self) -> Parameters {
         let x = self.read_mod_reg_rm();
         Parameters {
-            src: Parameter::Reg(x.reg as usize), // XXX 8 bit reg
+            command: Op::Unknown(),
+            src: Parameter::Reg8(x.reg as usize),
             dst: self.rm8(x.rm, x.md),
         }
     }
-*/
 
     // decode Sreg, r/m16
     fn sreg_rm16(&mut self) -> Parameters {
@@ -657,6 +633,46 @@ impl CPU {
             command: Op::Unknown(),
             src: Parameter::Reg16(x.reg as usize),
             dst: self.rm16(x.rm, x.md),
+        }
+    }
+
+    // decode rm8
+    fn rm8(&mut self, rm: u8, md: u8) -> Parameter {
+        match md {
+            0 => {
+                // [reg]
+                let mut pos = 0;
+                if rm == 6 {
+                    // [u16]
+                    pos = self.read_u16();
+                } else {
+                    error!("XXX FIXME rm8 [u16] or [reg+u16] ??!?!?!");
+                    // XXX read value of amode(x.rm) into pos
+                    let pos = 0;
+                }
+                Parameter::Imm16(self.peek_u16_at(pos as usize))
+            }
+            1 => {
+                // [reg+d8]
+                // XXX read value of amode(x.rm) into pos
+                error!("XXX FIXME rm8 [reg+d8]");
+                let mut pos = 0;
+                pos += self.read_s8() as u16; // XXX handle signed properly
+
+                Parameter::Imm16(self.peek_u16_at(pos as usize))
+            }
+            2 => {
+                // [reg+d16]
+                // XXX read value of amode(x.rm) into pos
+                error!("XXX FIXME rm8 [reg+d16]");
+                let mut pos = 0;
+                pos += self.read_s16() as u16; // XXX handle signed properly
+
+                Parameter::Imm16(self.peek_u16_at(pos as usize))
+            }
+            _ => {
+                Parameter::Reg8(rm as usize)
+            }
         }
     }
 
@@ -772,6 +788,22 @@ impl CPU {
         let lo = (data & 0xff) as u8;
         self.write_u8(offset, lo);
         self.write_u8(offset + 1, hi);
+    }
+
+    fn write_u8_param(&mut self, p: &Parameter, data: u8) {
+        match *p {
+            Parameter::Reg8(r) => {
+                let lor = r & 3;
+                if r & 4 == 0 {
+                    self.r16[lor].set_lo(data);
+                } else {
+                    self.r16[lor].set_hi(data);
+                }
+            }
+            _ => {
+                error!("write_u8_param unhandled type {:?}", p);
+            }
+        }
     }
 
     fn write_u16_param(&mut self, p: &Parameter, data: u16) {
