@@ -10,7 +10,6 @@ extern crate difference;
 
 
 mod cpu;
-mod disasm;
 mod tools;
 mod opcodes;
 
@@ -52,7 +51,7 @@ fn main() {
             }
             "d" | "disasm" => {
                 let op = cpu.disasm_instruction();
-                warn!("XXX disasm WIP: {:?}", op);
+                info!("{}", op.pretty_string());
             }
             "e" => {
                 let n = if parts.len() < 2 {

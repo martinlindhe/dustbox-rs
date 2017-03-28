@@ -73,6 +73,21 @@ pub struct Instruction {
     pub bytes: Vec<u8>,
 }
 
+impl Instruction {
+    pub fn pretty_string(&self) -> String {
+        // XXX pad hex up to 16 spaces...
+        format!("[{:06X}] {}   {}",
+                self.offset,
+                self.to_hex_string(&self.bytes),
+                self.text)
+    }
+
+    fn to_hex_string(&self, bytes: &Vec<u8>) -> String {
+        let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
+        strs.join(" ")
+    }
+}
+
 
 struct ModRegRm {
     md: u8, // NOTE: "mod" is reserved in rust
@@ -230,10 +245,10 @@ impl CPU {
         self.ip = old_ip;
 
         let text = match op.dst {
-            Parameter::Empty() => format!("{:?}", op.command),
+            Parameter::Empty => format!("{:?}", op.command),
             _ => {
                 match op.src {
-                    Parameter::Empty() => format!("{:?}  {:?}", op.command, op.dst),
+                    Parameter::Empty => format!("{:?}  {:?}", op.command, op.dst),
                     _ => format!("{:?}  {:?}, {:?}", op.command, op.dst, op.src),
                 }
             }
@@ -249,7 +264,7 @@ impl CPU {
 
     fn execute(&mut self, op: &Parameters) {
         match op.command {
-            Op::Push16() => {
+            Op::Push16 => {
                 // single parameter (dst)
                 error!("YAY executing push, params {:?}, {:?}", op.dst, op.src);
 
