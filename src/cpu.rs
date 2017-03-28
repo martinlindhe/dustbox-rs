@@ -106,13 +106,14 @@ struct Parameters {
 enum Parameter {
     Imm8(u8),
     Imm16(u16),
-    Reg(usize), // index into CPU.r16
+    Reg16(usize), // index into CPU.r16
     SReg16(usize), // index into cpu.sreg16
     Empty(),
 }
 
 #[derive(Debug)]
 enum Op {
+    Pop16(),
     Push16(),
     Unknown(),
 }
@@ -173,6 +174,9 @@ impl CPU {
         // http://www.delorie.com/djgpp/doc/rbinter/id/51/29.html
         cpu.sreg16[SS].val = 0x0000;
         cpu.r16[SP].val = 0xFFF0; // XXX offset of last word available in first 64k segment
+
+
+        cpu.sreg16[DS].val = 0xDEAD; // XXX just for testing
 
         cpu
     }
@@ -245,10 +249,10 @@ impl CPU {
         self.ip = old_ip;
 
         let text = match op.dst {
-            Parameter::Empty => format!("{:?}", op.command),
+            Parameter::Empty() => format!("{:?}", op.command),
             _ => {
                 match op.src {
-                    Parameter::Empty => format!("{:?}  {:?}", op.command, op.dst),
+                    Parameter::Empty() => format!("{:?}  {:?}", op.command, op.dst),
                     _ => format!("{:?}  {:?}, {:?}", op.command, op.dst, op.src),
                 }
             }
@@ -264,18 +268,31 @@ impl CPU {
 
     fn execute(&mut self, op: &Parameters) {
         match op.command {
-            Op::Push16 => {
+            Op::Pop16() => {
                 // single parameter (dst)
-                error!("YAY executing push, params {:?}, {:?}", op.dst, op.src);
 
+                let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
+                let data = self.peek_u16_at(offset);
+
+                warn!("pop16 {:04X}  from {:04X}:{:04X}  =>  {:06X}",
+                      data,
+                      self.sreg16[SS].val,
+                      self.r16[SP].val,
+                      offset);
+
+                self.r16[SP].val += 2;
+                self.write_u16_param(&op.dst, data);
+            }
+            Op::Push16() => {
+                // single parameter (dst)
                 let data = self.get_parameter_value(&op.dst) as u16;
 
                 self.r16[SP].val -= 2;
-                let offset = (self.sreg16[SS].u16() as usize) * 16 + (self.r16[SP].u16() as usize);
+                let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
                 warn!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}",
                       data,
-                      self.sreg16[SS].u16(),
-                      self.r16[SP].u16(),
+                      self.sreg16[SS].val,
+                      self.r16[SP].val,
                       offset);
 
                 self.write_u16(offset, data);
@@ -297,7 +314,13 @@ impl CPU {
         };
 
         match b {
-            0x1E => {
+             0x07 => {
+                // pop es
+                p.command = Op::Pop16();
+                p.dst = Parameter::SReg16(ES);
+                p
+            }
+             0x1E => {
                 // push ds
                 p.command = Op::Push16();
                 p.dst = Parameter::SReg16(DS);
@@ -309,10 +332,6 @@ impl CPU {
                 // push es
                 let val = self.r16[ES].val;
                 self.push16(val);
-            }
-            0x07 => {
-                // pop es
-                self.r16[ES].val = self.pop16();
             }
             0x31 => {
                 // xor r16, r/m16
@@ -404,13 +423,6 @@ impl CPU {
     }
 
     /*
-
-    fn pop16(&mut self) -> u16 {
-        let offset = (self.r16[SS].u16() as usize) * 16 + (self.r16[SP].u16() as usize);
-        let data = self.peek_u16_at(offset);
-        self.r16[SP].val += 2;
-        data
-    }
 
     fn mov_r8_u8(&mut self, r: usize, imm: u8) {
         let lor = r & 3;
@@ -712,6 +724,20 @@ impl CPU {
         self.write_u8(offset + 1, hi);
     }
 
+    fn write_u16_param(&mut self, p: &Parameter, data: u16) {
+        match *p {
+            Parameter::Reg16(r) => {
+                self.r16[r].val = data;
+            }
+            Parameter::SReg16(r) => {
+                self.sreg16[r].val = data;
+            }
+            _ => {
+                error!("write_u16_param unhandled type {:?}", p);
+            }
+        }
+    }
+
     fn write_u8(&mut self, offset: usize, data: u8) {
         self.memory[offset] = data;
     }
@@ -765,11 +791,11 @@ fn can_execute_sr_r16() {
     cpu.load_rom(&code, 0x100);
 
     cpu.execute_instruction();
-    assert_eq!(0x103, cpu.pc);
+    assert_eq!(0x103, cpu.ip);
     assert_eq!(0x123, cpu.r16[CX].u16());
 
     cpu.execute_instruction();
-    assert_eq!(0x105, cpu.pc);
+    assert_eq!(0x105, cpu.ip);
     assert_eq!(0x123, cpu.r16[ES].u16());
 }
 
@@ -783,11 +809,11 @@ fn can_execute_r16_r16() {
     cpu.load_rom(&code, 0x100);
 
     cpu.execute_instruction();
-    assert_eq!(0x103, cpu.pc);
+    assert_eq!(0x103, cpu.ip);
     assert_eq!(0x123, cpu.r16[AX].u16());
 
     cpu.execute_instruction();
-    assert_eq!(0x105, cpu.pc);
+    assert_eq!(0x105, cpu.ip);
     assert_eq!(0x123, cpu.r16[SP].u16());
 }
 
@@ -811,7 +837,7 @@ fn can_handle_stack() {
     cpu.execute_instruction(); // pop
     assert_eq!(0xFFF0, cpu.r16[SP].u16());
 
-    assert_eq!(0x107, cpu.pc);
+    assert_eq!(0x107, cpu.ip);
     assert_eq!(0x8888, cpu.r16[AX].u16());
     assert_eq!(0x8888, cpu.r16[DS].u16());
     assert_eq!(0x8888, cpu.r16[ES].u16());
@@ -829,10 +855,10 @@ fn can_execute_mov() {
     cpu.load_rom(&code, 0x100);
 
     cpu.execute_instruction(); // mov dl,0x13
-    assert_eq!(0x102, cpu.pc);
+    assert_eq!(0x102, cpu.ip);
     assert_eq!(0x13, cpu.r16[DX].lo_u8());
 
     cpu.execute_instruction(); // mov al,dl
-    assert_eq!(0x104, cpu.pc);
+    assert_eq!(0x104, cpu.ip);
     assert_eq!(0x13, cpu.r16[AX].lo_u8());
 }
