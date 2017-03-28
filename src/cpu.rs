@@ -412,6 +412,12 @@ impl CPU {
         };
 
         match b {
+            0x06 => {
+                // push es
+                p.command = Op::Push16();
+                p.dst = Parameter::SReg16(ES);
+                p
+            }
             0x07 => {
                 // pop es
                 p.command = Op::Pop16();
@@ -438,6 +444,7 @@ impl CPU {
                 p.dst = Parameter::Reg16((b & 7) as usize);
                 p
             }
+            //0x48...0x4F => format!("dec {}", r16(b & 7)),
             0x50...0x57 => {
                 // push r16
                 p.command = Op::Push16();
@@ -462,6 +469,14 @@ impl CPU {
                 p.src = part.src;
                 p
             }
+            0x8B => {
+                // mov r16, r/m16
+                let part = self.r16_rm16();
+                p.command = Op::Mov16();
+                p.dst = part.dst;
+                p.src = part.src;
+                p
+            }
             0x8E => {
                 // mov sreg, r/m16
                 let part = self.sreg_rm16();
@@ -473,6 +488,13 @@ impl CPU {
             0xAA => {
                 // stosb
                 p.command = Op::Stosb();
+                p
+            }
+            0xB0...0xB7 => {
+                // mov r8, u8
+                p.command = Op::Mov8();
+                p.dst = Parameter::Reg8((b & 7) as usize);
+                p.src = Parameter::Imm8(self.read_u8());
                 p
             }
             0xB8...0xBF => {
@@ -504,24 +526,6 @@ impl CPU {
                 p.dst = Parameter::Imm16(self.read_rel16());
                 p
             }
-            /*
-            0x06 => {
-                // push es
-                let val = self.r16[ES].val;
-                self.push16(val);
-            }
-            //0x48...0x4F => format!("dec {}", r16(b & 7)),
-            0x8B => {
-                // mov r16, r/m16
-                let p = self.r16_rm16();
-                self.mov_r16(&p);
-            }
-            0xB0...0xB7 => {
-                // mov r8, u8
-                let val = self.read_u8();
-                self.mov_r8_u8((b & 7) as usize, val);
-            }
-            */
             0xFA => {
                 // cli
                 error!("TODO - cli - clear intterrupts??");
