@@ -115,7 +115,9 @@ enum Parameter {
 
 #[derive(Debug)]
 enum Op {
+    Add16(),
     CallNear(),
+    Dec8(),
     Inc16(),
     Int(),
     Loop(),
@@ -292,6 +294,15 @@ impl CPU {
     fn execute(&mut self, op: &Parameters) {
         self.instruction_count += 1;
         match op.command {
+            Op::Add16() => {
+                // two parameters (dst=reg)
+                let src = self.get_parameter_value(&op.src) as u16;
+                let mut dst = self.get_parameter_value(&op.dst) as u16;
+                dst += src;
+                // XXX flags
+                error!("XXX add16 - FLAGS");
+                self.write_u16_param(&op.dst, dst);
+            }
             Op::CallNear() => {
                 // call near rel
                 let old_ip = self.ip;
@@ -299,10 +310,17 @@ impl CPU {
                 self.push16(old_ip);
                 self.ip = temp_ip;
             }
+            Op::Dec8() => {
+                // single parameter (dst)
+                let mut data = self.get_parameter_value(&op.dst) as u8;
+                data -= 1;
+                error!("XXX dec8 - FLAGS!");
+                self.write_u8_param(&op.dst, data);
+            }
             Op::Inc16() => {
                 let mut data = self.get_parameter_value(&op.dst) as u16;
                 data += 1;
-                error!("XXX inc - FLAGS!");
+                error!("XXX inc16 - FLAGS!");
                 self.write_u16_param(&op.dst, data);
             }
             Op::Int() => {
@@ -369,9 +387,9 @@ impl CPU {
                 error!("XXX XOR - FLAGS");
 
                 let src = self.get_parameter_value(&op.src) as u16;
-                let dst = self.get_parameter_value(&op.dst) as u16;
-                let val = dst ^ src;
-                self.write_u16_param(&op.dst, val);
+                let mut dst = self.get_parameter_value(&op.dst) as u16;
+                dst ^= src;
+                self.write_u16_param(&op.dst, dst);
             }
             _ => {
                 error!("execute error - unhandled: {:?}", op.command);
@@ -420,6 +438,16 @@ impl CPU {
                 p.command = Op::Push16();
                 p.dst = Parameter::Reg16((b & 7) as usize);
                 p
+            }
+            0x58...0x5F => {
+                // pop r16
+                p.command = Op::Pop16();
+                p.dst = Parameter::Reg16((b & 7) as usize);
+                p
+            }
+            0x81 => {
+                // arithmetic 16-bit
+                self.decode_81()
             }
             0x88 => {
                 // mov r/m8, r8
@@ -489,95 +517,80 @@ impl CPU {
                 error!("TODO - cli - clear intterrupts??");
                 p
             }
+            0xFE => {
+                 // byte size
+                self.decode_fe()
+            }
             _ => {
                 error!("cpu: unknown op {:02X} at {:04X}", b, self.ip - 1);
                 p
             }
         }
-
     }
 
-    /*
-
-    fn mov_r8_u8(&mut self, r: usize, imm: u8) {
-        let lor = r & 3;
-        if r & 4 == 0 {
-            self.r16[lor].set_lo(imm);
-        } else {
-            self.r16[lor].set_hi(imm);
+    // arithmetic 16-bit
+    fn decode_81(&mut self) -> Parameters {
+        // 81C7C000          add di,0xc0    md=3 ....
+        let x = self.read_mod_reg_rm();
+        let mut p = Parameters{
+            command: Op::Unknown(),
+            dst: Parameter::Reg16(x.rm as usize),
+            src: Parameter::Imm16(self.read_u16()),
+        };
+        // XXX md is unused???
+        if x.md != 3 {
+            error!("XXXX - decode_81 - md is {}", x.md);
         }
-    }
 
-    // calculates imm from src parameter
-    fn u8_value(&mut self, p: &Parameter) -> u8 {
-        match p {
-            &Parameter::Reg(r) => {
-                error!("mov_u8 PARAM-ONE Reg PANIC");
-                0
-            }
-            &Parameter::Imm8(imm) => imm,
-            &Parameter::Imm16(imm2) => {
-                error!("mov_u8 PARAM-ONE Imm16 PANIC");
-                0
-            }
-        }
-    }
-
-    // calculates imm from src parameter
-    fn u16_value(&mut self, p: &Parameter) -> u16 {
-        match p {
-            &Parameter::Reg(r_src) => self.r16[r_src].u16(),
-            &Parameter::Imm8(imm) => {
-                error!("!! XXX mov_r16 Imm8-SUB unhandled - PANIC {:?}", imm);
-                0
-            }
-            &Parameter::Imm16(imm) => imm,
-        }
-    }
-
-    fn mov_r8(&mut self, x: &Parameters) {
-        error!("XXX impl mov_r8");
-        /*
-        match x.dst {
-            Parameter::Reg(r) => {
-                match x.src {
-                    Parameter::Imm16(imm) => {
-                        self.r16[r].set_u16(imm);
-                    }
-                    Parameter::Reg(r_src) => {
-                        let val = self.r16[r_src].u16();
-                        self.r16[r].set_u16(val);
-                    }
-                    Parameter::Imm8(imm) => {
-                        error!("!! XXX mov_r16 Imm8-SUB unhandled - PANIC {:?}", imm);
-                    }
-                }
-            }
-            Parameter::Imm16(imm) => {
-                error!("!! XXX mov_r16 Imm16 unhandled - PANIC {:?}", imm);
-            }
-            Parameter::Imm8(imm) => {
-                error!("!! XXX mov_r16 Imm8 unhandled - PANIC {:?}", imm);
+        match x.reg {
+            0 => {
+                p.command = Op::Add16();
+            }/*
+            case 0:
+                op.Cmd = "add"
+            case 1:
+                op.Cmd = "or"
+            case 2:
+                op.Cmd = "adc"
+            case 3:
+                op.Cmd = "sbb"
+            case 4:
+                op.Cmd = "and"
+            case 5:
+                op.Cmd = "sub"
+            case 6:
+                op.Cmd = "xor"
+            case 7:
+                op.Cmd = "cmp"
+            }*/
+            _ => { 
+                error!("decode_81 error: unknown reg {}", x.reg);
             }
         }
-        */
+        p
     }
 
-    fn mov_r16(&mut self, x: &Parameters) {
-        match x.dst {
-            Parameter::Reg(r) => {
-                let imm = self.u16_value(&x.src);
-                self.r16[r].set_u16(imm);
+    // byte size
+    fn decode_fe(&mut self) -> Parameters {
+        let x = self.read_mod_reg_rm();
+        let mut p = Parameters{
+            command: Op::Unknown(),
+            dst: self.rm8(x.rm, x.md),
+            src: Parameter::Empty(),
+        };
+        match x.reg {
+            /*0 => {
+                p.command = Op::Inc8();
+            }*/
+            1 => {
+                p.command = Op::Dec8();
             }
-            Parameter::Imm16(imm) => {
-                error!("!! XXX mov_r16 Imm16 unhandled - PANIC {:?}", imm);
-            }
-            Parameter::Imm8(imm) => {
-                error!("!! XXX mov_r16 Imm8 unhandled - PANIC {:?}", imm);
+            _ => { 
+                error!("decode_fe error: unknown reg {}", x.reg);
             }
         }
+        p
     }
-*/
 
     // decode r8, r/m8
     fn r8_rm8(&mut self) -> Parameters {
@@ -731,9 +744,9 @@ impl CPU {
     fn read_mod_reg_rm(&mut self) -> ModRegRm {
         let b = self.read_u8();
         ModRegRm {
-            md: b >> 6,
-            reg: (b >> 3) & 7,
-            rm: b & 7,
+            md: b >> 6, // high 2 bits
+            reg: (b >> 3) & 7, // mid 3 bits
+            rm: b & 7, // low 3 bits
         }
     }
 
