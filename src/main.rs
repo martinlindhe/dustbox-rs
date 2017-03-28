@@ -8,12 +8,13 @@ extern crate colog;
 extern crate regex;
 extern crate difference;
 
+
 mod cpu;
 mod disasm;
 mod tools;
+mod opcodes;
 
 
-//use std::fmt::Write;
 use std::io::{self, stdout, BufRead, Write};
 use regex::Regex;
 use std::process::exit;
@@ -46,8 +47,12 @@ fn main() {
                 info!("Resetting CPU");
                 cpu.reset();
             }
-            "r" => {
+            "r" | "reg" | "regs" => {
                 cpu.print_registers();
+            }
+            "d" | "disasm" => {
+                let op = opcodes::lookup_opcode(9); // XXX get op info
+                warn!("XXX disasm WIP: {}", op);
             }
             "e" => {
                 if parts.len() < 2 {

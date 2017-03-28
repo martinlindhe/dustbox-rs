@@ -106,7 +106,7 @@ impl CPU {
     pub fn new() -> CPU {
         let mut cpu = CPU {
             pc: 0,
-            memory: vec![0u8; 0x10000 * 64], // = 4 MB. maybe shoudl allocate .?1
+            memory: vec![0u8; 0x10000 * 64],
             r16: [Register16 { val: 0 }; 16],
             flags: Flags {
                 carry: false, // 0: carry flag
@@ -136,6 +136,7 @@ impl CPU {
 
         // intializes the cpu as if to run .com programs, info from
         // http://www.delorie.com/djgpp/doc/rbinter/id/51/29.html
+        cpu.r16[SS].val = 0x0000;
         cpu.r16[SP].val = 0xFFF0; // XXX offset of last word available in first 64k segment
 
         cpu
@@ -143,6 +144,7 @@ impl CPU {
 
     pub fn reset(&mut self) {
         self.pc = 0;
+        // XXX clear memory
     }
 
     pub fn load_rom(&mut self, data: &Vec<u8>, offset: u16) {
@@ -163,6 +165,9 @@ impl CPU {
     }
 
     pub fn execute_instruction(&mut self) {
+        // XXX have a decode_instruction() step first that fetches arguments,
+        // -- so we can use it to build disassembly
+        // -- will this be bad for speed?
         let b = self.memory[self.pc as usize];
         self.pc += 1;
         match b {
@@ -213,6 +218,7 @@ impl CPU {
                 self.mov_r16(&p);
             }
             0xAA => {
+                // stosb
                 // For legacy mode, store AL at address ES:(E)DI;
                 let offset = (self.r16[ES].val as usize) * 16 + (self.r16[DI].val as usize);
                 let data = self.r16[AX].lo_u8(); // = AL
