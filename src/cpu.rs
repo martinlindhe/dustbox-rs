@@ -171,6 +171,7 @@ enum Op {
     Push16(),
     Retn(),
     Stosb(),
+    Sub16(),
     Xor16(),
     Unknown(),
 }
@@ -473,6 +474,15 @@ impl CPU {
                     self.r16[DI].val -= 1;
                 }
             }
+            Op::Sub16() => {
+                // two parameters (dst=reg)
+                let src = self.read_parameter_value(&op.src) as u16;
+                let mut dst = self.read_parameter_value(&op.dst) as u16;
+                dst -= src;
+                // XXX flags
+                println!("XXX sub16 - FLAGS");
+                self.write_parameter_u16(&op.dst, dst);
+            }
             Op::Xor16() => {
                 // two parameters (dst=reg)
                 println!("XXX XOR - FLAGS");
@@ -687,7 +697,11 @@ impl CPU {
         match x.reg {
             0 => {
                 p.command = Op::Add16();
-            }/*
+            }
+            5 => {
+                p.command = Op::Sub16();
+            }
+            /*
             case 0:
                 op.Cmd = "add"
             case 1:
@@ -698,8 +712,6 @@ impl CPU {
                 op.Cmd = "sbb"
             case 4:
                 op.Cmd = "and"
-            case 5:
-                op.Cmd = "sub"
             case 6:
                 op.Cmd = "xor"
             case 7:
@@ -1274,6 +1286,19 @@ fn can_execute_mov_rm16_sreg() {
 }
 
 #[test]
+fn can_execute_mov_data() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xC6, 0x06, 0x31, 0x10, 0x38,       // mov byte [0x1031],0x38
+    ];
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction();
+    assert_eq!(0x105, cpu.ip);
+    assert_eq!(0x38, cpu.peek_u8_at(0x1031));
+}
+
+#[test]
 fn can_execute_segment_prefixed_instr() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
@@ -1317,7 +1342,6 @@ fn can_disassemble_basic_instructions() {
         0xB4, 0x09,       // mov ah,0x9
         0xCD, 0x21,       // l_0x108: int 0x21
         0xE8, 0xFB, 0xFF, // call l_0x108   ; call an earlier offset
-        /*0x26,*/  //0x8B, 0x05, // mov ax,[es:di]  - XXX 0x26 means next instr uses segment ES
     ];
     cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 5);
@@ -1328,48 +1352,8 @@ fn can_disassemble_basic_instructions() {
 000108: CD 21              Int      0x21
 00010A: E8 FB FF           CallNear 0x0108
 ",
-
-               //010D: mov ax,[es:di]",
-               res);
-    /*
-    assert_diff!("0100: call 0108
-0103: mov dx, 010B
-0106: mov ah, 09
-0108: int 21
-010A: call 0108",
-                 &res,
-                 "\n",
-                 0);
-*/
-}
-
-/*
-#[test]
-fn can_disassemble_xor() {
-    let mut disasm = Disassembly::new();
-    let code: Vec<u8> = vec![
-        0x31, 0xC1, // xor cx,ax
-        0x31, 0xC8, // xor ax,cx
-    ];
-    let res = disasm.disassemble(&code, 0x100);
-
-    assert_eq!("0100: xor   cx, ax
-0102: xor   ax, cx",
                res);
 }
-
-#[test]
-fn can_disassemble_mov() {
-    let mut disasm = Disassembly::new();
-    let code: Vec<u8> = vec![
-        0x88, 0xC8, // mov al, cl
-    ];
-    let res = disasm.disassemble(&code, 0x100);
-
-    assert_eq!("0100: mov   al, cl", res);
-}
-*/
-
 
 #[test]
 fn can_disassemble_segment_prefixed_instr() {

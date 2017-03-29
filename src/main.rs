@@ -21,8 +21,8 @@ fn main() {
     drop(colog::init());
 
     // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
-    let app = "samples/adrmode/adrmode.com";
-    //let app = "../dos-software-decoding/games/Blort (1987)(Hennsoft)/blort.com";
+    //let app = "samples/adrmode/adrmode.com";
+    let app = "../dos-software-decoding/games/Blort (1987)(Hennsoft)/blort.com";
     //let app = "../dos-software-decoding/games/Dig Dug (1982)(Namco)/digdug.com";
     //let app = "samples/bar/bar.com";
     let data = tools::read_binary(app);
@@ -76,7 +76,6 @@ fn main() {
             "bp" | "breakpoint" => {
                 // breakpoints
                 // XXX: "bp remove 0x123"
-                // XXX: "bp clear" = remove all breakpoints
                 if parts.len() < 2 {
                     error!("breakpoint: not enough arguments");
                 } else {
