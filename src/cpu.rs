@@ -159,6 +159,7 @@ enum Op {
     Add16(),
     CallNear(),
     Cli(),
+    Cmp8(),
     Dec8(),
     Inc16(),
     Int(),
@@ -401,6 +402,9 @@ impl CPU {
             Op::Cli() => {
                 self.flags.interrupt_enable = false;
             }
+            Op::Cmp8() => {
+                println!("XXX cmp - FLAGS!!!");
+            }
             Op::Dec8() => {
                 // single parameter (dst)
                 let mut data = self.read_parameter_value(&op.dst) as u8;
@@ -565,6 +569,10 @@ impl CPU {
                 p.dst = Parameter::Reg16((b & 7) as usize);
                 p
             }
+            0x80 => {
+                // arithmetic 8-bit
+                self.decode_80(p.segment)
+            }
             0x81 => {
                 // arithmetic 16-bit
                 self.decode_81(p.segment)
@@ -636,6 +644,10 @@ impl CPU {
             0xC6 => {
                 // mov r/m8, imm8
                 let x = self.read_mod_reg_rm();
+                if x.reg != 0 {
+                    // should be 0
+                    println!("XXX ERROR 0xc6 reg = {}", x.reg);
+                }
                 p.command = Op::Mov8();
                 p.dst = self.rm8(p.segment, x.rm, x.md);
                 p.src = Parameter::Imm8(self.read_u8());
@@ -687,20 +699,59 @@ impl CPU {
         }
     }
 
-    // arithmetic 16-bit
-    fn decode_81(&mut self, seg: Segment) -> Instruction {
-        // 81C7C000          add di,0xc0    md=3 ....
+
+    // arithmetic 8-bit
+    fn decode_80(&mut self, seg: Segment) -> Instruction {
         let x = self.read_mod_reg_rm();
         let mut p = Instruction {
             segment: seg,
             command: Op::Unknown(),
-            dst: Parameter::Reg16(x.rm as usize),
+            dst: self.rm8(seg, x.rm, x.md),
+            src: Parameter::Imm8(self.read_u8()),
+        };
+
+        match x.reg {
+            7 => {
+                p.command = Op::Cmp8();
+            }
+            /*
+            0 => {
+                p.command = Op::Add8();
+            }
+            5 => {
+                p.command = Op::Sub8();
+            }
+            case 0:
+                op.Cmd = "add"
+            case 1:
+                op.Cmd = "or"
+            case 2:
+                op.Cmd = "adc"
+            case 3:
+                op.Cmd = "sbb"
+            case 4:
+                op.Cmd = "and"
+            case 6:
+                op.Cmd = "xor"
+            case 7:
+                op.Cmd = "cmp"
+            }*/
+            _ => {
+                println!("decode_81 error: unknown reg {}", x.reg);
+            }
+        }
+        p
+    }
+
+    // arithmetic 16-bit
+    fn decode_81(&mut self, seg: Segment) -> Instruction {
+        let x = self.read_mod_reg_rm();
+        let mut p = Instruction {
+            segment: seg,
+            command: Op::Unknown(),
+            dst: self.rm16(seg, x.rm, x.md),
             src: Parameter::Imm16(self.read_u16()),
         };
-        // XXX md is unused???
-        if x.md != 3 {
-            println!("XXX - decode_81: md is {}", x.md);
-        }
 
         match x.reg {
             0 => {
@@ -1377,9 +1428,25 @@ fn can_disassemble_segment_prefixed_instr() {
     cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 2);
 
-    // XXX for correct disasm , we need to add segment es
     assert_eq!("000100: 26 88 25           Mov8     byte [es:di], ah
 000103: 26 8A 25           Mov8     ah, byte [es:di]
+",
+               res);
+}
+
+
+#[test]
+fn can_disassemble_arithmetic_instr() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0x80, 0x3E, 0x31, 0x10, 0x00, // cmp byte [0x1031],0x0
+        0x81, 0xC7, 0xC0, 0x00,       // add di,0xc0
+    ];
+    cpu.load_rom(&code, 0x100);
+    let res = cpu.disassemble_block(0x100, 2);
+
+    assert_eq!("000100: 26 88 25           Cmp8     byte [0x1031], 0x00
+000103: 26 8A 25           Add16    di, 0x00C0
 ",
                res);
 }
