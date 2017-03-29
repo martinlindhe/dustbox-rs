@@ -129,7 +129,12 @@ impl fmt::Display for Parameter {
         match self {
             &Parameter::Imm8(v) => write!(f, "0x{:02X}", v),
             &Parameter::Imm16(v) => write!(f, "0x{:04X}", v),
-            &Parameter::ImmS8(v) => write!(f, "byte 0x{:02X}", v), // XXX sign before 0x
+            &Parameter::ImmS8(v) => {
+                write!(f,
+                       "byte {}0x{:02X}",
+                       if v < 0 { "-" } else { "+" },
+                       if v < 0 { -v } else { v })
+            } 
             &Parameter::Ptr8(seg, v) => write!(f, "byte [{}0x{:04X}]", seg, v),
             &Parameter::Ptr16(seg, v) => write!(f, "word [{}0x{:04X}]", seg, v),
             &Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}{}]", seg, amode(v as u8)),
