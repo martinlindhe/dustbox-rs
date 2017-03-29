@@ -1056,6 +1056,26 @@ fn can_execute_mov_r8() {
 }
 
 #[test]
+fn can_execute_mov_r8_rm8() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xBB, 0x05, 0x01, // mov bx,0x105
+        0x8A, 0x27,       // mov ah,[bx]
+        0x99,             // db 0x99
+    ];
+
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction();
+    assert_eq!(0x103, cpu.ip);
+    assert_eq!(0x105, cpu.r16[BX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x105, cpu.ip);
+    assert_eq!(0x99, cpu.r16[AX].hi_u8());
+}
+
+#[test]
 fn can_execute_mv_r16() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
@@ -1090,7 +1110,6 @@ fn can_execute_mov_r16_rm16() {
     assert_eq!(0x105, cpu.ip);
     assert_eq!(0x123, cpu.sreg16[ES].val);
 }
-
 
 
 #[test]
