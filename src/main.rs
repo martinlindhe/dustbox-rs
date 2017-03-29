@@ -25,8 +25,8 @@ fn main() {
 
     // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
     //let app = "samples/adrmode/adrmode.com";
-    //let app = "../dos-software-decoding/games/Blort (1987)(Hennsoft)/blort.com";
-    let app = "../dos-software-decoding/games/Dig Dug (1982)(Namco)/digdug.com";
+    let app = "../dos-software-decoding/games/Blort (1987)(Hennsoft)/blort.com";
+    //let app = "../dos-software-decoding/games/Dig Dug (1982)(Namco)/digdug.com";
     //let app = "samples/bar/bar.com";
     let data = tools::read_binary(app);
 
