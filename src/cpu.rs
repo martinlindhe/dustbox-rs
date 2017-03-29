@@ -581,7 +581,6 @@ impl CPU {
                 p.dst = Parameter::Imm16(self.read_rel8());
                 p
             }
-
             0x80 => {
                 // arithmetic 8-bit
                 self.decode_80(p.segment)
@@ -1453,12 +1452,14 @@ fn can_disassemble_arithmetic() {
     let code: Vec<u8> = vec![
         0x80, 0x3E, 0x31, 0x10, 0x00, // cmp byte [0x1031],0x0
         0x81, 0xC7, 0xC0, 0x00,       // add di,0xc0
+        0x83, 0xC7, 0x3A,            // add di,byte +0x3a
     ];
     cpu.load_rom(&code, 0x100);
-    let res = cpu.disassemble_block(0x100, 2);
+    let res = cpu.disassemble_block(0x100, 3);
 
     assert_eq!("000100: 80 3E 31 10 00     Cmp8     byte [0x1031], 0x00
 000105: 81 C7 C0 00        Add16    di, 0x00C0
+000109: 83 C7 3A           XXX
 ",
                res);
 }
