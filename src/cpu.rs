@@ -3,6 +3,7 @@
 
 use std::fmt;
 use std::process::exit;
+use std::num::Wrapping;
 
 pub struct CPU {
     pub ip: u16,
@@ -396,17 +397,17 @@ impl CPU {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.src) as u8;
                 let mut dst = self.read_parameter_value(&op.dst) as u8;
-                dst += src;
+                let res = (Wrapping(dst) + Wrapping(src)).0;
                 println!("XXX add8 - FLAGS");
-                self.write_parameter_u8(&op.dst, dst);
+                self.write_parameter_u8(&op.dst, res);
             }
             Op::Add16() => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.src) as u16;
-                let mut dst = self.read_parameter_value(&op.dst) as u16;
-                dst += src;
+                let dst = self.read_parameter_value(&op.dst) as u16;
+                let res = (Wrapping(dst) + Wrapping(src)).0;
                 println!("XXX add16 - FLAGS");
-                self.write_parameter_u16(&op.dst, dst);
+                self.write_parameter_u16(&op.dst, res);
             }
             Op::CallNear() => {
                 // call near rel
@@ -1116,32 +1117,33 @@ impl CPU {
         println!("XXX unhandled out_u8 to {:04X}, data {:02X}", dst, data);
     }
 
-    fn read_parameter_value(&mut self, p: &Parameter) -> usize {
+    fn read_parameter_value(&mut self, p: &Parameter) -> isize {
         match p {
-            &Parameter::Imm8(imm) => imm as usize,
-            &Parameter::Imm16(imm) => imm as usize,
+            &Parameter::Imm8(imm) => imm as isize,
+            &Parameter::Imm16(imm) => imm as isize,
+            &Parameter::ImmS8(imm) => imm as isize,
             &Parameter::Ptr8(seg, imm) => {
                 println!("XXX use segment {}", seg);
-                self.peek_u8_at(imm as usize) as usize
+                self.peek_u8_at(imm as usize) as isize
             }
             &Parameter::Ptr16(seg, imm) => {
                 println!("XXX use segment {}", seg);
-                self.peek_u16_at(imm as usize) as usize
+                self.peek_u16_at(imm as usize) as isize
             }
             &Parameter::Ptr8Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
-                self.peek_u8_at(offset) as usize
+                self.peek_u8_at(offset) as isize
             }
             &Parameter::Reg8(r) => {
                 let lor = r & 3;
                 if r & 4 == 0 {
-                    self.r16[lor].lo_u8() as usize
+                    self.r16[lor].lo_u8() as isize
                 } else {
-                    self.r16[lor].hi_u8() as usize
+                    self.r16[lor].hi_u8() as isize
                 }
             }
-            &Parameter::Reg16(r) => self.r16[r].val as usize,
-            &Parameter::SReg16(r) => self.sreg16[r].val as usize,
+            &Parameter::Reg16(r) => self.r16[r].val as isize,
+            &Parameter::SReg16(r) => self.sreg16[r].val as isize,
             _ => {
                 println!("read_parameter_value error: unhandled parameter: {:?}", p);
                 0
