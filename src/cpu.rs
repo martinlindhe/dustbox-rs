@@ -633,6 +633,14 @@ impl CPU {
                 p.command = Op::Retn();
                 p
             }
+            0xC6 => {
+                // mov r/m8, imm8
+                let x = self.read_mod_reg_rm();
+                p.command = Op::Mov8();
+                p.dst = self.rm8(p.segment, x.rm, x.md);
+                p.src = Parameter::Imm8(self.read_u8());
+                p
+            }
             0xCD => {
                 p.command = Op::Int();
                 p.dst = Parameter::Imm8(self.read_u8());
@@ -1033,6 +1041,10 @@ impl CPU {
                 } else {
                     self.r16[lor].set_hi(data);
                 }
+            }
+            Parameter::Ptr8(seg, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + imm as usize;
+                self.write_u8(offset, data);
             }
             Parameter::Ptr8Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
