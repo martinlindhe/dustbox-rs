@@ -70,14 +70,14 @@ impl Register16 {
 }
 
 #[derive(Debug)]
-pub struct Instruction {
+pub struct InstructionInfo {
     pub offset: usize,
     pub length: usize,
     pub text: String,
     pub bytes: Vec<u8>,
 }
 
-impl Instruction {
+impl InstructionInfo {
     pub fn pretty_string(&self) -> String {
         // XXX pad hex up to 16 spaces...
 
@@ -111,16 +111,21 @@ struct ModRegRm {
     rm: u8,
 }
 
-struct Parameters {
+struct Instruction {
     command: Op,
     segment: Segment,
     src: Parameter,
     dst: Parameter,
 }
 
-impl Parameters {
+impl Instruction {
     fn describe(&self) -> String {
         // XXX embed segment !!!
+        /*
+        let seg = match self.segment {
+            Segment::None() => "",
+            Segment::ES() => "es:",
+        };*/
 
         match self.dst {
             Parameter::None() => format!("{:?}", self.command),
@@ -383,13 +388,13 @@ impl CPU {
         res
     }
 
-    pub fn disasm_instruction(&mut self) -> Instruction {
+    pub fn disasm_instruction(&mut self) -> InstructionInfo {
         let old_ip = self.ip;
         let op = self.decode_instruction();
         let length = self.ip - old_ip;
         self.ip = old_ip;
 
-        Instruction {
+        InstructionInfo {
             offset: old_ip as usize,
             length: length as usize,
             text: op.describe(),
@@ -397,7 +402,7 @@ impl CPU {
         }
     }
 
-    fn execute(&mut self, op: &Parameters) {
+    fn execute(&mut self, op: &Instruction) {
         self.instruction_count += 1;
         match op.command {
             Op::Add16() => {
@@ -509,9 +514,9 @@ impl CPU {
     }
 
 
-    fn decode_instruction(&mut self) -> Parameters {
+    fn decode_instruction(&mut self) -> Instruction {
         let b = self.read_u8();
-        let mut p = Parameters {
+        let mut p = Instruction {
             command: Op::Unknown(),
             segment: Segment::None(),
             dst: Parameter::None(),
@@ -695,10 +700,10 @@ impl CPU {
     }
 
     // arithmetic 16-bit
-    fn decode_81(&mut self) -> Parameters {
+    fn decode_81(&mut self) -> Instruction {
         // 81C7C000          add di,0xc0    md=3 ....
         let x = self.read_mod_reg_rm();
-        let mut p = Parameters {
+        let mut p = Instruction {
             segment: Segment::None(),
             command: Op::Unknown(),
             dst: Parameter::Reg16(x.rm as usize),
@@ -738,9 +743,9 @@ impl CPU {
     }
 
     // byte size
-    fn decode_fe(&mut self) -> Parameters {
+    fn decode_fe(&mut self) -> Instruction {
         let x = self.read_mod_reg_rm();
-        let mut p = Parameters {
+        let mut p = Instruction {
             segment: Segment::None(),
             command: Op::Unknown(),
             dst: self.rm8(x.rm, x.md),
@@ -761,7 +766,7 @@ impl CPU {
     }
 
     // decode r8, r/m8
-    fn r8_rm8(&mut self) -> Parameters {
+    fn r8_rm8(&mut self) -> Instruction {
         let mut res = self.rm8_r8();
         let tmp = res.src;
         res.src = res.dst;
@@ -770,9 +775,9 @@ impl CPU {
     }
 
     // decode r/m8, r8
-    fn rm8_r8(&mut self) -> Parameters {
+    fn rm8_r8(&mut self) -> Instruction {
         let x = self.read_mod_reg_rm();
-        Parameters {
+        Instruction {
             segment: Segment::None(),
             command: Op::Unknown(),
             src: Parameter::Reg8(x.reg as usize),
@@ -781,7 +786,7 @@ impl CPU {
     }
 
     // decode Sreg, r/m16
-    fn sreg_rm16(&mut self) -> Parameters {
+    fn sreg_rm16(&mut self) -> Instruction {
         let mut res = self.rm16_sreg();
         let tmp = res.src;
         res.src = res.dst;
@@ -790,9 +795,9 @@ impl CPU {
     }
 
     // decode r/m16, Sreg
-    fn rm16_sreg(&mut self) -> Parameters {
+    fn rm16_sreg(&mut self) -> Instruction {
         let x = self.read_mod_reg_rm();
-        Parameters {
+        Instruction {
             segment: Segment::None(),
             command: Op::Unknown(),
             src: Parameter::SReg16(x.reg as usize),
@@ -801,7 +806,7 @@ impl CPU {
     }
 
     // decode r16, r/m16
-    fn r16_rm16(&mut self) -> Parameters {
+    fn r16_rm16(&mut self) -> Instruction {
         let mut res = self.rm16_r16();
         let tmp = res.src;
         res.src = res.dst;
@@ -810,9 +815,9 @@ impl CPU {
     }
 
     // decode r/m16, r16
-    fn rm16_r16(&mut self) -> Parameters {
+    fn rm16_r16(&mut self) -> Instruction {
         let x = self.read_mod_reg_rm();
-        Parameters {
+        Instruction {
             segment: Segment::None(),
             command: Op::Unknown(),
             src: Parameter::Reg16(x.reg as usize),
