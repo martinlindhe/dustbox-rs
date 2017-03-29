@@ -24,9 +24,9 @@ fn main() {
     drop(colog::init());
 
     // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
-    //let app = "samples/adrmode/adrmode.com";
+    let app = "samples/adrmode/adrmode.com";
     //let app = "games/Beast (1984)(Dan Baker)/beast.com";
-    let app = "../dos-software-decoding/games/Blort (1987)(Hennsoft)/blort.com";
+    //let app = "../dos-software-decoding/games/Blort (1987)(Hennsoft)/blort.com";
     //let app = "samples/bar/bar.com";
     let data = tools::read_binary(app);
 

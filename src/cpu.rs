@@ -542,6 +542,15 @@ impl CPU {
                 p.src = part.src;
                 p
             }
+            0x8A => {
+                // mov r8, r/m8
+		        p.command = Op::Mov8();
+		        //op.parameterRRm(data, r8)
+                let part = self.r8_rm8();
+                p.dst = part.dst;
+                p.src = part.src;
+                p
+            }
             0x8B => {
                 // mov r16, r/m16
                 let part = self.r16_rm16();
@@ -748,16 +757,13 @@ impl CPU {
         match md {
             0 => {
                 // [reg]
-                let mut pos = 0;
-                if rm == 6 {
+                let pos = if rm == 6 {
                     // [u16]
-                    pos = self.read_u16();
+                    self.read_u16()
                 } else {
-                    error!("XXX FIXME rm8 [u16] or [reg+u16] ??!?!?!");
-                    // XXX read value of amode(x.rm) into pos
-                    let pos = 0;
-                }
-                Parameter::Imm16(self.peek_u16_at(pos as usize))
+                    self.amode16(rm as usize)
+                };
+                Parameter::Imm8(self.peek_u8_at(pos as usize))
             }
             1 => {
                 // [reg+d8]
@@ -766,7 +772,7 @@ impl CPU {
                 let mut pos = 0;
                 pos += self.read_s8() as u16; // XXX handle signed properly
 
-                Parameter::Imm16(self.peek_u16_at(pos as usize))
+                Parameter::Imm8(self.peek_u8_at(pos as usize))
             }
             2 => {
                 // [reg+d16]
@@ -775,7 +781,7 @@ impl CPU {
                 let mut pos = 0;
                 pos += self.read_s16() as u16; // XXX handle signed properly
 
-                Parameter::Imm16(self.peek_u16_at(pos as usize))
+                Parameter::Imm8(self.peek_u8_at(pos as usize))
             }
             _ => Parameter::Reg8(rm as usize),
         }
@@ -791,7 +797,7 @@ impl CPU {
                     // [u16]
                     pos = self.read_u16();
                 } else {
-                    error!("XXX FIXME [u16] or [reg+u16] ??!?!?!");
+                    error!("XXX FIXME rm16 [reg]");
                     // XXX read value of amode(x.rm) into pos
                     let pos = 0;
                 }
@@ -896,6 +902,7 @@ impl CPU {
     }
 
     fn peek_u8_at(&mut self, pos: usize) -> u8 {
+        // error!("peek_u8_at   pos {:04X}  = {:02X}", pos, self.memory[pos]);
         self.memory[pos]
     }
 
@@ -953,6 +960,23 @@ impl CPU {
             res[i - offset] = self.memory[i];
         }
         res
+    }
+
+    fn amode16(&mut self, idx: usize) -> u16 {
+        match idx {
+            0 => self.r16[BX].val + self.r16[SI].val,
+            1 => self.r16[BX].val + self.r16[DI].val,
+            2 => self.r16[BP].val + self.r16[SI].val,
+            3 => self.r16[BP].val + self.r16[DI].val,
+            4 => self.r16[SI].val,
+            5 => self.r16[DI].val,
+            6 => self.r16[BP].val,
+            7 => self.r16[BX].val,
+            _ => {
+                error!("Impossible amode16, idx {}", idx);
+                0
+            }
+        }
     }
 }
 
@@ -1060,7 +1084,7 @@ fn can_execute_mov_r8_rm8() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xBB, 0x05, 0x01, // mov bx,0x105
-        0x8A, 0x27,       // mov ah,[bx]
+        0x8A, 0x27,       // mov ah,[bx]   | r8, r/m8
         0x99,             // db 0x99
     ];
 
@@ -1098,7 +1122,7 @@ fn can_execute_mov_r16_rm16() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB9, 0x23, 0x01, // mov cx,0x123
-        0x8E, 0xC1,       // mov es,cx   | sr, r16
+        0x8E, 0xC1,       // mov es,cx   | r/m16, r16
     ];
     cpu.load_rom(&code, 0x100);
 
