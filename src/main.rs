@@ -25,7 +25,7 @@ fn main() {
     // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
     //let app = "samples/adrmode/adrmode.com";
     //let app = "games/Beast (1984)(Dan Baker)/beast.com";
-    let app = "games/Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com";
+    let app = "../dos-software-decoding/games/Blort (1987)(Hennsoft)/blort.com";
     //let app = "samples/bar/bar.com";
     let data = tools::read_binary(app);
 
@@ -42,9 +42,7 @@ fn main() {
         let mut line = String::new();
         stdin.lock().read_line(&mut line).unwrap();
 
-        let parts: Vec<String> = line.split(" ")
-            .map(|s| s.trim_right().to_string())
-            .collect();
+        let parts: Vec<String> = line.split(" ").map(|s| s.trim_right().to_string()).collect();
         match parts[0].as_ref() {
             "reset" => {
                 info!("Resetting CPU");
@@ -111,6 +109,8 @@ fn main() {
                 loop {
                     cpu.execute_instruction();
                     let offset = cpu.ip as usize;
+
+                    // XXX if op wasnt recognized, break
 
                     // if op.offset is in list, break
                     let mut list_iter = list.iter();
