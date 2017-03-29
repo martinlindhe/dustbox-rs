@@ -2,6 +2,13 @@
 
     org  0x100        ; .com files always start 256 bytes into the segment
 
+
+    mov bx, 0x1234
+    mov es, bx
+    mov [data0], es
+    data0: dw 0x0000
+
+; ---
 mov bx, data1
 mov ah, [bx]  ; should  give ah = 0x99
 

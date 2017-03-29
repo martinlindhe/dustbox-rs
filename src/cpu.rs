@@ -574,6 +574,14 @@ impl CPU {
                 p.src = part.src;
                 p
             }
+            0x8C => {
+                // mov r/m16, sreg
+                let part = self.rm16_sreg();
+                p.command = Op::Mov16();
+                p.dst = part.dst;
+                p.src = part.src;
+                p
+            }
             0x8E => {
                 // mov sreg, r/m16
                 let part = self.sreg_rm16();
@@ -1169,6 +1177,29 @@ fn can_execute_mov_r16_rm16() {
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
     assert_eq!(0x123, cpu.sreg16[ES].val);
+}
+
+#[test]
+fn can_execute_mov_rm16_sreg() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xBB, 0x34, 0x12,       // mov bx,0x1234
+        0x8E, 0xC3,             // mov es,bx
+        0x8C, 0x06, 0x09, 0x01, // mov [0x109],es  | r/m16, sreg
+    ];
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction();
+    assert_eq!(0x103, cpu.ip);
+    assert_eq!(0x1234, cpu.r16[BX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x105, cpu.ip);
+    assert_eq!(0x1234, cpu.sreg16[ES].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x109, cpu.ip);
+    assert_eq!(0x1234, cpu.peek_u16_at(0x0109));
 }
 
 
