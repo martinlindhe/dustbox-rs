@@ -2,6 +2,7 @@
 #![allow(unused_variables)]
 
 use std::fmt;
+use std::process::exit;
 
 pub struct CPU {
     pub ip: u16,
@@ -122,8 +123,9 @@ struct Parameters {
 enum Parameter {
     Imm8(u8),
     Imm16(u16),
-    Offset8(u16), // points to byte at u16
-    Offset16(u16), // points to word at u16
+    Ptr8(u16), // byte [u16]
+    Ptr16(u16), // word [u16]
+    Ptr8Amode(usize), // byte [amode], like "byte [bp+si]"
     Reg8(usize), // index into the low 4 of CPU.r16
     Reg16(usize), // index into CPU.r16
     SReg16(usize), // index into cpu.sreg16
@@ -135,8 +137,9 @@ impl fmt::Display for Parameter {
         match *self {
             Parameter::Imm8(v) => write!(f, "0x{:02X}", v),
             Parameter::Imm16(v) => write!(f, "0x{:04X}", v),
-            Parameter::Offset8(v) => write!(f, "byte [0x{:04X}]", v),
-            Parameter::Offset16(v) => write!(f, "word [0x{:04X}]", v),
+            Parameter::Ptr8(v) => write!(f, "byte [0x{:04X}]", v),
+            Parameter::Ptr16(v) => write!(f, "word [0x{:04X}]", v),
+            Parameter::Ptr8Amode(v) => write!(f, "byte [{}]", amode(v as u8)),
             Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
             Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
             Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
@@ -300,8 +303,12 @@ impl CPU {
         match *p {
             Parameter::Imm8(imm) => imm as usize,
             Parameter::Imm16(imm) => imm as usize,
-            Parameter::Offset8(imm) => self.peek_u8_at(imm as usize) as usize,
-            Parameter::Offset16(imm) => self.peek_u16_at(imm as usize) as usize,
+            Parameter::Ptr8(imm) => self.peek_u8_at(imm as usize) as usize,
+            Parameter::Ptr16(imm) => self.peek_u16_at(imm as usize) as usize,
+            Parameter::Ptr8Amode(r) => {
+                let imm = self.amode16(r);
+                self.peek_u8_at(imm as usize) as usize
+            }
             Parameter::Reg8(r) => {
                 let lor = r & 3;
                 if r & 4 == 0 {
@@ -511,6 +518,12 @@ impl CPU {
                 p.command = Op::Push16();
                 p.dst = Parameter::SReg16(DS);
                 p
+            }
+            0x26 => {
+                // es segment prefix
+                // XXX specify segment in the relevant parameter (?)
+                // XXX try 1: just ignore the segment prefix
+                self.decode_instruction()
             }
             0x31 => {
                 // xor r/m16, r16
@@ -787,32 +800,35 @@ impl CPU {
         match md {
             0 => {
                 // [reg]
-                let pos = if rm == 6 {
+                if rm == 6 {
                     // [u16]
-                    self.read_u16()
+                    let pos = self.read_u16();
+                    println!("XXX rm8 Ptr8 pos={:04X}", pos);
+                    Parameter::Ptr8(pos)
                 } else {
-                    self.amode16(rm as usize)
-                };
-                println!("XXX rm8 Offset8 pos={:04X}", pos);
-                Parameter::Offset8(pos)
+                    // XXX new type Offset+Reg
+                    //self.amode16(rm as usize)
+                    Parameter::Ptr8Amode(rm as usize)
+                }
             }
             1 => {
                 // [reg+d8]
                 // XXX read value of amode(x.rm) into pos
-                println!("XXX FIXME rm8 [reg+d8]");
-                let mut pos = 0;
-                pos += self.read_s8() as u16; // XXX handle signed properly
+                println!("XXX FIXME rm8 broken [reg+d8]");
+                let pos = self.read_s8() as u16; // XXX handle signed properly
 
-                Parameter::Offset8(pos)
+                // XXX new type PtrAmode8 + s8
+                exit(0);
+                Parameter::Ptr8(pos)
             }
             2 => {
                 // [reg+d16]
-                // XXX read value of amode(x.rm) into pos
-                println!("XXX FIXME rm8 [reg+d16]");
-                let mut pos = 0;
-                pos += self.read_s16() as u16; // XXX handle signed properly
+                println!("XXX FIXME rm8 broken [reg+d16]");
+                let pos = self.read_s16() as u16; // XXX handle signed properly
 
-                Parameter::Offset8(pos)
+                // XXX new type PtrAmode8 + s16
+                exit(0);
+                Parameter::Ptr8(pos)
             }
             _ => Parameter::Reg8(rm as usize),
         }
@@ -827,30 +843,31 @@ impl CPU {
                     // [u16]
                     self.read_u16()
                 } else {
-                    error!("XXX FIXME rm16 [reg]");
+                    error!("XXX FIXME broken rm16 [reg]");
                     // XXX read value of amode(x.rm) into pos
+                    exit(0);
                     0
                 };
                 error!("XXX rm16 0, pos = {:04X}", pos);
-                Parameter::Offset16(pos)
+                Parameter::Ptr16(pos)
             }
             1 => {
                 // [reg+d8]
                 // XXX read value of amode(x.rm) into pos
-                error!("XXX FIXME rm16 [reg+d8]");
-                let mut pos = 0;
-                pos += self.read_s8() as u16; // XXX handle signed properly
+                error!("XXX FIXME broken rm16 [reg+d8]");
+                let pos = self.read_s8() as u16; // XXX handle signed properly
 
-                Parameter::Offset16(pos)
+                exit(0); // XXX new type ptr16Amode + s8
+                Parameter::Ptr16(pos)
             }
             2 => {
                 // [reg+d16]
                 // XXX read value of amode(x.rm) into pos
                 error!("XXX FIXME rm16 [reg+d16]");
-                let mut pos = 0;
-                pos += self.read_s16() as u16; // XXX handle signed properly
+                let pos = self.read_s16() as u16; // XXX handle signed properly
 
-                Parameter::Offset16(pos)
+                exit(0); // XXX new type ptr16Amode + s16
+                Parameter::Ptr16(pos)
             }
             _ => Parameter::Reg16(rm as usize),
         }
@@ -991,8 +1008,8 @@ impl CPU {
             Parameter::Imm16(v) => {
                 self.write_u16(v as usize, data);
             }
-            Parameter::Offset16(v) => {
-                println!("XXX write_u16_param offset16  v={:04X}, data={:04X}",v,data);
+            Parameter::Ptr16(v) => {
+                println!("XXX write_u16_param Ptr16  v={:04X}, data={:04X}",v,data);
                 self.write_u16(v as usize, data);
             }
             _ => {
@@ -1270,5 +1287,23 @@ fn can_disassemble_mov() {
     let res = disasm.disassemble(&code, 0x100);
 
     assert_eq!("0100: mov   al, cl", res);
+}
+*/
+
+/*
+#[test]
+fn can_disassemble_segment_prefixed_instr() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0x26, 0x88, 0x25, // mov [es:di],ah
+        0x26, 0x8A, 0x25, // mov ah,[es:di]
+    ];
+        cpu.load_rom(&code, 0x100);
+    let res = cpu.disassemble_block(0x100, 2);
+
+// XXX for correct disasm , we need a new param type Offset+Reg
+    assert_eq!("000100: 26 88 25           Mov8 byte [0x0000], ah   -- WRONG
+000103: 26 8A 25           Mov8 ah, byte [0x0000]   -- WRONG
+", res);
 }
 */

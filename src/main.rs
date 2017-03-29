@@ -9,15 +9,12 @@ extern crate colog;
 extern crate regex;
 extern crate difference;
 
-
-mod cpu;
-mod tools;
-mod opcodes;
-
-
 use std::io::{self, stdout, BufRead, Write};
 use regex::Regex;
 use std::process::exit;
+
+mod cpu;
+mod tools;
 
 fn main() {
 

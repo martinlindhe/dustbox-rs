@@ -3,6 +3,13 @@
     org  0x100        ; .com files always start 256 bytes into the segment
 
 
+
+    ; es segment prefix stuff
+    mov [es:di], ah  ; 268825
+    mov ah, [es:di]  ; 268A25
+
+
+;---
     mov bx, 0x1234
     mov es, bx
     mov [data0], es
