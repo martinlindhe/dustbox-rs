@@ -5,8 +5,11 @@
 
 
     ; es segment prefix stuff
-    mov [es:di], ah  ; 268825
-    mov ah, [es:di]  ; 268A25
+    mov bx, 0x1234
+    mov es, bx
+    mov ah, 0x88
+    mov [es:di], ah
+    mov al, [es:di]
 
 
 ;---
