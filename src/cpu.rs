@@ -275,9 +275,17 @@ impl CPU {
         }
     }
 
-    pub fn execute_instruction(&mut self) {
+    pub fn execute_instruction(&mut self) -> bool {
         let op = self.decode_instruction();
         self.execute(&op);
+
+        match op.command {
+            Op::Unknown() => {
+                error!("HIT A UNKNOWN COMMAND");
+                false
+            }
+            _ => true,
+        }
     }
 
     pub fn disasm_instruction(&mut self) -> Instruction {
@@ -926,11 +934,11 @@ fn can_execute_sr_r16() {
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
-    assert_eq!(0x123, cpu.r16[CX].u16());
+    assert_eq!(0x123, cpu.r16[CX].val);
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x123, cpu.r16[ES].u16());
+    assert_eq!(0x123, cpu.sreg16[ES].val);
 }
 
 #[test]
@@ -944,11 +952,11 @@ fn can_execute_r16_r16() {
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
-    assert_eq!(0x123, cpu.r16[AX].u16());
+    assert_eq!(0x123, cpu.r16[AX].val);
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x123, cpu.r16[SP].u16());
+    assert_eq!(0x123, cpu.r16[SP].val);
 }
 
 #[test]
@@ -965,16 +973,16 @@ fn can_handle_stack() {
     cpu.execute_instruction(); // mov
     cpu.execute_instruction(); // mov
 
-    assert_eq!(0xFFF0, cpu.r16[SP].u16());
+    assert_eq!(0xFFF0, cpu.r16[SP].val);
     cpu.execute_instruction(); // push
-    assert_eq!(0xFFEE, cpu.r16[SP].u16());
+    assert_eq!(0xFFEE, cpu.r16[SP].val);
     cpu.execute_instruction(); // pop
-    assert_eq!(0xFFF0, cpu.r16[SP].u16());
+    assert_eq!(0xFFF0, cpu.r16[SP].val);
 
     assert_eq!(0x107, cpu.ip);
-    assert_eq!(0x8888, cpu.r16[AX].u16());
-    assert_eq!(0x8888, cpu.sreg16[DS].u16());
-    assert_eq!(0x8888, cpu.sreg16[ES].u16());
+    assert_eq!(0x8888, cpu.r16[AX].val);
+    assert_eq!(0x8888, cpu.sreg16[DS].val);
+    assert_eq!(0x8888, cpu.sreg16[ES].val);
 }
 
 

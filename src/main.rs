@@ -42,7 +42,9 @@ fn main() {
         let mut line = String::new();
         stdin.lock().read_line(&mut line).unwrap();
 
-        let parts: Vec<String> = line.split(" ").map(|s| s.trim_right().to_string()).collect();
+        let parts: Vec<String> = line.split(" ")
+            .map(|s| s.trim_right().to_string())
+            .collect();
         match parts[0].as_ref() {
             "reset" => {
                 info!("Resetting CPU");
@@ -107,7 +109,10 @@ fn main() {
                 warn!("Executing until we hit a breakpoint");
 
                 loop {
-                    cpu.execute_instruction();
+                    if cpu.execute_instruction() == false {
+                        error!("Failed to execute instruction, breaking");
+                        break;
+                    }
                     let offset = cpu.ip as usize;
 
                     // XXX if op wasnt recognized, break
