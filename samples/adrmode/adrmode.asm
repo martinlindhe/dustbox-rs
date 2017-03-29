@@ -2,6 +2,13 @@
 
     org  0x100        ; .com files always start 256 bytes into the segment
 
+    ; jz rel8
+    jz p2
+    p1: jz p1
+    jz p2
+    p2: jz p1
+
+;---
     mov byte [0x1031],0x38  ; C606311038
 
 

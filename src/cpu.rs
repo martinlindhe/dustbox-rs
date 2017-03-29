@@ -164,6 +164,7 @@ enum Op {
     Inc16(),
     Int(),
     JmpNear(),
+    Jz(),
     Loop(),
     Mov8(),
     Mov16(),
@@ -427,6 +428,11 @@ impl CPU {
             Op::JmpNear() => {
                 self.ip = self.read_parameter_value(&op.dst) as u16;
             }
+            Op::Jz() => {
+                if self.flags.zero {
+                    self.ip = self.read_parameter_value(&op.dst) as u16;
+                }
+            }
             Op::Loop() => {
                 let dst = self.read_parameter_value(&op.dst) as u16;
                 self.r16[CX].val -= 1;
@@ -569,6 +575,13 @@ impl CPU {
                 p.dst = Parameter::Reg16((b & 7) as usize);
                 p
             }
+            0x74 => {
+                // jz rel8
+                p.command = Op::Jz(); // alias: je§
+                p.dst = Parameter::Imm16(self.read_rel8());
+                p
+            }
+
             0x80 => {
                 // arithmetic 8-bit
                 self.decode_80(p.segment)
@@ -874,7 +887,6 @@ impl CPU {
                 if rm == 6 {
                     // [u16]
                     let pos = self.read_u16();
-                    println!("XXX rm8 Ptr8 pos={:04X}", pos);
                     Parameter::Ptr8(seg, pos)
                 } else {
                     Parameter::Ptr8Amode(seg, rm as usize)
@@ -1362,7 +1374,7 @@ fn can_execute_mov_data() {
 }
 
 #[test]
-fn can_execute_segment_prefixed_instr() {
+fn can_execute_segment_prefixed() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xBB, 0x34, 0x12, // mov bx,0x1234
@@ -1397,7 +1409,7 @@ fn can_execute_segment_prefixed_instr() {
 }
 
 #[test]
-fn can_disassemble_basic_instructions() {
+fn can_disassemble_basic() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xE8, 0x05, 0x00, // call l_0x108   ; call a later offset
@@ -1419,7 +1431,7 @@ fn can_disassemble_basic_instructions() {
 }
 
 #[test]
-fn can_disassemble_segment_prefixed_instr() {
+fn can_disassemble_segment_prefixed() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0x26, 0x88, 0x25, // mov [es:di],ah
@@ -1436,7 +1448,7 @@ fn can_disassemble_segment_prefixed_instr() {
 
 
 #[test]
-fn can_disassemble_arithmetic_instr() {
+fn can_disassemble_arithmetic() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0x80, 0x3E, 0x31, 0x10, 0x00, // cmp byte [0x1031],0x0
@@ -1445,8 +1457,28 @@ fn can_disassemble_arithmetic_instr() {
     cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 2);
 
-    assert_eq!("000100: 26 88 25           Cmp8     byte [0x1031], 0x00
-000103: 26 8A 25           Add16    di, 0x00C0
+    assert_eq!("000100: 80 3E 31 10 00     Cmp8     byte [0x1031], 0x00
+000105: 81 C7 C0 00        Add16    di, 0x00C0
+",
+               res);
+}
+
+#[test]
+fn can_disassemble_jz_rel() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0x74, 0x04, // jz 0x106
+        0x74, 0xFE, // jz 0x102
+        0x74, 0x00, // jz 0x106
+        0x74, 0xFA, // jz 0x102
+    ];
+    cpu.load_rom(&code, 0x100);
+    let res = cpu.disassemble_block(0x100, 4);
+
+    assert_eq!("000100: 74 04              Jz       0x0106
+000102: 74 FE              Jz       0x0102
+000104: 74 00              Jz       0x0106
+000106: 74 FA              Jz       0x0102
 ",
                res);
 }
