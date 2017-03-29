@@ -605,7 +605,7 @@ impl CPU {
                 self.decode_81(p.segment)
             }
             0x83 => {
-                // arithmetic signed 8-bit
+                // arithmetic 16-bit with signed 8-bit value
                 self.decode_83(p.segment)
             }
             0x88 => {
@@ -771,7 +771,7 @@ impl CPU {
         p
     }
 
-    // arithmetic signed 8-bit
+    // arithmetic 16-bit with signed 8-bit value
     fn decode_83(&mut self, seg: Segment) -> Instruction {
         let x = self.read_mod_reg_rm();
         let mut p = Instruction {
@@ -783,14 +783,14 @@ impl CPU {
 
         match x.reg {
             0 => {
-                p.command = Op::Add8();
+                p.command = Op::Add16();
             }
             /*
             5 => {
-                p.command = Op::Sub8();
+                p.command = Op::Sub16();
             }
             7 => {
-                p.command = Op::Cmp8();
+                p.command = Op::Cmp16();
             }
             case 1:
                 op.Cmd = "or"
@@ -1539,8 +1539,8 @@ fn can_disassemble_arithmetic() {
 
     assert_eq!("000100: 80 3E 31 10 00     Cmp8     byte [0x1031], 0x00
 000105: 81 C7 C0 00        Add16    di, 0x00C0
-000109: 83 C7 3A           Add8     di, byte +0x3A
-00010C: 83 C7 C6           Add8     di, byte -0x3A
+000109: 83 C7 3A           Add16    di, byte +0x3A
+00010C: 83 C7 C6           Add16    di, byte -0x3A
 ",
                res);
 }
