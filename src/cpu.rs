@@ -283,6 +283,10 @@ impl CPU {
         self.breakpoints.clone()
     }
 
+    pub fn clear_breakpoints(&mut self) {
+        self.breakpoints.clear();
+    }
+
     pub fn reset(&mut self) {
         self.ip = 0;
         self.instruction_count = 0;

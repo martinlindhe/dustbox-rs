@@ -81,16 +81,21 @@ fn main() {
                     error!("breakpoint: not enough arguments");
                 } else {
                     match parts[1].as_ref() {
+                        "help" => {
+                            info!("Available breakpoint commands:");
+                            info!("  bp add 0x123     adds a breakpoint");
+                            info!("  bp clear         clears all breakpoints");
+                            info!("  bp list          list all breakpoints");
+                        }
                         "add" | "set" => {
                             let bp = parse_number_string(&parts[2]);
                             cpu.add_breakpoint(bp);
                             info!("Breakpoint added: {:04X}", bp);
                         }
                         "clear" => {
-                            error!("XXX clear breakpoints");
+                            cpu.clear_breakpoints();
                         }
                         "list" => {
-                            error!("XXX LIST BREAKPOINTS");
                             let list = cpu.get_breakpoints(); // .sort();
                             // XXXX sort list
 
