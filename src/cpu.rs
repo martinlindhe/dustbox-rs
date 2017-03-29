@@ -43,7 +43,7 @@ struct Flags {
 }
 
 
-#[derive(Debug, Copy, Clone)] // XXX only need Copy ??
+#[derive(Copy, Clone)] // XXX only need Copy ??
 struct Register16 {
     val: u16,
 }
@@ -112,9 +112,9 @@ struct ModRegRm {
     rm: u8,
 }
 
-#[derive(Debug)]
 struct Parameters {
     command: Op,
+    segment: Segment,
     src: Parameter,
     dst: Parameter,
 }
@@ -129,7 +129,12 @@ enum Parameter {
     Reg8(usize), // index into the low 4 of CPU.r16
     Reg16(usize), // index into CPU.r16
     SReg16(usize), // index into cpu.sreg16
-    Empty(),
+    None(),
+}
+
+enum Segment {
+    ES(),
+    None(),
 }
 
 impl fmt::Display for Parameter {
@@ -143,7 +148,7 @@ impl fmt::Display for Parameter {
             Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
             Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
             Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
-            Parameter::Empty() => write!(f, ""),
+            Parameter::None() => write!(f, ""),
         }
     }
 }
@@ -362,11 +367,11 @@ impl CPU {
         self.ip = old_ip;
 
         let text = match op.dst {
-            Parameter::Empty() => format!("{:?}", op.command),
+            Parameter::None() => format!("{:?}", op.command),
             _ => {
                 let cmd = right_pad(&format!("{:?}", op.command), 9);
                 match op.src {
-                    Parameter::Empty() => format!("{}{}", cmd, op.dst),
+                    Parameter::None() => format!("{}{}", cmd, op.dst),
                     _ => format!("{}{}, {}", cmd, op.dst, op.src),
                 }
             }
@@ -496,8 +501,9 @@ impl CPU {
         let b = self.read_u8();
         let mut p = Parameters {
             command: Op::Unknown(),
-            dst: Parameter::Empty(),
-            src: Parameter::Empty(),
+            segment: Segment::None(),
+            dst: Parameter::None(),
+            src: Parameter::None(),
         };
 
         match b {
@@ -523,7 +529,9 @@ impl CPU {
                 // es segment prefix
                 // XXX specify segment in the relevant parameter (?)
                 // XXX try 1: just ignore the segment prefix
-                self.decode_instruction()
+                p = self.decode_instruction();
+                p.segment = Segment::ES();
+                p
             }
             0x31 => {
                 // xor r/m16, r16
@@ -679,6 +687,7 @@ impl CPU {
         // 81C7C000          add di,0xc0    md=3 ....
         let x = self.read_mod_reg_rm();
         let mut p = Parameters {
+            segment: Segment::None(),
             command: Op::Unknown(),
             dst: Parameter::Reg16(x.rm as usize),
             src: Parameter::Imm16(self.read_u16()),
@@ -720,9 +729,10 @@ impl CPU {
     fn decode_fe(&mut self) -> Parameters {
         let x = self.read_mod_reg_rm();
         let mut p = Parameters {
+            segment: Segment::None(),
             command: Op::Unknown(),
             dst: self.rm8(x.rm, x.md),
-            src: Parameter::Empty(),
+            src: Parameter::None(),
         };
         match x.reg {
             /*0 => {
@@ -751,6 +761,7 @@ impl CPU {
     fn rm8_r8(&mut self) -> Parameters {
         let x = self.read_mod_reg_rm();
         Parameters {
+            segment: Segment::None(),
             command: Op::Unknown(),
             src: Parameter::Reg8(x.reg as usize),
             dst: self.rm8(x.rm, x.md),
@@ -770,6 +781,7 @@ impl CPU {
     fn rm16_sreg(&mut self) -> Parameters {
         let x = self.read_mod_reg_rm();
         Parameters {
+            segment: Segment::None(),
             command: Op::Unknown(),
             src: Parameter::SReg16(x.reg as usize),
             dst: self.rm16(x.rm, x.md),
@@ -789,6 +801,7 @@ impl CPU {
     fn rm16_r16(&mut self) -> Parameters {
         let x = self.read_mod_reg_rm();
         Parameters {
+            segment: Segment::None(),
             command: Op::Unknown(),
             src: Parameter::Reg16(x.reg as usize),
             dst: self.rm16(x.rm, x.md),
@@ -1290,7 +1303,7 @@ fn can_disassemble_mov() {
 }
 */
 
-/*
+
 #[test]
 fn can_disassemble_segment_prefixed_instr() {
     let mut cpu = CPU::new();
@@ -1301,9 +1314,8 @@ fn can_disassemble_segment_prefixed_instr() {
         cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 2);
 
-// XXX for correct disasm , we need a new param type Offset+Reg
-    assert_eq!("000100: 26 88 25           Mov8 byte [0x0000], ah   -- WRONG
-000103: 26 8A 25           Mov8 ah, byte [0x0000]   -- WRONG
+// XXX for correct disasm , we need to add segment es
+    assert_eq!("000100: 26 88 25           Mov8 byte [di], ah   -- XXX lacks es:
+000103: 26 8A 25           Mov8 ah, byte [di]   -- XXX lacks es:
 ", res);
 }
-*/
