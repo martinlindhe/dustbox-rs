@@ -69,7 +69,6 @@ impl Register16 {
     }
 }
 
-
 #[derive(Debug)]
 pub struct Instruction {
     pub offset: usize,
@@ -119,6 +118,23 @@ struct Parameters {
     dst: Parameter,
 }
 
+impl Parameters {
+    fn describe(&self) -> String {
+        // XXX embed segment !!!
+
+        match self.dst {
+            Parameter::None() => format!("{:?}", self.command),
+            _ => {
+                let cmd = right_pad(&format!("{:?}", self.command), 9);
+                match self.src {
+                    Parameter::None() => format!("{}{}", cmd, self.dst),
+                    _ => format!("{}{}, {}", cmd, self.dst, self.src),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 enum Parameter {
     Imm8(u8),
@@ -132,6 +148,7 @@ enum Parameter {
     None(),
 }
 
+#[derive(Debug)]
 enum Segment {
     ES(),
     None(),
@@ -304,7 +321,13 @@ impl CPU {
         println!("");
     }
 
-    fn get_parameter_value(&mut self, p: &Parameter) -> usize {
+    fn get_parameter_value(&mut self, p: &Parameter, seg: &Segment) -> usize {
+        match *seg  {
+            Segment::None() => {},
+            _ => {
+                println!("XXX get_parameter_value error: unhandled segment {:?}", seg);
+            }
+        }
         match *p {
             Parameter::Imm8(imm) => imm as usize,
             Parameter::Imm16(imm) => imm as usize,
@@ -366,21 +389,10 @@ impl CPU {
         let length = self.ip - old_ip;
         self.ip = old_ip;
 
-        let text = match op.dst {
-            Parameter::None() => format!("{:?}", op.command),
-            _ => {
-                let cmd = right_pad(&format!("{:?}", op.command), 9);
-                match op.src {
-                    Parameter::None() => format!("{}{}", cmd, op.dst),
-                    _ => format!("{}{}, {}", cmd, op.dst, op.src),
-                }
-            }
-        };
-
         Instruction {
             offset: old_ip as usize,
             length: length as usize,
-            text: text,
+            text: op.describe(),
             bytes: self.read_u8_slice(old_ip as usize, length as usize),
         }
     }
@@ -390,8 +402,8 @@ impl CPU {
         match op.command {
             Op::Add16() => {
                 // two parameters (dst=reg)
-                let src = self.get_parameter_value(&op.src) as u16;
-                let mut dst = self.get_parameter_value(&op.dst) as u16;
+                let src = self.get_parameter_value(&op.src, &op.segment) as u16;
+                let mut dst = self.get_parameter_value(&op.dst, &op.segment) as u16;
                 dst += src;
                 // XXX flags
                 error!("XXX add16 - FLAGS");
@@ -400,7 +412,7 @@ impl CPU {
             Op::CallNear() => {
                 // call near rel
                 let old_ip = self.ip;
-                let temp_ip = self.get_parameter_value(&op.dst) as u16;
+                let temp_ip = self.get_parameter_value(&op.dst, &op.segment) as u16;
                 self.push16(old_ip);
                 self.ip = temp_ip;
             }
@@ -410,13 +422,13 @@ impl CPU {
             }
             Op::Dec8() => {
                 // single parameter (dst)
-                let mut data = self.get_parameter_value(&op.dst) as u8;
+                let mut data = self.get_parameter_value(&op.dst, &op.segment) as u8;
                 data -= 1;
                 error!("XXX dec8 - FLAGS!");
                 self.write_u8_param(&op.dst, data);
             }
             Op::Inc16() => {
-                let mut data = self.get_parameter_value(&op.dst) as u16;
+                let mut data = self.get_parameter_value(&op.dst, &op.segment) as u16;
                 data += 1;
                 error!("XXX inc16 - FLAGS!");
                 self.write_u16_param(&op.dst, data);
@@ -424,14 +436,14 @@ impl CPU {
             Op::Int() => {
                 // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
                 // http://wiki.osdev.org/Interrupt_Vector_Table
-                let int = self.get_parameter_value(&op.dst) as u8;
+                let int = self.get_parameter_value(&op.dst, &op.segment) as u8;
                 error!("XXX IMPL: int {:02X}", int);
             }
             Op::JmpNear() => {
-                self.ip = self.get_parameter_value(&op.dst) as u16;
+                self.ip = self.get_parameter_value(&op.dst, &op.segment) as u16;
             }
             Op::Loop() => {
-                let dst = self.get_parameter_value(&op.dst) as u16;
+                let dst = self.get_parameter_value(&op.dst, &op.segment) as u16;
                 self.r16[CX].val -= 1;
                 if self.r16[CX].val != 0 {
                     self.ip = dst;
@@ -442,17 +454,17 @@ impl CPU {
             }
             Op::Mov8() => {
                 // two parameters (dst=reg)
-                let data = self.get_parameter_value(&op.src) as u8;
+                let data = self.get_parameter_value(&op.src, &op.segment) as u8;
                 self.write_u8_param(&op.dst, data);
             }
             Op::Mov16() => {
                 // two parameters (dst=reg)
-                let data = self.get_parameter_value(&op.src) as u16;
+                let data = self.get_parameter_value(&op.src, &op.segment) as u16;
                 self.write_u16_param(&op.dst, data);
             }
             Op::Out8() => {
                 // two arguments (dst=DX or imm8)
-                let data = self.get_parameter_value(&op.src) as u8;
+                let data = self.get_parameter_value(&op.src, &op.segment) as u8;
                 self.out_u8(&op.dst, data);
             }
             Op::Pop16() => {
@@ -462,7 +474,7 @@ impl CPU {
             }
             Op::Push16() => {
                 // single parameter (dst)
-                let data = self.get_parameter_value(&op.dst) as u16;
+                let data = self.get_parameter_value(&op.dst, &op.segment) as u16;
                 self.push16(data);
             }
             Op::Retn() => {
@@ -485,8 +497,8 @@ impl CPU {
                 // two parameters (dst=reg)
                 error!("XXX XOR - FLAGS");
 
-                let src = self.get_parameter_value(&op.src) as u16;
-                let mut dst = self.get_parameter_value(&op.dst) as u16;
+                let src = self.get_parameter_value(&op.src, &op.segment) as u16;
+                let mut dst = self.get_parameter_value(&op.dst, &op.segment) as u16;
                 dst ^= src;
                 self.write_u16_param(&op.dst, dst);
             }
@@ -1315,7 +1327,7 @@ fn can_disassemble_segment_prefixed_instr() {
     let res = cpu.disassemble_block(0x100, 2);
 
 // XXX for correct disasm , we need to add segment es
-    assert_eq!("000100: 26 88 25           Mov8 byte [di], ah   -- XXX lacks es:
-000103: 26 8A 25           Mov8 ah, byte [di]   -- XXX lacks es:
+    assert_eq!("000100: 26 88 25           Mov8     byte [es:di], ah
+000103: 26 8A 25           Mov8     ah, byte [es:di]
 ", res);
 }
