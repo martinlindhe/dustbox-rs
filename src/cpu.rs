@@ -114,6 +114,7 @@ impl Instruction {
 enum Parameter {
     Imm8(u8),
     Imm16(u16),
+    ImmS8(i8), // byte +0x3f
     Ptr8(Segment, u16), // byte [u16]
     Ptr16(Segment, u16), // word [u16]
     Ptr8Amode(Segment, usize), // byte [amode], like "byte [bp+si]"
@@ -128,6 +129,7 @@ impl fmt::Display for Parameter {
         match self {
             &Parameter::Imm8(v) => write!(f, "0x{:02X}", v),
             &Parameter::Imm16(v) => write!(f, "0x{:04X}", v),
+            &Parameter::ImmS8(v) => write!(f, "byte 0x{:02X}", v), // XXX sign before 0x
             &Parameter::Ptr8(seg, v) => write!(f, "byte [{}0x{:04X}]", seg, v),
             &Parameter::Ptr16(seg, v) => write!(f, "word [{}0x{:04X}]", seg, v),
             &Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}{}]", seg, amode(v as u8)),
@@ -156,6 +158,7 @@ impl fmt::Display for Segment {
 
 #[derive(Debug)]
 enum Op {
+    Add8(),
     Add16(),
     CallNear(),
     Cli(),
@@ -384,12 +387,19 @@ impl CPU {
     fn execute(&mut self, op: &Instruction) {
         self.instruction_count += 1;
         match op.command {
+            Op::Add8() => {
+                // two parameters (dst=reg)
+                let src = self.read_parameter_value(&op.src) as u8;
+                let mut dst = self.read_parameter_value(&op.dst) as u8;
+                dst += src;
+                println!("XXX add8 - FLAGS");
+                self.write_parameter_u8(&op.dst, dst);
+            }
             Op::Add16() => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.src) as u16;
                 let mut dst = self.read_parameter_value(&op.dst) as u16;
                 dst += src;
-                // XXX flags
                 println!("XXX add16 - FLAGS");
                 self.write_parameter_u16(&op.dst, dst);
             }
@@ -589,6 +599,10 @@ impl CPU {
                 // arithmetic 16-bit
                 self.decode_81(p.segment)
             }
+            0x83 => {
+                // arithmetic signed 8-bit
+                self.decode_83(p.segment)
+            }
             0x88 => {
                 // mov r/m8, r8
                 let part = self.rm8_r8(p.segment);
@@ -711,7 +725,6 @@ impl CPU {
         }
     }
 
-
     // arithmetic 8-bit
     fn decode_80(&mut self, seg: Segment) -> Instruction {
         let x = self.read_mod_reg_rm();
@@ -745,11 +758,48 @@ impl CPU {
                 op.Cmd = "and"
             case 6:
                 op.Cmd = "xor"
-            case 7:
-                op.Cmd = "cmp"
             }*/
             _ => {
-                println!("decode_81 error: unknown reg {}", x.reg);
+                println!("decode_80 error: unknown reg {}", x.reg);
+            }
+        }
+        p
+    }
+
+    // arithmetic signed 8-bit
+    fn decode_83(&mut self, seg: Segment) -> Instruction {
+        let x = self.read_mod_reg_rm();
+        let mut p = Instruction {
+            segment: seg,
+            command: Op::Unknown(),
+            dst: self.rm16(seg, x.rm, x.md),
+            src: Parameter::ImmS8(self.read_s8()),
+        };
+
+        match x.reg {
+            0 => {
+                p.command = Op::Add8();
+            }
+            /*
+            5 => {
+                p.command = Op::Sub8();
+            }
+            7 => {
+                p.command = Op::Cmp8();
+            }
+            case 1:
+                op.Cmd = "or"
+            case 2:
+                op.Cmd = "adc"
+            case 3:
+                op.Cmd = "sbb"
+            case 4:
+                op.Cmd = "and"
+            case 6:
+                op.Cmd = "xor"
+            }*/
+            _ => {
+                println!("decode_83 error: unknown reg {}", x.reg);
             }
         }
         p
@@ -1452,14 +1502,16 @@ fn can_disassemble_arithmetic() {
     let code: Vec<u8> = vec![
         0x80, 0x3E, 0x31, 0x10, 0x00, // cmp byte [0x1031],0x0
         0x81, 0xC7, 0xC0, 0x00,       // add di,0xc0
-        0x83, 0xC7, 0x3A,            // add di,byte +0x3a
+        0x83, 0xC7, 0x3A,             // add di,byte +0x3a
+        0x83, 0xC7, 0xC6,             // add di,byte -0x3a
     ];
     cpu.load_rom(&code, 0x100);
-    let res = cpu.disassemble_block(0x100, 3);
+    let res = cpu.disassemble_block(0x100, 4);
 
     assert_eq!("000100: 80 3E 31 10 00     Cmp8     byte [0x1031], 0x00
 000105: 81 C7 C0 00        Add16    di, 0x00C0
-000109: 83 C7 3A           XXX
+000109: 83 C7 3A           Add8     di, byte +0x3A
+00010C: 83 C7 C6           Add8     di, byte -0x3A
 ",
                res);
 }
