@@ -97,15 +97,6 @@ pub struct Instruction {
 
 impl Instruction {
     fn describe(&self) -> String {
-        // XXX embed segment !!!  maybe should live in parameter instead ?
-        // then it could easily be shown in fmt::Display for Parameter
-        /*
-        let seg = match self.segment {
-            Segment::None() => "",
-            Segment::ES() => "es:",
-        };*/
-
-
         match self.dst {
             Parameter::None() => format!("{:?}", self.command),
             _ => {
@@ -156,9 +147,9 @@ enum Segment {
 
 impl fmt::Display for Segment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Segment::ES() => write!(f, "es:"),
-            Segment::None() => write!(f, ""),
+        match self {
+            &Segment::ES() => write!(f, "es:"),
+            &Segment::None() => write!(f, ""),
         }
     }
 }
@@ -880,11 +871,11 @@ impl CPU {
         self.r16[SP].val -= 2;
         let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
         println!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}       instr {}",
-              data,
-              self.sreg16[SS].val,
-              self.r16[SP].val,
-              offset,
-              self.instruction_count);
+                 data,
+                 self.sreg16[SS].val,
+                 self.r16[SP].val,
+                 offset,
+                 self.instruction_count);
         self.write_u16(offset, data);
     }
 
@@ -892,11 +883,11 @@ impl CPU {
         let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
         let data = self.peek_u16_at(offset);
         println!("pop16 {:04X}  from {:04X}:{:04X}  =>  {:06X}       instr {}",
-              data,
-              self.sreg16[SS].val,
-              self.r16[SP].val,
-              offset,
-              self.instruction_count);
+                 data,
+                 self.sreg16[SS].val,
+                 self.r16[SP].val,
+                 offset,
+                 self.instruction_count);
         self.r16[SP].val += 2;
         data
     }
@@ -1038,13 +1029,6 @@ impl CPU {
         }
     }
 
-    fn segment(&self, seg: Segment) -> u16 {
-        match seg {
-            Segment::ES() => self.sreg16[ES].val,
-            Segment::None() => 0,
-        }
-    }
-
     fn write_parameter_u16(&mut self, p: &Parameter, data: u16) {
         match *p {
             Parameter::Reg16(r) => {
@@ -1081,6 +1065,13 @@ impl CPU {
             res[i - offset] = self.memory[i];
         }
         res
+    }
+
+    fn segment(&self, seg: Segment) -> u16 {
+        match seg {
+            Segment::ES() => self.sreg16[ES].val,
+            Segment::None() => 0,
+        }
     }
 
     fn amode16(&mut self, idx: usize) -> usize {
