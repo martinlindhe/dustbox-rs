@@ -165,6 +165,7 @@ enum Op {
     Loop(),
     Mov8(),
     Mov16(),
+    Out8(),
     Pop16(),
     Push16(),
     Retn(),
@@ -173,6 +174,16 @@ enum Op {
     Unknown(),
 }
 
+
+// r8 (4 low of r16)
+const AL: usize = 0;
+const CL: usize = 1;
+const DL: usize = 2;
+const BL: usize = 3;
+const AH: usize = 4;
+const CH: usize = 5;
+const DH: usize = 6;
+const BH: usize = 7;
 
 // r16
 const AX: usize = 0;
@@ -432,7 +443,11 @@ impl CPU {
                 // two parameters (dst=reg)
                 let data = self.get_parameter_value(&op.src) as u16;
                 self.write_u16_param(&op.dst, data);
-
+            }
+            Op::Out8() => {
+                // two arguments (dst=DX or imm8)
+                let data = self.get_parameter_value(&op.src) as u8;
+                self.out_u8(&op.dst, data);
             }
             Op::Pop16() => {
                 // single parameter (dst)
@@ -613,6 +628,12 @@ impl CPU {
                 p.command = Op::JmpNear();
                 let x = self.read_rel16();
                 p.dst = Parameter::Imm16(x);
+                p
+            }
+            0xEE => {
+                p.command = Op::Out8();
+		        p.dst = Parameter::Reg16(DX);
+                p.src = Parameter::Reg8(AL);
                 p
             }
             0xFA => {
@@ -917,6 +938,21 @@ impl CPU {
         let lo = (data & 0xff) as u8;
         self.write_u8(offset, lo);
         self.write_u8(offset + 1, hi);
+    }
+
+    // output byte to I/O port
+    fn out_u8(&mut self, p: &Parameter, data: u8) {
+        let dst = match *p {
+            Parameter::Reg16(r) => {
+                self.r16[r].val
+            }
+            _ => {
+                error!("out_u8 unhandled type {:?}", p);
+                0
+            }
+        };
+
+        error!("XXX unhandled out_u8 to {:04X}, data {:02X}", dst, data);
     }
 
     fn write_u8_param(&mut self, p: &Parameter, data: u8) {
