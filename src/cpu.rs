@@ -87,7 +87,8 @@ struct ModRegRm {
     rm: u8,
 }
 
-struct Instruction {
+#[derive(Debug)]
+pub struct Instruction {
     command: Op,
     segment: Segment,
     src: Parameter,
@@ -103,6 +104,7 @@ impl Instruction {
             Segment::None() => "",
             Segment::ES() => "es:",
         };*/
+
 
         match self.dst {
             Parameter::None() => format!("{:?}", self.command),
@@ -135,9 +137,9 @@ impl fmt::Display for Parameter {
         match self {
             &Parameter::Imm8(v) => write!(f, "0x{:02X}", v),
             &Parameter::Imm16(v) => write!(f, "0x{:04X}", v),
-            &Parameter::Ptr8(ref seg, v) => write!(f, "byte [{}0x{:04X}]", seg, v),
-            &Parameter::Ptr16(ref seg, v) => write!(f, "word [{}0x{:04X}]", seg, v),
-            &Parameter::Ptr8Amode(ref seg, v) => write!(f, "byte [{}{}]", seg, amode(v as u8)),
+            &Parameter::Ptr8(seg, v) => write!(f, "byte [{}0x{:04X}]", seg, v),
+            &Parameter::Ptr16(seg, v) => write!(f, "word [{}0x{:04X}]", seg, v),
+            &Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}{}]", seg, amode(v as u8)),
             &Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
             &Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
             &Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
@@ -188,6 +190,7 @@ pub struct InstructionInfo {
     pub length: usize,
     pub text: String,
     pub bytes: Vec<u8>,
+    pub instruction: Instruction,
 }
 
 impl InstructionInfo {
@@ -336,40 +339,6 @@ impl CPU {
         println!("");
     }
 
-    fn get_parameter_value(&mut self, p: &Parameter) -> usize {
-        match p {
-            &Parameter::Imm8(imm) => imm as usize,
-            &Parameter::Imm16(imm) => imm as usize,
-            &Parameter::Ptr8(ref seg, imm) => {
-                println!("XXX use segment {}", seg);
-                self.peek_u8_at(imm as usize) as usize
-            },
-            &Parameter::Ptr16(ref seg, imm) => {
-                println!("XXX use segment {}", seg);
-                self.peek_u16_at(imm as usize) as usize
-            }
-            &Parameter::Ptr8Amode(ref seg, r) => {
-                println!("XXX use segment {}", seg);
-                let imm = self.amode16(r);
-                self.peek_u8_at(imm as usize) as usize
-            }
-            &Parameter::Reg8(r) => {
-                let lor = r & 3;
-                if r & 4 == 0 {
-                    self.r16[lor].lo_u8() as usize
-                } else {
-                    self.r16[lor].hi_u8() as usize
-                }
-            }
-            &Parameter::Reg16(r) => self.r16[r].val as usize,
-            &Parameter::SReg16(r) => self.sreg16[r].val as usize,
-            _ => {
-                println!("get_parameter_value error: unhandled parameter: {:?}", p);
-                0
-            }
-        }
-    }
-
     pub fn execute_instruction(&mut self) -> bool {
         let op = self.decode_instruction(Segment::None()); // XXX should probably be cs?!
         self.execute(&op);
@@ -410,6 +379,7 @@ impl CPU {
             length: length as usize,
             text: op.describe(),
             bytes: self.read_u8_slice(old_ip as usize, length as usize),
+            instruction: op,
         }
     }
 
@@ -523,7 +493,6 @@ impl CPU {
             }
         }
     }
-
 
     fn decode_instruction(&mut self, seg: Segment) -> Instruction {
         let b = self.read_u8();
@@ -772,6 +741,40 @@ impl CPU {
             }
         }
         p
+    }
+
+    fn get_parameter_value(&mut self, p: &Parameter) -> usize {
+        match p {
+            &Parameter::Imm8(imm) => imm as usize,
+            &Parameter::Imm16(imm) => imm as usize,
+            &Parameter::Ptr8(ref seg, imm) => {
+                println!("XXX use segment {}", seg);
+                self.peek_u8_at(imm as usize) as usize
+            }
+            &Parameter::Ptr16(ref seg, imm) => {
+                println!("XXX use segment {}", seg);
+                self.peek_u16_at(imm as usize) as usize
+            }
+            &Parameter::Ptr8Amode(ref seg, r) => {
+                println!("XXX use segment {}", seg);
+                let imm = self.amode16(r);
+                self.peek_u8_at(imm as usize) as usize
+            }
+            &Parameter::Reg8(r) => {
+                let lor = r & 3;
+                if r & 4 == 0 {
+                    self.r16[lor].lo_u8() as usize
+                } else {
+                    self.r16[lor].hi_u8() as usize
+                }
+            }
+            &Parameter::Reg16(r) => self.r16[r].val as usize,
+            &Parameter::SReg16(r) => self.sreg16[r].val as usize,
+            _ => {
+                println!("get_parameter_value error: unhandled parameter: {:?}", p);
+                0
+            }
+        }
     }
 
     // decode r8, r/m8
@@ -1048,7 +1051,10 @@ impl CPU {
                 self.write_u16(v as usize, data);
             }
             Parameter::Ptr16(seg, v) => {
-                println!("XXX write_u16_param Ptr16 seg={} v={:04X}, data={:04X}", seg, v, data);
+                println!("XXX write_u16_param Ptr16 seg={} v={:04X}, data={:04X}",
+                         seg,
+                         v,
+                         data);
                 println!("XXX ERROR make use of segment {}", seg);
                 self.write_u16(v as usize, data);
             }
@@ -1338,11 +1344,12 @@ fn can_disassemble_segment_prefixed_instr() {
         0x26, 0x88, 0x25, // mov [es:di],ah
         0x26, 0x8A, 0x25, // mov ah,[es:di]
     ];
-        cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 2);
 
-// XXX for correct disasm , we need to add segment es
+    // XXX for correct disasm , we need to add segment es
     assert_eq!("000100: 26 88 25           Mov8     byte [es:di], ah
 000103: 26 8A 25           Mov8     ah, byte [es:di]
-", res);
+",
+               res);
 }

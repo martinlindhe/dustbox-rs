@@ -21,8 +21,8 @@ fn main() {
     drop(colog::init());
 
     // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
-    //let app = "samples/adrmode/adrmode.com";
-    let app = "../dos-software-decoding/games/Blort (1987)(Hennsoft)/blort.com";
+    let app = "samples/adrmode/adrmode.com";
+    //let app = "../dos-software-decoding/games/Blort (1987)(Hennsoft)/blort.com";
     //let app = "../dos-software-decoding/games/Dig Dug (1982)(Namco)/digdug.com";
     //let app = "samples/bar/bar.com";
     let data = tools::read_binary(app);
@@ -53,6 +53,7 @@ fn main() {
             }
             "d" | "disasm" => {
                 let op = cpu.disasm_instruction();
+                info!("{:?}", op);
                 info!("{}", op.pretty_string());
             }
             "v" => {
@@ -137,21 +138,6 @@ fn main() {
             }
         }
     }
-    /*
-
-    let mut disasm = disasm::Disassembly::new();
-
-    for _ in 0..340 {
-        let pc = cpu.pc as usize;
-        disasm.pc = pc;
-        let data = cpu.read_u8_slice(pc, 10);
-        let text = disasm.disassemble(&data, pc);
-        info!("{}", text);
-
-        cpu.execute_instruction();
-        cpu.print_registers();
-    }
-*/
 }
 
 fn parse_number_string(s: &str) -> usize {
