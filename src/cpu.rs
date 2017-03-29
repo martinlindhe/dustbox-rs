@@ -122,6 +122,8 @@ struct Parameters {
 enum Parameter {
     Imm8(u8),
     Imm16(u16),
+    Offset8(u16), // points to byte at u16
+    Offset16(u16), // points to word at u16
     Reg8(usize), // index into the low 4 of CPU.r16
     Reg16(usize), // index into CPU.r16
     SReg16(usize), // index into cpu.sreg16
@@ -131,24 +133,14 @@ enum Parameter {
 impl fmt::Display for Parameter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Parameter::Imm8(v) => {
-                write!(f, "0x{:02X}", v)
-            }
-            Parameter::Imm16(v) => {
-                write!(f, "0x{:04X}", v)
-            }
-            Parameter::Reg8(v) => {
-                write!(f, "{}", r8(v as u8))
-            }
-            Parameter::Reg16(v) => {
-                write!(f, "{}", r16(v as u8))
-            }
-            Parameter::SReg16(v) => {
-                write!(f, "{}", sr16(v as u8))
-            }
-            Parameter::Empty() => {
-                write!(f, "")
-            }
+            Parameter::Imm8(v) => write!(f, "0x{:02X}", v),
+            Parameter::Imm16(v) => write!(f, "0x{:04X}", v),
+            Parameter::Offset8(v) => write!(f, "byte [0x{:04X}]", v),
+            Parameter::Offset16(v) => write!(f, "word [0x{:04X}]", v),
+            Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
+            Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
+            Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
+            Parameter::Empty() => write!(f, ""),
         }
     }
 }
@@ -306,6 +298,10 @@ impl CPU {
 
     fn get_parameter_value(&mut self, p: &Parameter) -> usize {
         match *p {
+            Parameter::Imm8(imm) => imm as usize,
+            Parameter::Imm16(imm) => imm as usize,
+            Parameter::Offset8(imm) => self.peek_u8_at(imm as usize) as usize,
+            Parameter::Offset16(imm) => self.peek_u16_at(imm as usize) as usize,
             Parameter::Reg8(r) => {
                 let lor = r & 3;
                 if r & 4 == 0 {
@@ -316,10 +312,8 @@ impl CPU {
             }
             Parameter::Reg16(r) => self.r16[r].val as usize,
             Parameter::SReg16(r) => self.sreg16[r].val as usize,
-            Parameter::Imm8(imm) => imm as usize,
-            Parameter::Imm16(imm) => imm as usize,
             _ => {
-                error!("get_parameter_value error: unhandled parameter: {:?}", p);
+                println!("get_parameter_value error: unhandled parameter: {:?}", p);
                 0
             }
         }
@@ -363,7 +357,7 @@ impl CPU {
         let text = match op.dst {
             Parameter::Empty() => format!("{:?}", op.command),
             _ => {
-                let cmd = right_pad( &format!("{:?}", op.command), 9);
+                let cmd = right_pad(&format!("{:?}", op.command), 9);
                 match op.src {
                     Parameter::Empty() => format!("{}{}", cmd, op.dst),
                     _ => format!("{}{}, {}", cmd, op.dst, op.src),
@@ -559,9 +553,8 @@ impl CPU {
             }
             0x8A => {
                 // mov r8, r/m8
-		        p.command = Op::Mov8();
-		        //op.parameterRRm(data, r8)
                 let part = self.r8_rm8();
+                p.command = Op::Mov8();
                 p.dst = part.dst;
                 p.src = part.src;
                 p
@@ -640,7 +633,7 @@ impl CPU {
             }
             0xEE => {
                 p.command = Op::Out8();
-		        p.dst = Parameter::Reg16(DX);
+                p.dst = Parameter::Reg16(DX);
                 p.src = Parameter::Reg8(AL);
                 p
             }
@@ -792,25 +785,26 @@ impl CPU {
                 } else {
                     self.amode16(rm as usize)
                 };
-                Parameter::Imm8(self.peek_u8_at(pos as usize))
+                println!("XXX rm8 Offset8 pos={:04X}", pos);
+                Parameter::Offset8(pos)
             }
             1 => {
                 // [reg+d8]
                 // XXX read value of amode(x.rm) into pos
-                error!("XXX FIXME rm8 [reg+d8]");
+                println!("XXX FIXME rm8 [reg+d8]");
                 let mut pos = 0;
                 pos += self.read_s8() as u16; // XXX handle signed properly
 
-                Parameter::Imm8(self.peek_u8_at(pos as usize))
+                Parameter::Offset8(pos)
             }
             2 => {
                 // [reg+d16]
                 // XXX read value of amode(x.rm) into pos
-                error!("XXX FIXME rm8 [reg+d16]");
+                println!("XXX FIXME rm8 [reg+d16]");
                 let mut pos = 0;
                 pos += self.read_s16() as u16; // XXX handle signed properly
 
-                Parameter::Imm8(self.peek_u8_at(pos as usize))
+                Parameter::Offset8(pos)
             }
             _ => Parameter::Reg8(rm as usize),
         }
@@ -821,16 +815,16 @@ impl CPU {
         match md {
             0 => {
                 // [reg]
-                let mut pos = 0;
-                if rm == 6 {
+                let pos = if rm == 6 {
                     // [u16]
-                    pos = self.read_u16();
+                    self.read_u16()
                 } else {
                     error!("XXX FIXME rm16 [reg]");
                     // XXX read value of amode(x.rm) into pos
-                    let pos = 0;
-                }
-                Parameter::Imm16(self.peek_u16_at(pos as usize))
+                    0
+                };
+                error!("XXX rm16 0, pos = {:04X}", pos);
+                Parameter::Offset16(pos)
             }
             1 => {
                 // [reg+d8]
@@ -839,7 +833,7 @@ impl CPU {
                 let mut pos = 0;
                 pos += self.read_s8() as u16; // XXX handle signed properly
 
-                Parameter::Imm16(self.peek_u16_at(pos as usize))
+                Parameter::Offset16(pos)
             }
             2 => {
                 // [reg+d16]
@@ -848,7 +842,7 @@ impl CPU {
                 let mut pos = 0;
                 pos += self.read_s16() as u16; // XXX handle signed properly
 
-                Parameter::Imm16(self.peek_u16_at(pos as usize))
+                Parameter::Offset16(pos)
             }
             _ => Parameter::Reg16(rm as usize),
         }
@@ -931,7 +925,7 @@ impl CPU {
     }
 
     fn peek_u8_at(&mut self, pos: usize) -> u8 {
-        // error!("peek_u8_at   pos {:04X}  = {:02X}", pos, self.memory[pos]);
+        // println!("peek_u8_at   pos {:04X}  = {:02X}", pos, self.memory[pos]);
         self.memory[pos]
     }
 
@@ -942,6 +936,7 @@ impl CPU {
     }
 
     fn write_u16(&mut self, offset: usize, data: u16) {
+        // println!("write_u16 [{:04X}] = {:04X}", offset, data);
         let hi = (data >> 8) as u8;
         let lo = (data & 0xff) as u8;
         self.write_u8(offset, lo);
@@ -951,16 +946,14 @@ impl CPU {
     // output byte to I/O port
     fn out_u8(&mut self, p: &Parameter, data: u8) {
         let dst = match *p {
-            Parameter::Reg16(r) => {
-                self.r16[r].val
-            }
+            Parameter::Reg16(r) => self.r16[r].val,
             _ => {
-                error!("out_u8 unhandled type {:?}", p);
+                println!("out_u8 unhandled type {:?}", p);
                 0
             }
         };
 
-        error!("XXX unhandled out_u8 to {:04X}, data {:02X}", dst, data);
+        println!("XXX unhandled out_u8 to {:04X}, data {:02X}", dst, data);
     }
 
     fn write_u8_param(&mut self, p: &Parameter, data: u8) {
@@ -974,7 +967,7 @@ impl CPU {
                 }
             }
             _ => {
-                error!("write_u8_param unhandled type {:?}", p);
+                println!("write_u8_param unhandled type {:?}", p);
             }
         }
     }
@@ -987,8 +980,15 @@ impl CPU {
             Parameter::SReg16(r) => {
                 self.sreg16[r].val = data;
             }
+            Parameter::Imm16(v) => {
+                self.write_u16(v as usize, data);
+            }
+            Parameter::Offset16(v) => {
+                println!("XXX write_u16_param offset16  v={:04X}, data={:04X}",v,data);
+                self.write_u16(v as usize, data);
+            }
             _ => {
-                error!("write_u16_param unhandled type {:?}", p);
+                println!("write_u16_param unhandled type {:?}", p);
             }
         }
     }
@@ -1226,7 +1226,7 @@ fn can_disassemble_basic_instructions() {
 
                //010D: mov ax,[es:di]",
                res);
-/*
+    /*
     assert_diff!("0100: call 0108
 0103: mov dx, 010B
 0106: mov ah, 09
