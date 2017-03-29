@@ -513,6 +513,14 @@ impl CPU {
                 p
             }
             0x31 => {
+                // xor r/m16, r16
+                let part = self.rm16_r16();
+                p.command = Op::Xor16();
+                p.dst = part.dst;
+                p.src = part.src;
+                p
+            }
+            0x33 => {
                 // xor r16, r/m16
                 let part = self.r16_rm16();
                 p.command = Op::Xor16();
