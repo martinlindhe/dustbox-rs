@@ -2,6 +2,7 @@
 #![allow(unused_attributes)]
 #![allow(unused_imports)]
 #[macro_use]
+#[macro_use(assert_diff)]
 
 extern crate log;
 extern crate colog;

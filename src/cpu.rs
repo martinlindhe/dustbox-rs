@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+
+
 pub struct CPU {
     pub ip: u16,
     pub instruction_count: usize,
@@ -286,6 +288,19 @@ impl CPU {
             }
             _ => true,
         }
+    }
+
+    pub fn disassemble_block(&mut self, origin: u16, count: usize) -> String {
+        let old_ip = self.ip;
+        self.ip = origin as u16;
+        let mut res = String::new();
+
+        for i in 0..count {
+            let op = self.disasm_instruction();
+            res.push_str(&op.pretty_string());
+            res.push_str("\n");
+        }
+        res
     }
 
     pub fn disasm_instruction(&mut self) -> Instruction {
@@ -804,7 +819,13 @@ impl CPU {
     fn read_u8(&mut self) -> u8 {
         let offset = self.get_offset();
         let b = self.memory[offset];
-        // info!("___ DBG: read u8 {:02X} from {:06X} ... {:04X}:{:04X}", b, offset, self.sreg16[CS].val, self.ip);
+        /*
+        info!("___ DBG: read u8 {:02X} from {:06X} ... {:04X}:{:04X}",
+              b,
+              offset,
+              self.sreg16[CS].val,
+              self.ip);
+        */
         self.ip += 1;
         b
     }
@@ -924,42 +945,6 @@ fn amode(reg: u8) -> &'static str {
 }
 
 #[test]
-fn can_execute_sr_r16() {
-    let mut cpu = CPU::new();
-    let code: Vec<u8> = vec![
-        0xB9, 0x23, 0x01, // mov cx,0x123
-        0x8E, 0xC1,       // mov es,cx   | sr, r16
-    ];
-    cpu.load_rom(&code, 0x100);
-
-    cpu.execute_instruction();
-    assert_eq!(0x103, cpu.ip);
-    assert_eq!(0x123, cpu.r16[CX].val);
-
-    cpu.execute_instruction();
-    assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x123, cpu.sreg16[ES].val);
-}
-
-#[test]
-fn can_execute_r16_r16() {
-    let mut cpu = CPU::new();
-    let code: Vec<u8> = vec![
-        0xB8, 0x23, 0x01, // mov ax,0x123
-        0x8B, 0xE0,       // mov sp,ax   | r16, r16
-    ];
-    cpu.load_rom(&code, 0x100);
-
-    cpu.execute_instruction();
-    assert_eq!(0x103, cpu.ip);
-    assert_eq!(0x123, cpu.r16[AX].val);
-
-    cpu.execute_instruction();
-    assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x123, cpu.r16[SP].val);
-}
-
-#[test]
 fn can_handle_stack() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
@@ -985,10 +970,8 @@ fn can_handle_stack() {
     assert_eq!(0x8888, cpu.sreg16[ES].val);
 }
 
-
-
 #[test]
-fn can_execute_mov() {
+fn can_execute_mov_r8() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB2, 0x13, // mov dl,0x13
@@ -996,11 +979,111 @@ fn can_execute_mov() {
     ];
     cpu.load_rom(&code, 0x100);
 
-    cpu.execute_instruction(); // mov dl,0x13
+    cpu.execute_instruction();
     assert_eq!(0x102, cpu.ip);
     assert_eq!(0x13, cpu.r16[DX].lo_u8());
 
-    cpu.execute_instruction(); // mov al,dl
+    cpu.execute_instruction();
     assert_eq!(0x104, cpu.ip);
     assert_eq!(0x13, cpu.r16[AX].lo_u8());
 }
+
+#[test]
+fn can_execute_mv_r16() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x23, 0x01, // mov ax,0x123
+        0x8B, 0xE0,       // mov sp,ax   | r16, r16
+    ];
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction();
+    assert_eq!(0x103, cpu.ip);
+    assert_eq!(0x123, cpu.r16[AX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x105, cpu.ip);
+    assert_eq!(0x123, cpu.r16[SP].val);
+}
+
+#[test]
+fn can_execute_mov_r16_rm16() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB9, 0x23, 0x01, // mov cx,0x123
+        0x8E, 0xC1,       // mov es,cx   | sr, r16
+    ];
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction();
+    assert_eq!(0x103, cpu.ip);
+    assert_eq!(0x123, cpu.r16[CX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x105, cpu.ip);
+    assert_eq!(0x123, cpu.sreg16[ES].val);
+}
+
+
+
+#[test]
+fn can_disassemble_basic_instructions() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xE8, 0x05, 0x00, // call l_0x108   ; call a later offset
+        0xBA, 0x0B, 0x01, // mov dx,0x10b
+        0xB4, 0x09,       // mov ah,0x9
+        0xCD, 0x21,       // l_0x108: int 0x21
+        0xE8, 0xFB, 0xFF, // call l_0x108   ; call an earlier offset
+        /*0x26,*/  //0x8B, 0x05, // mov ax,[es:di]  - XXX 0x26 means next instr uses segment ES
+    ];
+    cpu.load_rom(&code, 0x100);
+    let res = cpu.disassemble_block(0x100, 5);
+
+    println!("{}", res);
+
+    assert_eq!("0100: call  0108
+0103: mov   dx, 010B
+0106: mov   ah, 09
+0108: int   21
+010A: call  0108",
+               //010D: mov ax,[es:di]",
+               res);
+/*
+    assert_diff!("0100: call 0108
+0103: mov dx, 010B
+0106: mov ah, 09
+0108: int 21
+010A: call 0108",
+                 &res,
+                 "\n",
+                 0);
+*/
+}
+
+/*
+#[test]
+fn can_disassemble_xor() {
+    let mut disasm = Disassembly::new();
+    let code: Vec<u8> = vec![
+        0x31, 0xC1, // xor cx,ax
+        0x31, 0xC8, // xor ax,cx
+    ];
+    let res = disasm.disassemble(&code, 0x100);
+
+    assert_eq!("0100: xor   cx, ax
+0102: xor   ax, cx",
+               res);
+}
+
+#[test]
+fn can_disassemble_mov() {
+    let mut disasm = Disassembly::new();
+    let code: Vec<u8> = vec![
+        0x88, 0xC8, // mov al, cl
+    ];
+    let res = disasm.disassemble(&code, 0x100);
+
+    assert_eq!("0100: mov   al, cl", res);
+}
+*/
