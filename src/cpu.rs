@@ -1463,6 +1463,30 @@ fn can_execute_segment_prefixed() {
 }
 
 #[test]
+fn can_execute_imms8() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xBF, 0x00, 0x01, // mov di,0x100
+        0x83, 0xC7, 0x3A, // add di,byte +0x3a
+        0x83, 0xC7, 0xC6, // add di,byte -0x3a
+    ];
+
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction();
+    assert_eq!(0x103, cpu.ip);
+    assert_eq!(0x0100, cpu.r16[DI].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x106, cpu.ip);
+    assert_eq!(0x013A, cpu.r16[DI].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x109, cpu.ip);
+    assert_eq!(0x0100, cpu.r16[DI].val);
+}
+
+#[test]
 fn can_disassemble_basic() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![

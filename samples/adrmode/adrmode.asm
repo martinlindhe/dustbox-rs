@@ -2,6 +2,7 @@
 
     org  0x100        ; .com files always start 256 bytes into the segment
 
+    mov di, 0x100
     add di,byte +0x3a
     add di,byte -0x3a
 
