@@ -526,7 +526,7 @@ impl CPU {
                 // es segment prefix
                 // XXX specify segment in the relevant parameter (?)
                 // XXX try 1: just ignore the segment prefix
-                self.decode_instruction(seg)
+                self.decode_instruction(Segment::ES())
             }
             0x31 => {
                 // xor r/m16, r16
