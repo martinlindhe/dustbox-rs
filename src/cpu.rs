@@ -173,6 +173,7 @@ enum Op {
     Inc16(),
     Int(),
     JmpNear(),
+    JmpShort(),
     Jz(),
     Loop(),
     Mov8(),
@@ -425,15 +426,15 @@ impl CPU {
             Op::Dec8() => {
                 // single parameter (dst)
                 let mut data = self.read_parameter_value(&op.dst) as u8;
-                data -= 1;
+                let res = (Wrapping(data) - Wrapping(1)).0;
                 println!("XXX dec8 - FLAGS!");
-                self.write_parameter_u8(&op.dst, data);
+                self.write_parameter_u8(&op.dst, res);
             }
             Op::Inc16() => {
                 let mut data = self.read_parameter_value(&op.dst) as u16;
-                data += 1;
+                let res = (Wrapping(data) + Wrapping(1)).0;
                 println!("XXX inc16 - FLAGS!");
-                self.write_parameter_u16(&op.dst, data);
+                self.write_parameter_u16(&op.dst, res);
             }
             Op::Int() => {
                 // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
@@ -442,6 +443,9 @@ impl CPU {
                 println!("XXX IMPL: int {:02X}", int);
             }
             Op::JmpNear() => {
+                self.ip = self.read_parameter_value(&op.dst) as u16;
+            }
+            Op::JmpShort() => {
                 self.ip = self.read_parameter_value(&op.dst) as u16;
             }
             Op::Jz() => {
@@ -503,11 +507,11 @@ impl CPU {
             Op::Sub16() => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.src) as u16;
-                let mut dst = self.read_parameter_value(&op.dst) as u16;
-                dst -= src;
+                let dst = self.read_parameter_value(&op.dst) as u16;
+                let res = (Wrapping(dst) - Wrapping(src)).0;
                 // XXX flags
                 println!("XXX sub16 - FLAGS");
-                self.write_parameter_u16(&op.dst, dst);
+                self.write_parameter_u16(&op.dst, res);
             }
             Op::Xor16() => {
                 // two parameters (dst=reg)
@@ -705,8 +709,13 @@ impl CPU {
             0xE9 => {
                 // jmp near rel16
                 p.command = Op::JmpNear();
-                let x = self.read_rel16();
-                p.dst = Parameter::Imm16(x);
+                p.dst = Parameter::Imm16(self.read_rel16());
+                p
+            }
+            0xEB => {
+                // jmp short rel8
+                p.command = Op::JmpShort();
+                p.dst = Parameter::Imm16(self.read_rel8());
                 p
             }
             0xEE => {
@@ -1123,12 +1132,12 @@ impl CPU {
             &Parameter::Imm16(imm) => imm as isize,
             &Parameter::ImmS8(imm) => imm as isize,
             &Parameter::Ptr8(seg, imm) => {
-                println!("XXX use segment {}", seg);
-                self.peek_u8_at(imm as usize) as isize
+                let offset = (self.segment(seg) as usize * 16) + imm as usize;
+                self.peek_u8_at(offset) as isize
             }
             &Parameter::Ptr16(seg, imm) => {
-                println!("XXX use segment {}", seg);
-                self.peek_u16_at(imm as usize) as isize
+                let offset = (self.segment(seg) as usize * 16) + imm as usize;
+                self.peek_u16_at(offset) as isize
             }
             &Parameter::Ptr8Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
