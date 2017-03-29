@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-
+use std::fmt;
 
 pub struct CPU {
     pub ip: u16,
@@ -80,9 +80,11 @@ pub struct Instruction {
 impl Instruction {
     pub fn pretty_string(&self) -> String {
         // XXX pad hex up to 16 spaces...
-        format!("[{:06X}] {}   {}",
+
+        let hex = self.to_hex_string(&self.bytes);
+        format!("{:06X}: {}   {}",
                 self.offset,
-                self.to_hex_string(&self.bytes),
+                right_pad(&hex, 16),
                 self.text)
     }
 
@@ -92,6 +94,16 @@ impl Instruction {
     }
 }
 
+fn right_pad(s: &str, len: usize) -> String {
+    let mut res = String::new();
+    res.push_str(s);
+    // XXX doesnt handle the case where s is longer than len
+    let padding_len = len - s.len();
+    for _ in 0..padding_len {
+        res.push_str(" ");
+    }
+    res
+}
 
 struct ModRegRm {
     md: u8, // NOTE: "mod" is reserved in rust
@@ -114,6 +126,31 @@ enum Parameter {
     Reg16(usize), // index into CPU.r16
     SReg16(usize), // index into cpu.sreg16
     Empty(),
+}
+
+impl fmt::Display for Parameter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Parameter::Imm8(v) => {
+                write!(f, "0x{:02X}", v)
+            }
+            Parameter::Imm16(v) => {
+                write!(f, "0x{:04X}", v)
+            }
+            Parameter::Reg8(v) => {
+                write!(f, "{}", r8(v as u8))
+            }
+            Parameter::Reg16(v) => {
+                write!(f, "{}", r16(v as u8))
+            }
+            Parameter::SReg16(v) => {
+                write!(f, "{}", sr16(v as u8))
+            }
+            Parameter::Empty() => {
+                write!(f, "")
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -299,7 +336,10 @@ impl CPU {
             let op = self.disasm_instruction();
             res.push_str(&op.pretty_string());
             res.push_str("\n");
+            self.ip += op.length as u16;
         }
+
+        self.ip = old_ip;
         res
     }
 
@@ -312,9 +352,10 @@ impl CPU {
         let text = match op.dst {
             Parameter::Empty() => format!("{:?}", op.command),
             _ => {
+                let cmd = right_pad( &format!("{:?}", op.command), 9);
                 match op.src {
-                    Parameter::Empty() => format!("{:?}  {:?}", op.command, op.dst),
-                    _ => format!("{:?}  {:?}, {:?}", op.command, op.dst, op.src),
+                    Parameter::Empty() => format!("{}{}", cmd, op.dst),
+                    _ => format!("{}{}, {}", cmd, op.dst, op.src),
                 }
             }
         };
@@ -915,9 +956,35 @@ impl CPU {
     }
 }
 
+fn r8(reg: u8) -> &'static str {
+    match reg {
+        0 => "al",
+        1 => "cl",
+        2 => "dl",
+        3 => "bl",
+        4 => "ah",
+        5 => "ch",
+        6 => "dh",
+        7 => "bh",
+        _ => "?",
+    }
+}
 
+fn r16(reg: u8) -> &'static str {
+    match reg {
+        0 => "ax",
+        1 => "cx",
+        2 => "dx",
+        3 => "bx",
+        4 => "sp",
+        5 => "bp",
+        6 => "si",
+        7 => "di",
+        _ => "?",
+    }
+}
 
-fn sreg(reg: u8) -> &'static str {
+fn sr16(reg: u8) -> &'static str {
     match reg {
         0 => "es",
         1 => "cs",
@@ -1040,13 +1107,13 @@ fn can_disassemble_basic_instructions() {
     cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 5);
 
-    println!("{}", res);
+    assert_eq!("000100: E8 05 00           CallNear 0x0108
+000103: BA 0B 01           Mov16    dx, 0x010B
+000106: B4 09              Mov8     ah, 0x09
+000108: CD 21              Int      0x21
+00010A: E8 FB FF           CallNear 0x0108
+",
 
-    assert_eq!("0100: call  0108
-0103: mov   dx, 010B
-0106: mov   ah, 09
-0108: int   21
-010A: call  0108",
                //010D: mov ax,[es:di]",
                res);
 /*
