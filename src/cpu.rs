@@ -979,18 +979,17 @@ impl CPU {
         match p {
             &Parameter::Imm8(imm) => imm as usize,
             &Parameter::Imm16(imm) => imm as usize,
-            &Parameter::Ptr8(ref seg, imm) => {
+            &Parameter::Ptr8(seg, imm) => {
                 println!("XXX use segment {}", seg);
                 self.peek_u8_at(imm as usize) as usize
             }
-            &Parameter::Ptr16(ref seg, imm) => {
+            &Parameter::Ptr16(seg, imm) => {
                 println!("XXX use segment {}", seg);
                 self.peek_u16_at(imm as usize) as usize
             }
-            &Parameter::Ptr8Amode(ref seg, r) => {
-                println!("XXX use segment {}", seg);
-                let imm = self.amode16(r);
-                self.peek_u8_at(imm as usize) as usize
+            &Parameter::Ptr8Amode(seg, r) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                self.peek_u8_at(offset) as usize
             }
             &Parameter::Reg8(r) => {
                 let lor = r & 3;
