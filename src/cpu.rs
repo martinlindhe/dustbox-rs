@@ -51,6 +51,9 @@ impl Flags {
         // (0 indicates a positive value and 1 indicates a negative value.)
         self.sign = v & 0x80 == 1;
     }
+    fn set_sign_u16(&mut self, v: usize) {
+        self.sign = v & 0x8000 == 1;
+    }
     fn set_parity(&mut self, v: usize) {
         // Set if the least-significant byte of the result contains an
         // even number of 1 bits; cleared otherwise.
@@ -60,24 +63,39 @@ impl Flags {
         // Zero flag — Set if the result is zero; cleared otherwise.
         self.zero = (v & 0xFF) == 0;
     }
+    fn set_zero_u16(&mut self, v: usize) {
+        self.zero = (v & 0xFFFF) == 0;
+    }
     fn set_auxiliary(&mut self, res: usize, v1: usize, v2: usize) {
         // Set if an arithmetic operation generates a carry or a borrow out
         // of bit 3 of the result; cleared otherwise. This flag is used in
         // binary-coded decimal (BCD) arithmetic.
         self.auxiliary_carry = (res ^ (v1 ^ v2)) & 0x10 != 0;
     }
-    fn set_overflow_u8(&mut self, res: usize, v1: usize, v2: usize) {
+    fn set_overflow_add_u8(&mut self, res: usize, v1: usize, v2: usize) {
         // Set if the integer result is too large a positive number or too
         // small a negative number (excluding the sign-bit) to fit in the
         // destination operand; cleared otherwise. This flag indicates an
         // overflow condition for signed-integer (two’s complement) arithmetic.
         self.overflow = (res ^ v1) & (res ^ v2) & 0x80 != 0;
     }
+    fn set_overflow_add_u16(&mut self, res: usize, v1: usize, v2: usize) {
+        self.overflow = (res ^ v1) & (res ^ v2) & 0x8000 != 0;
+    }
+    fn set_overflow_sub_u8(&mut self, res: usize, v1: usize, v2: usize) {
+        self.overflow = (v2 ^ v1) & (v2 ^ res) & 0x80 != 0;
+    }
+    fn set_overflow_sub_u16(&mut self, res: usize, v1: usize, v2: usize) {
+        self.overflow = (v2 ^ v1) & (v2 ^ res) & 0x8000 != 0;
+    }
     fn set_carry_u8(&mut self, res: usize, v1: usize, v2: usize) {
         // Set if an arithmetic operation generates a carry or a borrow out of
         // the most-significant bit of the result; cleared otherwise. This flag
         // indicates an overflow condition for unsigned-integer arithmetic.
         self.carry = res & 0x100 != 0;
+    }
+    fn set_carry_u16(&mut self, res: usize, v1: usize, v2: usize) {
+        self.carry = res & 0x10000 != 0;
     }
 }
 
@@ -205,6 +223,7 @@ enum Op {
     Add8(),
     Add16(),
     CallNear(),
+    Clc(),
     Cli(),
     Cmp8(),
     Dec8(),
@@ -237,8 +256,6 @@ pub struct InstructionInfo {
 
 impl InstructionInfo {
     pub fn pretty_string(&self) -> String {
-        // XXX pad hex up to 16 spaces...
-
         let hex = self.to_hex_string(&self.bytes);
         format!("{:06X}: {}   {}",
                 self.offset,
@@ -431,26 +448,35 @@ impl CPU {
         match op.command {
             Op::Add8() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.src) as usize;
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let src = (self.read_parameter_value(&op.src) & 0xFF) as usize;
+                let dst = (self.read_parameter_value(&op.dst) & 0xFF) as usize;
                 let res = dst + src;
 
+                // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
+                self.flags.set_overflow_add_u8(res, src, dst);
                 self.flags.set_sign_u8(res);
                 self.flags.set_zero_u8(res);
-                self.flags.set_parity(res);
-                self.flags.set_overflow_u8(res, src, dst);
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_carry_u8(res, src, dst);
+                self.flags.set_parity(res);
 
                 self.write_parameter_u8(&op.dst, (res & 0xFF) as u8);
             }
             Op::Add16() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.src) as u16;
-                let dst = self.read_parameter_value(&op.dst) as u16;
-                let res = (Wrapping(dst) + Wrapping(src)).0;
-                println!("XXX add16 - FLAGS");
-                self.write_parameter_u16(&op.dst, res);
+                let src = (self.read_parameter_value(&op.src) & 0xFFFF) as usize;
+                let dst = (self.read_parameter_value(&op.dst) & 0xFFFF) as usize;
+                let res = dst + src;
+
+                // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
+                self.flags.set_overflow_add_u16(res, src, dst);
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_carry_u16(res, src, dst);
+                self.flags.set_parity(res);
+
+                self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
             }
             Op::CallNear() => {
                 // call near rel
@@ -459,24 +485,56 @@ impl CPU {
                 self.push16(old_ip);
                 self.ip = temp_ip;
             }
+            Op::Clc() => {
+                self.flags.carry = false;
+            }
             Op::Cli() => {
                 self.flags.interrupt_enable = false;
             }
             Op::Cmp8() => {
-                println!("XXX cmp - FLAGS!!!");
+                // two parameters
+                // Modify status flags in the same manner as the SUB instruction
+
+                let src = (self.read_parameter_value(&op.src) & 0xFF) as usize;
+                let dst = (self.read_parameter_value(&op.dst) & 0xFF) as usize;
+                let res = dst - src;
+                
+                // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
+                self.flags.set_carry_u8(res, src, dst);
+                self.flags.set_overflow_sub_u8(res, src, dst);
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_parity(res);
             }
             Op::Dec8() => {
                 // single parameter (dst)
-                let mut data = self.read_parameter_value(&op.dst) as u8;
-                let res = (Wrapping(data) - Wrapping(1)).0;
-                println!("XXX dec8 - FLAGS!");
-                self.write_parameter_u8(&op.dst, res);
+                let dst = (self.read_parameter_value(&op.dst) & 0xFF) as usize;
+                let src = 1;
+                let res = dst - src;
+
+                // The CF flag is not affected. The OF, SF, ZF, AF, and PF flags are set according to the result.
+                self.flags.set_overflow_sub_u8(res, src, dst);
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_parity(res);
+
+                self.write_parameter_u8(&op.dst, (res & 0xFF) as u8);
             }
             Op::Inc16() => {
-                let mut data = self.read_parameter_value(&op.dst) as u16;
-                let res = (Wrapping(data) + Wrapping(1)).0;
-                println!("XXX inc16 - FLAGS!");
-                self.write_parameter_u16(&op.dst, res);
+                let mut dst = (self.read_parameter_value(&op.dst) & 0xFFFF) as usize;
+                let src = 1;
+                let res = dst + src;
+
+                // The OF, SF, ZF, AF, and PF flags are set according to the result.
+                self.flags.set_overflow_add_u16(res, src, dst);
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_parity(res);
+
+                self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
             }
             Op::Int() => {
                 // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
@@ -500,10 +558,8 @@ impl CPU {
                 self.r16[CX].val -= 1;
                 if self.r16[CX].val != 0 {
                     self.ip = dst;
-                } else {
-                    println!("NOTE: loop branch not taken, cx == 0");
                 }
-                // XXX flags ???
+                // No flags affected.
             }
             Op::Mov8() => {
                 // two parameters (dst=reg)
@@ -548,21 +604,34 @@ impl CPU {
             }
             Op::Sub16() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.src) as u16;
-                let dst = self.read_parameter_value(&op.dst) as u16;
-                let res = (Wrapping(dst) - Wrapping(src)).0;
-                // XXX flags
-                println!("XXX sub16 - FLAGS");
-                self.write_parameter_u16(&op.dst, res);
+                let src = (self.read_parameter_value(&op.src) & 0xFFFF) as usize;
+                let dst = (self.read_parameter_value(&op.dst) & 0xFFFF) as usize;
+                let res = dst - src;
+
+                // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
+                self.flags.set_overflow_sub_u16(res, src, dst);
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_parity(res);
+                self.flags.set_carry_u16(res, src, dst);
+
+                self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
             }
             Op::Xor16() => {
                 // two parameters (dst=reg)
-                println!("XXX XOR - FLAGS");
+                let src = (self.read_parameter_value(&op.src) & 0xFFFF) as usize;
+                let dst = (self.read_parameter_value(&op.dst) & 0xFFFF) as usize;
+                let res = dst ^ src;
 
-                let src = self.read_parameter_value(&op.src) as u16;
-                let mut dst = self.read_parameter_value(&op.dst) as u16;
-                dst ^= src;
-                self.write_parameter_u16(&op.dst, dst);
+                // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result.
+                self.flags.overflow = false;
+                self.flags.carry = false;
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_parity(res);
+
+                self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
             }
             _ => {
                 println!("execute error: unhandled: {:?}", op.command);
@@ -695,6 +764,13 @@ impl CPU {
                 p.src = part.src;
                 p
             }
+            0xA3 => {
+                // mov moffs16, AX
+                p.command = Op::Mov16();
+                p.dst = Parameter::Ptr16(p.segment, self.read_u16());
+                p.src = Parameter::Reg16(AX);
+                p
+            }
             0xAA => {
                 // stosb
                 p.command = Op::Stosb();
@@ -764,6 +840,11 @@ impl CPU {
                 p.command = Op::Out8();
                 p.dst = Parameter::Reg16(DX);
                 p.src = Parameter::Reg8(AL);
+                p
+            }
+            0xF8 => {
+                // clc
+                p.command = Op::Clc();
                 p
             }
             0xFA => {
@@ -1035,7 +1116,6 @@ impl CPU {
                     exit(0);
                     0
                 };
-                println!("XXX rm16 0, pos = {:04X}", pos);
                 Parameter::Ptr16(seg, pos)
             }
             1 => {
@@ -1063,24 +1143,28 @@ impl CPU {
     fn push16(&mut self, data: u16) {
         self.r16[SP].val -= 2;
         let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
+        /*
         println!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}       instr {}",
                  data,
                  self.sreg16[SS].val,
                  self.r16[SP].val,
                  offset,
                  self.instruction_count);
+        */
         self.write_u16(offset, data);
     }
 
     fn pop16(&mut self) -> u16 {
         let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
         let data = self.peek_u16_at(offset);
+        /*
         println!("pop16 {:04X}  from {:04X}:{:04X}  =>  {:06X}       instr {}",
                  data,
                  self.sreg16[SS].val,
                  self.r16[SP].val,
                  offset,
                  self.instruction_count);
+        */
         self.r16[SP].val += 2;
         data
     }
@@ -1237,13 +1321,9 @@ impl CPU {
             Parameter::Imm16(v) => {
                 self.write_u16(v as usize, data);
             }
-            Parameter::Ptr16(seg, v) => {
-                println!("XXX write_u16_param Ptr16 seg={} v={:04X}, data={:04X}",
-                         seg,
-                         v,
-                         data);
-                println!("XXX ERROR make use of segment {}", seg);
-                self.write_u16(v as usize, data);
+            Parameter::Ptr16(seg, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + imm as usize;
+                self.write_u16(offset, data);
             }
             _ => {
                 println!("write_u16_param unhandled type {:?}", p);
@@ -1568,8 +1648,6 @@ fn can_execute_with_flags() {
     assert_eq!(false, cpu.flags.overflow);
     assert_eq!(true, cpu.flags.auxiliary_carry);
     assert_eq!(true, cpu.flags.parity);
-
-    // XXX: proper test for auxiliary_carry + parity
 }
 
 #[test]
