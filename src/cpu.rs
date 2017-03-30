@@ -1876,11 +1876,11 @@ fn can_disassemble_basic() {
     cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 5);
 
-    assert_eq!("000100: E8 05 00           CallNear 0x0108
-000103: BA 0B 01           Mov16    dx, 0x010B
-000106: B4 09              Mov8     ah, 0x09
-000108: CD 21              Int      0x21
-00010A: E8 FB FF           CallNear 0x0108
+    assert_eq!("000100: E8 05 00          CallNear 0x0108
+000103: BA 0B 01          Mov16    dx, 0x010B
+000106: B4 09             Mov8     ah, 0x09
+000108: CD 21             Int      0x21
+00010A: E8 FB FF          CallNear 0x0108
 ",
                res);
 }
@@ -1895,8 +1895,8 @@ fn can_disassemble_segment_prefixed() {
     cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 2);
 
-    assert_eq!("000100: 26 88 25           Mov8     byte [es:di], ah
-000103: 26 8A 25           Mov8     ah, byte [es:di]
+    assert_eq!("000100: 26 88 25          Mov8     byte [es:di], ah
+000103: 26 8A 25          Mov8     ah, byte [es:di]
 ",
                res);
 }
@@ -1914,10 +1914,10 @@ fn can_disassemble_arithmetic() {
     cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 4);
 
-    assert_eq!("000100: 80 3E 31 10 00     Cmp8     byte [0x1031], 0x00
-000105: 81 C7 C0 00        Add16    di, 0x00C0
-000109: 83 C7 3A           Add16    di, byte +0x3A
-00010C: 83 C7 C6           Add16    di, byte -0x3A
+    assert_eq!("000100: 80 3E 31 10 00    Cmp8     byte [0x1031], 0x00
+000105: 81 C7 C0 00       Add16    di, 0x00C0
+000109: 83 C7 3A          Add16    di, byte +0x3A
+00010C: 83 C7 C6          Add16    di, byte -0x3A
 ",
                res);
 }
@@ -1934,10 +1934,10 @@ fn can_disassemble_jz_rel() {
     cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 4);
 
-    assert_eq!("000100: 74 04              Jz       0x0106
-000102: 74 FE              Jz       0x0102
-000104: 74 00              Jz       0x0106
-000106: 74 FA              Jz       0x0102
+    assert_eq!("000100: 74 04             Jz       0x0106
+000102: 74 FE             Jz       0x0102
+000104: 74 00             Jz       0x0106
+000106: 74 FA             Jz       0x0102
 ",
                res);
 }
