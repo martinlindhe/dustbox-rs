@@ -4,6 +4,7 @@
 use std::fmt;
 use std::process::exit;
 use std::num::Wrapping;
+use std::u8;
 
 pub struct CPU {
     pub ip: u16,
@@ -22,14 +23,14 @@ struct Flags {
     reserved1: bool, // 1: Reserved, always 1 in EFLAGS
     parity: bool, // 2: parity flag
     reserved3: bool,
-    adjust: bool, // 4: adjust flag
+    auxiliary_carry: bool, // 4: auxiliary carry flag
     reserved5: bool,
     zero: bool, // 6: zero flag
     sign: bool, // 7: sign flag
     trap: bool, // 8: trap flag (single step)
     interrupt_enable: bool, // 9: interrupt enable flag
     direction: bool, // 10: direction flag (control with cld, std)
-    overflow: bool, // 11: overflow
+    overflow: bool, // 11: overflow flag
     iopl12: bool, // 12: I/O privilege level (286+ only), always 1 on 8086 and 186
     iopl13: bool, // 13 --""---
     nested_task: bool, // 14: Nested task flag (286+ only), always 1 on 8086 and 186
@@ -41,6 +42,41 @@ struct Flags {
     virtual_interrupt_pending: bool, // 20: Virtual interrupt pending (Pentium+)
     cpuid: bool, // 21: Able to use CPUID instruction (Pentium+)
                  // 22-31: reserved
+}
+
+impl Flags {
+    fn set_sign_u8(&mut self, v: u8) {
+        // Set equal to the most-significant bit of the result,
+        // which is the sign bit of a signed integer.
+        // (0 indicates a positive value and 1 indicates a negative value.)
+        self.sign = v & 0x80 == 1;
+    }
+    fn set_parity(&mut self, v: usize) {
+        // Set if the least-significant byte of the result contains an
+        // even number of 1 bits; cleared otherwise.
+        self.parity = v & 1 == 0;
+    }
+    fn set_zero(&mut self, v: usize) {
+        // Zero flag — Set if the result is zero; cleared otherwise.
+        self.zero = v == 0;
+    }
+    fn set_auxiliary_add(&mut self, v1: usize, v2: usize) {
+        // Set if an arithmetic operation generates a carry or a borrow out
+        // of bit 3 of the result; cleared otherwise. This flag is used in
+        // binary-coded decimal (BCD) arithmetic.
+
+        let res = v1 + v2;
+        self.auxiliary_carry = (res ^ (v1 ^ v2)) & 0x10 != 0;
+    }
+    fn set_overflow_add_u8(&mut self, v1: u8, v2: u8) {
+        // Set if the integer result is too large a positive number or too
+        // small a negative number (excluding the sign-bit) to fit in the
+        // destination operand; cleared otherwise. This flag indicates an
+        // overflow condition for signed-integer (two’s complement) arithmetic.
+
+        let res = v1 as u16 + v2 as u16;
+        self.overflow = (res ^ v1 as u16) & (res ^ v2 as u16) & 0x80 != 0;
+    }
 }
 
 
@@ -251,28 +287,28 @@ impl CPU {
             r16: [Register16 { val: 0 }; 8],
             sreg16: [Register16 { val: 0 }; 6],
             flags: Flags {
-                carry: false, // 0: carry flag
-                reserved1: false, // 1: Reserved, always 1 in EFLAGS
-                parity: false, // 2: parity flag
+                carry: false,
+                reserved1: false,
+                parity: false,
                 reserved3: false,
-                adjust: false, // 4: adjust flag
+                auxiliary_carry: false,
                 reserved5: false,
-                zero: false, // 6: zero flag
-                sign: false, // 7: sign flag
-                trap: false, // 8: trap flag (single step)
-                interrupt_enable: false, // 9: interrupt enable flag
-                direction: false, // 10: direction flag (control with cld, std)
-                overflow: false, // 11: overflow
-                iopl12: false, // 12: I/O privilege level (286+ only), always 1 on 8086 and 186
-                iopl13: false, // 13 --""---
-                nested_task: false, // 14: Nested task flag (286+ only), always 1 on 8086 and 186
-                reserved15: false, // 15: Reserved, always 1 on 8086 and 186, 0 on later models
-                resume: false, // 16: Resume flag (386+ only)
-                virtual_mode: false, // 17: Virtual 8086 mode flag (386+ only)
-                alignment_check: false, // 18: Alignment check (486SX+ only)
-                virtual_interrupt: false, // 19: Virtual interrupt flag (Pentium+)
-                virtual_interrupt_pending: false, // 20: Virtual interrupt pending (Pentium+)
-                cpuid: false, // 21: Able to use CPUID instruction (Pentium+)
+                zero: false,
+                sign: false,
+                trap: false,
+                interrupt_enable: false,
+                direction: false,
+                overflow: false,
+                iopl12: false,
+                iopl13: false,
+                nested_task: false,
+                reserved15: false,
+                resume: false,
+                virtual_mode: false,
+                alignment_check: false,
+                virtual_interrupt: false,
+                virtual_interrupt_pending: false,
+                cpuid: false,
             },
             breakpoints: vec![0; 0],
         };
@@ -281,9 +317,6 @@ impl CPU {
         // http://www.delorie.com/djgpp/doc/rbinter/id/51/29.html
         cpu.sreg16[SS].val = 0x0000;
         cpu.r16[SP].val = 0xFFF0; // XXX offset of last word available in first 64k segment
-
-
-        cpu.sreg16[DS].val = 0xDEAD; // XXX just for testing
 
         cpu
     }
@@ -397,8 +430,15 @@ impl CPU {
             Op::Add8() => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.src) as u8;
-                let mut dst = self.read_parameter_value(&op.dst) as u8;
+                let dst = self.read_parameter_value(&op.dst) as u8;
                 let res = (Wrapping(dst) + Wrapping(src)).0;
+
+                self.flags.set_overflow_add_u8(src, dst);
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero(res as usize);
+                self.flags.set_parity(res as usize);
+                self.flags.set_auxiliary_add(src as usize, dst as usize);
+                // TODO: flags: CF - ignored in mame for ADDB
                 println!("XXX add8 - FLAGS");
                 self.write_parameter_u8(&op.dst, res);
             }
@@ -751,13 +791,13 @@ impl CPU {
         };
 
         match x.reg {
+            0 => {
+                p.command = Op::Add8();
+            }
             7 => {
                 p.command = Op::Cmp8();
             }
             /*
-            0 => {
-                p.command = Op::Add8();
-            }
             5 => {
                 p.command = Op::Sub8();
             }
@@ -1495,6 +1535,31 @@ fn can_execute_imms8() {
     cpu.execute_instruction();
     assert_eq!(0x109, cpu.ip);
     assert_eq!(0x0100, cpu.r16[DI].val);
+}
+
+#[test]
+fn can_execute_with_flags() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB4, 0xFE,       // mov ah,0xfe
+        0x80, 0xC4, 0x02, // add ah,0x2   - OF and ZF should be set
+    ];
+
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction();
+    assert_eq!(0x102, cpu.ip);
+    assert_eq!(0xFE, cpu.r16[AX].hi_u8());
+    assert_eq!(false, cpu.flags.overflow);
+    assert_eq!(false, cpu.flags.zero);
+
+    cpu.execute_instruction();
+    assert_eq!(0x105, cpu.ip);
+    assert_eq!(0x00, cpu.r16[AX].hi_u8());
+    assert_eq!(true, cpu.flags.overflow);
+    assert_eq!(true, cpu.flags.zero);
+
+    // XXX: proper test for auxiliary_carry + parity
 }
 
 #[test]

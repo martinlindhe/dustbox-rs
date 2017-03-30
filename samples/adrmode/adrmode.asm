@@ -2,6 +2,13 @@
 
     org  0x100        ; .com files always start 256 bytes into the segment
 
+    ; flags
+    mov ah, 0xfe
+    add ah, 0x2  ; overflow and zero should be set
+    ; XXX The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
+
+
+;---
     mov di, 0x100
     add di,byte +0x3a
     add di,byte -0x3a
