@@ -228,10 +228,13 @@ enum Op {
     Cmp8(),
     Cmp16(),
     Dec8(),
+    Inc8(),
     Inc16(),
     Int(),
     JmpNear(),
     JmpShort(),
+    Jnl(),
+    Jnz(),
     Jz(),
     Loop(),
     Mov8(),
@@ -499,7 +502,7 @@ impl CPU {
 
                 let src = self.read_parameter_value(&op.src) as usize;
                 let dst = self.read_parameter_value(&op.dst) as usize;
-                let res = dst - src;
+                let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
                 self.flags.set_carry_u8(res, src, dst);
@@ -542,6 +545,20 @@ impl CPU {
 
                 self.write_parameter_u8(&op.dst, (res & 0xFF) as u8);
             }
+            Op::Inc8() => {
+                let dst = self.read_parameter_value(&op.dst) as usize;
+                let src = 1;
+                let res = dst + src;
+
+                // The OF, SF, ZF, AF, and PF flags are set according to the result.
+                self.flags.set_overflow_add_u8(res, src, dst);
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_parity(res);
+
+                self.write_parameter_u8(&op.dst, (res & 0xFF) as u8);
+            }
             Op::Inc16() => {
                 let dst = self.read_parameter_value(&op.dst) as usize;
                 let src = 1;
@@ -568,7 +585,20 @@ impl CPU {
             Op::JmpShort() => {
                 self.ip = self.read_parameter_value(&op.dst) as u16;
             }
+            Op::Jnl() => {
+                // Jump short if not less (SF=OF).
+                if self.flags.sign == self.flags.overflow {
+                    self.ip = self.read_parameter_value(&op.dst) as u16;
+                }
+            }
+            Op::Jnz() => {
+                // Jump short if not zero (ZF=0).
+                if !self.flags.zero {
+                    self.ip = self.read_parameter_value(&op.dst) as u16;
+                }
+            }
             Op::Jz() => {
+                // Jump short if zero (ZF ← 1).
                 if self.flags.zero {
                     self.ip = self.read_parameter_value(&op.dst) as u16;
                 }
@@ -723,6 +753,12 @@ impl CPU {
                 p.src = part.src;
                 p
             }
+            0x3C => {
+                p.command = Op::Cmp8();
+                p.dst = Parameter::Reg8(AL);
+                p.src = Parameter::Imm8(self.read_u8());
+                p
+            }
             0x40...0x47 => {
                 // inc r16
                 p.command = Op::Inc16();
@@ -743,8 +779,20 @@ impl CPU {
                 p
             }
             0x74 => {
-                // jz rel8
-                p.command = Op::Jz(); // alias: je§
+                // jz rel8    (alias: je)
+                p.command = Op::Jz();
+                p.dst = Parameter::Imm16(self.read_rel8());
+                p
+            }
+            0x75 => {
+                // jnz rel8   (alias: jne)
+                p.command = Op::Jnz();
+                p.dst = Parameter::Imm16(self.read_rel8());
+                p
+            }
+            0x7D => {
+                // jnl rel8   (alias: jge)
+                p.command = Op::Jnl();
                 p.dst = Parameter::Imm16(self.read_rel8());
                 p
             }
@@ -1052,9 +1100,9 @@ impl CPU {
             src: Parameter::None(),
         };
         match x.reg {
-            /*0 => {
+            0 => {
                 p.command = Op::Inc8();
-            }*/
+            }
             1 => {
                 p.command = Op::Dec8();
             }
@@ -1819,4 +1867,3 @@ fn can_disassemble_jz_rel() {
 ",
                res);
 }
-
