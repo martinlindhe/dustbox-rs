@@ -49,10 +49,10 @@ impl Flags {
         // Set equal to the most-significant bit of the result,
         // which is the sign bit of a signed integer.
         // (0 indicates a positive value and 1 indicates a negative value.)
-        self.sign = v & 0x80 == 1;
+        self.sign = v & 0x80 != 0;
     }
     fn set_sign_u16(&mut self, v: usize) {
-        self.sign = v & 0x8000 == 1;
+        self.sign = v & 0x8000 != 0;
     }
     fn set_parity(&mut self, v: usize) {
         // Set if the least-significant byte of the result contains an
@@ -450,8 +450,8 @@ impl CPU {
         match op.command {
             Op::Add8() => {
                 // two parameters (dst=reg)
-                let src = (self.read_parameter_value(&op.src) & 0xFF) as usize;
-                let dst = (self.read_parameter_value(&op.dst) & 0xFF) as usize;
+                let src = self.read_parameter_value(&op.src) as usize;
+                let dst = self.read_parameter_value(&op.dst) as usize;
                 let res = dst + src;
 
                 // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
@@ -466,9 +466,9 @@ impl CPU {
             }
             Op::Add16() => {
                 // two parameters (dst=reg)
-                let src = (self.read_parameter_value(&op.src) & 0xFFFF) as usize;
-                let dst = (self.read_parameter_value(&op.dst) & 0xFFFF) as usize;
-                let res = dst + src;
+                let src = self.read_parameter_value(&op.src) as usize;
+                let dst = self.read_parameter_value(&op.dst) as usize;
+                let res = (Wrapping(dst) + Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
                 self.flags.set_overflow_add_u16(res, src, dst);
@@ -497,8 +497,8 @@ impl CPU {
                 // two parameters
                 // Modify status flags in the same manner as the SUB instruction
 
-                let src = (self.read_parameter_value(&op.src) & 0xFF) as usize;
-                let dst = (self.read_parameter_value(&op.dst) & 0xFF) as usize;
+                let src = self.read_parameter_value(&op.src) as usize;
+                let dst = self.read_parameter_value(&op.dst) as usize;
                 let res = dst - src;
 
                 // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
@@ -510,13 +510,13 @@ impl CPU {
                 self.flags.set_parity(res);
             }
             Op::Cmp16() => {
+                // XXX identical to Op::Sub16() except we dont use the result
                 // two parameters
                 // Modify status flags in the same manner as the SUB instruction
 
-                let src = (self.read_parameter_value(&op.src) & 0xFFFF) as usize;
-                let dst = (self.read_parameter_value(&op.dst) & 0xFFFF) as usize;
-                println!("CMP16  {:04X} - {:04X}", dst, src);
-                let res = dst - src;
+                let src = self.read_parameter_value(&op.src) as usize;
+                let dst = self.read_parameter_value(&op.dst) as usize;
+                let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
                 self.flags.set_carry_u16(res, src, dst);
@@ -528,7 +528,7 @@ impl CPU {
             }
             Op::Dec8() => {
                 // single parameter (dst)
-                let dst = (self.read_parameter_value(&op.dst) & 0xFF) as usize;
+                let dst = self.read_parameter_value(&op.dst) as usize;
                 let src = 1;
                 let res = dst - src;
 
@@ -543,7 +543,7 @@ impl CPU {
                 self.write_parameter_u8(&op.dst, (res & 0xFF) as u8);
             }
             Op::Inc16() => {
-                let mut dst = (self.read_parameter_value(&op.dst) & 0xFFFF) as usize;
+                let dst = self.read_parameter_value(&op.dst) as usize;
                 let src = 1;
                 let res = dst + src;
 
@@ -639,8 +639,8 @@ impl CPU {
             }
             Op::Sub16() => {
                 // two parameters (dst=reg)
-                let src = (self.read_parameter_value(&op.src) & 0xFFFF) as usize;
-                let dst = (self.read_parameter_value(&op.dst) & 0xFFFF) as usize;
+                let src = self.read_parameter_value(&op.src) as usize;
+                let dst = self.read_parameter_value(&op.dst) as usize;
                 let res = dst - src;
 
                 // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
@@ -655,8 +655,8 @@ impl CPU {
             }
             Op::Xor16() => {
                 // two parameters (dst=reg)
-                let src = (self.read_parameter_value(&op.src) & 0xFFFF) as usize;
-                let dst = (self.read_parameter_value(&op.dst) & 0xFFFF) as usize;
+                let src = self.read_parameter_value(&op.src) as usize;
+                let dst = self.read_parameter_value(&op.dst) as usize;
                 let res = dst ^ src;
 
                 // The OF and CF flags are cleared; the SF, ZF,
@@ -1023,8 +1023,6 @@ impl CPU {
                 p.command = Op::Cmp16();
             }
             /*
-            case 0:
-                op.Cmd = "add"
             case 1:
                 op.Cmd = "or"
             case 2:
@@ -1821,3 +1819,4 @@ fn can_disassemble_jz_rel() {
 ",
                res);
 }
+
