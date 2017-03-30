@@ -225,6 +225,7 @@ enum Op {
     Add16(),
     CallNear(),
     Clc(),
+    Cld(),
     Cli(),
     Cmp8(),
     Cmp16(),
@@ -242,12 +243,14 @@ enum Op {
     Loop(),
     Mov8(),
     Mov16(),
+    Or16(),
     Out8(),
     Pop16(),
     Push16(),
     Rcl8(),
     Rcr8(),
     Retn(),
+    Shr16(),
     Stosb(),
     Sub16(),
     Xor16(),
@@ -494,6 +497,9 @@ impl CPU {
             Op::Clc() => {
                 self.flags.carry = false;
             }
+            Op::Cld() => {
+                self.flags.direction = false;
+            }
             Op::Cli() => {
                 self.flags.interrupt_enable = false;
             }
@@ -644,6 +650,10 @@ impl CPU {
                 let data = self.read_parameter_value(&op.src) as u16;
                 self.write_parameter_u16(&op.dst, data);
             }
+            Op::Or16() => {
+                // two arguments (dst=AX)
+                println!("XXX impl or16");
+            }
             Op::Out8() => {
                 // two arguments (dst=DX or imm8)
                 let data = self.read_parameter_value(&op.src) as u8;
@@ -685,6 +695,11 @@ impl CPU {
             Op::Retn() => {
                 // ret near (no arguments)
                 self.ip = self.pop16();
+            }
+            Op::Shr16() => {
+                // two arguments
+                println!("XXX impl shr16");
+                // XXX flags
             }
             Op::Stosb() => {
                 // no parameters
@@ -758,9 +773,22 @@ impl CPU {
                 p.dst = Parameter::SReg16(ES);
                 p
             }
+            0x0D => {
+                // or AX, imm16
+                p.command = Op::Or16();
+                p.dst = Parameter::Reg16(AX);
+                p.src = Parameter::Imm16(self.read_u16());
+                p
+            }
             0x1E => {
                 // push ds
                 p.command = Op::Push16();
+                p.dst = Parameter::SReg16(DS);
+                p
+            }
+            0x1F => {
+                // pop ds
+                p.command = Op::Pop16();
                 p.dst = Parameter::SReg16(DS);
                 p
             }
@@ -961,6 +989,7 @@ impl CPU {
                 p
             }
             0xD0 => {
+                // bit shift byte
                 let x = self.read_mod_reg_rm();
                 p.command = match x.reg {
                     // 0 => Op::Rol8(),
@@ -977,6 +1006,26 @@ impl CPU {
                 };
                 p.dst = self.rm8(p.segment, x.rm, x.md);
                 p.src = Parameter::Imm8(1);
+                p
+            }
+            0xD1 => {
+                // bit shift word
+                let x = self.read_mod_reg_rm();
+                p.command = match x.reg {
+                    // 0 => Op::Rol16(),
+                    // 1 => Op::Ror16(),
+                    //2 => Op::Rcl16(),
+                    //3 => Op::Rcr16(),
+                    // 4 => Op::Shl16(), // alias: sal
+                    5 => Op::Shr16(),
+                    // 7 => Op::Sar16(),
+                    _ => {
+                        println!("XXX 0xD1 unhandled reg = {}", x.reg);
+                        Op::Unknown()
+                    }
+                };
+                p.dst = self.rm8(p.segment, x.rm, x.md);
+                p.src = Parameter::Imm16(1);
                 p
             }
             0xE2 => {
@@ -1017,6 +1066,11 @@ impl CPU {
             0xFA => {
                 // cli
                 p.command = Op::Cli();
+                p
+            }
+            0xFC => {
+                // cld
+                p.command = Op::Cld();
                 p
             }
             0xFE => {
