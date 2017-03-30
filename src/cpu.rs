@@ -226,6 +226,7 @@ enum Op {
     Clc(),
     Cli(),
     Cmp8(),
+    Cmp16(),
     Dec8(),
     Inc16(),
     Int(),
@@ -238,6 +239,7 @@ enum Op {
     Out8(),
     Pop16(),
     Push16(),
+    Rcr8(),
     Retn(),
     Stosb(),
     Sub16(),
@@ -498,12 +500,29 @@ impl CPU {
                 let src = (self.read_parameter_value(&op.src) & 0xFF) as usize;
                 let dst = (self.read_parameter_value(&op.dst) & 0xFF) as usize;
                 let res = dst - src;
-                
+
                 // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
                 self.flags.set_carry_u8(res, src, dst);
                 self.flags.set_overflow_sub_u8(res, src, dst);
                 self.flags.set_sign_u8(res);
                 self.flags.set_zero_u8(res);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_parity(res);
+            }
+            Op::Cmp16() => {
+                // two parameters
+                // Modify status flags in the same manner as the SUB instruction
+
+                let src = (self.read_parameter_value(&op.src) & 0xFFFF) as usize;
+                let dst = (self.read_parameter_value(&op.dst) & 0xFFFF) as usize;
+                println!("CMP16  {:04X} - {:04X}", dst, src);
+                let res = dst - src;
+
+                // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
+                self.flags.set_carry_u16(res, src, dst);
+                self.flags.set_overflow_sub_u16(res, src, dst);
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
             }
@@ -585,6 +604,21 @@ impl CPU {
                 // single parameter (dst)
                 let data = self.read_parameter_value(&op.dst) as u16;
                 self.push16(data);
+            }
+            Op::Rcr8() => {
+                // two arguments
+                // rotate 9 bits `src` times
+                let src = self.read_parameter_value(&op.src) as u8;
+                let dst = self.read_parameter_value(&op.dst) as u8;
+
+                // XXX do + flags + write result
+
+                // The RCR instruction shifts the CF flag into the most-significant
+                // bit and shifts the least-significant bit into the CF flag.
+                // The OF flag is affected only for single-bit rotates; it is undefined
+                // for multi-bit rotates. The SF, ZF, AF, and PF flags are not affected.
+                println!("XXX impl rcr");
+
             }
             Op::Retn() => {
                 // ret near (no arguments)
@@ -732,6 +766,14 @@ impl CPU {
                 p.src = part.src;
                 p
             }
+            0x89 => {
+                // mov r/m16, r16
+                let part = self.rm16_r16(p.segment);
+                p.command = Op::Mov16();
+                p.dst = part.dst;
+                p.src = part.src;
+                p
+            }
             0x8A => {
                 // mov r8, r/m8
                 let part = self.r8_rm8(p.segment);
@@ -810,6 +852,19 @@ impl CPU {
             0xCD => {
                 p.command = Op::Int();
                 p.dst = Parameter::Imm8(self.read_u8());
+                p
+            }
+            0xD0 => {
+                let x = self.read_mod_reg_rm();
+                p.command = match x.reg {
+                    3 => Op::Rcr8(),
+                    _ => {
+                        println!("XXX 0xD0 unhandled reg = {}", x.reg);
+                        Op::Unknown()
+                    }
+                };
+                p.dst = self.rm8(p.segment, x.rm, x.md);
+                p.src = Parameter::Imm8(1);
                 p
             }
             0xE2 => {
@@ -899,6 +954,7 @@ impl CPU {
             }*/
             _ => {
                 println!("decode_80 error: unknown reg {}", x.reg);
+                p.command = Op::Unknown();
             }
         }
         p
@@ -918,10 +974,10 @@ impl CPU {
             0 => {
                 p.command = Op::Add16();
             }
-            /*
             5 => {
                 p.command = Op::Sub16();
             }
+            /*
             7 => {
                 p.command = Op::Cmp16();
             }
@@ -938,6 +994,7 @@ impl CPU {
             }*/
             _ => {
                 println!("decode_83 error: unknown reg {}", x.reg);
+                p.command = Op::Unknown();
             }
         }
         p
@@ -960,6 +1017,9 @@ impl CPU {
             5 => {
                 p.command = Op::Sub16();
             }
+            7 => {
+                p.command = Op::Cmp16();
+            }
             /*
             case 0:
                 op.Cmd = "add"
@@ -973,11 +1033,10 @@ impl CPU {
                 op.Cmd = "and"
             case 6:
                 op.Cmd = "xor"
-            case 7:
-                op.Cmd = "cmp"
             }*/
             _ => {
                 println!("decode_81 error: unknown reg {}", x.reg);
+                p.command = Op::Unknown();
             }
         }
         p
@@ -1647,6 +1706,38 @@ fn can_execute_with_flags() {
     assert_eq!(false, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
     assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.parity);
+}
+
+#[test]
+fn can_execute_cmp() {
+    // make sure we dont overflow (0 - 0x2000 = overflow)
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xBB, 0x00, 0x00,       // mov bx,0x0
+        0x89, 0xDF,             // mov di,bx
+        0x81, 0xFF, 0x00, 0x20, // cmp di,0x2000
+    ];
+
+
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction();
+    assert_eq!(0x103, cpu.ip);
+    assert_eq!(0, cpu.r16[BX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x105, cpu.ip);
+    assert_eq!(0, cpu.r16[DI].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x109, cpu.ip);
+
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(true, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+    assert_eq!(false, cpu.flags.auxiliary_carry);
     assert_eq!(true, cpu.flags.parity);
 }
 

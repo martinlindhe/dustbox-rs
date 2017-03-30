@@ -5,6 +5,15 @@
 
     int 3 ; // breakpoint for dosbox debugger. run "BPINT 3" in dosbox debugger before running program
 
+
+; cmp flags and overflow stuff
+    mov bx, 0
+    mov di, bx
+    cmp di, 0x2000  ; 81FF0020
+
+
+
+
     ; flags
     mov ah, 0xfe
     add ah, 0x2  ; overflow and zero should be set
