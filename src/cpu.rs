@@ -191,7 +191,7 @@ impl fmt::Display for Parameter {
                        "byte {}0x{:02X}",
                        if v < 0 { "-" } else { "+" },
                        if v < 0 { -v } else { v })
-            } 
+            }
             &Parameter::Ptr8(seg, v) => write!(f, "byte [{}0x{:04X}]", seg, v),
             &Parameter::Ptr16(seg, v) => write!(f, "word [{}0x{:04X}]", seg, v),
             &Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}{}]", seg, amode(v as u8)),
@@ -532,7 +532,8 @@ impl CPU {
                 let src = 1;
                 let res = dst - src;
 
-                // The CF flag is not affected. The OF, SF, ZF, AF, and PF flags are set according to the result.
+                // The CF flag is not affected. The OF, SF, ZF, AF,
+                // and PF flags are set according to the result.
                 self.flags.set_overflow_sub_u8(res, src, dst);
                 self.flags.set_sign_u8(res);
                 self.flags.set_zero_u8(res);
@@ -658,7 +659,8 @@ impl CPU {
                 let dst = (self.read_parameter_value(&op.dst) & 0xFFFF) as usize;
                 let res = dst ^ src;
 
-                // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result.
+                // The OF and CF flags are cleared; the SF, ZF,
+                // and PF flags are set according to the result.
                 self.flags.overflow = false;
                 self.flags.carry = false;
                 self.flags.set_sign_u16(res);
