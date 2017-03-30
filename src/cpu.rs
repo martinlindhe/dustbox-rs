@@ -45,7 +45,7 @@ struct Flags {
 }
 
 impl Flags {
-    fn set_sign_u8(&mut self, v: u8) {
+    fn set_sign_u8(&mut self, v: usize) {
         // Set equal to the most-significant bit of the result,
         // which is the sign bit of a signed integer.
         // (0 indicates a positive value and 1 indicates a negative value.)
@@ -56,26 +56,28 @@ impl Flags {
         // even number of 1 bits; cleared otherwise.
         self.parity = v & 1 == 0;
     }
-    fn set_zero(&mut self, v: usize) {
+    fn set_zero_u8(&mut self, v: usize) {
         // Zero flag — Set if the result is zero; cleared otherwise.
-        self.zero = v == 0;
+        self.zero = (v & 0xFF) == 0;
     }
-    fn set_auxiliary_add(&mut self, v1: usize, v2: usize) {
+    fn set_auxiliary(&mut self, res: usize, v1: usize, v2: usize) {
         // Set if an arithmetic operation generates a carry or a borrow out
         // of bit 3 of the result; cleared otherwise. This flag is used in
         // binary-coded decimal (BCD) arithmetic.
-
-        let res = v1 + v2;
         self.auxiliary_carry = (res ^ (v1 ^ v2)) & 0x10 != 0;
     }
-    fn set_overflow_add_u8(&mut self, v1: u8, v2: u8) {
+    fn set_overflow_u8(&mut self, res: usize, v1: usize, v2: usize) {
         // Set if the integer result is too large a positive number or too
         // small a negative number (excluding the sign-bit) to fit in the
         // destination operand; cleared otherwise. This flag indicates an
         // overflow condition for signed-integer (two’s complement) arithmetic.
-
-        let res = v1 as u16 + v2 as u16;
-        self.overflow = (res ^ v1 as u16) & (res ^ v2 as u16) & 0x80 != 0;
+        self.overflow = (res ^ v1) & (res ^ v2) & 0x80 != 0;
+    }
+    fn set_carry_u8(&mut self, res: usize, v1: usize, v2: usize) {
+        // Set if an arithmetic operation generates a carry or a borrow out of
+        // the most-significant bit of the result; cleared otherwise. This flag
+        // indicates an overflow condition for unsigned-integer arithmetic.
+        self.carry = res & 0x100 != 0;
     }
 }
 
@@ -316,7 +318,7 @@ impl CPU {
         // intializes the cpu as if to run .com programs, info from
         // http://www.delorie.com/djgpp/doc/rbinter/id/51/29.html
         cpu.sreg16[SS].val = 0x0000;
-        cpu.r16[SP].val = 0xFFF0; // XXX offset of last word available in first 64k segment
+        cpu.r16[SP].val = 0xFFFE; // offset of last word available in first 64k segment
 
         cpu
     }
@@ -429,18 +431,18 @@ impl CPU {
         match op.command {
             Op::Add8() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.src) as u8;
-                let dst = self.read_parameter_value(&op.dst) as u8;
-                let res = (Wrapping(dst) + Wrapping(src)).0;
+                let src = self.read_parameter_value(&op.src) as usize;
+                let dst = self.read_parameter_value(&op.dst) as usize;
+                let res = dst + src;
 
-                self.flags.set_overflow_add_u8(src, dst);
                 self.flags.set_sign_u8(res);
-                self.flags.set_zero(res as usize);
-                self.flags.set_parity(res as usize);
-                self.flags.set_auxiliary_add(src as usize, dst as usize);
-                // TODO: flags: CF - ignored in mame for ADDB
-                println!("XXX add8 - FLAGS");
-                self.write_parameter_u8(&op.dst, res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_parity(res);
+                self.flags.set_overflow_u8(res, src, dst);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_carry_u8(res, src, dst);
+
+                self.write_parameter_u8(&op.dst, (res & 0xFF) as u8);
             }
             Op::Add16() => {
                 // two parameters (dst=reg)
@@ -1356,11 +1358,11 @@ fn can_handle_stack() {
     cpu.execute_instruction(); // mov
     cpu.execute_instruction(); // mov
 
-    assert_eq!(0xFFF0, cpu.r16[SP].val);
+    assert_eq!(0xFFFE, cpu.r16[SP].val);
     cpu.execute_instruction(); // push
-    assert_eq!(0xFFEE, cpu.r16[SP].val);
+    assert_eq!(0xFFFC, cpu.r16[SP].val);
     cpu.execute_instruction(); // pop
-    assert_eq!(0xFFF0, cpu.r16[SP].val);
+    assert_eq!(0xFFFE, cpu.r16[SP].val);
 
     assert_eq!(0x107, cpu.ip);
     assert_eq!(0x8888, cpu.r16[AX].val);
@@ -1550,14 +1552,22 @@ fn can_execute_with_flags() {
     cpu.execute_instruction();
     assert_eq!(0x102, cpu.ip);
     assert_eq!(0xFE, cpu.r16[AX].hi_u8());
-    assert_eq!(false, cpu.flags.overflow);
+    assert_eq!(false, cpu.flags.carry);
     assert_eq!(false, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+    assert_eq!(false, cpu.flags.auxiliary_carry);
+    assert_eq!(false, cpu.flags.parity);
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
     assert_eq!(0x00, cpu.r16[AX].hi_u8());
-    assert_eq!(true, cpu.flags.overflow);
+    assert_eq!(true, cpu.flags.carry);
     assert_eq!(true, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.parity);
 
     // XXX: proper test for auxiliary_carry + parity
 }

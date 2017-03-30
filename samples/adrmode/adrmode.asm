@@ -2,6 +2,9 @@
 
     org  0x100        ; .com files always start 256 bytes into the segment
 
+
+    int 3 ; // breakpoint for dosbox debugger. run "BPINT 3" in dosbox debugger before running program
+
     ; flags
     mov ah, 0xfe
     add ah, 0x2  ; overflow and zero should be set
