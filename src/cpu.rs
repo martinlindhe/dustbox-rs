@@ -238,6 +238,7 @@ enum Op {
     Jnl(),
     Jnz(),
     Jz(),
+    Lea16(),
     Loop(),
     Mov8(),
     Mov16(),
@@ -619,6 +620,12 @@ impl CPU {
                     self.ip = self.read_parameter_value(&op.dst) as u16;
                 }
             }
+            Op::Lea16() => {
+                // Load Effective Address
+                // Store effective address for m in register r16
+                let src = self.read_parameter_address(&op.src) as u16;
+                self.write_parameter_u16(&op.dst, src);
+            }
             Op::Loop() => {
                 let dst = self.read_parameter_value(&op.dst) as u16;
                 self.r16[CX].val -= 1;
@@ -873,6 +880,14 @@ impl CPU {
                 // mov r/m16, sreg
                 let part = self.rm16_sreg(p.segment);
                 p.command = Op::Mov16();
+                p.dst = part.dst;
+                p.src = part.src;
+                p
+            }
+            0x8D => {
+                // lea r16, m
+                let part = self.r16_m16(p.segment);
+                p.command = Op::Lea16();
                 p.dst = part.dst;
                 p.src = part.src;
                 p
@@ -1247,6 +1262,17 @@ impl CPU {
         }
     }
 
+    // decode r16, m16
+    fn r16_m16(&mut self, seg: Segment) -> Instruction {
+        let x = self.read_mod_reg_rm();
+        Instruction {
+            segment: seg,
+            command: Op::Unknown(),
+            dst: Parameter::Reg16(x.reg as usize),
+            src: self.m16(seg, x.rm, x.md),
+        }
+    }
+
     // decode rm8
     fn rm8(&mut self, seg: Segment, rm: u8, md: u8) -> Parameter {
         match md {
@@ -1318,6 +1344,47 @@ impl CPU {
                 Parameter::Ptr16(seg, pos)
             }
             _ => Parameter::Reg16(rm as usize),
+        }
+    }
+
+    // decode m16
+    fn m16(&mut self, seg: Segment, rm: u8, md: u8) -> Parameter {
+        match md {
+            0 => {
+                // [reg]
+                let pos = if rm == 6 {
+                    // [u16]
+                    self.read_u16()
+                } else {
+                    println!("XXX FIXME broken m16 [reg]");
+                    // XXX read value of amode(x.rm) into pos
+                    exit(0);
+                    0
+                };
+                Parameter::Ptr16(seg, pos)
+            }
+            1 => {
+                // [reg+d8]
+                // XXX read value of amode(x.rm) into pos
+                println!("XXX FIXME broken m16 [reg+d8]");
+                let pos = self.read_s8() as u16; // XXX handle signed properly
+
+                exit(0); // XXX new type ptr16Amode + s8
+                Parameter::Ptr16(seg, pos)
+            }
+            2 => {
+                // [reg+d16]
+                // XXX read value of amode(x.rm) into pos
+                println!("XXX FIXME m16 [reg+d16]");
+                let pos = self.read_s16() as u16; // XXX handle signed properly
+
+                exit(0); // XXX new type ptr16Amode + s16
+                Parameter::Ptr16(seg, pos)
+            }
+            _ => {
+                println!("ERROR m16 invalid encoding");
+                Parameter::None()
+            }
         }
     }
 
@@ -1431,6 +1498,16 @@ impl CPU {
         };
 
         println!("XXX unhandled out_u8 to {:04X}, data {:02X}", dst, data);
+    }
+
+    fn read_parameter_address(&mut self, p: &Parameter) -> usize {
+        match p {
+            &Parameter::Ptr16(seg, imm) => (self.segment(seg) as usize * 16) + imm as usize,
+            _ => {
+                println!("read_parameter_address error: unhandled parameter: {:?}", p);
+                0
+            }
+        }
     }
 
     fn read_parameter_value(&mut self, p: &Parameter) -> isize {
@@ -1861,6 +1938,20 @@ fn can_execute_cmp() {
     assert_eq!(false, cpu.flags.overflow);
     assert_eq!(false, cpu.flags.auxiliary_carry);
     assert_eq!(true, cpu.flags.parity);
+}
+
+#[test]
+fn can_execute_lea() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0x8D, 0x26, 0xF0, 0x1B, // lea sp,[0x1bf0]
+    ];
+
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction();
+    assert_eq!(0x104, cpu.ip);
+    assert_eq!(0x1BF0, cpu.r16[SP].val);
 }
 
 #[test]

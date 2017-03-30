@@ -6,6 +6,11 @@
     int 3 ; // breakpoint for dosbox debugger. run "BPINT 3" in dosbox debugger before running program
 
 
+; lea test
+    lea sp,[0x1bf0]  ; 8D26F01B
+
+
+
 ; cmp flags and overflow stuff
     mov bx, 0
     mov di, bx
