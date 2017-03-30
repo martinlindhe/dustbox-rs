@@ -130,10 +130,11 @@ impl Register16 {
 fn right_pad(s: &str, len: usize) -> String {
     let mut res = String::new();
     res.push_str(s);
-    // XXX doesnt handle the case where s is longer than len
-    let padding_len = len - s.len();
-    for _ in 0..padding_len {
-        res.push_str(" ");
+    if s.len() < len {
+        let padding_len = len - s.len();
+        for _ in 0..padding_len {
+            res.push_str(" ");
+        }
     }
     res
 }
@@ -228,6 +229,7 @@ enum Op {
     Cmp8(),
     Cmp16(),
     Dec8(),
+    Dec16(),
     Inc8(),
     Inc16(),
     Int(),
@@ -242,6 +244,7 @@ enum Op {
     Out8(),
     Pop16(),
     Push16(),
+    Rcl8(),
     Rcr8(),
     Retn(),
     Stosb(),
@@ -262,10 +265,7 @@ pub struct InstructionInfo {
 impl InstructionInfo {
     pub fn pretty_string(&self) -> String {
         let hex = self.to_hex_string(&self.bytes);
-        format!("{:06X}: {}   {}",
-                self.offset,
-                right_pad(&hex, 16),
-                self.text)
+        format!("{:06X}: {} {}", self.offset, right_pad(&hex, 17), self.text)
     }
 
     fn to_hex_string(&self, bytes: &Vec<u8>) -> String {
@@ -455,7 +455,7 @@ impl CPU {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.src) as usize;
                 let dst = self.read_parameter_value(&op.dst) as usize;
-                let res = dst + src;
+                let res = (Wrapping(dst) + Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
                 self.flags.set_overflow_add_u8(res, src, dst);
@@ -533,7 +533,7 @@ impl CPU {
                 // single parameter (dst)
                 let dst = self.read_parameter_value(&op.dst) as usize;
                 let src = 1;
-                let res = dst - src;
+                let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The CF flag is not affected. The OF, SF, ZF, AF,
                 // and PF flags are set according to the result.
@@ -545,10 +545,26 @@ impl CPU {
 
                 self.write_parameter_u8(&op.dst, (res & 0xFF) as u8);
             }
+            Op::Dec16() => {
+                // single parameter (dst)
+                let dst = self.read_parameter_value(&op.dst) as usize;
+                let src = 1;
+                let res = (Wrapping(dst) - Wrapping(src)).0;
+
+                // The CF flag is not affected. The OF, SF, ZF, AF,
+                // and PF flags are set according to the result.
+                self.flags.set_overflow_sub_u16(res, src, dst);
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_parity(res);
+
+                self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
+            }
             Op::Inc8() => {
                 let dst = self.read_parameter_value(&op.dst) as usize;
                 let src = 1;
-                let res = dst + src;
+                let res = (Wrapping(dst) + Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, and PF flags are set according to the result.
                 self.flags.set_overflow_add_u8(res, src, dst);
@@ -562,7 +578,7 @@ impl CPU {
             Op::Inc16() => {
                 let dst = self.read_parameter_value(&op.dst) as usize;
                 let src = 1;
-                let res = dst + src;
+                let res = (Wrapping(dst) + Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, and PF flags are set according to the result.
                 self.flags.set_overflow_add_u16(res, src, dst);
@@ -636,6 +652,15 @@ impl CPU {
                 let data = self.read_parameter_value(&op.dst) as u16;
                 self.push16(data);
             }
+            Op::Rcl8() => {
+                // two arguments
+                // rotate 9 bits `src` times
+                let src = self.read_parameter_value(&op.src) as u8;
+                let dst = self.read_parameter_value(&op.dst) as u8;
+
+                // XXX do + flags + write result
+                println!("XXX impl rcl8");
+            }
             Op::Rcr8() => {
                 // two arguments
                 // rotate 9 bits `src` times
@@ -648,8 +673,7 @@ impl CPU {
                 // bit and shifts the least-significant bit into the CF flag.
                 // The OF flag is affected only for single-bit rotates; it is undefined
                 // for multi-bit rotates. The SF, ZF, AF, and PF flags are not affected.
-                println!("XXX impl rcr");
-
+                println!("XXX impl rcr8");
             }
             Op::Retn() => {
                 // ret near (no arguments)
@@ -765,7 +789,12 @@ impl CPU {
                 p.dst = Parameter::Reg16((b & 7) as usize);
                 p
             }
-            //0x48...0x4F => format!("dec {}", r16(b & 7)),
+            0x48...0x4F => {
+                // dec r16
+                p.command = Op::Dec16();
+                p.dst = Parameter::Reg16((b & 7) as usize);
+                p
+            }
             0x50...0x57 => {
                 // push r16
                 p.command = Op::Push16();
@@ -892,11 +921,23 @@ impl CPU {
                 let x = self.read_mod_reg_rm();
                 if x.reg != 0 {
                     // should be 0
-                    println!("XXX ERROR 0xc6 reg = {}", x.reg);
+                    println!("XXX ERROR C6 reg = {}", x.reg);
                 }
                 p.command = Op::Mov8();
                 p.dst = self.rm8(p.segment, x.rm, x.md);
                 p.src = Parameter::Imm8(self.read_u8());
+                p
+            }
+            0xC7 => {
+                // mov r/m16, imm16
+                let x = self.read_mod_reg_rm();
+                if x.reg != 0 {
+                    // should be 0
+                    println!("XXX ERROR C7 reg = {}", x.reg);
+                }
+                p.command = Op::Mov16();
+                p.dst = self.rm16(p.segment, x.rm, x.md);
+                p.src = Parameter::Imm16(self.read_u16());
                 p
             }
             0xCD => {
@@ -907,7 +948,13 @@ impl CPU {
             0xD0 => {
                 let x = self.read_mod_reg_rm();
                 p.command = match x.reg {
+                    // 0 => Op::Rol8(),
+                    // 1 => Op::Ror8(),
+                    2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
+                    // 4 => Op::Shl8(), // alias: sal
+                    // 5 => Op::Shr8(),
+                    // 7 => Op::Sar8(),
                     _ => {
                         println!("XXX 0xD0 unhandled reg = {}", x.reg);
                         Op::Unknown()
@@ -960,6 +1007,10 @@ impl CPU {
             0xFE => {
                 // byte size
                 self.decode_fe(p.segment)
+            }
+            0xFF => {
+                // word size
+                self.decode_ff(p.segment)
             }
             _ => {
                 println!("cpu: unknown op {:02X} at {:04X}", b, self.ip - 1);
@@ -1108,6 +1159,29 @@ impl CPU {
             }
             _ => {
                 println!("decode_fe error: unknown reg {}", x.reg);
+            }
+        }
+        p
+    }
+
+    // word size
+    fn decode_ff(&mut self, seg: Segment) -> Instruction {
+        let x = self.read_mod_reg_rm();
+        let mut p = Instruction {
+            segment: seg,
+            command: Op::Unknown(),
+            dst: self.rm16(seg, x.rm, x.md),
+            src: Parameter::None(),
+        };
+        match x.reg {
+            0 => {
+                p.command = Op::Inc16();
+            }
+            1 => {
+                p.command = Op::Dec16();
+            }
+            _ => {
+                println!("decode_ff error: unknown reg {}", x.reg);
             }
         }
         p
