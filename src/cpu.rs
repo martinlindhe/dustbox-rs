@@ -249,6 +249,7 @@ enum Op {
     Push16(),
     Rcl8(),
     Rcr8(),
+    RepMovsb(),
     Retn(),
     Shr16(),
     Stosb(),
@@ -692,6 +693,22 @@ impl CPU {
                 // for multi-bit rotates. The SF, ZF, AF, and PF flags are not affected.
                 println!("XXX impl rcr8");
             }
+            Op::RepMovsb() => {
+                // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
+                let mut src = (self.sreg16[DS].val as usize) * 16 + (self.r16[SI].val as usize);
+                let mut dst = (self.sreg16[ES].val as usize) * 16 + (self.r16[DI].val as usize);
+                let count = self.r16[CX].val as usize;
+                println!("rep movsb   src = {:04X}, dst = {:04X}, count = {:04X}",
+                         src,
+                         dst,
+                         count);
+                for i in 0..count {
+                    let b = self.memory[src];
+                    src += 1;
+                    self.write_u8(dst, b);
+                    dst += 1;
+                }
+            }
             Op::Retn() => {
                 // ret near (no arguments)
                 self.ip = self.pop16();
@@ -1058,6 +1075,10 @@ impl CPU {
                 p.src = Parameter::Reg8(AL);
                 p
             }
+            0xF3 => {
+                // rep
+                self.decode_f3(p.segment)
+            }
             0xF8 => {
                 // clc
                 p.command = Op::Clc();
@@ -1205,6 +1226,27 @@ impl CPU {
             _ => {
                 println!("decode_81 error: unknown reg {}", x.reg);
                 p.command = Op::Unknown();
+            }
+        }
+        p
+    }
+
+    // rep
+    fn decode_f3(&mut self, seg: Segment) -> Instruction {
+        let mut p = Instruction {
+            segment: seg,
+            command: Op::Unknown(),
+            dst: Parameter::None(),
+            src: Parameter::None(),
+        };
+        let b = self.read_u8();
+        match b {
+            0xA4 => {
+                // rep movs byte
+                p.command = Op::RepMovsb();
+            }
+            _ => {
+                println!("decode_f3 error: unhandled op {:02X}", b);
             }
         }
         p
@@ -2006,6 +2048,37 @@ fn can_execute_lea() {
     cpu.execute_instruction();
     assert_eq!(0x104, cpu.ip);
     assert_eq!(0x1BF0, cpu.r16[SP].val);
+}
+
+#[test]
+fn can_execute_rep() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        // copy first 5 bytes into 0x200
+        0x8D, 0x36, 0x00, 0x01, // lea si,[0x100]
+        0x8D, 0x3E, 0x00, 0x02, // lea di,[0x200]
+        0xB9, 0x05, 0x00,       // mov cx,0x5
+        0xFC,                   // cld
+        0xF3, 0xA4,             // rep movsb
+    ];
+
+    cpu.load_rom(&code, 0x100);
+
+    cpu.execute_instruction();
+    assert_eq!(0x100, cpu.r16[SI].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x200, cpu.r16[DI].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x5, cpu.r16[CX].val);
+
+    cpu.execute_instruction(); // cld
+
+    cpu.execute_instruction(); // rep movsb
+    for i in 0x100..0x105 {
+        assert_eq!(cpu.memory[i], cpu.memory[i + 0x100]);
+    }
 }
 
 #[test]
