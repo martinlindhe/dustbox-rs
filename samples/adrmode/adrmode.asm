@@ -20,6 +20,7 @@
     mov byte [bx+0x2c],0xff
     mov ax,[bx+0x2c]
 
+    mov [bx+0xff2c],ax
 
 
 
