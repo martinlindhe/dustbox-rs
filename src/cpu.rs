@@ -179,6 +179,7 @@ enum Parameter {
     Ptr8Amode(Segment, usize), // byte [amode], like "byte [bp+si]"
     Ptr8AmodeS8(Segment, usize, i8), // byte [amode+s8], like "byte [bp-0x20]"
     Ptr16Amode(Segment, usize), // word [amode], like "word [bx]"
+    Ptr16AmodeS8(Segment, usize, i8), // word [amode+s8], like "word [bp-0x20]"
     Reg8(usize), // index into the low 4 of CPU.r16
     Reg16(usize), // index into CPU.r16
     SReg16(usize), // index into cpu.sreg16
@@ -208,6 +209,14 @@ impl fmt::Display for Parameter {
                        if imm < 0 { -imm } else { imm })
             }
             &Parameter::Ptr16Amode(seg, v) => write!(f, "word [{}{}]", seg, amode(v as u8)),
+            &Parameter::Ptr16AmodeS8(seg, v, imm) => {
+                write!(f,
+                       "word [{}{}{}0x{:02X}]",
+                       seg,
+                       amode(v as u8),
+                       if imm < 0 { "-" } else { "+" },
+                       if imm < 0 { -imm } else { imm })
+            }
             &Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
             &Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
             &Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
@@ -1632,9 +1641,9 @@ impl CPU {
                     Parameter::Ptr8Amode(seg, rm as usize)
                 }
             }
-            // [reg+d8]
+            // [amode+s8]
             1 => Parameter::Ptr8AmodeS8(seg, rm as usize, self.read_s8()),
-            // [reg+d16]
+            // [amode+s16]
             2 => {
                 println!("XXX FIXME rm8 broken [reg+d16], ip={:04X}", self.ip);
                 let pos = self.read_s16() as u16; // XXX handle signed properly
@@ -1660,16 +1669,9 @@ impl CPU {
                     Parameter::Ptr16Amode(seg, rm as usize)
                 }
             }
-            // [reg+d8]
-            1 => {
-                // XXX read value of amode(x.rm) into pos
-                println!("XXX FIXME broken rm16 [reg+d8], ip={:04X}", self.ip);
-                let pos = self.read_s8() as u16; // XXX handle signed properly
-
-                exit(0); // XXX new type ptr16Amode + s8
-                Parameter::Ptr16(seg, pos)
-            }
-            // [reg+d16]
+            // [amode+s8]
+            1 => Parameter::Ptr16AmodeS8(seg, rm as usize, self.read_s8()),
+            // [amode+s16]
             2 => {
                 // XXX read value of amode(x.rm) into pos
                 println!("XXX FIXME rm16 [reg+d16], ip={:04X}", self.ip);
@@ -1829,6 +1831,10 @@ impl CPU {
             }
             &Parameter::Ptr16Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                self.peek_u16_at(offset) as isize
+            }
+            &Parameter::Ptr16AmodeS8(seg, r, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
                 self.peek_u16_at(offset) as isize
             }
             &Parameter::Reg8(r) => {
@@ -2300,15 +2306,17 @@ fn can_execute_addressing() {
         0xC6, 0x47, 0x2C, 0xFF, // mov byte [bx+0x2c],0xff  | rm8 [amode+s8]
         0x8D, 0x36, 0x00, 0x01, // lea si,[0x100]
         0x8B, 0x14,             // mov dx,[si]  | rm16 [reg]
+        0x8B, 0x47, 0x2C,       // mov ax,[bx+0x2c]  | rm16 [amode+s8]
     ];
 
     cpu.load_rom(&code, 0x100);
 
-    let res = cpu.disassemble_block(0x100, 4);
+    let res = cpu.disassemble_block(0x100, 5);
     assert_eq!("000100: BB 00 02          Mov16    bx, 0x0200
 000103: C6 47 2C FF       Mov8     byte [bx+0x2C], 0xFF
 000107: 8D 36 00 01       Lea16    si, word [0x0100]
 00010B: 8B 14             Mov16    dx, word [si]
+00010D: 8B 47 2C          Mov16    ax, word [bx+0x2C]
 ",
                res);
 
@@ -2324,6 +2332,10 @@ fn can_execute_addressing() {
     cpu.execute_instruction();
     // should have read word at [0x100]
     assert_eq!(0x00BB, cpu.r16[DX].val);
+
+    cpu.execute_instruction();
+    // should have read word at [0x22C]
+    assert_eq!(0x00FF, cpu.r16[AX].val);
 }
 
 #[test]
