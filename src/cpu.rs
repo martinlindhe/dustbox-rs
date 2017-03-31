@@ -233,12 +233,14 @@ impl fmt::Display for Segment {
 enum Op {
     Add8(),
     Add16(),
+    And8(),
     CallNear(),
     Clc(),
     Cld(),
     Cli(),
     Cmp8(),
     Cmp16(),
+    Daa(),
     Dec8(),
     Dec16(),
     Inc8(),
@@ -260,10 +262,13 @@ enum Op {
     Rcl8(),
     Rcr8(),
     RepMovsb(),
+    RepMovsw(),
     Retn(),
+    Ror8(),
     Shr16(),
     Stosb(),
     Sub16(),
+    Xchg16(),
     Xor16(),
     Unknown(),
 }
@@ -498,6 +503,11 @@ impl CPU {
 
                 self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
             }
+            Op::And8() => {
+                // two parameters (dst=reg)
+                println!("XXX impl and8");
+                // XXX flags
+            }
             Op::CallNear() => {
                 // call near rel
                 let old_ip = self.ip;
@@ -546,6 +556,11 @@ impl CPU {
                 self.flags.set_zero_u16(res);
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
+            }
+            Op::Daa() => {
+                // Decimal Adjust AL after Addition
+                println!("XXX impl daa");
+                // XXX there is examples in manual that can be made into tests
             }
             Op::Dec8() => {
                 // single parameter (dst)
@@ -712,16 +727,47 @@ impl CPU {
                          src,
                          dst,
                          count);
-                for i in 0..count {
-                    let b = self.memory[src];
+                loop {
+                    let b = self.peek_u8_at(src);
                     src += 1;
+                    // println!("rep movsb   write {:02X} to {:04X}", b, dst);
                     self.write_u8(dst, b);
                     dst += 1;
+                    self.r16[CX].val -= 1;
+                    if self.r16[CX].val == 0 {
+                        break;
+                    }
+                }
+            }
+            Op::RepMovsw() => {
+                // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
+                let mut src = (self.sreg16[DS].val as usize) * 16 + (self.r16[SI].val as usize);
+                let mut dst = (self.sreg16[ES].val as usize) * 16 + (self.r16[DI].val as usize);
+                let count = self.r16[CX].val as usize;
+                println!("rep movsw   src = {:04X}, dst = {:04X}, count = {:04X}",
+                         src,
+                         dst,
+                         count);
+                loop {
+                    let b = self.peek_u16_at(src);
+                    src += 1;
+                    // println!("rep movsb   write {:02X} to {:04X}", b, dst);
+                    self.write_u16(dst, b);
+                    dst += 1;
+                    self.r16[CX].val -= 1;
+                    if self.r16[CX].val == 0 {
+                        break;
+                    }
                 }
             }
             Op::Retn() => {
                 // ret near (no arguments)
                 self.ip = self.pop16();
+            }
+            Op::Ror8() => {
+                // two arguments
+                println!("XXX impl ror8");
+                // XXX flags
             }
             Op::Shr16() => {
                 // two arguments
@@ -756,6 +802,10 @@ impl CPU {
 
                 self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
             }
+            Op::Xchg16() => {
+                // two parameters
+                println!("XXX impl xchg16");
+            }
             Op::Xor16() => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.src) as usize;
@@ -773,7 +823,9 @@ impl CPU {
                 self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
             }
             _ => {
-                println!("execute error: unhandled: {:?}", op.command);
+                println!("execute error: unhandled: {:?} at {:04X}",
+                         op.command,
+                         self.ip);
             }
         }
     }
@@ -788,6 +840,21 @@ impl CPU {
         };
 
         match b {
+            0x03 => {
+                // add r16, r/m16
+                let part = self.r16_rm16(p.segment);
+                p.command = Op::Add16();
+                p.dst = part.dst;
+                p.src = part.src;
+                p
+            }
+            0x04 => {
+                // add AL, imm8
+                p.command = Op::Add8();
+                p.dst = Parameter::Reg8(AL);
+                p.src = Parameter::Imm8(self.read_u8());
+                p
+            }
             0x06 => {
                 // push es
                 p.command = Op::Push16();
@@ -819,9 +886,21 @@ impl CPU {
                 p.dst = Parameter::SReg16(DS);
                 p
             }
+            0x24 => {
+                // and AL, imm8
+                p.command = Op::And8();
+                p.dst = Parameter::Reg8(AL);
+                p.src = Parameter::Imm8(self.read_u8());
+                p
+            }
             0x26 => {
                 // es segment prefix
                 self.decode_instruction(Segment::ES())
+            }
+            0x27 => {
+                // daa
+                p.command = Op::Daa();
+                p
             }
             0x31 => {
                 // xor r/m16, r16
@@ -839,7 +918,16 @@ impl CPU {
                 p.src = part.src;
                 p
             }
+            0x3A => {
+                // cmp r8, r/m8
+                let part = self.r8_rm8(p.segment);
+                p.command = Op::Cmp8();
+                p.dst = part.dst;
+                p.src = part.src;
+                p
+            }
             0x3C => {
+                // cmp AL, imm8
                 p.command = Op::Cmp8();
                 p.dst = Parameter::Reg8(AL);
                 p.src = Parameter::Imm8(self.read_u8());
@@ -899,6 +987,14 @@ impl CPU {
                 // arithmetic 16-bit with signed 8-bit value
                 self.decode_83(p.segment)
             }
+            0x87 => {
+                // xchg r/m16, r16 | xchg r16, r/m16
+                let part = self.rm16_r16(p.segment);
+                p.command = Op::Xchg16();
+                p.dst = part.dst;
+                p.src = part.src;
+                p
+            }
             0x88 => {
                 // mov r/m8, r8
                 let part = self.rm8_r8(p.segment);
@@ -953,6 +1049,13 @@ impl CPU {
                 p.command = Op::Mov16();
                 p.dst = part.dst;
                 p.src = part.src;
+                p
+            }
+            0xA0 => {
+                // mov AL, moffs8
+                p.command = Op::Mov8();
+                p.dst = Parameter::Reg8(AL);
+                p.src = Parameter::Ptr8(p.segment, self.read_u16());
                 p
             }
             0xA3 => {
@@ -1020,7 +1123,7 @@ impl CPU {
                 let x = self.read_mod_reg_rm();
                 p.command = match x.reg {
                     // 0 => Op::Rol8(),
-                    // 1 => Op::Ror8(),
+                    1 => Op::Ror8(),
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
                     // 4 => Op::Shl8(), // alias: sal
@@ -1254,6 +1357,10 @@ impl CPU {
             0xA4 => {
                 // rep movs byte
                 p.command = Op::RepMovsb();
+            }
+            0xA5 => {
+                // rep movs word
+                p.command = Op::RepMovsw();
             }
             _ => {
                 println!("decode_f3 error: unhandled op {:02X}", b);
@@ -2027,7 +2134,6 @@ fn can_execute_rep() {
         0x8D, 0x36, 0x00, 0x01, // lea si,[0x100]
         0x8D, 0x3E, 0x00, 0x02, // lea di,[0x200]
         0xB9, 0x05, 0x00,       // mov cx,0x5
-        0xFC,                   // cld
         0xF3, 0xA4,             // rep movsb
     ];
 
@@ -2042,9 +2148,8 @@ fn can_execute_rep() {
     cpu.execute_instruction();
     assert_eq!(0x5, cpu.r16[CX].val);
 
-    cpu.execute_instruction(); // cld
-
     cpu.execute_instruction(); // rep movsb
+    assert_eq!(0x0, cpu.r16[CX].val);
     for i in 0x100..0x105 {
         assert_eq!(cpu.memory[i], cpu.memory[i + 0x100]);
     }

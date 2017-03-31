@@ -6,17 +6,19 @@
   ;  int 3 ; // breakpoint for dosbox debugger. run "BPINT 3" in dosbox debugger before running program
 
 
+; rep movsw test
+    soffs: lea si,[soffs]
+    lea di,[0x200]
+    mov cx, 5
+    cld
+    rep movsw  ; F3A4
+
+
 ; addressing mode
     mov bx, 0x200
     mov byte [bx+0x2c],0xff
 
 
-; rep test
-    soffs: lea si,[soffs]
-    lea di,[0x200]
-    mov cx, 5
-    cld
-    rep movsb  ; F3A4
 
 
 
