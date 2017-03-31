@@ -27,8 +27,9 @@ fn main() {
     //let app = games_root + "/8088 Othello (1985)(Bayley)/8088_othello.com";
     //let app = games_root + "/Apple Panic (1982)(Broderbund Software Inc)/panic.com";
     //let app = games_root + "/Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com";
-    let app = games_root + "/Beast (1984)(Dan Baker)/beast.com";
+    //let app = games_root + "/Beast (1984)(Dan Baker)/beast.com";
     //let app = games_root + "/Blort (1987)(Hennsoft)/blort.com";
+    let app = games_root + "/Crossfire (1982)(Sierra Online)/cfire.com";
     //let app = games_root + "/Dig Dug (1982)(Namco)/digdug.com";
     //let app = "samples/bar/bar.com";
     let data = tools::read_binary(&app);
@@ -39,8 +40,7 @@ fn main() {
     let stdin = io::stdin();
 
     loop {
-        let offset = cpu.get_offset();
-        print!("{:06X}> ", offset);
+        print!("{:04X}:{:04X}> ", cpu.sreg16[cpu::CS].val, cpu.ip);
         let _ = stdout().flush();
 
         let mut line = String::new();
@@ -50,6 +50,13 @@ fn main() {
             .map(|s| s.trim_right().to_string())
             .collect();
         match parts[0].as_ref() {
+            "flat" => {
+                let offset = cpu.get_offset();
+                info!("{:04X}:{:04X} is {:06X}",
+                      cpu.sreg16[cpu::CS].val,
+                      cpu.ip,
+                      offset);
+            }
             "reset" => {
                 info!("Resetting CPU");
                 cpu.reset();

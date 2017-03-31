@@ -13,8 +13,8 @@ pub struct CPU {
     pub instruction_count: usize,
     memory: Vec<u8>,
     // 8 low = r16, 8 hi = es,cs,ss,ds,fs,gs
-    r16: [Register16; 8], // general purpose registers
-    sreg16: [Register16; 6], // es,cs,ss,ds,fs,gs
+    pub r16: [Register16; 8], // general purpose registers
+    pub sreg16: [Register16; 6], // es,cs,ss,ds,fs,gs
     flags: Flags,
     breakpoints: Vec<usize>,
 }
@@ -103,8 +103,8 @@ impl Flags {
 
 
 #[derive(Copy, Clone)]
-struct Register16 {
-    val: u16,
+pub struct Register16 {
+    pub val: u16,
 }
 
 impl Register16 {
@@ -246,19 +246,19 @@ impl fmt::Display for Parameter {
 
 #[derive(Debug, Copy, Clone)]
 enum Segment {
+    CS(),
     DS(),
     ES(),
     SS(),
-    None(),
 }
 
 impl fmt::Display for Segment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            &Segment::CS() => write!(f, ""),
             &Segment::DS() => write!(f, "ds:"),
             &Segment::ES() => write!(f, "es:"),
             &Segment::SS() => write!(f, "ss:"),
-            &Segment::None() => write!(f, ""),
         }
     }
 }
@@ -303,6 +303,7 @@ enum Op {
     Rcr8(),
     RepMovsb(),
     RepMovsw(),
+    Retf(),
     Retn(),
     Ror8(),
     Shr16(),
@@ -318,6 +319,7 @@ enum Op {
 
 #[derive(Debug)]
 pub struct InstructionInfo {
+    pub segment: usize,
     pub offset: usize,
     pub length: usize,
     pub text: String,
@@ -328,12 +330,15 @@ pub struct InstructionInfo {
 impl InstructionInfo {
     pub fn pretty_string(&self) -> String {
         let hex = self.to_hex_string(&self.bytes);
-        format!("{:06X}: {} {}", self.offset, right_pad(&hex, 17), self.text)
+        format!("[{:04X}:{:04X}] {} {}",
+                self.segment,
+                self.offset,
+                right_pad(&hex, 10),
+                self.text)
     }
-
     fn to_hex_string(&self, bytes: &Vec<u8>) -> String {
         let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
-        strs.join(" ")
+        strs.join("")
     }
 }
 
@@ -468,9 +473,8 @@ impl CPU {
     }
 
     pub fn execute_instruction(&mut self) -> bool {
-        let op = self.decode_instruction(Segment::None()); // XXX should probably be cs?!
+        let op = self.decode_instruction(Segment::CS());
         self.execute(&op);
-
         match op.command {
             Op::Unknown() => {
                 println!("HIT A UNKNOWN COMMAND");
@@ -498,11 +502,12 @@ impl CPU {
 
     pub fn disasm_instruction(&mut self) -> InstructionInfo {
         let old_ip = self.ip;
-        let op = self.decode_instruction(Segment::None()); // XXX should probably be cs?!
+        let op = self.decode_instruction(Segment::CS());
         let length = self.ip - old_ip;
         self.ip = old_ip;
 
         InstructionInfo {
+            segment: self.sreg16[CS].val as usize,
             offset: old_ip as usize,
             length: length as usize,
             text: op.describe(),
@@ -830,8 +835,13 @@ impl CPU {
                     }
                 }
             }
+            Op::Retf() => {
+                //no arguments
+                self.ip = self.pop16();
+                self.sreg16[CS].val = self.pop16();
+            }
             Op::Retn() => {
-                // ret near (no arguments)
+                // no arguments
                 self.ip = self.pop16();
             }
             Op::Ror8() => {
@@ -1213,8 +1223,15 @@ impl CPU {
                 p.src = Parameter::Ptr8(p.segment, self.read_u16());
                 p
             }
+            0xA1 => {
+                // MOV AX, moffs16
+                p.command = Op::Mov16();
+                p.dst = Parameter::Reg16(AX);
+                p.src = Parameter::Ptr16(p.segment, self.read_u16());
+                p
+            }
             0xA2 => {
-                // mov moffs8,AL
+                // mov moffs8, AL
                 p.command = Op::Mov8();
                 p.dst = Parameter::Ptr8(p.segment, self.read_u16());
                 p.src = Parameter::Reg8(AL);
@@ -1225,6 +1242,12 @@ impl CPU {
                 p.command = Op::Mov16();
                 p.dst = Parameter::Ptr16(p.segment, self.read_u16());
                 p.src = Parameter::Reg16(AX);
+                p
+            }
+            0xA8 => {
+                p.command = Op::Test8();
+                p.dst = Parameter::Reg8(AL);
+                p.src = Parameter::Imm8(self.read_u8());
                 p
             }
             0xAA => {
@@ -1275,7 +1298,13 @@ impl CPU {
                 p.src = Parameter::Imm16(self.read_u16());
                 p
             }
+            0xCB => {
+                // retf
+                p.command = Op::Retf();
+                p
+            }
             0xCD => {
+                // int imm8
                 p.command = Op::Int();
                 p.dst = Parameter::Imm8(self.read_u8());
                 p
@@ -1356,6 +1385,13 @@ impl CPU {
                 // jmp short rel8
                 p.command = Op::JmpShort();
                 p.dst = Parameter::Imm16(self.read_rel8());
+                p
+            }
+            0xEC => {
+                // in AL, DX
+                p.command = Op::In8();
+                p.dst = Parameter::Reg8(AL);
+                p.src = Parameter::Reg16(DX);
                 p
             }
             0xEE => {
@@ -1774,7 +1810,7 @@ impl CPU {
     }
 
     pub fn get_offset(&self) -> usize {
-        (self.sreg16[CS].val as usize) + self.ip as usize
+        ((self.sreg16[CS].val as usize) * 16) + self.ip as usize
     }
 
     fn read_u8(&mut self) -> u8 {
@@ -1931,7 +1967,6 @@ impl CPU {
                          self.r16[DX].hi_u8(),
                          self.r16[DX].lo_u8());
             }
-
             0x09 => {
                 // VIDEO - WRITE CHARACTER AND ATTRIBUTE AT CURSOR POSITION
                 //
@@ -1974,6 +2009,17 @@ impl CPU {
                 // BUG: If the write causes the screen to scroll, BP is destroyed
                 // by BIOSes for which AH=06h destroys BP
                 print!("{}", self.r16[AX].lo_u8() as char);
+            }
+            0x0F => {
+                // VIDEO - GET CURRENT VIDEO MODE
+                //
+                // Return:
+                // AH = number of character columns
+                // AL = display mode (see AH=00h)
+                // BH = active page (see AH=05h)
+                //
+                // more info: http://www.ctyme.com/intr/rb-0108.htm
+                println!("XXX int10,0F - get video mode impl");
             }
             _ => {
                 println!("int10 error: unknown AH={:02X}, AX={:04X}",
@@ -2186,10 +2232,10 @@ impl CPU {
 
     fn segment(&self, seg: Segment) -> u16 {
         match seg {
+            Segment::CS() => self.sreg16[CS].val,
             Segment::DS() => self.sreg16[DS].val,
             Segment::ES() => self.sreg16[ES].val,
             Segment::SS() => self.sreg16[SS].val,
-            Segment::None() => 0,
         }
     }
 
