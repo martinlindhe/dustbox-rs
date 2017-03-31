@@ -293,6 +293,7 @@ enum Op {
     Loop(),
     Mov8(),
     Mov16(),
+    Nop(),
     Or8(),
     Or16(),
     Out8(),
@@ -740,6 +741,7 @@ impl CPU {
                 let data = self.read_parameter_value(&op.src) as u16;
                 self.write_parameter_u16(&op.dst, data);
             }
+            Op::Nop() => {}
             Op::Or8() => {
                 // two arguments (dst=AL)
                 println!("XXX impl or8");
@@ -1197,6 +1199,11 @@ impl CPU {
                 p.command = Op::Mov16();
                 p.dst = part.dst;
                 p.src = part.src;
+                p
+            }
+            0x90 => {
+                // nop
+                p.command = Op::Nop();
                 p
             }
             0xA0 => {
