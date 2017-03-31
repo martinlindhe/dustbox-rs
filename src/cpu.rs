@@ -1876,6 +1876,12 @@ impl CPU {
                         println!("XXX video: set video mode to 320x200, 4 colors");
                         self.r16[AX].set_lo(0x30);
                     }
+                    0x06 => {
+                        //   G  80x25  8x8   640x200    2       .   B800 CGA,PCjr,EGA,MCGA,VGA
+                        // = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
+                        println!("XXX video: set video mode to 640x200, 2 colors");
+                        self.r16[AX].set_lo(0x3F);
+                    }
                     _ => {
                         println!("video error: unknown video mode {:02X}",
                                  self.r16[AX].lo_u8());
@@ -1893,11 +1899,30 @@ impl CPU {
                 // DL = column (00h is left)
                 // Return: Nothing
                 println!("XXX set cursor position, page={}, row={}, column={}",
-                self.r16[BX].hi_u8(),
-                self.r16[DX].hi_u8(),
-                self.r16[DX].lo_u8(),
-                );
+                         self.r16[BX].hi_u8(),
+                         self.r16[DX].hi_u8(),
+                         self.r16[DX].lo_u8());
             }
+
+            0x06 => {
+                // VIDEO - SCROLL UP WINDOW
+
+                // AL = number of lines by which to scroll up (00h = clear entire window)
+                // BH = attribute used to write blank lines at bottom of window
+                // CH,CL = row,column of window's upper left corner
+                // DH,DL = row,column of window's lower right corner
+                // Return: Nothing
+                //
+                // Note: Affects only the currently active page (see AH=05h)
+                println!("XXX scroll window up, lines={}, attrib={}, top left={},{}, bottom right={},{}",
+                         self.r16[AL].lo_u8(),
+                         self.r16[BX].hi_u8(),
+                         self.r16[CX].hi_u8(),
+                         self.r16[CX].lo_u8(),
+                         self.r16[DX].hi_u8(),
+                         self.r16[DX].lo_u8());
+            }
+
             0x09 => {
                 // VIDEO - WRITE CHARACTER AND ATTRIBUTE AT CURSOR POSITION
                 //
@@ -1917,11 +1942,10 @@ impl CPU {
                 // the BH, BL, and CX values are ignored on entry.
 
                 println!("XXX write character&attribute at position, char={}, page={}, attrib={}, count={}",
-                self.r16[AX].lo_u8() as char,
-                self.r16[BX].hi_u8(),
-                self.r16[BX].lo_u8(),
-                self.r16[CX].val,
-                );
+                         self.r16[AX].lo_u8() as char,
+                         self.r16[BX].hi_u8(),
+                         self.r16[BX].lo_u8(),
+                         self.r16[CX].val);
             }
             0x0E => {
                 // VIDEO - TELETYPE OUTPUT
@@ -1953,6 +1977,30 @@ impl CPU {
     // dos related interrupts
     fn int21(&mut self) {
         match self.r16[AX].hi_u8() {
+            0x09 => {
+                // DOS 1+ - WRITE STRING TO STANDARD OUTPUT
+                //
+                // DS:DX -> '$'-terminated string
+                //
+                // Return:
+                // AL = 24h (the '$' terminating the string, despite official docs which
+                // state that nothing is returned) (at least DOS 2.1-7.0 and NWDOS)
+                //
+                // Notes: ^C/^Break are checked, and INT 23 is called if either pressed.
+                // Standard output is always the screen under DOS 1.x, but may be
+                // redirected under DOS 2+. Under the FlashTek X-32 DOS extender,
+                // the pointer is in DS:EDX
+                let mut offset = (self.sreg16[DS].val as usize) * 16 + (self.r16[DX].val as usize);
+                loop {
+                    let b = self.peek_u8_at(offset) as char;
+                    offset += 1;
+                    if b == '$' {
+                        break;
+                    }
+                    print!("{}", b as char);
+                }
+                self.r16[AX].set_lo('$' as u8);
+            }
             0x0C => {
                 // DOS 1+ - FLUSH BUFFER AND READ STANDARD INPUT
                 // AL = STDIN input function to execute after flushing buffer
@@ -1991,7 +2039,9 @@ impl CPU {
         match p {
             &Parameter::Ptr16(seg, imm) => (self.segment(seg) as usize * 16) + imm as usize,
             _ => {
-                println!("read_parameter_address error: unhandled parameter: {:?}", p);
+                println!("read_parameter_address error: unhandled parameter: {:?} at {:04X}",
+                         p,
+                         self.ip);
                 0
             }
         }
@@ -2037,7 +2087,9 @@ impl CPU {
             &Parameter::Reg16(r) => self.r16[r].val as isize,
             &Parameter::SReg16(r) => self.sreg16[r].val as isize,
             _ => {
-                println!("read_parameter_value error: unhandled parameter: {:?}", p);
+                println!("read_parameter_value error: unhandled parameter: {:?} at {:04X}",
+                         p,
+                         self.ip);
                 0
             }
         }
@@ -2066,7 +2118,9 @@ impl CPU {
                 self.write_u8(offset, data);
             }
             _ => {
-                println!("write_parameter_u8 unhandled type {:?}", p);
+                println!("write_parameter_u8 unhandled type {:?} at {:04X}",
+                         p,
+                         self.ip);
             }
         }
     }
@@ -2086,6 +2140,10 @@ impl CPU {
                 let offset = (self.segment(seg) as usize * 16) + imm as usize;
                 self.write_u16(offset, data);
             }
+            &Parameter::Ptr16Amode(seg, r) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                self.write_u16(offset, data);
+            }
             &Parameter::Ptr16AmodeS8(seg, r, imm) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
                 self.write_u16(offset, data);
@@ -2095,7 +2153,7 @@ impl CPU {
                 self.write_u16(offset, data);
             }
             _ => {
-                println!("write_u16_param unhandled type {:?}", p);
+                println!("write_u16_param unhandled type {:?} at {:04X}", p, self.ip);
             }
         }
     }
@@ -2505,17 +2563,19 @@ fn can_execute_addressing() {
         0x8B, 0x14,             // mov dx,[si]  | rm16 [reg]
         0x8B, 0x47, 0x2C,       // mov ax,[bx+0x2c]  | rm16 [amode+s8]
         0x89, 0x87, 0x30, 0x00, // mov [bx+0x0030],ax  | rm [amode+s16]
+        0x89, 0x05,             // mov [di],ax  | rm16 [amode]
     ];
 
     cpu.load_rom(&code, 0x100);
 
-    let res = cpu.disassemble_block(0x100, 6);
+    let res = cpu.disassemble_block(0x100, 7);
     assert_eq!("000100: BB 00 02          Mov16    bx, 0x0200
 000103: C6 47 2C FF       Mov8     byte [bx+0x2C], 0xFF
 000107: 8D 36 00 01       Lea16    si, word [0x0100]
 00010B: 8B 14             Mov16    dx, word [si]
 00010D: 8B 47 2C          Mov16    ax, word [bx+0x2C]
 000110: 89 87 30 00       Mov16    word [bx+0x0030], ax
+000114: 89 05             Mov16    word [di], ax
 ",
                res);
 
@@ -2539,6 +2599,11 @@ fn can_execute_addressing() {
     cpu.execute_instruction();
     // should have written word to [0x230]
     assert_eq!(0x00FF, cpu.peek_u16_at(0x230));
+
+    cpu.execute_instruction();
+    // should have written ax to [di]
+    let pos = cpu.r16[DI].val as usize;
+    assert_eq!(0x00FF, cpu.peek_u16_at(pos));
 }
 
 #[test]
