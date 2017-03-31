@@ -179,9 +179,10 @@ enum Parameter {
     Ptr16(Segment, u16), // word [u16]
     Ptr8Amode(Segment, usize), // byte [amode], like "byte [bp+si]"
     Ptr8AmodeS8(Segment, usize, i8), // byte [amode+s8], like "byte [bp-0x20]"
+    Ptr8AmodeS16(Segment, usize, i16), // byte [amode+s16], like "byte [bp-0x2020]"
     Ptr16Amode(Segment, usize), // word [amode], like "word [bx]"
     Ptr16AmodeS8(Segment, usize, i8), // word [amode+s8], like "word [bp-0x20]"
-    Ptr16AmodeS16(Segment, usize, i16), // word [amode+s16], like "word [bp-0x20]"
+    Ptr16AmodeS16(Segment, usize, i16), // word [amode+s16], like "word [bp-0x2020]"
     Reg8(usize), // index into the low 4 of CPU.r16
     Reg16(usize), // index into CPU.r16
     SReg16(usize), // index into cpu.sreg16
@@ -205,6 +206,14 @@ impl fmt::Display for Parameter {
             &Parameter::Ptr8AmodeS8(seg, v, imm) => {
                 write!(f,
                        "byte [{}{}{}0x{:02X}]",
+                       seg,
+                       amode(v as u8),
+                       if imm < 0 { "-" } else { "+" },
+                       if imm < 0 { -imm } else { imm })
+            }
+            &Parameter::Ptr8AmodeS16(seg, v, imm) => {
+                write!(f,
+                       "byte [{}{}{}0x{:04X}]",
                        seg,
                        amode(v as u8),
                        if imm < 0 { "-" } else { "+" },
@@ -1692,14 +1701,7 @@ impl CPU {
             // [amode+s8]
             1 => Parameter::Ptr8AmodeS8(seg, rm as usize, self.read_s8()),
             // [amode+s16]
-            2 => {
-                println!("XXX FIXME rm8 broken [reg+d16], ip={:04X}", self.ip);
-                let pos = self.read_s16() as u16; // XXX handle signed properly
-
-                // XXX new type PtrAmode8 + s16
-                exit(0);
-                Parameter::Ptr8(seg, pos)
-            }
+            2 => Parameter::Ptr8AmodeS16(seg, rm as usize, self.read_s16()),
             // [reg]
             _ => Parameter::Reg8(rm as usize),
         }
@@ -2114,6 +2116,10 @@ impl CPU {
                 self.write_u8(offset, data);
             }
             &Parameter::Ptr8AmodeS8(seg, r, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
+                self.write_u8(offset, data);
+            }
+            &Parameter::Ptr8AmodeS16(seg, r, imm) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
                 self.write_u8(offset, data);
             }
@@ -2557,18 +2563,19 @@ fn can_execute_rep() {
 fn can_execute_addressing() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
-        0xBB, 0x00, 0x02,       // mov bx,0x200
-        0xC6, 0x47, 0x2C, 0xFF, // mov byte [bx+0x2c],0xff  | rm8 [amode+s8]
-        0x8D, 0x36, 0x00, 0x01, // lea si,[0x100]
-        0x8B, 0x14,             // mov dx,[si]  | rm16 [reg]
-        0x8B, 0x47, 0x2C,       // mov ax,[bx+0x2c]  | rm16 [amode+s8]
-        0x89, 0x87, 0x30, 0x00, // mov [bx+0x0030],ax  | rm [amode+s16]
-        0x89, 0x05,             // mov [di],ax  | rm16 [amode]
+        0xBB, 0x00, 0x02,             // mov bx,0x200
+        0xC6, 0x47, 0x2C, 0xFF,       // mov byte [bx+0x2c],0xff  | rm8 [amode+s8]
+        0x8D, 0x36, 0x00, 0x01,       // lea si,[0x100]
+        0x8B, 0x14,                   // mov dx,[si]  | rm16 [reg]
+        0x8B, 0x47, 0x2C,             // mov ax,[bx+0x2c]  | rm16 [amode+s8]
+        0x89, 0x87, 0x30, 0x00,       // mov [bx+0x0030],ax  | rm [amode+s16]
+        0x89, 0x05,                   // mov [di],ax  | rm16 [amode]
+        0xC6, 0x85, 0xAE, 0x06, 0xFE, // mov byte [di+0x6ae],0xfe  | rm8 [amode+s16]
     ];
 
     cpu.load_rom(&code, 0x100);
 
-    let res = cpu.disassemble_block(0x100, 7);
+    let res = cpu.disassemble_block(0x100, 8);
     assert_eq!("000100: BB 00 02          Mov16    bx, 0x0200
 000103: C6 47 2C FF       Mov8     byte [bx+0x2C], 0xFF
 000107: 8D 36 00 01       Lea16    si, word [0x0100]
@@ -2576,6 +2583,7 @@ fn can_execute_addressing() {
 00010D: 8B 47 2C          Mov16    ax, word [bx+0x2C]
 000110: 89 87 30 00       Mov16    word [bx+0x0030], ax
 000114: 89 05             Mov16    word [di], ax
+000116: C6 85 AE 06 FE    Mov8     byte [di+0x06AE], 0xFE
 ",
                res);
 
@@ -2602,8 +2610,12 @@ fn can_execute_addressing() {
 
     cpu.execute_instruction();
     // should have written ax to [di]
-    let pos = cpu.r16[DI].val as usize;
-    assert_eq!(0x00FF, cpu.peek_u16_at(pos));
+    let di = cpu.r16[DI].val as usize;
+    assert_eq!(0x00FF, cpu.peek_u16_at(di));
+
+    cpu.execute_instruction();
+    // should have written byte to [di+0x06AE]
+    assert_eq!(0xFE, cpu.peek_u8_at(di + 0x06AE));
 }
 
 #[test]

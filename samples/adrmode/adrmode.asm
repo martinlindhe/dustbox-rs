@@ -6,9 +6,6 @@
   ;  int 3 ; // breakpoint for dosbox debugger. run "BPINT 3" in dosbox debugger before running program
 
 
-mov [di],ax
-
-
 ; rep movsw test
     soffs: lea si,[soffs]
     lea di,[0x200]
