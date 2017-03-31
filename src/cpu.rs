@@ -6,6 +6,7 @@ use std::fmt;
 use std::process::exit;
 use std::num::Wrapping;
 use std::u8;
+use time;
 
 pub struct CPU {
     pub ip: u16,
@@ -1843,6 +1844,7 @@ impl CPU {
         // http://wiki.osdev.org/Interrupt_Vector_Table
         match int {
             0x10 => self.int10(),
+            0x21 => self.int21(),
             _ => {
                 println!("int error: unknown interrupt {:02X}", int);
             }
@@ -1852,6 +1854,75 @@ impl CPU {
     // video related interrupts
     fn int10(&mut self) {
         match self.r16[AX].hi_u8() {
+            0x00 => {
+                // VIDEO - SET VIDEO MODE
+                //
+                // AL = desired video mode
+                //
+                // Return:
+                // AL = video mode flag (Phoenix, AMI BIOS)
+                // 20h mode > 7
+                // 30h modes 0-5 and 7
+                // 3Fh mode 6
+                // AL = CRT controller mode byte (Phoenix 386 BIOS v1.10)
+                //
+                // Desc: Specify the display mode for the currently
+                // active display adapter
+                //
+                // more info and video modes: http://www.ctyme.com/intr/rb-0069.htm
+                match self.r16[AX].lo_u8() {
+                    0x04 => {
+                        // G  40x25  8x8   320x200    4       .   B800 CGA,PCjr,EGA,MCGA,VGA
+                        println!("XXX video: set video mode to 320x200, 4 colors");
+                        self.r16[AX].set_lo(0x30);
+                    }
+                    _ => {
+                        println!("video error: unknown video mode {:02X}",
+                                 self.r16[AX].lo_u8());
+                    }
+                }
+            }
+            0x02 => {
+                // VIDEO - SET CURSOR POSITION
+                //
+                // BH = page number
+                // 0-3 in modes 2&3
+                // 0-7 in modes 0&1
+                // 0 in graphics modes
+                // DH = row (00h is top)
+                // DL = column (00h is left)
+                // Return: Nothing
+                println!("XXX set cursor position, page={}, row={}, column={}",
+                self.r16[BX].hi_u8(),
+                self.r16[DX].hi_u8(),
+                self.r16[DX].lo_u8(),
+                );
+            }
+            0x09 => {
+                // VIDEO - WRITE CHARACTER AND ATTRIBUTE AT CURSOR POSITION
+                //
+                // AL = character to display
+                // BH = page number (00h to number of pages - 1) (see #00010)
+                //      background color in 256-color graphics modes (ET4000)
+                // BL = attribute (text mode) or color (graphics mode)
+                //      if bit 7 set in <256-color graphics mode, character
+                //      is XOR'ed onto screen
+                // CX = number of times to write character
+                // Return: Nothing
+                //
+                // Notes: All characters are displayed, including CR, LF, and BS.
+                // Replication count in CX may produce an unpredictable result
+                // in graphics modes if it is greater than the number of positions
+                // remaining in the current row. With PhysTechSoft's PTS ROM-DOS
+                // the BH, BL, and CX values are ignored on entry.
+
+                println!("XXX write character&attribute at position, char={}, page={}, attrib={}, count={}",
+                self.r16[AX].lo_u8() as char,
+                self.r16[BX].hi_u8(),
+                self.r16[BX].lo_u8(),
+                self.r16[CX].val,
+                );
+            }
             0x0E => {
                 // VIDEO - TELETYPE OUTPUT
                 // Display a character on the screen, advancing the cursor
@@ -1873,6 +1944,43 @@ impl CPU {
             }
             _ => {
                 println!("int10 error: unknown AH={:02X}, AX={:04X}",
+                         self.r16[AX].hi_u8(),
+                         self.r16[AX].val);
+            }
+        }
+    }
+
+    // dos related interrupts
+    fn int21(&mut self) {
+        match self.r16[AX].hi_u8() {
+            0x0C => {
+                // DOS 1+ - FLUSH BUFFER AND READ STANDARD INPUT
+                // AL = STDIN input function to execute after flushing buffer
+                // other registers as appropriate for the input function
+                // Return: As appropriate for the specified input function
+                //
+                // Note: If AL is not one of 01h,06h,07h,08h, or 0Ah, the
+                // buffer is flushed but no input is attempted
+                println!("XXX int21, 0x0c - read stdin");
+            }
+            0x2C => {
+                // DOS 1+ - GET SYSTEM TIME
+                //
+                // Note: On most systems, the resolution of the system clock
+                // is about 5/100sec, so returned times generally do not increment
+                // by 1. On some systems, DL may always return 00h
+
+                let now = time::now();
+                let centi_sec = now.tm_nsec / 10000000; // nanosecond to 1/100 sec
+
+                // Return:
+                self.r16[CX].set_hi(now.tm_hour as u8); // CH = hour
+                self.r16[CX].set_lo(now.tm_min as u8); // CL = minute
+                self.r16[DX].set_hi(now.tm_sec as u8); // DH = second
+                self.r16[DX].set_lo(centi_sec as u8); // DL = 1/100 second
+            }
+            _ => {
+                println!("int21 error: unknown AH={:02X}, AX={:04X}",
                          self.r16[AX].hi_u8(),
                          self.r16[AX].val);
             }
