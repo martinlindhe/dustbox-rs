@@ -248,8 +248,10 @@ enum Op {
     Inc8(),
     Inc16(),
     Int(),
+    Jc(),
     JmpNear(),
     JmpShort(),
+    Jna(),
     Jnl(),
     Jnz(),
     Jz(),
@@ -269,6 +271,7 @@ enum Op {
     Ror8(),
     Shr16(),
     Stosb(),
+    Sub8(),
     Sub16(),
     Xchg16(),
     Xor16(),
@@ -630,11 +633,23 @@ impl CPU {
                 let int = self.read_parameter_value(&op.dst) as u8;
                 println!("XXX IMPL: int {:02X}", int);
             }
+            Op::Jc() => {
+                // Jump short if carry (CF=1).
+                if self.flags.carry {
+                    self.ip = self.read_parameter_value(&op.dst) as u16;
+                }
+            }
             Op::JmpNear() => {
                 self.ip = self.read_parameter_value(&op.dst) as u16;
             }
             Op::JmpShort() => {
                 self.ip = self.read_parameter_value(&op.dst) as u16;
+            }
+            Op::Jna() => {
+                // Jump short if not above (CF=1 or ZF=1).
+                if self.flags.carry | self.flags.zero {
+                    self.ip = self.read_parameter_value(&op.dst) as u16;
+                }
             }
             Op::Jnl() => {
                 // Jump short if not less (SF=OF).
@@ -788,11 +803,27 @@ impl CPU {
                     self.r16[DI].val -= 1;
                 }
             }
+            Op::Sub8() => {
+                // two parameters (dst=reg)
+                let src = self.read_parameter_value(&op.src) as usize;
+                let dst = self.read_parameter_value(&op.dst) as usize;
+                let res = (Wrapping(dst) - Wrapping(src)).0;
+
+                // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
+                self.flags.set_overflow_sub_u8(res, src, dst);
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_parity(res);
+                self.flags.set_carry_u8(res, src, dst);
+
+                self.write_parameter_u8(&op.dst, (res & 0xFF) as u8);
+            }
             Op::Sub16() => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.src) as usize;
                 let dst = self.read_parameter_value(&op.dst) as usize;
-                let res = dst - src;
+                let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
                 self.flags.set_overflow_sub_u16(res, src, dst);
@@ -904,6 +935,13 @@ impl CPU {
                 p.command = Op::Daa();
                 p
             }
+            0x2C => {
+                // sub AL, imm8
+                p.command = Op::Sub8();
+                p.dst = Parameter::Reg8(AL);
+                p.src = Parameter::Imm8(self.read_u8());
+                p
+            }
             0x31 => {
                 // xor r/m16, r16
                 let part = self.rm16_r16(p.segment);
@@ -959,6 +997,13 @@ impl CPU {
                 p.dst = Parameter::Reg16((b & 7) as usize);
                 p
             }
+            0x72 => {
+                // jc rel8    (alias: jb, jnae)
+                p.command = Op::Jc();
+                p.dst = Parameter::Imm16(self.read_rel8());
+                p
+            }
+
             0x74 => {
                 // jz rel8    (alias: je)
                 p.command = Op::Jz();
@@ -968,6 +1013,12 @@ impl CPU {
             0x75 => {
                 // jnz rel8   (alias: jne)
                 p.command = Op::Jnz();
+                p.dst = Parameter::Imm16(self.read_rel8());
+                p
+            }
+            0x76 => {
+                // jna rel8    (alias: jbe)
+                p.command = Op::Jna();
                 p.dst = Parameter::Imm16(self.read_rel8());
                 p
             }
@@ -1238,6 +1289,9 @@ impl CPU {
             0 => {
                 p.command = Op::Add8();
             }
+            4 => {
+                p.command = Op::And8();
+            }
             7 => {
                 p.command = Op::Cmp8();
             }
@@ -1253,8 +1307,6 @@ impl CPU {
                 op.Cmd = "adc"
             case 3:
                 op.Cmd = "sbb"
-            case 4:
-                op.Cmd = "and"
             case 6:
                 op.Cmd = "xor"
             }*/
