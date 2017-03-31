@@ -29,7 +29,7 @@ struct Flags {
     zero: bool, // 6: zero flag
     sign: bool, // 7: sign flag
     trap: bool, // 8: trap flag (single step)
-    interrupt_enable: bool, // 9: interrupt enable flag
+    interrupt: bool, // 9: interrupt flag
     direction: bool, // 10: direction flag (control with cld, std)
     overflow: bool, // 11: overflow flag
     iopl12: bool, // 12: I/O privilege level (286+ only), always 1 on 8086 and 186
@@ -218,6 +218,7 @@ impl fmt::Display for Parameter {
 
 #[derive(Debug, Copy, Clone)]
 enum Segment {
+    DS(),
     ES(),
     None(),
 }
@@ -225,6 +226,7 @@ enum Segment {
 impl fmt::Display for Segment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            &Segment::DS() => write!(f, "ds:"),
             &Segment::ES() => write!(f, "es:"),
             &Segment::None() => write!(f, ""),
         }
@@ -245,10 +247,12 @@ enum Op {
     Daa(),
     Dec8(),
     Dec16(),
+    In8(),
     Inc8(),
     Inc16(),
     Int(),
     Jc(),
+    Jg(),
     JmpNear(),
     JmpShort(),
     Jna(),
@@ -259,6 +263,7 @@ enum Op {
     Loop(),
     Mov8(),
     Mov16(),
+    Or8(),
     Or16(),
     Out8(),
     Pop16(),
@@ -270,6 +275,7 @@ enum Op {
     Retn(),
     Ror8(),
     Shr16(),
+    Sti(),
     Stosb(),
     Sub8(),
     Sub16(),
@@ -345,7 +351,7 @@ impl CPU {
                 zero: false,
                 sign: false,
                 trap: false,
-                interrupt_enable: false,
+                interrupt: false,
                 direction: false,
                 overflow: false,
                 iopl12: false,
@@ -527,7 +533,7 @@ impl CPU {
                 self.flags.direction = false;
             }
             Op::Cli() => {
-                self.flags.interrupt_enable = false;
+                self.flags.interrupt = false;
             }
             Op::Cmp8() => {
                 // two parameters
@@ -599,6 +605,12 @@ impl CPU {
 
                 self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
             }
+            Op::In8() => {
+                // Input from Port
+                // two parameters (dst=AL)
+                let src = self.read_parameter_value(&op.src) as usize;
+                println!("XXX unhandled in8 {:02X}", src);
+            }
             Op::Inc8() => {
                 let dst = self.read_parameter_value(&op.dst) as usize;
                 let src = 1;
@@ -636,6 +648,12 @@ impl CPU {
             Op::Jc() => {
                 // Jump short if carry (CF=1).
                 if self.flags.carry {
+                    self.ip = self.read_parameter_value(&op.dst) as u16;
+                }
+            }
+            Op::Jg() => {
+                // Jump short if greater (ZF=0 and SF=OF).
+                if !self.flags.zero & self.flags.sign == self.flags.overflow {
                     self.ip = self.read_parameter_value(&op.dst) as u16;
                 }
             }
@@ -692,6 +710,10 @@ impl CPU {
                 // two parameters (dst=reg)
                 let data = self.read_parameter_value(&op.src) as u16;
                 self.write_parameter_u16(&op.dst, data);
+            }
+            Op::Or8() => {
+                // two arguments (dst=AL)
+                println!("XXX impl or8");
             }
             Op::Or16() => {
                 // two arguments (dst=AX)
@@ -791,6 +813,10 @@ impl CPU {
                 println!("XXX impl shr16");
                 // XXX flags
             }
+            Op::Sti() => {
+                // Set Interrupt Flag
+                self.flags.interrupt = true;
+            }
             Op::Stosb() => {
                 // no parameters
                 // store AL at ES:(E)DI
@@ -888,6 +914,13 @@ impl CPU {
                 p.src = Parameter::Imm8(self.read_u8());
                 p
             }
+            0x05 => {
+                // add AX, imm16
+                p.command = Op::Add16();
+                p.dst = Parameter::Reg16(AX);
+                p.src = Parameter::Imm16(self.read_u16());
+                p
+            }
             0x06 => {
                 // push es
                 p.command = Op::Push16();
@@ -898,6 +931,13 @@ impl CPU {
                 // pop es
                 p.command = Op::Pop16();
                 p.dst = Parameter::SReg16(ES);
+                p
+            }
+            0x0C => {
+                // or AL, imm8
+                p.command = Op::Or8();
+                p.dst = Parameter::Reg8(AL);
+                p.src = Parameter::Imm8(self.read_u8());
                 p
             }
             0x0D => {
@@ -973,6 +1013,11 @@ impl CPU {
                 p.src = Parameter::Imm8(self.read_u8());
                 p
             }
+            0x3E => {
+                // ds segment prefix
+                // XXX if next op is a Jcc, then this is a "branch taken" hint
+                self.decode_instruction(Segment::DS())
+            }
             0x40...0x47 => {
                 // inc r16
                 p.command = Op::Inc16();
@@ -1023,8 +1068,14 @@ impl CPU {
                 p
             }
             0x7D => {
-                // jnl rel8   (alias: jge)
+                // jnl rel8    (alias: jge)
                 p.command = Op::Jnl();
+                p.dst = Parameter::Imm16(self.read_rel8());
+                p
+            }
+            0x7F => {
+                // jg rel8    (alias: jnle)
+                p.command = Op::Jg();
                 p.dst = Parameter::Imm16(self.read_rel8());
                 p
             }
@@ -1109,6 +1160,13 @@ impl CPU {
                 p.command = Op::Mov8();
                 p.dst = Parameter::Reg8(AL);
                 p.src = Parameter::Ptr8(p.segment, self.read_u16());
+                p
+            }
+            0xA2 => {
+                // mov moffs8,AL
+                p.command = Op::Mov8();
+                p.dst = Parameter::Ptr8(p.segment, self.read_u16());
+                p.src = Parameter::Reg8(AL);
                 p
             }
             0xA3 => {
@@ -1217,6 +1275,20 @@ impl CPU {
                 p.dst = Parameter::Imm16(self.read_rel8());
                 p
             }
+            0xE4 => {
+                // in AL, imm8
+                p.command = Op::In8();
+                p.dst = Parameter::Reg8(AL);
+                p.src = Parameter::Imm8(self.read_u8());
+                p
+            }
+            0xE6 => {
+                // OUT imm8, AL
+                p.command = Op::Out8();
+                p.dst = Parameter::Imm8(self.read_u8());
+                p.src = Parameter::Reg8(AL);
+                p
+            }
             0xE8 => {
                 // call near s16
                 p.command = Op::CallNear();
@@ -1253,6 +1325,11 @@ impl CPU {
             0xFA => {
                 // cli
                 p.command = Op::Cli();
+                p
+            }
+            0xFB => {
+                // sti
+                p.command = Op::Sti();
                 p
             }
             0xFC => {
@@ -1335,10 +1412,10 @@ impl CPU {
             5 => {
                 p.command = Op::Sub16();
             }
-            /*
             7 => {
                 p.command = Op::Cmp16();
             }
+            /*
             case 1:
                 op.Cmd = "or"
             case 2:
@@ -1830,6 +1907,7 @@ impl CPU {
 
     fn segment(&self, seg: Segment) -> u16 {
         match seg {
+            Segment::DS() => self.sreg16[DS].val,
             Segment::ES() => self.sreg16[ES].val,
             Segment::None() => 0,
         }
