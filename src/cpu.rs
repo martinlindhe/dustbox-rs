@@ -1784,8 +1784,9 @@ impl CPU {
 
     // output byte to I/O port
     fn out_u8(&mut self, p: &Parameter, data: u8) {
-        let dst = match *p {
-            Parameter::Reg16(r) => self.r16[r].val,
+        let dst = match p {
+            &Parameter::Reg16(r) => self.r16[r].val,
+            &Parameter::Imm8(imm) => imm as u16,
             _ => {
                 println!("out_u8 unhandled type {:?}", p);
                 0
@@ -1820,6 +1821,10 @@ impl CPU {
             }
             &Parameter::Ptr8Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                self.peek_u8_at(offset) as isize
+            }
+            &Parameter::Ptr8AmodeS8(seg, r, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
                 self.peek_u8_at(offset) as isize
             }
             &Parameter::Ptr16Amode(seg, r) => {
