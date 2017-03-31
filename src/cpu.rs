@@ -661,10 +661,8 @@ impl CPU {
                 self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
             }
             Op::Int() => {
-                // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
-                // http://wiki.osdev.org/Interrupt_Vector_Table
                 let int = self.read_parameter_value(&op.dst) as u8;
-                println!("XXX IMPL: int {:02X}", int);
+                self.int(int);
             }
             Op::Jc() => {
                 // Jump short if carry (CF=1).
@@ -884,7 +882,14 @@ impl CPU {
             }
             Op::Test8() => {
                 // two parameters
-                println!("XXX impl test8");
+                // AND imm8 with r/m8; set SF, ZF, PF according to result.
+                let src = self.read_parameter_value(&op.src) as usize;
+                let dst = self.read_parameter_value(&op.dst) as usize;
+                let res = dst & src;
+
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_parity(res);
             }
             Op::Xchg16() => {
                 // two parameters
@@ -1831,6 +1836,47 @@ impl CPU {
         };
 
         println!("XXX unhandled out_u8 to {:04X}, data {:02X}", dst, data);
+    }
+
+    fn int(&mut self, int: u8) {
+        // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
+        // http://wiki.osdev.org/Interrupt_Vector_Table
+        match int {
+            0x10 => self.int10(),
+            _ => {
+                println!("int error: unknown interrupt {:02X}", int);
+            }
+        }
+    }
+
+    // video related interrupts
+    fn int10(&mut self) {
+        match self.r16[AX].hi_u8() {
+            0x0E => {
+                // VIDEO - TELETYPE OUTPUT
+                // Display a character on the screen, advancing the cursor
+                // and scrolling the screen as necessary
+                //
+                // AL = character to write
+                // BH = page number
+                // BL = foreground color (graphics modes only)
+                // Return: Nothing
+                //
+                // Notes: Characters 07h (BEL), 08h (BS), 0Ah (LF),
+                // and 0Dh (CR) are interpreted and do the expected things.
+                // IBM PC ROMs dated 1981/4/24 and 1981/10/19 require
+                // that BH be the same as the current active page
+                //
+                // BUG: If the write causes the screen to scroll, BP is destroyed
+                // by BIOSes for which AH=06h destroys BP
+                print!("{}", self.r16[AX].lo_u8() as char);
+            }
+            _ => {
+                println!("int10 error: unknown AH={:02X}, AX={:04X}",
+                         self.r16[AX].hi_u8(),
+                         self.r16[AX].val);
+            }
+        }
     }
 
     fn read_parameter_address(&mut self, p: &Parameter) -> usize {
