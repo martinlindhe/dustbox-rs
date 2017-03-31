@@ -229,6 +229,7 @@ impl fmt::Display for Parameter {
 enum Segment {
     DS(),
     ES(),
+    SS(),
     None(),
 }
 
@@ -237,6 +238,7 @@ impl fmt::Display for Segment {
         match self {
             &Segment::DS() => write!(f, "ds:"),
             &Segment::ES() => write!(f, "es:"),
+            &Segment::SS() => write!(f, "ss:"),
             &Segment::None() => write!(f, ""),
         }
     }
@@ -1006,6 +1008,10 @@ impl CPU {
                 p.dst = part.dst;
                 p.src = part.src;
                 p
+            }
+            0x36 => {
+                // ss segment prefix
+                self.decode_instruction(Segment::SS())
             }
             0x3A => {
                 // cmp r8, r/m8
@@ -1883,18 +1889,22 @@ impl CPU {
     }
 
     fn write_parameter_u16(&mut self, p: &Parameter, data: u16) {
-        match *p {
-            Parameter::Reg16(r) => {
+        match p {
+            &Parameter::Reg16(r) => {
                 self.r16[r].val = data;
             }
-            Parameter::SReg16(r) => {
+            &Parameter::SReg16(r) => {
                 self.sreg16[r].val = data;
             }
-            Parameter::Imm16(v) => {
+            &Parameter::Imm16(v) => {
                 self.write_u16(v as usize, data);
             }
-            Parameter::Ptr16(seg, imm) => {
+            &Parameter::Ptr16(seg, imm) => {
                 let offset = (self.segment(seg) as usize * 16) + imm as usize;
+                self.write_u16(offset, data);
+            }
+            &Parameter::Ptr16AmodeS8(seg, r, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
                 self.write_u16(offset, data);
             }
             _ => {
@@ -1920,6 +1930,7 @@ impl CPU {
         match seg {
             Segment::DS() => self.sreg16[DS].val,
             Segment::ES() => self.sreg16[ES].val,
+            Segment::SS() => self.sreg16[SS].val,
             Segment::None() => 0,
         }
     }
