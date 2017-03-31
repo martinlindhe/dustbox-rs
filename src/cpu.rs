@@ -178,6 +178,7 @@ enum Parameter {
     Ptr16(Segment, u16), // word [u16]
     Ptr8Amode(Segment, usize), // byte [amode], like "byte [bp+si]"
     Ptr8AmodeS8(Segment, usize, i8), // byte [amode+s8], like "byte [bp-0x20]"
+    Ptr16Amode(Segment, usize), // word [amode], like "word [bx]"
     Reg8(usize), // index into the low 4 of CPU.r16
     Reg16(usize), // index into CPU.r16
     SReg16(usize), // index into cpu.sreg16
@@ -206,6 +207,7 @@ impl fmt::Display for Parameter {
                        if imm < 0 { "-" } else { "+" },
                        if imm < 0 { -imm } else { imm })
             }
+            &Parameter::Ptr16Amode(seg, v) => write!(f, "word [{}{}]", seg, amode(v as u8)),
             &Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
             &Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
             &Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
@@ -1521,17 +1523,13 @@ impl CPU {
     fn rm16(&mut self, seg: Segment, rm: u8, md: u8) -> Parameter {
         match md {
             0 => {
-                let pos = if rm == 6 {
+                if rm == 6 {
                     // [u16]
-                    self.read_u16()
+                    Parameter::Ptr16(seg, self.read_u16())
                 } else {
                     // [amode]
-                    println!("XXX FIXME broken rm16 [reg], ip={:04X}", self.ip);
-                    // XXX read value of amode(x.rm) into pos
-                    exit(0);
-                    0
-                };
-                Parameter::Ptr16(seg, pos)
+                    Parameter::Ptr16Amode(seg, rm as usize)
+                }
             }
             // [reg+d8]
             1 => {
@@ -1694,6 +1692,10 @@ impl CPU {
             &Parameter::Ptr8Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
                 self.peek_u8_at(offset) as isize
+            }
+            &Parameter::Ptr16Amode(seg, r) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                self.peek_u16_at(offset) as isize
             }
             &Parameter::Reg8(r) => {
                 let lor = r & 3;
@@ -2090,7 +2092,6 @@ fn can_execute_cmp() {
         0x81, 0xFF, 0x00, 0x20, // cmp di,0x2000
     ];
 
-
     cpu.load_rom(&code, 0x100);
 
     cpu.execute_instruction();
@@ -2161,15 +2162,18 @@ fn can_execute_addressing() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x02,       // mov bx,0x200
-        0xC6, 0x47, 0x2C, 0xFF, // mov byte [bx+0x2c],0xff
+        0xC6, 0x47, 0x2C, 0xFF, // mov byte [bx+0x2c],0xff  | rm8 [amode+s8]
+        0x8D, 0x36, 0x00, 0x01, // lea si,[0x100]
+        0x8B, 0x14,             // mov dx,[si]  | rm16 [reg]
     ];
 
     cpu.load_rom(&code, 0x100);
 
-    // XXX also disassemble
-    let res = cpu.disassemble_block(0x100, 2);
+    let res = cpu.disassemble_block(0x100, 4);
     assert_eq!("000100: BB 00 02          Mov16    bx, 0x0200
 000103: C6 47 2C FF       Mov8     byte [bx+0x2C], 0xFF
+000107: 8D 36 00 01       Lea16    si, word [0x0100]
+00010B: 8B 14             Mov16    dx, word [si]
 ",
                res);
 
@@ -2178,6 +2182,13 @@ fn can_execute_addressing() {
 
     cpu.execute_instruction();
     assert_eq!(0xFF, cpu.memory[0x22C]);
+
+    cpu.execute_instruction();
+    assert_eq!(0x100, cpu.r16[SI].val);
+
+    cpu.execute_instruction();
+    // should have read word at [0x100]
+    assert_eq!(0x00BB, cpu.r16[DX].val);
 }
 
 #[test]
