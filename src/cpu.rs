@@ -299,6 +299,7 @@ enum Op {
     Stosb(),
     Sub8(),
     Sub16(),
+    Test8(),
     Xchg16(),
     Xor16(),
     Unknown(),
@@ -881,6 +882,10 @@ impl CPU {
 
                 self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
             }
+            Op::Test8() => {
+                // two parameters
+                println!("XXX impl test8");
+            }
             Op::Xchg16() => {
                 // two parameters
                 println!("XXX impl xchg16");
@@ -1289,7 +1294,7 @@ impl CPU {
                         Op::Unknown()
                     }
                 };
-                p.dst = self.rm8(p.segment, x.rm, x.md);
+                p.dst = self.rm16(p.segment, x.rm, x.md);
                 p.src = Parameter::Imm16(1);
                 p
             }
@@ -1340,6 +1345,28 @@ impl CPU {
             0xF3 => {
                 // rep
                 self.decode_f3(p.segment)
+            }
+            0xF6 => {
+                // byte sized math
+                let x = self.read_mod_reg_rm();
+                p.dst = self.rm8(p.segment, x.rm, x.md);
+                match x.reg {
+                    0 => {
+                        // test r/m8, imm8
+                        p.command = Op::Test8();
+                        p.src = Parameter::Imm8(self.read_u8());
+                    }
+                    // 2 =>  op.Cmd = "not"
+                    // 3 => op.Cmd = "neg"
+                    // 4 => op.Cmd = "mul"
+                    // 5 => op.Cmd = "imul"
+                    // 6 => op.Cmd = "div"
+                    // 7 => op.Cmd = "idiv"
+                    _ => {
+                        println!("error F6 unknown reg={}", x.reg);
+                    }
+                }
+                p
             }
             0xF8 => {
                 // clc
@@ -2316,7 +2343,6 @@ fn can_execute_rep() {
 
 #[test]
 fn can_execute_addressing() {
-
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x02,       // mov bx,0x200
@@ -2359,6 +2385,23 @@ fn can_execute_addressing() {
     cpu.execute_instruction();
     // should have written word to [0x230]
     assert_eq!(0x00FF, cpu.peek_u16_at(0x230));
+}
+
+#[test]
+fn can_execute_math() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xF6, 0x06, 0x2C, 0x12, 0xFF, // test byte [0x122c],0xff
+    ];
+
+    cpu.load_rom(&code, 0x100);
+
+    let res = cpu.disassemble_block(0x100, 1);
+    assert_eq!("000100: F6 06 2C 12 FF    Test8    byte [0x122C], 0xFF
+",
+               res);
+
+    // XXX also execute
 }
 
 #[test]

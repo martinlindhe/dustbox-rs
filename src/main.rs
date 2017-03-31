@@ -23,7 +23,8 @@ fn main() {
     // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
     //let app = "samples/adrmode/adrmode.com";
     //let app = "../dos-software-decoding/games/8088 Othello (1985)(Bayley)/8088_othello.com";
-    let app = "../dos-software-decoding/games/Apple Panic (1982)(Broderbund Software Inc)/panic.com";
+    //let app = "../dos-software-decoding/games/Apple Panic (1982)(Broderbund Software Inc)/panic.com";
+    let app = "../dos-software-decoding/games/Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com";
     //let app = "../dos-software-decoding/games/Blort (1987)(Hennsoft)/blort.com";
     //let app = "../dos-software-decoding/games/Dig Dug (1982)(Namco)/digdug.com";
     //let app = "samples/bar/bar.com";
