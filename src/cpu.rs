@@ -151,23 +151,28 @@ struct ModRegRm {
 pub struct Instruction {
     command: Op,
     segment: Segment,
-    src: Parameter,
-    dst: Parameter,
+    params: ParameterPair,
 }
 
 impl Instruction {
     fn describe(&self) -> String {
-        match self.dst {
+        match self.params.dst {
             Parameter::None() => format!("{:?}", self.command),
             _ => {
                 let cmd = right_pad(&format!("{:?}", self.command), 9);
-                match self.src {
-                    Parameter::None() => format!("{}{}", cmd, self.dst),
-                    _ => format!("{}{}, {}", cmd, self.dst, self.src),
+                match self.params.src {
+                    Parameter::None() => format!("{}{}", cmd, self.params.dst),
+                    _ => format!("{}{}, {}", cmd, self.params.dst, self.params.src),
                 }
             }
         }
     }
+}
+
+#[derive(Debug)]
+pub struct ParameterPair {
+    src: Parameter,
+    dst: Parameter,
 }
 
 #[derive(Debug)]
@@ -250,15 +255,17 @@ enum Segment {
     DS(),
     ES(),
     SS(),
+    Default(), // is treated as CS
 }
 
 impl fmt::Display for Segment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Segment::CS() => write!(f, ""),
+            &Segment::CS() => write!(f, "cs:"),
             &Segment::DS() => write!(f, "ds:"),
             &Segment::ES() => write!(f, "es:"),
             &Segment::SS() => write!(f, "ss:"),
+            &Segment::Default() => write!(f, ""),
         }
     }
 }
@@ -306,6 +313,8 @@ enum Op {
     Retf(),
     Retn(),
     Ror8(),
+    Shl8(),
+    Shl16(),
     Shr16(),
     Sti(),
     Stosb(),
@@ -313,6 +322,7 @@ enum Op {
     Sub16(),
     Test8(),
     Xchg16(),
+    Xor8(),
     Xor16(),
     Unknown(),
 }
@@ -502,7 +512,7 @@ impl CPU {
 
     pub fn disasm_instruction(&mut self) -> InstructionInfo {
         let old_ip = self.ip;
-        let op = self.decode_instruction(Segment::CS());
+        let op = self.decode_instruction(Segment::Default());
         let length = self.ip - old_ip;
         self.ip = old_ip;
 
@@ -521,8 +531,8 @@ impl CPU {
         match op.command {
             Op::Add8() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.src) as usize;
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
                 let res = (Wrapping(dst) + Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
@@ -533,12 +543,12 @@ impl CPU {
                 self.flags.set_carry_u8(res, src, dst);
                 self.flags.set_parity(res);
 
-                self.write_parameter_u8(&op.dst, (res & 0xFF) as u8);
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Add16() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.src) as usize;
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
                 let res = (Wrapping(dst) + Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
@@ -549,7 +559,7 @@ impl CPU {
                 self.flags.set_carry_u16(res, src, dst);
                 self.flags.set_parity(res);
 
-                self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
             }
             Op::And8() => {
                 // two parameters (dst=reg)
@@ -559,7 +569,7 @@ impl CPU {
             Op::CallNear() => {
                 // call near rel
                 let old_ip = self.ip;
-                let temp_ip = self.read_parameter_value(&op.dst) as u16;
+                let temp_ip = self.read_parameter_value(&op.params.dst) as u16;
                 self.push16(old_ip);
                 self.ip = temp_ip;
             }
@@ -576,8 +586,8 @@ impl CPU {
                 // two parameters
                 // Modify status flags in the same manner as the SUB instruction
 
-                let src = self.read_parameter_value(&op.src) as usize;
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
@@ -593,8 +603,8 @@ impl CPU {
                 // two parameters
                 // Modify status flags in the same manner as the SUB instruction
 
-                let src = self.read_parameter_value(&op.src) as usize;
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
@@ -612,7 +622,7 @@ impl CPU {
             }
             Op::Dec8() => {
                 // single parameter (dst)
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
                 let src = 1;
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
@@ -624,11 +634,11 @@ impl CPU {
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
 
-                self.write_parameter_u8(&op.dst, (res & 0xFF) as u8);
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Dec16() => {
                 // single parameter (dst)
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
                 let src = 1;
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
@@ -640,16 +650,16 @@ impl CPU {
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
 
-                self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
             }
             Op::In8() => {
                 // Input from Port
                 // two parameters (dst=AL)
-                let src = self.read_parameter_value(&op.src) as usize;
+                let src = self.read_parameter_value(&op.params.src) as usize;
                 println!("XXX unhandled in8 {:02X}", src);
             }
             Op::Inc8() => {
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
                 let src = 1;
                 let res = (Wrapping(dst) + Wrapping(src)).0;
 
@@ -660,10 +670,10 @@ impl CPU {
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
 
-                self.write_parameter_u8(&op.dst, (res & 0xFF) as u8);
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Inc16() => {
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
                 let src = 1;
                 let res = (Wrapping(dst) + Wrapping(src)).0;
 
@@ -674,62 +684,62 @@ impl CPU {
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
 
-                self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
             }
             Op::Int() => {
-                let int = self.read_parameter_value(&op.dst) as u8;
+                let int = self.read_parameter_value(&op.params.dst) as u8;
                 self.int(int);
             }
             Op::Jc() => {
                 // Jump short if carry (CF=1).
                 if self.flags.carry {
-                    self.ip = self.read_parameter_value(&op.dst) as u16;
+                    self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Jg() => {
                 // Jump short if greater (ZF=0 and SF=OF).
                 if !self.flags.zero & self.flags.sign == self.flags.overflow {
-                    self.ip = self.read_parameter_value(&op.dst) as u16;
+                    self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::JmpNear() => {
-                self.ip = self.read_parameter_value(&op.dst) as u16;
+                self.ip = self.read_parameter_value(&op.params.dst) as u16;
             }
             Op::JmpShort() => {
-                self.ip = self.read_parameter_value(&op.dst) as u16;
+                self.ip = self.read_parameter_value(&op.params.dst) as u16;
             }
             Op::Jna() => {
                 // Jump short if not above (CF=1 or ZF=1).
                 if self.flags.carry | self.flags.zero {
-                    self.ip = self.read_parameter_value(&op.dst) as u16;
+                    self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Jnl() => {
                 // Jump short if not less (SF=OF).
                 if self.flags.sign == self.flags.overflow {
-                    self.ip = self.read_parameter_value(&op.dst) as u16;
+                    self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Jnz() => {
                 // Jump short if not zero (ZF=0).
                 if !self.flags.zero {
-                    self.ip = self.read_parameter_value(&op.dst) as u16;
+                    self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Jz() => {
                 // Jump short if zero (ZF ← 1).
                 if self.flags.zero {
-                    self.ip = self.read_parameter_value(&op.dst) as u16;
+                    self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Lea16() => {
                 // Load Effective Address
                 // Store effective address for m in register r16
-                let src = self.read_parameter_address(&op.src) as u16;
-                self.write_parameter_u16(&op.dst, src);
+                let src = self.read_parameter_address(&op.params.src) as u16;
+                self.write_parameter_u16(&op.params.dst, op.segment, src);
             }
             Op::Loop() => {
-                let dst = self.read_parameter_value(&op.dst) as u16;
+                let dst = self.read_parameter_value(&op.params.dst) as u16;
                 self.r16[CX].val -= 1;
                 if self.r16[CX].val != 0 {
                     self.ip = dst;
@@ -738,13 +748,13 @@ impl CPU {
             }
             Op::Mov8() => {
                 // two parameters (dst=reg)
-                let data = self.read_parameter_value(&op.src) as u8;
-                self.write_parameter_u8(&op.dst, data);
+                let data = self.read_parameter_value(&op.params.src) as u8;
+                self.write_parameter_u8(&op.params.dst, data);
             }
             Op::Mov16() => {
                 // two parameters (dst=reg)
-                let data = self.read_parameter_value(&op.src) as u16;
-                self.write_parameter_u16(&op.dst, data);
+                let data = self.read_parameter_value(&op.params.src) as u16;
+                self.write_parameter_u16(&op.params.dst, op.segment, data);
             }
             Op::Nop() => {}
             Op::Or8() => {
@@ -757,24 +767,24 @@ impl CPU {
             }
             Op::Out8() => {
                 // two arguments (dst=DX or imm8)
-                let data = self.read_parameter_value(&op.src) as u8;
-                self.out_u8(&op.dst, data);
+                let data = self.read_parameter_value(&op.params.src) as u8;
+                self.out_u8(&op.params.dst, data);
             }
             Op::Pop16() => {
                 // single parameter (dst)
                 let data = self.pop16();
-                self.write_parameter_u16(&op.dst, data);
+                self.write_parameter_u16(&op.params.dst, op.segment, data);
             }
             Op::Push16() => {
                 // single parameter (dst)
-                let data = self.read_parameter_value(&op.dst) as u16;
+                let data = self.read_parameter_value(&op.params.dst) as u16;
                 self.push16(data);
             }
             Op::Rcl8() => {
                 // two arguments
                 // rotate 9 bits `src` times
-                let src = self.read_parameter_value(&op.src) as u8;
-                let dst = self.read_parameter_value(&op.dst) as u8;
+                let src = self.read_parameter_value(&op.params.src) as u8;
+                let dst = self.read_parameter_value(&op.params.dst) as u8;
 
                 // XXX do + flags + write result
                 println!("XXX impl rcl8");
@@ -782,8 +792,8 @@ impl CPU {
             Op::Rcr8() => {
                 // two arguments
                 // rotate 9 bits `src` times
-                let src = self.read_parameter_value(&op.src) as u8;
-                let dst = self.read_parameter_value(&op.dst) as u8;
+                let src = self.read_parameter_value(&op.params.src) as u8;
+                let dst = self.read_parameter_value(&op.params.dst) as u8;
 
                 // XXX do + flags + write result
 
@@ -849,6 +859,16 @@ impl CPU {
                 println!("XXX impl ror8");
                 // XXX flags
             }
+            Op::Shl8() => {
+                // two arguments
+                println!("XXX impl shl8");
+                // XXX flags
+            }
+            Op::Shl16() => {
+                // two arguments
+                println!("XXX impl shl16");
+                // XXX flags
+            }
             Op::Shr16() => {
                 // two arguments
                 println!("XXX impl shr16");
@@ -872,8 +892,8 @@ impl CPU {
             }
             Op::Sub8() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.src) as usize;
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
@@ -884,12 +904,12 @@ impl CPU {
                 self.flags.set_parity(res);
                 self.flags.set_carry_u8(res, src, dst);
 
-                self.write_parameter_u8(&op.dst, (res & 0xFF) as u8);
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Sub16() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.src) as usize;
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
@@ -900,13 +920,13 @@ impl CPU {
                 self.flags.set_parity(res);
                 self.flags.set_carry_u16(res, src, dst);
 
-                self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
             }
             Op::Test8() => {
                 // two parameters
                 // AND imm8 with r/m8; set SF, ZF, PF according to result.
-                let src = self.read_parameter_value(&op.src) as usize;
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
                 let res = dst & src;
 
                 self.flags.set_sign_u8(res);
@@ -914,13 +934,29 @@ impl CPU {
                 self.flags.set_parity(res);
             }
             Op::Xchg16() => {
-                // two parameters
+                // two parameters (registers)
                 println!("XXX impl xchg16");
+            }
+            Op::Xor8() => {
+                // two parameters (dst=reg)
+                let src = self.read_parameter_value(&op.params.src) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let res = dst ^ src;
+
+                // The OF and CF flags are cleared; the SF, ZF,
+                // and PF flags are set according to the result.
+                self.flags.overflow = false;
+                self.flags.carry = false;
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_parity(res);
+
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Xor16() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.src) as usize;
-                let dst = self.read_parameter_value(&op.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src) as usize;
+                let dst = self.read_parameter_value(&op.params.dst) as usize;
                 let res = dst ^ src;
 
                 // The OF and CF flags are cleared; the SF, ZF,
@@ -931,348 +967,425 @@ impl CPU {
                 self.flags.set_zero_u16(res);
                 self.flags.set_parity(res);
 
-                self.write_parameter_u16(&op.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
             }
             _ => {
-                println!("execute error: unhandled: {:?} at {:04X}",
+                println!("execute error: unhandled: {:?} at {:06X}",
                          op.command,
-                         self.ip);
+                         self.get_offset());
             }
         }
     }
 
     fn decode_instruction(&mut self, seg: Segment) -> Instruction {
         let b = self.read_u8();
-        let mut p = Instruction {
+        let mut op = Instruction {
             segment: seg,
             command: Op::Unknown(),
-            dst: Parameter::None(),
-            src: Parameter::None(),
+            params: ParameterPair {
+                dst: Parameter::None(),
+                src: Parameter::None(),
+            },
         };
 
         match b {
             0x03 => {
                 // add r16, r/m16
-                let part = self.r16_rm16(p.segment);
-                p.command = Op::Add16();
-                p.dst = part.dst;
-                p.src = part.src;
-                p
+                op.command = Op::Add16();
+                op.params = self.r16_rm16(op.segment);
             }
             0x04 => {
                 // add AL, imm8
-                p.command = Op::Add8();
-                p.dst = Parameter::Reg8(AL);
-                p.src = Parameter::Imm8(self.read_u8());
-                p
+                op.command = Op::Add8();
+                op.params.dst = Parameter::Reg8(AL);
+                op.params.src = Parameter::Imm8(self.read_u8());
             }
             0x05 => {
                 // add AX, imm16
-                p.command = Op::Add16();
-                p.dst = Parameter::Reg16(AX);
-                p.src = Parameter::Imm16(self.read_u16());
-                p
+                op.command = Op::Add16();
+                op.params.dst = Parameter::Reg16(AX);
+                op.params.src = Parameter::Imm16(self.read_u16());
             }
             0x06 => {
                 // push es
-                p.command = Op::Push16();
-                p.dst = Parameter::SReg16(ES);
-                p
+                op.command = Op::Push16();
+                op.params.dst = Parameter::SReg16(ES);
             }
             0x07 => {
                 // pop es
-                p.command = Op::Pop16();
-                p.dst = Parameter::SReg16(ES);
-                p
+                op.command = Op::Pop16();
+                op.params.dst = Parameter::SReg16(ES);
             }
             0x0C => {
                 // or AL, imm8
-                p.command = Op::Or8();
-                p.dst = Parameter::Reg8(AL);
-                p.src = Parameter::Imm8(self.read_u8());
-                p
+                op.command = Op::Or8();
+                op.params.dst = Parameter::Reg8(AL);
+                op.params.src = Parameter::Imm8(self.read_u8());
             }
             0x0D => {
                 // or AX, imm16
-                p.command = Op::Or16();
-                p.dst = Parameter::Reg16(AX);
-                p.src = Parameter::Imm16(self.read_u16());
-                p
+                op.command = Op::Or16();
+                op.params.dst = Parameter::Reg16(AX);
+                op.params.src = Parameter::Imm16(self.read_u16());
             }
             0x1E => {
                 // push ds
-                p.command = Op::Push16();
-                p.dst = Parameter::SReg16(DS);
-                p
+                op.command = Op::Push16();
+                op.params.dst = Parameter::SReg16(DS);
             }
             0x1F => {
                 // pop ds
-                p.command = Op::Pop16();
-                p.dst = Parameter::SReg16(DS);
-                p
+                op.command = Op::Pop16();
+                op.params.dst = Parameter::SReg16(DS);
             }
             0x24 => {
                 // and AL, imm8
-                p.command = Op::And8();
-                p.dst = Parameter::Reg8(AL);
-                p.src = Parameter::Imm8(self.read_u8());
-                p
+                op.command = Op::And8();
+                op.params.dst = Parameter::Reg8(AL);
+                op.params.src = Parameter::Imm8(self.read_u8());
             }
             0x26 => {
                 // es segment prefix
-                self.decode_instruction(Segment::ES())
+                op = self.decode_instruction(Segment::ES());
             }
             0x27 => {
                 // daa
-                p.command = Op::Daa();
-                p
+                op.command = Op::Daa();
+            }
+            0x2A => {
+                // sub r8, r/m8
+                op.command = Op::Sub8();
+                op.params = self.r8_rm8(op.segment);
             }
             0x2C => {
                 // sub AL, imm8
-                p.command = Op::Sub8();
-                p.dst = Parameter::Reg8(AL);
-                p.src = Parameter::Imm8(self.read_u8());
-                p
+                op.command = Op::Sub8();
+                op.params.dst = Parameter::Reg8(AL);
+                op.params.src = Parameter::Imm8(self.read_u8());
+            }
+            0x2D => {
+                // sub AX, imm16
+                op.command = Op::Sub16();
+                op.params.dst = Parameter::Reg16(AX);
+                op.params.src = Parameter::Imm16(self.read_u16());
+            }
+            0x2E => {
+                // XXX if next op is a Jcc, then this is a "branch not taken" hint
+                op = self.decode_instruction(Segment::CS());
+            }
+            0x30 => {
+                // xor r/m8, r8
+                op.command = Op::Xor8();
+                op.params = self.rm8_r8(op.segment);
             }
             0x31 => {
                 // xor r/m16, r16
-                let part = self.rm16_r16(p.segment);
-                p.command = Op::Xor16();
-                p.dst = part.dst;
-                p.src = part.src;
-                p
+                op.command = Op::Xor16();
+                op.params = self.rm16_r16(op.segment);
+            }
+            0x32 => {
+                // xor r8, r/m8
+                op.command = Op::Xor8();
+                op.params = self.r8_rm8(op.segment);
             }
             0x33 => {
                 // xor r16, r/m16
-                let part = self.r16_rm16(p.segment);
-                p.command = Op::Xor16();
-                p.dst = part.dst;
-                p.src = part.src;
-                p
+                op.command = Op::Xor16();
+                op.params = self.r16_rm16(op.segment);
             }
             0x36 => {
                 // ss segment prefix
-                self.decode_instruction(Segment::SS())
+                op = self.decode_instruction(Segment::SS());
             }
             0x3A => {
                 // cmp r8, r/m8
-                let part = self.r8_rm8(p.segment);
-                p.command = Op::Cmp8();
-                p.dst = part.dst;
-                p.src = part.src;
-                p
+                op.command = Op::Cmp8();
+                op.params = self.r8_rm8(op.segment);
             }
             0x3C => {
                 // cmp AL, imm8
-                p.command = Op::Cmp8();
-                p.dst = Parameter::Reg8(AL);
-                p.src = Parameter::Imm8(self.read_u8());
-                p
+                op.command = Op::Cmp8();
+                op.params.dst = Parameter::Reg8(AL);
+                op.params.src = Parameter::Imm8(self.read_u8());
+            }
+            0x3D => {
+                // cmp AX, imm16
+                op.command = Op::Cmp16();
+                op.params.dst = Parameter::Reg16(AX);
+                op.params.src = Parameter::Imm16(self.read_u16());
             }
             0x3E => {
                 // ds segment prefix
                 // XXX if next op is a Jcc, then this is a "branch taken" hint
-                self.decode_instruction(Segment::DS())
+                op = self.decode_instruction(Segment::DS());
             }
             0x40...0x47 => {
                 // inc r16
-                p.command = Op::Inc16();
-                p.dst = Parameter::Reg16((b & 7) as usize);
-                p
+                op.command = Op::Inc16();
+                op.params.dst = Parameter::Reg16((b & 7) as usize);
             }
             0x48...0x4F => {
                 // dec r16
-                p.command = Op::Dec16();
-                p.dst = Parameter::Reg16((b & 7) as usize);
-                p
+                op.command = Op::Dec16();
+                op.params.dst = Parameter::Reg16((b & 7) as usize);
             }
             0x50...0x57 => {
                 // push r16
-                p.command = Op::Push16();
-                p.dst = Parameter::Reg16((b & 7) as usize);
-                p
+                op.command = Op::Push16();
+                op.params.dst = Parameter::Reg16((b & 7) as usize);
             }
             0x58...0x5F => {
                 // pop r16
-                p.command = Op::Pop16();
-                p.dst = Parameter::Reg16((b & 7) as usize);
-                p
+                op.command = Op::Pop16();
+                op.params.dst = Parameter::Reg16((b & 7) as usize);
             }
             0x72 => {
                 // jc rel8    (alias: jb, jnae)
-                p.command = Op::Jc();
-                p.dst = Parameter::Imm16(self.read_rel8());
-                p
+                op.command = Op::Jc();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
             }
-
             0x74 => {
                 // jz rel8    (alias: je)
-                p.command = Op::Jz();
-                p.dst = Parameter::Imm16(self.read_rel8());
-                p
+                op.command = Op::Jz();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x75 => {
                 // jnz rel8   (alias: jne)
-                p.command = Op::Jnz();
-                p.dst = Parameter::Imm16(self.read_rel8());
-                p
+                op.command = Op::Jnz();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x76 => {
                 // jna rel8    (alias: jbe)
-                p.command = Op::Jna();
-                p.dst = Parameter::Imm16(self.read_rel8());
-                p
+                op.command = Op::Jna();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x7D => {
                 // jnl rel8    (alias: jge)
-                p.command = Op::Jnl();
-                p.dst = Parameter::Imm16(self.read_rel8());
-                p
+                op.command = Op::Jnl();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x7F => {
                 // jg rel8    (alias: jnle)
-                p.command = Op::Jg();
-                p.dst = Parameter::Imm16(self.read_rel8());
-                p
+                op.command = Op::Jg();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x80 => {
                 // arithmetic 8-bit
-                self.decode_80(p.segment)
+                let x = self.read_mod_reg_rm();
+                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                op.params.src = Parameter::Imm8(self.read_u8());
+                match x.reg {
+                    0 => {
+                        op.command = Op::Add8();
+                    }
+                    1 => {
+                        op.command = Op::Or8();
+                    }
+                    /*
+                    2 => {
+                        op.command = Op::Adc8();
+                    }
+                    3 => {
+                        op.command = Op::Sbb8();
+                    }
+                    */
+                    4 => {
+                        op.command = Op::And8();
+                    }
+                    5 => {
+                        op.command = Op::Sub8();
+                    }
+                    6 => {
+                        op.command = Op::Xor8();
+                    }
+                    7 => {
+                        op.command = Op::Cmp8();
+                    }
+                    _ => {
+                        println!("op 80 error: unknown reg {}", x.reg);
+                        op.command = Op::Unknown();
+                    }
+                }
             }
             0x81 => {
                 // arithmetic 16-bit
-                self.decode_81(p.segment)
+                let x = self.read_mod_reg_rm();
+                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.src = Parameter::Imm16(self.read_u16());
+                match x.reg {
+                    0 => {
+                        op.command = Op::Add16();
+                    }
+                    /*
+                    1 => {
+                        op.command = Op::Or16();
+                    }
+                    2 => {
+                        op.command = Op::Adc16();
+                    }
+                    3 => {
+                        op.command = Op::Sbb16();
+                    }
+                    4 => {
+                        op.command = Op::And16();
+                    }
+                    */
+                    5 => {
+                        op.command = Op::Sub16();
+                    }
+                    /*
+                    6 => {
+                        op.command = Op::Xor16();
+                    }
+                    */
+                    7 => {
+                        op.command = Op::Cmp16();
+                    }
+                    _ => {
+                        println!("op 81 error: unknown reg {}", x.reg);
+                        op.command = Op::Unknown();
+                    }
+                }
             }
             0x83 => {
                 // arithmetic 16-bit with signed 8-bit value
-                self.decode_83(p.segment)
+                let x = self.read_mod_reg_rm();
+                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.src = Parameter::ImmS8(self.read_s8());
+                match x.reg {
+                    0 => {
+                        op.command = Op::Add16();
+                    }
+                    /*
+                    1 => {
+                        op.command = Op::Or16();
+                    }
+                    2 => {
+                        op.command = Op::Adc16();
+                    }
+                    3 => {
+                        op.command = Op::Sbb16();
+                    }
+                    4 => {
+                        op.command = Op::And16();
+                    }
+                    */
+                    5 => {
+                        op.command = Op::Sub16();
+                    }
+                    /*
+                    6 => {
+                        op.command = Op::Xor16();
+                    }
+                    */
+                    7 => {
+                        op.command = Op::Cmp16();
+                    }
+                    _ => {
+                        println!("op 83 error: unknown reg {}", x.reg);
+                        op.command = Op::Unknown();
+                    }
+                }
             }
             0x87 => {
                 // xchg r/m16, r16 | xchg r16, r/m16
-                let part = self.rm16_r16(p.segment);
-                p.command = Op::Xchg16();
-                p.dst = part.dst;
-                p.src = part.src;
-                p
+                op.command = Op::Xchg16();
+                op.params = self.rm16_r16(op.segment);
             }
             0x88 => {
                 // mov r/m8, r8
-                let part = self.rm8_r8(p.segment);
-                p.command = Op::Mov8();
-                p.dst = part.dst;
-                p.src = part.src;
-                p
+                op.command = Op::Mov8();
+                op.params = self.rm8_r8(op.segment);
             }
             0x89 => {
                 // mov r/m16, r16
-                let part = self.rm16_r16(p.segment);
-                p.command = Op::Mov16();
-                p.dst = part.dst;
-                p.src = part.src;
-                p
+                op.command = Op::Mov16();
+                op.params = self.rm16_r16(op.segment);
             }
             0x8A => {
                 // mov r8, r/m8
-                let part = self.r8_rm8(p.segment);
-                p.command = Op::Mov8();
-                p.dst = part.dst;
-                p.src = part.src;
-                p
+                op.command = Op::Mov8();
+                op.params = self.r8_rm8(op.segment);
             }
             0x8B => {
                 // mov r16, r/m16
-                let part = self.r16_rm16(p.segment);
-                p.command = Op::Mov16();
-                p.dst = part.dst;
-                p.src = part.src;
-                p
+                op.command = Op::Mov16();
+                op.params = self.r16_rm16(op.segment);
             }
             0x8C => {
                 // mov r/m16, sreg
-                let part = self.rm16_sreg(p.segment);
-                p.command = Op::Mov16();
-                p.dst = part.dst;
-                p.src = part.src;
-                p
+                op.command = Op::Mov16();
+                op.params = self.rm16_sreg(op.segment);
             }
             0x8D => {
                 // lea r16, m
-                let part = self.r16_m16(p.segment);
-                p.command = Op::Lea16();
-                p.dst = part.dst;
-                p.src = part.src;
-                p
+                op.command = Op::Lea16();
+                op.params = self.r16_m16(op.segment);
             }
             0x8E => {
                 // mov sreg, r/m16
-                let part = self.sreg_rm16(p.segment);
-                p.command = Op::Mov16();
-                p.dst = part.dst;
-                p.src = part.src;
-                p
+                op.command = Op::Mov16();
+                op.params = self.sreg_rm16(op.segment);
             }
             0x90 => {
                 // nop
-                p.command = Op::Nop();
-                p
+                op.command = Op::Nop();
+            }
+            0x91...0x97 => {
+                // xchg AX, r16  | xchg r16, AX
+                // NOTE:  ("xchg ax,ax" is an alias of "nop")
+                op.command = Op::Xchg16();
+                op.params.dst = Parameter::Reg16(AX);
+                op.params.src = Parameter::Reg16((b & 7) as usize);
             }
             0xA0 => {
                 // mov AL, moffs8
-                p.command = Op::Mov8();
-                p.dst = Parameter::Reg8(AL);
-                p.src = Parameter::Ptr8(p.segment, self.read_u16());
-                p
+                op.command = Op::Mov8();
+                op.params.dst = Parameter::Reg8(AL);
+                op.params.src = Parameter::Ptr8(op.segment, self.read_u16());
             }
             0xA1 => {
                 // MOV AX, moffs16
-                p.command = Op::Mov16();
-                p.dst = Parameter::Reg16(AX);
-                p.src = Parameter::Ptr16(p.segment, self.read_u16());
-                p
+                op.command = Op::Mov16();
+                op.params.dst = Parameter::Reg16(AX);
+                op.params.src = Parameter::Ptr16(op.segment, self.read_u16());
             }
             0xA2 => {
                 // mov moffs8, AL
-                p.command = Op::Mov8();
-                p.dst = Parameter::Ptr8(p.segment, self.read_u16());
-                p.src = Parameter::Reg8(AL);
-                p
+                op.command = Op::Mov8();
+                op.params.dst = Parameter::Ptr8(op.segment, self.read_u16());
+                op.params.src = Parameter::Reg8(AL);
             }
             0xA3 => {
                 // mov moffs16, AX
-                p.command = Op::Mov16();
-                p.dst = Parameter::Ptr16(p.segment, self.read_u16());
-                p.src = Parameter::Reg16(AX);
-                p
+                op.command = Op::Mov16();
+                op.params.dst = Parameter::Ptr16(op.segment, self.read_u16());
+                op.params.src = Parameter::Reg16(AX);
             }
             0xA8 => {
-                p.command = Op::Test8();
-                p.dst = Parameter::Reg8(AL);
-                p.src = Parameter::Imm8(self.read_u8());
-                p
+                op.command = Op::Test8();
+                op.params.dst = Parameter::Reg8(AL);
+                op.params.src = Parameter::Imm8(self.read_u8());
             }
             0xAA => {
                 // stosb
-                p.command = Op::Stosb();
-                p
+                op.command = Op::Stosb();
             }
             0xB0...0xB7 => {
                 // mov r8, u8
-                p.command = Op::Mov8();
-                p.dst = Parameter::Reg8((b & 7) as usize);
-                p.src = Parameter::Imm8(self.read_u8());
-                p
+                op.command = Op::Mov8();
+                op.params.dst = Parameter::Reg8((b & 7) as usize);
+                op.params.src = Parameter::Imm8(self.read_u8());
             }
             0xB8...0xBF => {
                 // mov r16, u16
-                p.command = Op::Mov16();
-                p.dst = Parameter::Reg16((b & 7) as usize);
-                p.src = Parameter::Imm16(self.read_u16());
-                p
+                op.command = Op::Mov16();
+                op.params.dst = Parameter::Reg16((b & 7) as usize);
+                op.params.src = Parameter::Imm16(self.read_u16());
             }
             0xC3 => {
                 // ret [near]
-                p.command = Op::Retn();
-                p
+                op.command = Op::Retn();
             }
             0xC6 => {
                 // mov r/m8, imm8
@@ -1281,10 +1394,9 @@ impl CPU {
                     // should be 0
                     println!("XXX ERROR C6 reg = {}", x.reg);
                 }
-                p.command = Op::Mov8();
-                p.dst = self.rm8(p.segment, x.rm, x.md);
-                p.src = Parameter::Imm8(self.read_u8());
-                p
+                op.command = Op::Mov8();
+                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                op.params.src = Parameter::Imm8(self.read_u8());
             }
             0xC7 => {
                 // mov r/m16, imm16
@@ -1293,31 +1405,28 @@ impl CPU {
                     // should be 0
                     println!("XXX ERROR C7 reg = {}", x.reg);
                 }
-                p.command = Op::Mov16();
-                p.dst = self.rm16(p.segment, x.rm, x.md);
-                p.src = Parameter::Imm16(self.read_u16());
-                p
+                op.command = Op::Mov16();
+                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.src = Parameter::Imm16(self.read_u16());
             }
             0xCB => {
                 // retf
-                p.command = Op::Retf();
-                p
+                op.command = Op::Retf();
             }
             0xCD => {
                 // int imm8
-                p.command = Op::Int();
-                p.dst = Parameter::Imm8(self.read_u8());
-                p
+                op.command = Op::Int();
+                op.params.dst = Parameter::Imm8(self.read_u8());
             }
             0xD0 => {
                 // bit shift byte
                 let x = self.read_mod_reg_rm();
-                p.command = match x.reg {
+                op.command = match x.reg {
                     // 0 => Op::Rol8(),
                     1 => Op::Ror8(),
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
-                    // 4 => Op::Shl8(), // alias: sal
+                    4 => Op::Shl8(), // alias: sal
                     // 5 => Op::Shr8(),
                     // 7 => Op::Sar8(),
                     _ => {
@@ -1325,19 +1434,18 @@ impl CPU {
                         Op::Unknown()
                     }
                 };
-                p.dst = self.rm8(p.segment, x.rm, x.md);
-                p.src = Parameter::Imm8(1);
-                p
+                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                op.params.src = Parameter::Imm8(1);
             }
             0xD1 => {
                 // bit shift word
                 let x = self.read_mod_reg_rm();
-                p.command = match x.reg {
+                op.command = match x.reg {
                     // 0 => Op::Rol16(),
                     // 1 => Op::Ror16(),
                     //2 => Op::Rcl16(),
                     //3 => Op::Rcr16(),
-                    // 4 => Op::Shl16(), // alias: sal
+                    4 => Op::Shl16(), // alias: sal
                     5 => Op::Shr16(),
                     // 7 => Op::Sar16(),
                     _ => {
@@ -1345,76 +1453,99 @@ impl CPU {
                         Op::Unknown()
                     }
                 };
-                p.dst = self.rm16(p.segment, x.rm, x.md);
-                p.src = Parameter::Imm16(1);
-                p
+                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.src = Parameter::Imm16(1);
+            }
+            0xD3 => {
+                // bit shift word
+                let x = self.read_mod_reg_rm();
+                op.command = match x.reg {
+                    //0 => Op::Rol16(),
+                    //1 => Op::Ror16(),
+                    //2 => Op::Rcl16(),
+                    //3 => Op::Rcr16(),
+                    4 => Op::Shl16(), // alias: sal
+                    //5 => Op::Shr16(),
+                    //7 => Op::Sar16(),
+                    _ => {
+                        println!("XXX 0xD3 unhandled reg = {}", x.reg);
+                        Op::Unknown()
+                    }
+                };
+                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.src = Parameter::Reg8(CL);
             }
             0xE2 => {
                 // loop rel8
-                p.command = Op::Loop();
-                p.dst = Parameter::Imm16(self.read_rel8());
-                p
+                op.command = Op::Loop();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0xE4 => {
                 // in AL, imm8
-                p.command = Op::In8();
-                p.dst = Parameter::Reg8(AL);
-                p.src = Parameter::Imm8(self.read_u8());
-                p
+                op.command = Op::In8();
+                op.params.dst = Parameter::Reg8(AL);
+                op.params.src = Parameter::Imm8(self.read_u8());
             }
             0xE6 => {
                 // OUT imm8, AL
-                p.command = Op::Out8();
-                p.dst = Parameter::Imm8(self.read_u8());
-                p.src = Parameter::Reg8(AL);
-                p
+                op.command = Op::Out8();
+                op.params.dst = Parameter::Imm8(self.read_u8());
+                op.params.src = Parameter::Reg8(AL);
             }
             0xE8 => {
                 // call near s16
-                p.command = Op::CallNear();
-                p.dst = Parameter::Imm16(self.read_rel16());
-                p
+                op.command = Op::CallNear();
+                op.params.dst = Parameter::Imm16(self.read_rel16());
             }
             0xE9 => {
                 // jmp near rel16
-                p.command = Op::JmpNear();
-                p.dst = Parameter::Imm16(self.read_rel16());
-                p
+                op.command = Op::JmpNear();
+                op.params.dst = Parameter::Imm16(self.read_rel16());
             }
             0xEB => {
                 // jmp short rel8
-                p.command = Op::JmpShort();
-                p.dst = Parameter::Imm16(self.read_rel8());
-                p
+                op.command = Op::JmpShort();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0xEC => {
                 // in AL, DX
-                p.command = Op::In8();
-                p.dst = Parameter::Reg8(AL);
-                p.src = Parameter::Reg16(DX);
-                p
+                op.command = Op::In8();
+                op.params.dst = Parameter::Reg8(AL);
+                op.params.src = Parameter::Reg16(DX);
             }
             0xEE => {
-                p.command = Op::Out8();
-                p.dst = Parameter::Reg16(DX);
-                p.src = Parameter::Reg8(AL);
-                p
+                op.command = Op::Out8();
+                op.params.dst = Parameter::Reg16(DX);
+                op.params.src = Parameter::Reg8(AL);
             }
             0xF3 => {
                 // rep
-                self.decode_f3(p.segment)
+                let b = self.read_u8();
+                match b {
+                    0xA4 => {
+                        // rep movs byte
+                        op.command = Op::RepMovsb();
+                    }
+                    0xA5 => {
+                        // rep movs word
+                        op.command = Op::RepMovsw();
+                    }
+                    _ => {
+                        println!("op f3 error: unhandled op {:02X}", b);
+                    }
+                }
             }
             0xF6 => {
                 // byte sized math
                 let x = self.read_mod_reg_rm();
-                p.dst = self.rm8(p.segment, x.rm, x.md);
+                op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 match x.reg {
                     0 => {
                         // test r/m8, imm8
-                        p.command = Op::Test8();
-                        p.src = Parameter::Imm8(self.read_u8());
+                        op.command = Op::Test8();
+                        op.params.src = Parameter::Imm8(self.read_u8());
                     }
-                    // 2 =>  op.Cmd = "not"
+                    // 2 => op.Cmd = "not"
                     // 3 => op.Cmd = "neg"
                     // 4 => op.Cmd = "mul"
                     // 5 => op.Cmd = "imul"
@@ -1424,239 +1555,64 @@ impl CPU {
                         println!("error F6 unknown reg={}", x.reg);
                     }
                 }
-                p
             }
             0xF8 => {
                 // clc
-                p.command = Op::Clc();
-                p
+                op.command = Op::Clc();
             }
             0xFA => {
                 // cli
-                p.command = Op::Cli();
-                p
+                op.command = Op::Cli();
             }
             0xFB => {
                 // sti
-                p.command = Op::Sti();
-                p
+                op.command = Op::Sti();
             }
             0xFC => {
                 // cld
-                p.command = Op::Cld();
-                p
+                op.command = Op::Cld();
             }
             0xFE => {
                 // byte size
-                self.decode_fe(p.segment)
+                let x = self.read_mod_reg_rm();
+                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                match x.reg {
+                    0 => {
+                        op.command = Op::Inc8();
+                    }
+                    1 => {
+                        op.command = Op::Dec8();
+                    }
+                    _ => {
+                        println!("op FE error: unknown reg {}", x.reg);
+                    }
+                }
             }
             0xFF => {
                 // word size
-                self.decode_ff(p.segment)
+                let x = self.read_mod_reg_rm();
+                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                match x.reg {
+                    0 => {
+                        op.command = Op::Inc16();
+                    }
+                    1 => {
+                        op.command = Op::Dec16();
+                    }
+                    _ => {
+                        println!("op FF error: unknown reg {}", x.reg);
+                    }
+                }
             }
             _ => {
-                println!("cpu: unknown op {:02X} at {:04X}", b, self.ip - 1);
-                p
+                println!("cpu: unknown op {:02X} at {:06X}", b, self.get_offset() - 1);
             }
         }
-    }
-
-    // arithmetic 8-bit
-    fn decode_80(&mut self, seg: Segment) -> Instruction {
-        let x = self.read_mod_reg_rm();
-        let mut p = Instruction {
-            segment: seg,
-            command: Op::Unknown(),
-            dst: self.rm8(seg, x.rm, x.md),
-            src: Parameter::Imm8(self.read_u8()),
-        };
-
-        match x.reg {
-            0 => {
-                p.command = Op::Add8();
-            }
-            4 => {
-                p.command = Op::And8();
-            }
-            7 => {
-                p.command = Op::Cmp8();
-            }
-            /*
-            5 => {
-                p.command = Op::Sub8();
-            }
-            case 0:
-                op.Cmd = "add"
-            case 1:
-                op.Cmd = "or"
-            case 2:
-                op.Cmd = "adc"
-            case 3:
-                op.Cmd = "sbb"
-            case 6:
-                op.Cmd = "xor"
-            }*/
-            _ => {
-                println!("decode_80 error: unknown reg {}", x.reg);
-                p.command = Op::Unknown();
-            }
-        }
-        p
-    }
-
-    // arithmetic 16-bit with signed 8-bit value
-    fn decode_83(&mut self, seg: Segment) -> Instruction {
-        let x = self.read_mod_reg_rm();
-        let mut p = Instruction {
-            segment: seg,
-            command: Op::Unknown(),
-            dst: self.rm16(seg, x.rm, x.md),
-            src: Parameter::ImmS8(self.read_s8()),
-        };
-
-        match x.reg {
-            0 => {
-                p.command = Op::Add16();
-            }
-            5 => {
-                p.command = Op::Sub16();
-            }
-            7 => {
-                p.command = Op::Cmp16();
-            }
-            /*
-            case 1:
-                op.Cmd = "or"
-            case 2:
-                op.Cmd = "adc"
-            case 3:
-                op.Cmd = "sbb"
-            case 4:
-                op.Cmd = "and"
-            case 6:
-                op.Cmd = "xor"
-            }*/
-            _ => {
-                println!("decode_83 error: unknown reg {}", x.reg);
-                p.command = Op::Unknown();
-            }
-        }
-        p
-    }
-
-    // arithmetic 16-bit
-    fn decode_81(&mut self, seg: Segment) -> Instruction {
-        let x = self.read_mod_reg_rm();
-        let mut p = Instruction {
-            segment: seg,
-            command: Op::Unknown(),
-            dst: self.rm16(seg, x.rm, x.md),
-            src: Parameter::Imm16(self.read_u16()),
-        };
-
-        match x.reg {
-            0 => {
-                p.command = Op::Add16();
-            }
-            5 => {
-                p.command = Op::Sub16();
-            }
-            7 => {
-                p.command = Op::Cmp16();
-            }
-            /*
-            case 1:
-                op.Cmd = "or"
-            case 2:
-                op.Cmd = "adc"
-            case 3:
-                op.Cmd = "sbb"
-            case 4:
-                op.Cmd = "and"
-            case 6:
-                op.Cmd = "xor"
-            }*/
-            _ => {
-                println!("decode_81 error: unknown reg {}", x.reg);
-                p.command = Op::Unknown();
-            }
-        }
-        p
-    }
-
-    // rep
-    fn decode_f3(&mut self, seg: Segment) -> Instruction {
-        let mut p = Instruction {
-            segment: seg,
-            command: Op::Unknown(),
-            dst: Parameter::None(),
-            src: Parameter::None(),
-        };
-        let b = self.read_u8();
-        match b {
-            0xA4 => {
-                // rep movs byte
-                p.command = Op::RepMovsb();
-            }
-            0xA5 => {
-                // rep movs word
-                p.command = Op::RepMovsw();
-            }
-            _ => {
-                println!("decode_f3 error: unhandled op {:02X}", b);
-            }
-        }
-        p
-    }
-
-    // byte size
-    fn decode_fe(&mut self, seg: Segment) -> Instruction {
-        let x = self.read_mod_reg_rm();
-        let mut p = Instruction {
-            segment: seg,
-            command: Op::Unknown(),
-            dst: self.rm8(seg, x.rm, x.md),
-            src: Parameter::None(),
-        };
-        match x.reg {
-            0 => {
-                p.command = Op::Inc8();
-            }
-            1 => {
-                p.command = Op::Dec8();
-            }
-            _ => {
-                println!("decode_fe error: unknown reg {}", x.reg);
-            }
-        }
-        p
-    }
-
-    // word size
-    fn decode_ff(&mut self, seg: Segment) -> Instruction {
-        let x = self.read_mod_reg_rm();
-        let mut p = Instruction {
-            segment: seg,
-            command: Op::Unknown(),
-            dst: self.rm16(seg, x.rm, x.md),
-            src: Parameter::None(),
-        };
-        match x.reg {
-            0 => {
-                p.command = Op::Inc16();
-            }
-            1 => {
-                p.command = Op::Dec16();
-            }
-            _ => {
-                println!("decode_ff error: unknown reg {}", x.reg);
-            }
-        }
-        p
+        op
     }
 
     // decode r8, r/m8
-    fn r8_rm8(&mut self, seg: Segment) -> Instruction {
+    fn r8_rm8(&mut self, seg: Segment) -> ParameterPair {
         let mut res = self.rm8_r8(seg);
         let tmp = res.src;
         res.src = res.dst;
@@ -1665,18 +1621,16 @@ impl CPU {
     }
 
     // decode r/m8, r8
-    fn rm8_r8(&mut self, seg: Segment) -> Instruction {
+    fn rm8_r8(&mut self, seg: Segment) -> ParameterPair {
         let x = self.read_mod_reg_rm();
-        Instruction {
-            segment: seg,
-            command: Op::Unknown(),
+        ParameterPair {
             src: Parameter::Reg8(x.reg as usize),
             dst: self.rm8(seg, x.rm, x.md),
         }
     }
 
     // decode Sreg, r/m16
-    fn sreg_rm16(&mut self, seg: Segment) -> Instruction {
+    fn sreg_rm16(&mut self, seg: Segment) -> ParameterPair {
         let mut res = self.rm16_sreg(seg);
         let tmp = res.src;
         res.src = res.dst;
@@ -1685,18 +1639,16 @@ impl CPU {
     }
 
     // decode r/m16, Sreg
-    fn rm16_sreg(&mut self, seg: Segment) -> Instruction {
+    fn rm16_sreg(&mut self, seg: Segment) -> ParameterPair {
         let x = self.read_mod_reg_rm();
-        Instruction {
-            segment: seg,
-            command: Op::Unknown(),
+        ParameterPair {
             src: Parameter::SReg16(x.reg as usize),
             dst: self.rm16(seg, x.rm, x.md),
         }
     }
 
     // decode r16, r/m16
-    fn r16_rm16(&mut self, seg: Segment) -> Instruction {
+    fn r16_rm16(&mut self, seg: Segment) -> ParameterPair {
         let mut res = self.rm16_r16(seg);
         let tmp = res.src;
         res.src = res.dst;
@@ -1705,25 +1657,21 @@ impl CPU {
     }
 
     // decode r/m16, r16
-    fn rm16_r16(&mut self, seg: Segment) -> Instruction {
+    fn rm16_r16(&mut self, seg: Segment) -> ParameterPair {
         let x = self.read_mod_reg_rm();
-        Instruction {
-            segment: seg,
-            command: Op::Unknown(),
+        ParameterPair {
             src: Parameter::Reg16(x.reg as usize),
             dst: self.rm16(seg, x.rm, x.md),
         }
     }
 
     // decode r16, m16
-    fn r16_m16(&mut self, seg: Segment) -> Instruction {
+    fn r16_m16(&mut self, seg: Segment) -> ParameterPair {
         let x = self.read_mod_reg_rm();
         if x.md == 3 {
             println!("r16_m16 error: invalid encoding, ip={:04X}", self.ip);
         }
-        Instruction {
-            segment: seg,
-            command: Op::Unknown(),
+        ParameterPair {
             dst: Parameter::Reg16(x.reg as usize),
             src: self.rm16(seg, x.rm, x.md),
         }
@@ -1948,7 +1896,6 @@ impl CPU {
                          self.r16[DX].hi_u8(),
                          self.r16[DX].lo_u8());
             }
-
             0x06 => {
                 // VIDEO - SCROLL UP WINDOW
 
@@ -1959,7 +1906,7 @@ impl CPU {
                 // Return: Nothing
                 //
                 // Note: Affects only the currently active page (see AH=05h)
-                println!("XXX scroll window up, lines={}, attrib={}, top left={},{}, bottom right={},{}",
+                println!("XXX scroll window up: lines={},attrib={},topleft={},{},btmright={},{}",
                          self.r16[AL].lo_u8(),
                          self.r16[BX].hi_u8(),
                          self.r16[CX].hi_u8(),
@@ -1985,11 +1932,37 @@ impl CPU {
                 // remaining in the current row. With PhysTechSoft's PTS ROM-DOS
                 // the BH, BL, and CX values are ignored on entry.
 
-                println!("XXX write character&attribute at position, char={}, page={}, attrib={}, count={}",
+                println!("XXX write character at pos: char={}, page={}, attrib={}, count={}",
                          self.r16[AX].lo_u8() as char,
                          self.r16[BX].hi_u8(),
                          self.r16[BX].lo_u8(),
                          self.r16[CX].val);
+            }
+            0x0B => {
+                match self.r16[BX].hi_u8() {
+                    0x00 => {
+                        // VIDEO - SET BACKGROUND/BORDER COLOR
+                        // BL = background/border color (border only in text modes)
+                        // Return: Nothing
+                        println!("XXX set bg/border color to {:02X}", self.r16[BX].lo_u8());
+                    }
+                    0x01 => {
+                        // VIDEO - SET PALETTE
+                        // BL = palette ID
+                        //    00h background, green, red, and brown/yellow
+                        //    01h background, cyan, magenta, and white
+                        // Return: Nothing
+                        //
+                        // Note: This call was only valid in 320x200 graphics on
+                        // the CGA, but newer cards support it in many or all
+                        // graphics modes
+                        println!("XXX set palette id to {:02X}", self.r16[BX].lo_u8());
+                    }
+                    _ => {
+                        println!("video error: unknown int 10, ah=0B, bh={:02X}",
+                                 self.r16[BX].hi_u8());
+                    }
+                }
             }
             0x0E => {
                 // VIDEO - TELETYPE OUTPUT
@@ -2092,11 +2065,14 @@ impl CPU {
 
     fn read_parameter_address(&mut self, p: &Parameter) -> usize {
         match p {
+            &Parameter::Ptr16AmodeS8(seg, r, imm) => {
+                (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize
+            }
             &Parameter::Ptr16(seg, imm) => (self.segment(seg) as usize * 16) + imm as usize,
             _ => {
-                println!("read_parameter_address error: unhandled parameter: {:?} at {:04X}",
+                println!("read_parameter_address error: unhandled parameter: {:?} at {:06X}",
                          p,
-                         self.ip);
+                         self.get_offset());
                 0
             }
         }
@@ -2142,9 +2118,9 @@ impl CPU {
             &Parameter::Reg16(r) => self.r16[r].val as isize,
             &Parameter::SReg16(r) => self.sreg16[r].val as isize,
             _ => {
-                println!("read_parameter_value error: unhandled parameter: {:?} at {:04X}",
+                println!("read_parameter_value error: unhandled parameter: {:?} at {:06X}",
                          p,
-                         self.ip);
+                         self.get_offset());
                 0
             }
         }
@@ -2177,14 +2153,14 @@ impl CPU {
                 self.write_u8(offset, data);
             }
             _ => {
-                println!("write_parameter_u8 unhandled type {:?} at {:04X}",
+                println!("write_parameter_u8 unhandled type {:?} at {:06X}",
                          p,
-                         self.ip);
+                         self.get_offset());
             }
         }
     }
 
-    fn write_parameter_u16(&mut self, p: &Parameter, data: u16) {
+    fn write_parameter_u16(&mut self, p: &Parameter, segment: Segment, data: u16) {
         match p {
             &Parameter::Reg16(r) => {
                 self.r16[r].val = data;
@@ -2192,8 +2168,9 @@ impl CPU {
             &Parameter::SReg16(r) => {
                 self.sreg16[r].val = data;
             }
-            &Parameter::Imm16(v) => {
-                self.write_u16(v as usize, data);
+            &Parameter::Imm16(imm) => {
+                let offset = (self.segment(segment) as usize * 16) + imm as usize;
+                self.write_u16(offset, data);
             }
             &Parameter::Ptr16(seg, imm) => {
                 let offset = (self.segment(seg) as usize * 16) + imm as usize;
@@ -2212,7 +2189,9 @@ impl CPU {
                 self.write_u16(offset, data);
             }
             _ => {
-                println!("write_u16_param unhandled type {:?} at {:04X}", p, self.ip);
+                println!("write_u16_param unhandled type {:?} at {:06X}",
+                         p,
+                         self.get_offset());
             }
         }
     }
@@ -2236,6 +2215,7 @@ impl CPU {
             Segment::DS() => self.sreg16[DS].val,
             Segment::ES() => self.sreg16[ES].val,
             Segment::SS() => self.sreg16[SS].val,
+            Segment::Default() => self.sreg16[CS].val,
         }
     }
 
@@ -2629,14 +2609,14 @@ fn can_execute_addressing() {
     cpu.load_rom(&code, 0x100);
 
     let res = cpu.disassemble_block(0x100, 8);
-    assert_eq!("000100: BB 00 02          Mov16    bx, 0x0200
-000103: C6 47 2C FF       Mov8     byte [bx+0x2C], 0xFF
-000107: 8D 36 00 01       Lea16    si, word [0x0100]
-00010B: 8B 14             Mov16    dx, word [si]
-00010D: 8B 47 2C          Mov16    ax, word [bx+0x2C]
-000110: 89 87 30 00       Mov16    word [bx+0x0030], ax
-000114: 89 05             Mov16    word [di], ax
-000116: C6 85 AE 06 FE    Mov8     byte [di+0x06AE], 0xFE
+    assert_eq!("[0000:0100] BB0002     Mov16    bx, 0x0200
+[0000:0103] C6472CFF   Mov8     byte [bx+0x2C], 0xFF
+[0000:0107] 8D360001   Lea16    si, word [0x0100]
+[0000:010B] 8B14       Mov16    dx, word [si]
+[0000:010D] 8B472C     Mov16    ax, word [bx+0x2C]
+[0000:0110] 89873000   Mov16    word [bx+0x0030], ax
+[0000:0114] 8905       Mov16    word [di], ax
+[0000:0116] C685AE06FE Mov8     byte [di+0x06AE], 0xFE
 ",
                res);
 
@@ -2681,7 +2661,7 @@ fn can_execute_math() {
     cpu.load_rom(&code, 0x100);
 
     let res = cpu.disassemble_block(0x100, 1);
-    assert_eq!("000100: F6 06 2C 12 FF    Test8    byte [0x122C], 0xFF
+    assert_eq!("[0000:0100] F6062C12FF Test8    byte [0x122C], 0xFF
 ",
                res);
 
@@ -2701,11 +2681,11 @@ fn can_disassemble_basic() {
     cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 5);
 
-    assert_eq!("000100: E8 05 00          CallNear 0x0108
-000103: BA 0B 01          Mov16    dx, 0x010B
-000106: B4 09             Mov8     ah, 0x09
-000108: CD 21             Int      0x21
-00010A: E8 FB FF          CallNear 0x0108
+    assert_eq!("[0000:0100] E80500     CallNear 0x0108
+[0000:0103] BA0B01     Mov16    dx, 0x010B
+[0000:0106] B409       Mov8     ah, 0x09
+[0000:0108] CD21       Int      0x21
+[0000:010A] E8FBFF     CallNear 0x0108
 ",
                res);
 }
@@ -2720,8 +2700,8 @@ fn can_disassemble_segment_prefixed() {
     cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 2);
 
-    assert_eq!("000100: 26 88 25          Mov8     byte [es:di], ah
-000103: 26 8A 25          Mov8     ah, byte [es:di]
+    assert_eq!("[0000:0100] 268825     Mov8     byte [es:di], ah
+[0000:0103] 268A25     Mov8     ah, byte [es:di]
 ",
                res);
 }
@@ -2738,10 +2718,10 @@ fn can_disassemble_arithmetic() {
     cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 4);
 
-    assert_eq!("000100: 80 3E 31 10 00    Cmp8     byte [0x1031], 0x00
-000105: 81 C7 C0 00       Add16    di, 0x00C0
-000109: 83 C7 3A          Add16    di, byte +0x3A
-00010C: 83 C7 C6          Add16    di, byte -0x3A
+    assert_eq!("[0000:0100] 803E311000 Cmp8     byte [0x1031], 0x00
+[0000:0105] 81C7C000   Add16    di, 0x00C0
+[0000:0109] 83C73A     Add16    di, byte +0x3A
+[0000:010C] 83C7C6     Add16    di, byte -0x3A
 ",
                res);
 }
@@ -2758,10 +2738,10 @@ fn can_disassemble_jz_rel() {
     cpu.load_rom(&code, 0x100);
     let res = cpu.disassemble_block(0x100, 4);
 
-    assert_eq!("000100: 74 04             Jz       0x0106
-000102: 74 FE             Jz       0x0102
-000104: 74 00             Jz       0x0106
-000106: 74 FA             Jz       0x0102
+    assert_eq!("[0000:0100] 7404       Jz       0x0106
+[0000:0102] 74FE       Jz       0x0102
+[0000:0104] 7400       Jz       0x0106
+[0000:0106] 74FA       Jz       0x0102
 ",
                res);
 }

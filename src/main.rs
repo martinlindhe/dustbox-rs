@@ -21,17 +21,15 @@ fn main() {
 
     drop(colog::init());
 
-    // XXX: /Users/m/dev/binary-samples/Executables/DOS-COM/
-    //let app = "samples/adrmode/adrmode.com";
+    //let app = "../dos-software-decoding/samples/adrmode/adrmode.com";
     let games_root = "../dos-software-decoding/games".to_owned();
     //let app = games_root + "/8088 Othello (1985)(Bayley)/8088_othello.com";
     //let app = games_root + "/Apple Panic (1982)(Broderbund Software Inc)/panic.com";
     //let app = games_root + "/Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com";
     //let app = games_root + "/Beast (1984)(Dan Baker)/beast.com";
     //let app = games_root + "/Blort (1987)(Hennsoft)/blort.com";
-    let app = games_root + "/Crossfire (1982)(Sierra Online)/cfire.com";
-    //let app = games_root + "/Dig Dug (1982)(Namco)/digdug.com";
-    //let app = "samples/bar/bar.com";
+    //let app = games_root + "/Crossfire (1982)(Sierra Online)/cfire.com";
+    let app = games_root + "/Dig Dug (1982)(Namco)/digdug.com";
     let data = tools::read_binary(&app);
 
     let mut cpu = cpu::CPU::new();
@@ -87,8 +85,9 @@ fn main() {
                 }
             }
             "bp" | "breakpoint" => {
-                // breakpoints
+                // breakpoints - all values are flat offsets
                 // XXX: "bp remove 0x123"
+                // XXX allow to enter bp in format "segment:offset"
                 if parts.len() < 2 {
                     error!("breakpoint: not enough arguments");
                 } else {
@@ -129,9 +128,7 @@ fn main() {
                         error!("Failed to execute instruction, breaking");
                         break;
                     }
-                    let offset = cpu.ip as usize;
-
-                    // XXX if op wasnt recognized, break
+                    let offset = cpu.get_offset();
 
                     // if op.offset is in list, break
                     let mut list_iter = list.iter();
