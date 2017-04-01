@@ -127,10 +127,17 @@ fn main() {
                 warn!("Executing until we hit a breakpoint");
 
                 loop {
-                    if cpu.execute_instruction() == false {
-                        error!("Failed to execute instruction, breaking");
-                        break;
+                    let op = cpu.disasm_instruction();
+                    match op.instruction.command {
+                        cpu::Op::Unknown() => {
+                            error!("Failed to execute instruction, breaking. {:?}",
+                                   op.instruction);
+                            break;
+                        }
+                        _ => {}
                     }
+
+                    cpu.execute_instruction();
                     let offset = cpu.get_offset();
 
                     // if op.offset is in list, break

@@ -142,7 +142,7 @@ struct ModRegRm {
 
 #[derive(Debug)]
 pub struct Instruction {
-    command: Op,
+    pub command: Op,
     segment: Segment,
     params: ParameterPair,
 }
@@ -264,7 +264,7 @@ impl fmt::Display for Segment {
 }
 
 #[derive(Debug)]
-enum Op {
+pub enum Op {
     Add8(),
     Add16(),
     And8(),
@@ -481,16 +481,9 @@ impl CPU {
         println!("");
     }
 
-    pub fn execute_instruction(&mut self) -> bool {
+    pub fn execute_instruction(&mut self) {
         let op = self.decode_instruction(Segment::CS());
         self.execute(&op);
-        match op.command {
-            Op::Unknown() => {
-                println!("HIT A UNKNOWN COMMAND");
-                false
-            }
-            _ => true,
-        }
     }
 
     pub fn disassemble_block(&mut self, origin: u16, count: usize) -> String {
