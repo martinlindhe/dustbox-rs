@@ -2,7 +2,6 @@
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
-#![allow(unreachable_code)]
 
 use test::Bencher;
 use std::fmt;
@@ -526,8 +525,8 @@ impl CPU {
         match op.command {
             Op::Add8() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.params.src) as usize;
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
                 let res = (Wrapping(dst) + Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
@@ -542,8 +541,8 @@ impl CPU {
             }
             Op::Add16() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.params.src) as usize;
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
                 let res = (Wrapping(dst) + Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
@@ -569,9 +568,9 @@ impl CPU {
             Op::CallNear() => {
                 // call near rel
                 let old_ip = self.ip;
-                let temp_ip = self.read_parameter_value(&op.params.dst) as u16;
+                let temp_ip = self.read_parameter_value(&op.params.dst);
                 self.push16(old_ip);
-                self.ip = temp_ip;
+                self.ip = temp_ip as u16;
             }
             Op::Clc() => {
                 self.flags.carry = false;
@@ -586,8 +585,8 @@ impl CPU {
                 // two parameters
                 // Modify status flags in the same manner as the SUB instruction
 
-                let src = self.read_parameter_value(&op.params.src) as usize;
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
@@ -603,8 +602,8 @@ impl CPU {
                 // two parameters
                 // Modify status flags in the same manner as the SUB instruction
 
-                let src = self.read_parameter_value(&op.params.src) as usize;
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
@@ -622,7 +621,7 @@ impl CPU {
             }
             Op::Dec8() => {
                 // single parameter (dst)
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let dst = self.read_parameter_value(&op.params.dst);
                 let src = 1;
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
@@ -638,7 +637,7 @@ impl CPU {
             }
             Op::Dec16() => {
                 // single parameter (dst)
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let dst = self.read_parameter_value(&op.params.dst);
                 let src = 1;
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
@@ -655,11 +654,11 @@ impl CPU {
             Op::In8() => {
                 // Input from Port
                 // two parameters (dst=AL)
-                let src = self.read_parameter_value(&op.params.src) as usize;
+                let src = self.read_parameter_value(&op.params.src);
                 println!("XXX unhandled in8 {:02X}", src);
             }
             Op::Inc8() => {
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let dst = self.read_parameter_value(&op.params.dst);
                 let src = 1;
                 let res = (Wrapping(dst) + Wrapping(src)).0;
 
@@ -673,7 +672,7 @@ impl CPU {
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Inc16() => {
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let dst = self.read_parameter_value(&op.params.dst);
                 let src = 1;
                 let res = (Wrapping(dst) + Wrapping(src)).0;
 
@@ -687,8 +686,8 @@ impl CPU {
                 self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
             }
             Op::Int() => {
-                let int = self.read_parameter_value(&op.params.dst) as u8;
-                self.int(int);
+                let int = self.read_parameter_value(&op.params.dst);
+                self.int(int as u8);
             }
             Op::Ja() => {
                 // Jump short if above (CF=0 and ZF=0).
@@ -909,8 +908,8 @@ impl CPU {
             }
             Op::Sub8() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.params.src) as usize;
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
@@ -925,8 +924,8 @@ impl CPU {
             }
             Op::Sub16() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.params.src) as usize;
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
@@ -941,8 +940,8 @@ impl CPU {
             }
             Op::Test8() => {
                 // two parameters
-                let src = self.read_parameter_value(&op.params.src) as usize;
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
                 let res = dst & src;
                 // set SF, ZF, PF according to result.
                 self.flags.set_sign_u8(res);
@@ -951,8 +950,8 @@ impl CPU {
             }
             Op::Test16() => {
                 // two parameters
-                let src = self.read_parameter_value(&op.params.src) as usize;
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
                 let res = dst & src;
                 // set SF, ZF, PF according to result.
                 self.flags.set_sign_u16(res);
@@ -961,8 +960,8 @@ impl CPU {
             }
             Op::Xchg16() => {
                 // two parameters (registers)
-                let mut src = self.read_parameter_value(&op.params.src) as usize;
-                let mut dst = self.read_parameter_value(&op.params.dst) as usize;
+                let mut src = self.read_parameter_value(&op.params.src);
+                let mut dst = self.read_parameter_value(&op.params.dst);
                 let tmp = src;
                 src = dst;
                 dst = tmp;
@@ -971,8 +970,8 @@ impl CPU {
             }
             Op::Xor8() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.params.src) as usize;
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
                 let res = dst ^ src;
 
                 // The OF and CF flags are cleared; the SF, ZF,
@@ -987,8 +986,8 @@ impl CPU {
             }
             Op::Xor16() => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.params.src) as usize;
-                let dst = self.read_parameter_value(&op.params.dst) as usize;
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
                 let res = dst ^ src;
 
                 // The OF and CF flags are cleared; the SF, ZF,
@@ -1943,58 +1942,58 @@ impl CPU {
         }
     }
 
-    fn read_parameter_value(&mut self, p: &Parameter) -> isize {
+    fn read_parameter_value(&mut self, p: &Parameter) -> usize {
         match p {
-            &Parameter::Imm8(imm) => imm as isize,
-            &Parameter::Imm16(imm) => imm as isize,
-            &Parameter::ImmS8(imm) => imm as isize,
+            &Parameter::Imm8(imm) => imm as usize,
+            &Parameter::Imm16(imm) => imm as usize,
+            &Parameter::ImmS8(imm) => imm as usize,
             &Parameter::Ptr8(seg, imm) => {
                 let offset = (self.segment(seg) as usize * 16) + imm as usize;
-                self.peek_u8_at(offset) as isize
+                self.peek_u8_at(offset) as usize
             }
             &Parameter::Ptr16(seg, imm) => {
                 let offset = (self.segment(seg) as usize * 16) + imm as usize;
-                self.peek_u16_at(offset) as isize
+                self.peek_u16_at(offset) as usize
             }
             &Parameter::Ptr8Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
-                self.peek_u8_at(offset) as isize
+                self.peek_u8_at(offset) as usize
             }
             &Parameter::Ptr8AmodeS8(seg, r, imm) => {
                 let offset = (Wrapping(self.segment(seg) as usize * 16) +
                               Wrapping(self.amode16(r)) +
                               Wrapping(imm as usize))
                         .0;
-                self.peek_u8_at(offset) as isize
+                self.peek_u8_at(offset) as usize
             }
             &Parameter::Ptr16Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
-                self.peek_u16_at(offset) as isize
+                self.peek_u16_at(offset) as usize
             }
             &Parameter::Ptr16AmodeS8(seg, r, imm) => {
                 let offset = (Wrapping(self.segment(seg) as usize * 16) +
                               Wrapping(self.amode16(r)) +
                               Wrapping(imm as usize))
                         .0;
-                self.peek_u16_at(offset) as isize
+                self.peek_u16_at(offset) as usize
             }
             &Parameter::Ptr16AmodeS16(seg, r, imm) => {
                 let offset = (Wrapping(self.segment(seg) as usize * 16) +
                               Wrapping(self.amode16(r)) +
                               Wrapping(imm as usize))
                         .0;
-                self.peek_u16_at(offset) as isize
+                self.peek_u16_at(offset) as usize
             }
             &Parameter::Reg8(r) => {
                 let lor = r & 3;
                 if r & 4 == 0 {
-                    self.r16[lor].lo_u8() as isize
+                    self.r16[lor].lo_u8() as usize
                 } else {
-                    self.r16[lor].hi_u8() as isize
+                    self.r16[lor].hi_u8() as usize
                 }
             }
-            &Parameter::Reg16(r) => self.r16[r].val as isize,
-            &Parameter::SReg16(r) => self.sreg16[r].val as isize,
+            &Parameter::Reg16(r) => self.r16[r].val as usize,
+            &Parameter::SReg16(r) => self.sreg16[r].val as usize,
             _ => {
                 println!("read_parameter_value error: unhandled parameter: {:?} at {:06X}",
                          p,
