@@ -29,10 +29,10 @@ fn main() {
     //let app = games_root + "/8088 Othello (1985)(Bayley)/8088_othello.com";
     //let app = games_root + "/Apple Panic (1982)(Broderbund Software Inc)/panic.com";
     //let app = games_root + "/Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com";
-    //let app = games_root + "/Beast (1984)(Dan Baker)/beast.com";
+    let app = games_root + "/Beast (1984)(Dan Baker)/beast.com";
     //let app = games_root + "/Blort (1987)(Hennsoft)/blort.com";
     //let app = games_root + "/Crossfire (1982)(Sierra Online)/cfire.com";
-    let app = games_root + "/Dig Dug (1982)(Namco)/digdug.com";
+    //let app = games_root + "/Dig Dug (1982)(Namco)/digdug.com";
     let data = tools::read_binary(&app);
 
     let mut cpu = cpu::CPU::new();

@@ -17,6 +17,23 @@ pub struct CPU {
     pub sreg16: [Register16; 6], // segment registers
     flags: Flags,
     breakpoints: Vec<usize>,
+    gpu: GPU,
+}
+
+struct GPU {
+    scanline: u16,
+}
+impl GPU {
+    fn new() -> GPU {
+        GPU { scanline: 0 }
+    }
+    fn progress_scanline(&mut self) {
+        // HACK to have a source of info to toggle CGA status register
+        self.scanline += 1;
+        if self.scanline > 100 {
+            self.scanline = 0;
+        }
+    }
 }
 
 // https://en.wikipedia.org/wiki/FLAGS_register
@@ -412,6 +429,7 @@ impl CPU {
                 reserved15: false,
             },
             breakpoints: vec![0; 0],
+            gpu: GPU::new(),
         };
 
         // intializes the cpu as if to run .com programs, info from
@@ -484,6 +502,7 @@ impl CPU {
     pub fn execute_instruction(&mut self) {
         let op = self.decode_instruction(Segment::CS());
         self.execute(&op);
+        self.gpu.progress_scanline();
     }
 
     pub fn disassemble_block(&mut self, origin: u16, count: usize) -> String {
@@ -669,7 +688,8 @@ impl CPU {
                 // Input from Port
                 // two parameters (dst=AL)
                 let src = self.read_parameter_value(&op.params.src);
-                println!("XXX unhandled in8 {:02X}", src);
+                let data = self.in_port(src as u16);
+                self.write_parameter_u8(&op.params.dst, data);
             }
             Op::Inc8() => {
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -1053,6 +1073,11 @@ impl CPU {
         };
 
         match b {
+            0x00 => {
+                // add r/m8, r8
+                op.command = Op::Add8();
+                op.params = self.rm8_r8(op.segment);
+            }
             0x02 => {
                 // add r8, r/m8
                 op.command = Op::Add8();
@@ -2048,6 +2073,13 @@ impl CPU {
                         .0;
                 self.peek_u8_at(offset) as usize
             }
+            &Parameter::Ptr8AmodeS16(seg, r, imm) => {
+                let offset = (Wrapping(self.segment(seg) as usize * 16) +
+                              Wrapping(self.amode16(r)) +
+                              Wrapping(imm as usize))
+                        .0;
+                self.peek_u8_at(offset) as usize
+            }
             &Parameter::Ptr16Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
                 self.peek_u16_at(offset) as usize
@@ -2219,6 +2251,53 @@ impl CPU {
         };
 
         println!("XXX unhandled out_u8 to {:04X}, data {:02X}", dst, data);
+    }
+
+    // read byte from I/O port
+    fn in_port(&mut self, port: u16) -> u8 {
+        match port {
+            0x03DA => {
+                // R-  CGA status register
+                // color EGA/VGA: input status 1 register
+                //
+                // Bitfields for CGA status register:
+                // Bit(s)	Description	(Table P0818)
+                // 7-6	not used
+                // 7	(C&T Wingine) vertical sync in progress (if enabled by XR14)
+                // 5-4	color EGA, color ET4000, C&T: diagnose video display feedback, select
+                //      from color plane enable
+                // 3	in vertical retrace
+                //      (C&T Wingine) video active (retrace/video selected by XR14)
+                // 2	(CGA,color EGA) light pen switch is off
+                //      (MCGA,color ET4000) reserved (0)
+                //      (VGA) reserved (1)
+                // 1	(CGA,color EGA) positive edge from light pen has set trigger
+                //      (VGA,MCGA,color ET4000) reserved (0)
+                // 0	horizontal retrace in progress
+                //    =0  do not use memory
+                //    =1  memory access without interfering with display
+                //        (VGA,Genoa SuperEGA) horizontal or vertical retrace
+                //    (C&T Wingine) display enabled (retrace/DE selected by XR14)
+                let mut flags = 0;
+
+                // HACK: fake bit 0:
+                if self.gpu.scanline == 0 {
+                    flags |= 1 << 0; // set bit 0
+                } else {
+                    flags &= !(1 << 1); // clear bit 0
+                }
+                println!("XXX read io port CGA status register at {:06X} = {:02X}",
+                         self.get_offset(),
+                         flags);
+                flags
+            }
+            _ => {
+                println!("in_port: unhandled in8 {:04X} at {:06X}",
+                         port,
+                         self.get_offset());
+                0
+            }
+        }
     }
 
     fn int(&mut self, int: u8) {
@@ -2838,11 +2917,12 @@ fn can_execute_addressing() {
         0x89, 0x87, 0x30, 0x00,       // mov [bx+0x0030],ax  | rm [amode+s16]
         0x89, 0x05,                   // mov [di],ax  | rm16 [amode]
         0xC6, 0x85, 0xAE, 0x06, 0xFE, // mov byte [di+0x6ae],0xfe  | rm8 [amode+s16]
+        0x8A, 0x85, 0xAE, 0x06,       // mov al,[di+0x6ae]
     ];
 
     cpu.load_rom(&code, 0x100);
 
-    let res = cpu.disassemble_block(0x100, 8);
+    let res = cpu.disassemble_block(0x100, 9);
     assert_eq!("[0000:0100] BB0002     Mov16    bx, 0x0200
 [0000:0103] C6472CFF   Mov8     byte [bx+0x2C], 0xFF
 [0000:0107] 8D360001   Lea16    si, word [0x0100]
@@ -2851,6 +2931,7 @@ fn can_execute_addressing() {
 [0000:0110] 89873000   Mov16    word [bx+0x0030], ax
 [0000:0114] 8905       Mov16    word [di], ax
 [0000:0116] C685AE06FE Mov8     byte [di+0x06AE], 0xFE
+[0000:011B] 8A85AE06   Mov8     al, byte [di+0x06AE]
 ",
                res);
 
@@ -2883,6 +2964,10 @@ fn can_execute_addressing() {
     cpu.execute_instruction();
     // should have written byte to [di+0x06AE]
     assert_eq!(0xFE, cpu.peek_u8_at(di + 0x06AE));
+
+    cpu.execute_instruction();
+    // should have read byte from [di+0x06AE] to al
+    assert_eq!(0xFE, cpu.r16[AX].lo_u8());
 }
 
 #[test]
