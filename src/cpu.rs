@@ -1,6 +1,5 @@
 #![feature(test)]
 
-#![allow(dead_code)]
 #![allow(unused_variables)]
 
 use test::Bencher;
@@ -271,6 +270,7 @@ enum Op {
     And8(),
     And16(),
     CallNear(),
+    Cbw(),
     Clc(),
     Cld(),
     Cli(),
@@ -279,6 +279,8 @@ enum Op {
     Daa(),
     Dec8(),
     Dec16(),
+    Div8(),
+    Div16(),
     In8(),
     Inc8(),
     Inc16(),
@@ -291,6 +293,7 @@ enum Op {
     Jna(),
     Jnl(),
     Jnz(),
+    Js(),
     Jz(),
     Lea16(),
     Lodsb(),
@@ -298,6 +301,7 @@ enum Op {
     Loop(),
     Mov8(),
     Mov16(),
+    Mul8(),
     Nop(),
     Or8(),
     Or16(),
@@ -321,6 +325,7 @@ enum Op {
     Sub16(),
     Test8(),
     Test16(),
+    Xchg8(),
     Xchg16(),
     Xor8(),
     Xor16(),
@@ -572,6 +577,14 @@ impl CPU {
                 self.push16(old_ip);
                 self.ip = temp_ip as u16;
             }
+            Op::Cbw() => {
+                // Convert Byte to Word
+                if self.r16[AX].lo_u8() & 0x80 != 0 {
+                    self.r16[AX].set_hi(0xFF);
+                } else {
+                    self.r16[AX].set_hi(0x00);
+                }
+            }
             Op::Clc() => {
                 self.flags.carry = false;
             }
@@ -650,6 +663,14 @@ impl CPU {
                 self.flags.set_parity(res);
 
                 self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
+            }
+            Op::Div8() => {
+                println!("XXX impl div8");
+                // XXX flags
+            }
+            Op::Div16() => {
+                println!("XXX impl div16");
+                // XXX flags
             }
             Op::In8() => {
                 // Input from Port
@@ -731,6 +752,12 @@ impl CPU {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
+            Op::Js() => {
+                // Jump short if sign (SF=1).
+                if self.flags.sign {
+                    self.ip = self.read_parameter_value(&op.params.dst) as u16;
+                }
+            }
             Op::Jz() => {
                 // Jump short if zero (ZF ← 1).
                 if self.flags.zero {
@@ -766,6 +793,9 @@ impl CPU {
                 // two parameters (dst=reg)
                 let data = self.read_parameter_value(&op.params.src) as u16;
                 self.write_parameter_u16(&op.params.dst, op.segment, data);
+            }
+            Op::Mul8() => {
+                println!("XXX impl mul8");
             }
             Op::Nop() => {}
             Op::Or8() => {
@@ -958,6 +988,16 @@ impl CPU {
                 self.flags.set_zero_u16(res);
                 self.flags.set_parity(res);
             }
+            Op::Xchg8() => {
+                // two parameters (registers)
+                let mut src = self.read_parameter_value(&op.params.src);
+                let mut dst = self.read_parameter_value(&op.params.dst);
+                let tmp = src;
+                src = dst;
+                dst = tmp;
+                self.write_parameter_u8(&op.params.dst, dst as u8);
+                self.write_parameter_u8(&op.params.src, src as u8);
+            }
             Op::Xchg16() => {
                 // two parameters (registers)
                 let mut src = self.read_parameter_value(&op.params.src);
@@ -1108,6 +1148,11 @@ impl CPU {
                 op.command = Op::Sub8();
                 op.params = self.r8_rm8(op.segment);
             }
+            0x2B => {
+                // sub r16, r/m16
+                op.command = Op::Sub16();
+                op.params = self.r16_rm16(op.segment);
+            }
             0x2C => {
                 // sub AL, imm8
                 op.command = Op::Sub8();
@@ -1223,6 +1268,11 @@ impl CPU {
             0x77 => {
                 // ja rel8    (alias: jnbe)
                 op.command = Op::Ja();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
+            }
+            0x78 => {
+                // js rel8
+                op.command = Op::Js();
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x7D => {
@@ -1363,6 +1413,11 @@ impl CPU {
                 op.command = Op::Test16();
                 op.params = self.rm16_r16(op.segment);
             }
+            0x86 => {
+                // xchg r/m8, r8 | xchg r8, r/m8
+                op.command = Op::Xchg8();
+                op.params = self.rm8_r8(op.segment);
+            }
             0x87 => {
                 // xchg r/m16, r16 | xchg r16, r/m16
                 op.command = Op::Xchg16();
@@ -1426,6 +1481,10 @@ impl CPU {
                 op.command = Op::Xchg16();
                 op.params.dst = Parameter::Reg16(AX);
                 op.params.src = Parameter::Reg16((b & 7) as usize);
+            }
+            0x98 => {
+                // cbw
+                op.command = Op::Cbw();
             }
             0xA0 => {
                 // mov AL, moffs8
@@ -1650,12 +1709,42 @@ impl CPU {
                     }
                     // 2 => op.Cmd = "not"
                     // 3 => op.Cmd = "neg"
-                    // 4 => op.Cmd = "mul"
+                    4 => {
+                        // mul r/m8
+                        op.command = Op::Mul8();
+                    }
                     // 5 => op.Cmd = "imul"
-                    // 6 => op.Cmd = "div"
+                    6 => {
+                        // div r/m8
+                        op.command = Op::Div8();
+                    }
                     // 7 => op.Cmd = "idiv"
                     _ => {
-                        println!("error F6 unknown reg={}", x.reg);
+                        println!("op F6 unknown reg={}", x.reg);
+                    }
+                }
+            }
+            0xF7 => {
+                // word sized math
+                let x = self.read_mod_reg_rm();
+                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                match x.reg {
+                    0 => {
+                        // test r/m16, imm16
+                        op.command = Op::Test16();
+                        op.params.src = Parameter::Imm16(self.read_u16());
+                    }
+                    // 2 => op.Cmd = "not"
+                    // 3 => op.Cmd = "neg"
+                    // 4 => op.Cmd = "mul"
+                    // 5 => op.Cmd = "imul"
+                    6 => {
+                        // div r/m16
+                        op.command = Op::Div16();
+                    }
+                    // 7 => op.Cmd = "idiv"
+                    _ => {
+                        println!("op F7 unknown reg={}", x.reg);
                     }
                 }
             }
