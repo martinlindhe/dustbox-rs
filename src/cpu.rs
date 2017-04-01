@@ -1821,6 +1821,179 @@ impl CPU {
         self.write_u8(offset + 1, hi);
     }
 
+    fn read_parameter_address(&mut self, p: &Parameter) -> usize {
+        match p {
+            &Parameter::Ptr16AmodeS8(seg, r, imm) => {
+                (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize
+            }
+            &Parameter::Ptr16(seg, imm) => (self.segment(seg) as usize * 16) + imm as usize,
+            _ => {
+                println!("read_parameter_address error: unhandled parameter: {:?} at {:06X}",
+                         p,
+                         self.get_offset());
+                0
+            }
+        }
+    }
+
+    fn read_parameter_value(&mut self, p: &Parameter) -> isize {
+        match p {
+            &Parameter::Imm8(imm) => imm as isize,
+            &Parameter::Imm16(imm) => imm as isize,
+            &Parameter::ImmS8(imm) => imm as isize,
+            &Parameter::Ptr8(seg, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + imm as usize;
+                self.peek_u8_at(offset) as isize
+            }
+            &Parameter::Ptr16(seg, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + imm as usize;
+                self.peek_u16_at(offset) as isize
+            }
+            &Parameter::Ptr8Amode(seg, r) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                self.peek_u8_at(offset) as isize
+            }
+            &Parameter::Ptr8AmodeS8(seg, r, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
+                self.peek_u8_at(offset) as isize
+            }
+            &Parameter::Ptr16Amode(seg, r) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                self.peek_u16_at(offset) as isize
+            }
+            &Parameter::Ptr16AmodeS8(seg, r, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
+                self.peek_u16_at(offset) as isize
+            }
+            &Parameter::Reg8(r) => {
+                let lor = r & 3;
+                if r & 4 == 0 {
+                    self.r16[lor].lo_u8() as isize
+                } else {
+                    self.r16[lor].hi_u8() as isize
+                }
+            }
+            &Parameter::Reg16(r) => self.r16[r].val as isize,
+            &Parameter::SReg16(r) => self.sreg16[r].val as isize,
+            _ => {
+                println!("read_parameter_value error: unhandled parameter: {:?} at {:06X}",
+                         p,
+                         self.get_offset());
+                0
+            }
+        }
+    }
+
+    fn write_parameter_u8(&mut self, p: &Parameter, data: u8) {
+        match p {
+            &Parameter::Reg8(r) => {
+                let lor = r & 3;
+                if r & 4 == 0 {
+                    self.r16[lor].set_lo(data);
+                } else {
+                    self.r16[lor].set_hi(data);
+                }
+            }
+            &Parameter::Ptr8(seg, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + imm as usize;
+                self.write_u8(offset, data);
+            }
+            &Parameter::Ptr8Amode(seg, r) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                self.write_u8(offset, data);
+            }
+            &Parameter::Ptr8AmodeS8(seg, r, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
+                self.write_u8(offset, data);
+            }
+            &Parameter::Ptr8AmodeS16(seg, r, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
+                self.write_u8(offset, data);
+            }
+            _ => {
+                println!("write_parameter_u8 unhandled type {:?} at {:06X}",
+                         p,
+                         self.get_offset());
+            }
+        }
+    }
+
+    fn write_parameter_u16(&mut self, p: &Parameter, segment: Segment, data: u16) {
+        match p {
+            &Parameter::Reg16(r) => {
+                self.r16[r].val = data;
+            }
+            &Parameter::SReg16(r) => {
+                self.sreg16[r].val = data;
+            }
+            &Parameter::Imm16(imm) => {
+                let offset = (self.segment(segment) as usize * 16) + imm as usize;
+                self.write_u16(offset, data);
+            }
+            &Parameter::Ptr16(seg, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + imm as usize;
+                self.write_u16(offset, data);
+            }
+            &Parameter::Ptr16Amode(seg, r) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                self.write_u16(offset, data);
+            }
+            &Parameter::Ptr16AmodeS8(seg, r, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
+                self.write_u16(offset, data);
+            }
+            &Parameter::Ptr16AmodeS16(seg, r, imm) => {
+                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
+                self.write_u16(offset, data);
+            }
+            _ => {
+                println!("write_u16_param unhandled type {:?} at {:06X}",
+                         p,
+                         self.get_offset());
+            }
+        }
+    }
+
+    fn write_u8(&mut self, offset: usize, data: u8) {
+        self.memory[offset] = data;
+    }
+
+    // used by disassembler
+    pub fn read_u8_slice(&mut self, offset: usize, length: usize) -> Vec<u8> {
+        let mut res = vec![0u8; length];
+        for i in offset..offset + length {
+            res[i - offset] = self.memory[i];
+        }
+        res
+    }
+
+    fn segment(&self, seg: Segment) -> u16 {
+        match seg {
+            Segment::CS() => self.sreg16[CS].val,
+            Segment::DS() => self.sreg16[DS].val,
+            Segment::ES() => self.sreg16[ES].val,
+            Segment::SS() => self.sreg16[SS].val,
+            Segment::Default() => self.sreg16[CS].val,
+        }
+    }
+
+    fn amode16(&mut self, idx: usize) -> usize {
+        match idx {
+            0 => self.r16[BX].val as usize + self.r16[SI].val as usize,
+            1 => self.r16[BX].val as usize + self.r16[DI].val as usize,
+            2 => self.r16[BP].val as usize + self.r16[SI].val as usize,
+            3 => self.r16[BP].val as usize + self.r16[DI].val as usize,
+            4 => self.r16[SI].val as usize,
+            5 => self.r16[DI].val as usize,
+            6 => self.r16[BP].val as usize,
+            7 => self.r16[BX].val as usize,
+            _ => {
+                println!("Impossible amode16, idx {}", idx);
+                0
+            }
+        }
+    }
+
     // output byte to I/O port
     fn out_u8(&mut self, p: &Parameter, data: u8) {
         let dst = match p {
@@ -2062,179 +2235,6 @@ impl CPU {
                 println!("int21 error: unknown AH={:02X}, AX={:04X}",
                          self.r16[AX].hi_u8(),
                          self.r16[AX].val);
-            }
-        }
-    }
-
-    fn read_parameter_address(&mut self, p: &Parameter) -> usize {
-        match p {
-            &Parameter::Ptr16AmodeS8(seg, r, imm) => {
-                (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize
-            }
-            &Parameter::Ptr16(seg, imm) => (self.segment(seg) as usize * 16) + imm as usize,
-            _ => {
-                println!("read_parameter_address error: unhandled parameter: {:?} at {:06X}",
-                         p,
-                         self.get_offset());
-                0
-            }
-        }
-    }
-
-    fn read_parameter_value(&mut self, p: &Parameter) -> isize {
-        match p {
-            &Parameter::Imm8(imm) => imm as isize,
-            &Parameter::Imm16(imm) => imm as isize,
-            &Parameter::ImmS8(imm) => imm as isize,
-            &Parameter::Ptr8(seg, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + imm as usize;
-                self.peek_u8_at(offset) as isize
-            }
-            &Parameter::Ptr16(seg, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + imm as usize;
-                self.peek_u16_at(offset) as isize
-            }
-            &Parameter::Ptr8Amode(seg, r) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
-                self.peek_u8_at(offset) as isize
-            }
-            &Parameter::Ptr8AmodeS8(seg, r, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
-                self.peek_u8_at(offset) as isize
-            }
-            &Parameter::Ptr16Amode(seg, r) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
-                self.peek_u16_at(offset) as isize
-            }
-            &Parameter::Ptr16AmodeS8(seg, r, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
-                self.peek_u16_at(offset) as isize
-            }
-            &Parameter::Reg8(r) => {
-                let lor = r & 3;
-                if r & 4 == 0 {
-                    self.r16[lor].lo_u8() as isize
-                } else {
-                    self.r16[lor].hi_u8() as isize
-                }
-            }
-            &Parameter::Reg16(r) => self.r16[r].val as isize,
-            &Parameter::SReg16(r) => self.sreg16[r].val as isize,
-            _ => {
-                println!("read_parameter_value error: unhandled parameter: {:?} at {:06X}",
-                         p,
-                         self.get_offset());
-                0
-            }
-        }
-    }
-
-    fn write_parameter_u8(&mut self, p: &Parameter, data: u8) {
-        match p {
-            &Parameter::Reg8(r) => {
-                let lor = r & 3;
-                if r & 4 == 0 {
-                    self.r16[lor].set_lo(data);
-                } else {
-                    self.r16[lor].set_hi(data);
-                }
-            }
-            &Parameter::Ptr8(seg, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + imm as usize;
-                self.write_u8(offset, data);
-            }
-            &Parameter::Ptr8Amode(seg, r) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
-                self.write_u8(offset, data);
-            }
-            &Parameter::Ptr8AmodeS8(seg, r, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
-                self.write_u8(offset, data);
-            }
-            &Parameter::Ptr8AmodeS16(seg, r, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
-                self.write_u8(offset, data);
-            }
-            _ => {
-                println!("write_parameter_u8 unhandled type {:?} at {:06X}",
-                         p,
-                         self.get_offset());
-            }
-        }
-    }
-
-    fn write_parameter_u16(&mut self, p: &Parameter, segment: Segment, data: u16) {
-        match p {
-            &Parameter::Reg16(r) => {
-                self.r16[r].val = data;
-            }
-            &Parameter::SReg16(r) => {
-                self.sreg16[r].val = data;
-            }
-            &Parameter::Imm16(imm) => {
-                let offset = (self.segment(segment) as usize * 16) + imm as usize;
-                self.write_u16(offset, data);
-            }
-            &Parameter::Ptr16(seg, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + imm as usize;
-                self.write_u16(offset, data);
-            }
-            &Parameter::Ptr16Amode(seg, r) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
-                self.write_u16(offset, data);
-            }
-            &Parameter::Ptr16AmodeS8(seg, r, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
-                self.write_u16(offset, data);
-            }
-            &Parameter::Ptr16AmodeS16(seg, r, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize;
-                self.write_u16(offset, data);
-            }
-            _ => {
-                println!("write_u16_param unhandled type {:?} at {:06X}",
-                         p,
-                         self.get_offset());
-            }
-        }
-    }
-
-    fn write_u8(&mut self, offset: usize, data: u8) {
-        self.memory[offset] = data;
-    }
-
-    // used by disassembler
-    pub fn read_u8_slice(&mut self, offset: usize, length: usize) -> Vec<u8> {
-        let mut res = vec![0u8; length];
-        for i in offset..offset + length {
-            res[i - offset] = self.memory[i];
-        }
-        res
-    }
-
-    fn segment(&self, seg: Segment) -> u16 {
-        match seg {
-            Segment::CS() => self.sreg16[CS].val,
-            Segment::DS() => self.sreg16[DS].val,
-            Segment::ES() => self.sreg16[ES].val,
-            Segment::SS() => self.sreg16[SS].val,
-            Segment::Default() => self.sreg16[CS].val,
-        }
-    }
-
-    fn amode16(&mut self, idx: usize) -> usize {
-        match idx {
-            0 => self.r16[BX].val as usize + self.r16[SI].val as usize,
-            1 => self.r16[BX].val as usize + self.r16[DI].val as usize,
-            2 => self.r16[BP].val as usize + self.r16[SI].val as usize,
-            3 => self.r16[BP].val as usize + self.r16[DI].val as usize,
-            4 => self.r16[SI].val as usize,
-            5 => self.r16[DI].val as usize,
-            6 => self.r16[BP].val as usize,
-            7 => self.r16[BX].val as usize,
-            _ => {
-                println!("Impossible amode16, idx {}", idx);
-                0
             }
         }
     }
