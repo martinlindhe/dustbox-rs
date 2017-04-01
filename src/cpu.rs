@@ -14,7 +14,7 @@ pub struct CPU {
     pub instruction_count: usize,
     memory: Vec<u8>,
     pub r16: [Register16; 8], // general purpose registers
-    pub sreg16: [Register16; 6], // segment registers
+    pub sreg16: [u16; 6], // segment registers
     flags: Flags,
     breakpoints: Vec<usize>,
     gpu: GPU,
@@ -412,7 +412,7 @@ impl CPU {
             instruction_count: 0,
             memory: vec![0u8; 0x10000 * 64],
             r16: [Register16 { val: 0 }; 8],
-            sreg16: [Register16 { val: 0 }; 6],
+            sreg16: [0; 6],
             flags: Flags {
                 carry: false,
                 reserved1: false,
@@ -444,10 +444,10 @@ impl CPU {
 
         // CS,DS,ES,SS = PSP segment
         let psp_segment = 0x085F; // is what dosbox used
-        cpu.sreg16[CS].val = psp_segment;
-        cpu.sreg16[DS].val = psp_segment;
-        cpu.sreg16[ES].val = psp_segment;
-        cpu.sreg16[SS].val = psp_segment;
+        cpu.sreg16[CS] = psp_segment;
+        cpu.sreg16[DS] = psp_segment;
+        cpu.sreg16[ES] = psp_segment;
+        cpu.sreg16[SS] = psp_segment;
 
         cpu
     }
@@ -504,12 +504,12 @@ impl CPU {
                self.r16[DI].val);
 
         print!("   es:{:04X} cs:{:04X} ss:{:04X} ds:{:04X} fs:{:04X} gs:{:04X}",
-               self.sreg16[ES].val,
-               self.sreg16[CS].val,
-               self.sreg16[SS].val,
-               self.sreg16[DS].val,
-               self.sreg16[FS].val,
-               self.sreg16[GS].val);
+               self.sreg16[ES],
+               self.sreg16[CS],
+               self.sreg16[SS],
+               self.sreg16[DS],
+               self.sreg16[FS],
+               self.sreg16[GS]);
 
         println!("");
     }
@@ -541,10 +541,10 @@ impl CPU {
         let op = self.decode_instruction(Segment::Default());
         let length = self.ip - old_ip;
         self.ip = old_ip;
-        let offset = ((self.sreg16[CS].val as usize) * 16) + old_ip as usize;
+        let offset = ((self.sreg16[CS] as usize) * 16) + old_ip as usize;
 
         InstructionInfo {
-            segment: self.sreg16[CS].val as usize,
+            segment: self.sreg16[CS] as usize,
             offset: old_ip as usize,
             length: length as usize,
             text: format!("{}", op),
@@ -881,8 +881,8 @@ impl CPU {
             }
             Op::RepMovsb() => {
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
-                let mut src = (self.sreg16[DS].val as usize) * 16 + (self.r16[SI].val as usize);
-                let mut dst = (self.sreg16[ES].val as usize) * 16 + (self.r16[DI].val as usize);
+                let mut src = (self.sreg16[DS] as usize) * 16 + (self.r16[SI].val as usize);
+                let mut dst = (self.sreg16[ES] as usize) * 16 + (self.r16[DI].val as usize);
                 let count = self.r16[CX].val as usize;
                 println!("rep movsb   src = {:04X}, dst = {:04X}, count = {:04X}",
                          src,
@@ -902,8 +902,8 @@ impl CPU {
             }
             Op::RepMovsw() => {
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
-                let mut src = (self.sreg16[DS].val as usize) * 16 + (self.r16[SI].val as usize);
-                let mut dst = (self.sreg16[ES].val as usize) * 16 + (self.r16[DI].val as usize);
+                let mut src = (self.sreg16[DS] as usize) * 16 + (self.r16[SI].val as usize);
+                let mut dst = (self.sreg16[ES] as usize) * 16 + (self.r16[DI].val as usize);
                 let count = self.r16[CX].val as usize;
                 println!("rep movsw   src = {:04X}, dst = {:04X}, count = {:04X}",
                          src,
@@ -924,7 +924,7 @@ impl CPU {
             Op::Retf() => {
                 //no arguments
                 self.ip = self.pop16();
-                self.sreg16[CS].val = self.pop16();
+                self.sreg16[CS] = self.pop16();
             }
             Op::Retn() => {
                 // no arguments
@@ -967,7 +967,7 @@ impl CPU {
             Op::Stosb() => {
                 // no parameters
                 // store AL at ES:(E)DI
-                let offset = (self.sreg16[ES].val as usize) * 16 + (self.r16[DI].val as usize);
+                let offset = (self.sreg16[ES] as usize) * 16 + (self.r16[DI].val as usize);
                 let data = self.r16[AX].lo_u8(); // = AL
                 self.write_u8(offset, data);
                 if !self.flags.direction {
@@ -1969,11 +1969,11 @@ impl CPU {
 
     fn push16(&mut self, data: u16) {
         self.r16[SP].val -= 2;
-        let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
+        let offset = (self.sreg16[SS] as usize) * 16 + (self.r16[SP].val as usize);
         /*
         println!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}       instr {}",
                  data,
-                 self.sreg16[SS].val,
+                 self.sreg16[SS],
                  self.r16[SP].val,
                  offset,
                  self.instruction_count);
@@ -1982,12 +1982,12 @@ impl CPU {
     }
 
     fn pop16(&mut self) -> u16 {
-        let offset = (self.sreg16[SS].val as usize) * 16 + (self.r16[SP].val as usize);
+        let offset = (self.sreg16[SS] as usize) * 16 + (self.r16[SP].val as usize);
         let data = self.peek_u16_at(offset);
         /*
         println!("pop16 {:04X}  from {:04X}:{:04X}  =>  {:06X}       instr {}",
                  data,
-                 self.sreg16[SS].val,
+                 self.sreg16[SS],
                  self.r16[SP].val,
                  offset,
                  self.instruction_count);
@@ -2006,7 +2006,7 @@ impl CPU {
     }
 
     pub fn get_offset(&self) -> usize {
-        ((self.sreg16[CS].val as usize) * 16) + self.ip as usize
+        ((self.sreg16[CS] as usize) * 16) + self.ip as usize
     }
 
     fn read_u8(&mut self) -> u8 {
@@ -2016,7 +2016,7 @@ impl CPU {
         println!("___ DBG: read u8 {:02X} from {:06X} ... {:04X}:{:04X}",
               b,
               offset,
-              self.sreg16[CS].val,
+              self.sreg16[CS],
               self.ip);
         */
         self.ip += 1;
@@ -2138,7 +2138,7 @@ impl CPU {
                 }
             }
             &Parameter::Reg16(r) => self.r16[r].val as usize,
-            &Parameter::SReg16(r) => self.sreg16[r].val as usize,
+            &Parameter::SReg16(r) => self.sreg16[r] as usize,
             _ => {
                 println!("read_parameter_value error: unhandled parameter: {:?} at {:06X}",
                          p,
@@ -2194,7 +2194,7 @@ impl CPU {
                 self.r16[r].val = data;
             }
             &Parameter::SReg16(r) => {
-                self.sreg16[r].val = data;
+                self.sreg16[r] = data;
             }
             &Parameter::Imm16(imm) => {
                 let offset = (self.segment(segment) as usize * 16) + imm as usize;
@@ -2246,11 +2246,11 @@ impl CPU {
 
     fn segment(&self, seg: Segment) -> u16 {
         match seg {
-            Segment::CS() => self.sreg16[CS].val,
-            Segment::DS() => self.sreg16[DS].val,
-            Segment::ES() => self.sreg16[ES].val,
-            Segment::SS() => self.sreg16[SS].val,
-            Segment::Default() => self.sreg16[CS].val,
+            Segment::CS() => self.sreg16[CS],
+            Segment::DS() => self.sreg16[DS],
+            Segment::ES() => self.sreg16[ES],
+            Segment::SS() => self.sreg16[SS],
+            Segment::Default() => self.sreg16[CS],
         }
     }
 
@@ -2537,7 +2537,7 @@ impl CPU {
                 // Standard output is always the screen under DOS 1.x, but may be
                 // redirected under DOS 2+. Under the FlashTek X-32 DOS extender,
                 // the pointer is in DS:EDX
-                let mut offset = (self.sreg16[DS].val as usize) * 16 + (self.r16[DX].val as usize);
+                let mut offset = (self.sreg16[DS] as usize) * 16 + (self.r16[DX].val as usize);
                 loop {
                     let b = self.peek_u8_at(offset) as char;
                     offset += 1;
@@ -2660,8 +2660,8 @@ fn can_handle_stack() {
 
     assert_eq!(0x107, cpu.ip);
     assert_eq!(0x8888, cpu.r16[AX].val);
-    assert_eq!(0x8888, cpu.sreg16[DS].val);
-    assert_eq!(0x8888, cpu.sreg16[ES].val);
+    assert_eq!(0x8888, cpu.sreg16[DS]);
+    assert_eq!(0x8888, cpu.sreg16[ES]);
 }
 
 #[test]
@@ -2735,7 +2735,7 @@ fn can_execute_mov_r16_rm16() {
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x123, cpu.sreg16[ES].val);
+    assert_eq!(0x123, cpu.sreg16[ES]);
 }
 
 #[test]
@@ -2754,11 +2754,11 @@ fn can_execute_mov_rm16_sreg() {
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x1234, cpu.sreg16[ES].val);
+    assert_eq!(0x1234, cpu.sreg16[ES]);
 
     cpu.execute_instruction();
     assert_eq!(0x109, cpu.ip);
-    let cs = cpu.sreg16[CS].val as usize;
+    let cs = cpu.sreg16[CS] as usize;
     assert_eq!(0x1234, cpu.peek_u16_at((cs * 16) + 0x0109));
 }
 
@@ -2772,7 +2772,7 @@ fn can_execute_mov_data() {
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    let cs = cpu.sreg16[CS].val as usize;
+    let cs = cpu.sreg16[CS] as usize;
     assert_eq!(0x38, cpu.peek_u8_at((cs * 16) + 0x1031));
 }
 
@@ -2795,7 +2795,7 @@ fn can_execute_segment_prefixed() {
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x1234, cpu.sreg16[ES].val);
+    assert_eq!(0x1234, cpu.sreg16[ES]);
 
     cpu.execute_instruction();
     assert_eq!(0x107, cpu.ip);
@@ -2938,7 +2938,7 @@ fn can_execute_rep() {
 
     cpu.execute_instruction(); // rep movsb
     assert_eq!(0x0, cpu.r16[CX].val);
-    let min = ((cpu.sreg16[CS].val as usize) * 16) + 0x100;
+    let min = ((cpu.sreg16[CS] as usize) * 16) + 0x100;
     let max = min + 5;
     for i in min..max {
         assert_eq!(cpu.memory[i], cpu.memory[i + 0x100]);
@@ -2979,7 +2979,7 @@ fn can_execute_addressing() {
     assert_eq!(0x200, cpu.r16[BX].val);
 
     cpu.execute_instruction();
-    let cs = cpu.sreg16[CS].val as usize;
+    let cs = cpu.sreg16[CS] as usize;
     assert_eq!(0xFF, cpu.peek_u8_at((cs * 16) + 0x22C));
 
     cpu.execute_instruction();

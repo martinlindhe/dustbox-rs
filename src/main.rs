@@ -41,7 +41,7 @@ fn main() {
     let stdin = io::stdin();
 
     loop {
-        print!("{:04X}:{:04X}> ", cpu.sreg16[cpu::CS].val, cpu.ip);
+        print!("{:04X}:{:04X}> ", cpu.sreg16[cpu::CS], cpu.ip);
         let _ = stdout().flush();
 
         let mut line = String::new();
@@ -55,7 +55,7 @@ fn main() {
                 let offset = cpu.get_offset();
                 let rom_offset = offset - cpu.get_rom_base() + 0x100;
                 info!("{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
-                      cpu.sreg16[cpu::CS].val,
+                      cpu.sreg16[cpu::CS],
                       cpu.ip,
                       offset,
                       rom_offset);
