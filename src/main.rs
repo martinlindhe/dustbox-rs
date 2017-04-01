@@ -26,8 +26,8 @@ fn main() {
 
     //let app = "../dos-software-decoding/samples/adrmode/adrmode.com";
     let games_root = "../dos-software-decoding/games".to_owned();
-    let app = games_root + "/8088 Othello (1985)(Bayley)/8088_othello.com";
-    //let app = games_root + "/Apple Panic (1982)(Broderbund Software Inc)/panic.com";
+    //let app = games_root + "/8088 Othello (1985)(Bayley)/8088_othello.com";
+    let app = games_root + "/Apple Panic (1982)(Broderbund Software Inc)/panic.com";
     //let app = games_root + "/Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com";
     //let app = games_root + "/Beast (1984)(Dan Baker)/beast.com";
     //let app = games_root + "/Blort (1987)(Hennsoft)/blort.com";
@@ -53,10 +53,12 @@ fn main() {
         match parts[0].as_ref() {
             "flat" => {
                 let offset = cpu.get_offset();
-                info!("{:04X}:{:04X} is {:06X}",
+                let rom_offset = offset - cpu.get_rom_base() + 0x100;
+                info!("{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
                       cpu.sreg16[cpu::CS].val,
                       cpu.ip,
-                      offset);
+                      offset,
+                      rom_offset);
             }
             "reset" => {
                 info!("Resetting CPU");

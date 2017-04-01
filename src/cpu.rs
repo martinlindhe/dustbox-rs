@@ -18,6 +18,7 @@ pub struct CPU {
     flags: Flags,
     breakpoints: Vec<usize>,
     gpu: GPU,
+    rom_base: usize,
 }
 
 struct GPU {
@@ -432,6 +433,7 @@ impl CPU {
             },
             breakpoints: vec![0; 0],
             gpu: GPU::new(),
+            rom_base: 0,
         };
 
         // intializes the cpu as if to run .com programs, info from
@@ -473,13 +475,19 @@ impl CPU {
         self.ip = 0x100;
         let min = self.get_offset();
         let max = min + data.len();
-        println!("loading rom to {:04X}..{:04X}", min, max);
+        println!("loading rom to {:06X}..{:06X}", min, max);
+        self.rom_base = min;
 
         let mut rom_pos = 0;
         for i in min..max {
             self.memory[i] = data[rom_pos];
             rom_pos += 1;
         }
+    }
+
+    // base address the rom was loaded to
+    pub fn get_rom_base(&self) -> usize {
+        self.rom_base
     }
 
     pub fn print_registers(&mut self) {
@@ -2223,7 +2231,7 @@ impl CPU {
     }
 
     fn write_u8(&mut self, offset: usize, data: u8) {
-        println!("debug: write_u8 to {:06X} = {:02X}", offset, data);
+        // println!("debug: write_u8 to {:06X} = {:02X}", offset, data);
         self.memory[offset] = data;
     }
 
