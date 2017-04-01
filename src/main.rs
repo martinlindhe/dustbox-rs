@@ -1,3 +1,5 @@
+#![feature(test)]
+
 #![allow(dead_code)]
 #![allow(unused_attributes)]
 #![allow(unused_imports)]
@@ -9,6 +11,7 @@ extern crate colog;
 extern crate regex;
 extern crate difference;
 extern crate time;
+extern crate test;
 
 use std::io::{self, stdout, BufRead, Write};
 use regex::Regex;
