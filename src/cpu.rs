@@ -2751,20 +2751,15 @@ fn can_disassemble_jz_rel() {
 
 
 #[bench]
-fn exec_small_loop(b: &mut Bencher) {
+fn exec_simple_loop(b: &mut Bencher) {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
-        // should amount to 1 + (3 * 0xffff) instructions
         0xB9, 0xFF, 0xFF, // mov cx,0xffff
-        0x90,             // nop
         0x49,             // dec cx
-        0xEB, 0xFC,       // jmp short 0x103
+        0xEB, 0xFA,       // jmp short 0x100
     ];
 
     cpu.load_rom(&code, 0x100);
-    let count = 3 * 0xffff;
 
-    b.iter(|| for i in 0..count {
-               let _ = cpu.execute_instruction();
-           })
+    b.iter(|| cpu.execute_instruction())
 }
