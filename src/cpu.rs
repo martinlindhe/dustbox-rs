@@ -308,6 +308,7 @@ pub enum Op {
     JmpNear(),
     JmpShort(),
     Jna(),
+    Jnc(),
     Jnl(),
     Jnz(),
     Js(),
@@ -335,6 +336,7 @@ pub enum Op {
     Ror16(),
     Shl8(),
     Shl16(),
+    Shr8(),
     Shr16(),
     Sti(),
     Stosb(),
@@ -434,8 +436,16 @@ impl CPU {
 
         // intializes the cpu as if to run .com programs, info from
         // http://www.delorie.com/djgpp/doc/rbinter/id/51/29.html
-        cpu.sreg16[SS].val = 0x0000;
-        cpu.r16[SP].val = 0xFFFE; // offset of last word available in first 64k segment
+
+        // offset of last word available in first 64k segment
+        cpu.r16[SP].val = 0xFFFE;
+
+        // CS,DS,ES,SS = PSP segment
+        let psp_segment = 0x085F; // is what dosbox used
+        cpu.sreg16[CS].val = psp_segment;
+        cpu.sreg16[DS].val = psp_segment;
+        cpu.sreg16[ES].val = psp_segment;
+        cpu.sreg16[SS].val = psp_segment;
 
         cpu
     }
@@ -458,20 +468,17 @@ impl CPU {
         // XXX clear memory
     }
 
-    pub fn load_rom(&mut self, data: &Vec<u8>, offset: u16) {
-        self.ip = offset;
-
-        // copy up to 64k of rom
-        let mut max = (offset as usize) + data.len();
-        if max > 0x10000 {
-            max = 0x10000;
-        }
-        let min = offset as usize;
+    // copy rom into CS:0100 (.com file)
+    pub fn load_rom(&mut self, data: &Vec<u8>) {
+        self.ip = 0x100;
+        let min = self.get_offset();
+        let max = min + data.len();
         println!("loading rom to {:04X}..{:04X}", min, max);
 
+        let mut rom_pos = 0;
         for i in min..max {
-            let rom_pos = i - (offset as usize);
             self.memory[i] = data[rom_pos];
+            rom_pos += 1;
         }
     }
 
@@ -526,13 +533,14 @@ impl CPU {
         let op = self.decode_instruction(Segment::Default());
         let length = self.ip - old_ip;
         self.ip = old_ip;
+        let offset = ((self.sreg16[CS].val as usize) * 16) + old_ip as usize;
 
         InstructionInfo {
             segment: self.sreg16[CS].val as usize,
             offset: old_ip as usize,
             length: length as usize,
             text: format!("{}", op),
-            bytes: self.read_u8_slice(old_ip as usize, length as usize),
+            bytes: self.read_u8_slice(offset, length as usize),
             instruction: op,
         }
     }
@@ -753,6 +761,12 @@ impl CPU {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
+            Op::Jnc() => {
+                // Jump short if not carry (CF=0).
+                if !self.flags.carry {
+                    self.ip = self.read_parameter_value(&op.params.dst) as u16;
+                }
+            }
             Op::Jnl() => {
                 // Jump short if not less (SF=OF).
                 if self.flags.sign == self.flags.overflow {
@@ -926,6 +940,11 @@ impl CPU {
             Op::Shl16() => {
                 // two arguments
                 println!("XXX impl shl16");
+                // XXX flags
+            }
+            Op::Shr8() => {
+                // two arguments
+                println!("XXX impl shr8");
                 // XXX flags
             }
             Op::Shr16() => {
@@ -1268,6 +1287,11 @@ impl CPU {
                 op.command = Op::Jc();
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
+            0x73 => {
+                // jnc rel8    (alias: jae, jnb)
+                op.command = Op::Jnc();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
+            }
             0x74 => {
                 // jz rel8    (alias: je)
                 op.command = Op::Jz();
@@ -1607,7 +1631,7 @@ impl CPU {
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
                     4 => Op::Shl8(), // alias: sal
-                    // 5 => Op::Shr8(),
+                    5 => Op::Shr8(),
                     // 7 => Op::Sar8(),
                     _ => {
                         println!("XXX 0xD0 unhandled reg = {}", x.reg);
@@ -2034,12 +2058,11 @@ impl CPU {
         self.write_u8(offset + 1, hi);
     }
 
+    // returns the offset part, excluding segment. used by LEA
     fn read_parameter_address(&mut self, p: &Parameter) -> usize {
         match p {
-            &Parameter::Ptr16AmodeS8(seg, r, imm) => {
-                (self.segment(seg) as usize * 16) + self.amode16(r) + imm as usize
-            }
-            &Parameter::Ptr16(seg, imm) => (self.segment(seg) as usize * 16) + imm as usize,
+            &Parameter::Ptr16AmodeS8(seg, r, imm) => self.amode16(r) + imm as usize,
+            &Parameter::Ptr16(seg, imm) => imm as usize,
             _ => {
                 println!("read_parameter_address error: unhandled parameter: {:?} at {:06X}",
                          p,
@@ -2200,6 +2223,7 @@ impl CPU {
     }
 
     fn write_u8(&mut self, offset: usize, data: u8) {
+        println!("debug: write_u8 to {:06X} = {:02X}", offset, data);
         self.memory[offset] = data;
     }
 
@@ -2473,6 +2497,25 @@ impl CPU {
     // dos related interrupts
     fn int21(&mut self) {
         match self.r16[AX].hi_u8() {
+            0x06 => {
+                // DOS 1+ - DIRECT CONSOLE OUTPUT
+                //
+                // DL = character (except FFh)
+                //
+                // Notes: Does not check ^C/^Break. Writes to standard output,
+                // which is always the screen under DOS 1.x, but may be redirected
+                // under DOS 2+
+                let b = self.r16[DX].lo_u8();
+                if b != 0xFF {
+                    print!("{}", b as char);
+                } else {
+                    println!("XXX character out: {:02X}", b);
+                }
+                // Return:
+                // AL = character output (despite official docs which
+                // state nothing is returned) (at least DOS 2.1-7.0)
+                self.r16[AX].set_lo(b);
+            }
             0x09 => {
                 // DOS 1+ - WRITE STRING TO STANDARD OUTPUT
                 //
@@ -2596,7 +2639,7 @@ fn can_handle_stack() {
         0x1E,             // push ds
         0x07,             // pop es
     ];
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.execute_instruction(); // mov
     cpu.execute_instruction(); // mov
@@ -2620,7 +2663,7 @@ fn can_execute_mov_r8() {
         0xB2, 0x13, // mov dl,0x13
         0x88, 0xD0, // mov al,dl
     ];
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x102, cpu.ip);
@@ -2640,7 +2683,7 @@ fn can_execute_mov_r8_rm8() {
         0x99,             // db 0x99
     ];
 
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -2658,7 +2701,7 @@ fn can_execute_mv_r16() {
         0xB8, 0x23, 0x01, // mov ax,0x123
         0x8B, 0xE0,       // mov sp,ax   | r16, r16
     ];
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -2676,7 +2719,7 @@ fn can_execute_mov_r16_rm16() {
         0xB9, 0x23, 0x01, // mov cx,0x123
         0x8E, 0xC1,       // mov es,cx   | r/m16, r16
     ];
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -2695,7 +2738,7 @@ fn can_execute_mov_rm16_sreg() {
         0x8E, 0xC3,             // mov es,bx
         0x8C, 0x06, 0x09, 0x01, // mov [0x109],es  | r/m16, sreg
     ];
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -2707,7 +2750,8 @@ fn can_execute_mov_rm16_sreg() {
 
     cpu.execute_instruction();
     assert_eq!(0x109, cpu.ip);
-    assert_eq!(0x1234, cpu.peek_u16_at(0x0109));
+    let cs = cpu.sreg16[CS].val as usize;
+    assert_eq!(0x1234, cpu.peek_u16_at((cs * 16) + 0x0109));
 }
 
 #[test]
@@ -2716,11 +2760,12 @@ fn can_execute_mov_data() {
     let code: Vec<u8> = vec![
         0xC6, 0x06, 0x31, 0x10, 0x38,       // mov byte [0x1031],0x38
     ];
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x38, cpu.peek_u8_at(0x1031));
+    let cs = cpu.sreg16[CS].val as usize;
+    assert_eq!(0x38, cpu.peek_u8_at((cs * 16) + 0x1031));
 }
 
 #[test]
@@ -2734,7 +2779,7 @@ fn can_execute_segment_prefixed() {
         0x26, 0x8A, 0x05, // mov al,[es:di]
     ];
 
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -2767,7 +2812,7 @@ fn can_execute_imms8() {
         0x83, 0xC7, 0xC6, // add di,byte -0x3a
     ];
 
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -2790,7 +2835,7 @@ fn can_execute_with_flags() {
         0x80, 0xC4, 0x02, // add ah,0x2   - OF and ZF should be set
     ];
 
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x102, cpu.ip);
@@ -2823,7 +2868,7 @@ fn can_execute_cmp() {
         0x81, 0xFF, 0x00, 0x20, // cmp di,0x2000
     ];
 
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -2845,28 +2890,13 @@ fn can_execute_cmp() {
 }
 
 #[test]
-fn can_execute_lea() {
-    let mut cpu = CPU::new();
-    let code: Vec<u8> = vec![
-        0x8D, 0x26, 0xF0, 0x1B, // lea sp,[0x1bf0]
-    ];
-
-    cpu.load_rom(&code, 0x100);
-
-    cpu.execute_instruction();
-    assert_eq!(0x104, cpu.ip);
-    assert_eq!(0x1BF0, cpu.r16[SP].val);
-}
-
-
-#[test]
 fn can_execute_xchg() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0x91, // xchg ax,cx
     ];
 
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.r16[AX].val = 0x1234;
     cpu.r16[CX].val = 0xFFFF;
@@ -2887,7 +2917,7 @@ fn can_execute_rep() {
         0xF3, 0xA4,             // rep movsb
     ];
 
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x100, cpu.r16[SI].val);
@@ -2900,7 +2930,9 @@ fn can_execute_rep() {
 
     cpu.execute_instruction(); // rep movsb
     assert_eq!(0x0, cpu.r16[CX].val);
-    for i in 0x100..0x105 {
+    let min = ((cpu.sreg16[CS].val as usize) * 16) + 0x100;
+    let max = min + 5;
+    for i in min..max {
         assert_eq!(cpu.memory[i], cpu.memory[i + 0x100]);
     }
 }
@@ -2920,18 +2952,18 @@ fn can_execute_addressing() {
         0x8A, 0x85, 0xAE, 0x06,       // mov al,[di+0x6ae]
     ];
 
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     let res = cpu.disassemble_block(0x100, 9);
-    assert_eq!("[0000:0100] BB0002     Mov16    bx, 0x0200
-[0000:0103] C6472CFF   Mov8     byte [bx+0x2C], 0xFF
-[0000:0107] 8D360001   Lea16    si, word [0x0100]
-[0000:010B] 8B14       Mov16    dx, word [si]
-[0000:010D] 8B472C     Mov16    ax, word [bx+0x2C]
-[0000:0110] 89873000   Mov16    word [bx+0x0030], ax
-[0000:0114] 8905       Mov16    word [di], ax
-[0000:0116] C685AE06FE Mov8     byte [di+0x06AE], 0xFE
-[0000:011B] 8A85AE06   Mov8     al, byte [di+0x06AE]
+    assert_eq!("[085F:0100] BB0002     Mov16    bx, 0x0200
+[085F:0103] C6472CFF   Mov8     byte [bx+0x2C], 0xFF
+[085F:0107] 8D360001   Lea16    si, word [0x0100]
+[085F:010B] 8B14       Mov16    dx, word [si]
+[085F:010D] 8B472C     Mov16    ax, word [bx+0x2C]
+[085F:0110] 89873000   Mov16    word [bx+0x0030], ax
+[085F:0114] 8905       Mov16    word [di], ax
+[085F:0116] C685AE06FE Mov8     byte [di+0x06AE], 0xFE
+[085F:011B] 8A85AE06   Mov8     al, byte [di+0x06AE]
 ",
                res);
 
@@ -2939,7 +2971,8 @@ fn can_execute_addressing() {
     assert_eq!(0x200, cpu.r16[BX].val);
 
     cpu.execute_instruction();
-    assert_eq!(0xFF, cpu.peek_u8_at(0x22C));
+    let cs = cpu.sreg16[CS].val as usize;
+    assert_eq!(0xFF, cpu.peek_u8_at((cs * 16) + 0x22C));
 
     cpu.execute_instruction();
     assert_eq!(0x100, cpu.r16[SI].val);
@@ -2954,16 +2987,16 @@ fn can_execute_addressing() {
 
     cpu.execute_instruction();
     // should have written word to [0x230]
-    assert_eq!(0x00FF, cpu.peek_u16_at(0x230));
+    assert_eq!(0x00FF, cpu.peek_u16_at((cs * 16) + 0x230));
 
     cpu.execute_instruction();
     // should have written ax to [di]
     let di = cpu.r16[DI].val as usize;
-    assert_eq!(0x00FF, cpu.peek_u16_at(di));
+    assert_eq!(0x00FF, cpu.peek_u16_at((cs * 16) + di));
 
     cpu.execute_instruction();
     // should have written byte to [di+0x06AE]
-    assert_eq!(0xFE, cpu.peek_u8_at(di + 0x06AE));
+    assert_eq!(0xFE, cpu.peek_u8_at((cs * 16) + di + 0x06AE));
 
     cpu.execute_instruction();
     // should have read byte from [di+0x06AE] to al
@@ -2977,10 +3010,10 @@ fn can_execute_math() {
         0xF6, 0x06, 0x2C, 0x12, 0xFF, // test byte [0x122c],0xff
     ];
 
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     let res = cpu.disassemble_block(0x100, 1);
-    assert_eq!("[0000:0100] F6062C12FF Test8    byte [0x122C], 0xFF
+    assert_eq!("[085F:0100] F6062C12FF Test8    byte [0x122C], 0xFF
 ",
                res);
 
@@ -2997,14 +3030,14 @@ fn can_disassemble_basic() {
         0xCD, 0x21,       // l_0x108: int 0x21
         0xE8, 0xFB, 0xFF, // call l_0x108   ; call an earlier offset
     ];
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
     let res = cpu.disassemble_block(0x100, 5);
 
-    assert_eq!("[0000:0100] E80500     CallNear 0x0108
-[0000:0103] BA0B01     Mov16    dx, 0x010B
-[0000:0106] B409       Mov8     ah, 0x09
-[0000:0108] CD21       Int      0x21
-[0000:010A] E8FBFF     CallNear 0x0108
+    assert_eq!("[085F:0100] E80500     CallNear 0x0108
+[085F:0103] BA0B01     Mov16    dx, 0x010B
+[085F:0106] B409       Mov8     ah, 0x09
+[085F:0108] CD21       Int      0x21
+[085F:010A] E8FBFF     CallNear 0x0108
 ",
                res);
 }
@@ -3016,11 +3049,11 @@ fn can_disassemble_segment_prefixed() {
         0x26, 0x88, 0x25, // mov [es:di],ah
         0x26, 0x8A, 0x25, // mov ah,[es:di]
     ];
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
     let res = cpu.disassemble_block(0x100, 2);
 
-    assert_eq!("[0000:0100] 268825     Mov8     byte [es:di], ah
-[0000:0103] 268A25     Mov8     ah, byte [es:di]
+    assert_eq!("[085F:0100] 268825     Mov8     byte [es:di], ah
+[085F:0103] 268A25     Mov8     ah, byte [es:di]
 ",
                res);
 }
@@ -3034,13 +3067,13 @@ fn can_disassemble_arithmetic() {
         0x83, 0xC7, 0x3A,             // add di,byte +0x3a
         0x83, 0xC7, 0xC6,             // add di,byte -0x3a
     ];
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
     let res = cpu.disassemble_block(0x100, 4);
 
-    assert_eq!("[0000:0100] 803E311000 Cmp8     byte [0x1031], 0x00
-[0000:0105] 81C7C000   Add16    di, 0x00C0
-[0000:0109] 83C73A     Add16    di, byte +0x3A
-[0000:010C] 83C7C6     Add16    di, byte -0x3A
+    assert_eq!("[085F:0100] 803E311000 Cmp8     byte [0x1031], 0x00
+[085F:0105] 81C7C000   Add16    di, 0x00C0
+[085F:0109] 83C73A     Add16    di, byte +0x3A
+[085F:010C] 83C7C6     Add16    di, byte -0x3A
 ",
                res);
 }
@@ -3054,13 +3087,13 @@ fn can_disassemble_jz_rel() {
         0x74, 0x00, // jz 0x106
         0x74, 0xFA, // jz 0x102
     ];
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
     let res = cpu.disassemble_block(0x100, 4);
 
-    assert_eq!("[0000:0100] 7404       Jz       0x0106
-[0000:0102] 74FE       Jz       0x0102
-[0000:0104] 7400       Jz       0x0106
-[0000:0106] 74FA       Jz       0x0102
+    assert_eq!("[085F:0100] 7404       Jz       0x0106
+[085F:0102] 74FE       Jz       0x0102
+[085F:0104] 7400       Jz       0x0106
+[085F:0106] 74FA       Jz       0x0102
 ",
                res);
 }
@@ -3075,7 +3108,7 @@ fn exec_simple_loop(b: &mut Bencher) {
         0xEB, 0xFA,       // jmp short 0x100
     ];
 
-    cpu.load_rom(&code, 0x100);
+    cpu.load_rom(&code);
 
     b.iter(|| cpu.execute_instruction())
 }
