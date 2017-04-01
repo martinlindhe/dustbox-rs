@@ -9,3 +9,6 @@ colog = { git = "https://github.com/chrivers/rust-colog" }
 log = "*"
 regex = "0.2"
 time = "0.1"
+
+[profile.release]
+debug = true

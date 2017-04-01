@@ -19,6 +19,7 @@ pub struct CPU {
     breakpoints: Vec<usize>,
     gpu: GPU,
     rom_base: usize,
+    pub fatal_error: bool, // for debugging: signals to debugger we hit an error
 }
 
 struct GPU {
@@ -434,6 +435,7 @@ impl CPU {
             breakpoints: vec![0; 0],
             gpu: GPU::new(),
             rom_base: 0,
+            fatal_error: false,
         };
 
         // intializes the cpu as if to run .com programs, info from
@@ -1369,7 +1371,7 @@ impl CPU {
                     }
                     _ => {
                         println!("op 80 error: unknown reg {}", x.reg);
-                        op.command = Op::Unknown();
+                        self.fatal_error = true;
                     }
                 }
             }
@@ -1409,7 +1411,7 @@ impl CPU {
                     }
                     _ => {
                         println!("op 81 error: unknown reg {}", x.reg);
-                        op.command = Op::Unknown();
+                        self.fatal_error = true;
                     }
                 }
             }
@@ -1449,7 +1451,7 @@ impl CPU {
                     }
                     _ => {
                         println!("op 83 error: unknown reg {}", x.reg);
-                        op.command = Op::Unknown();
+                        self.fatal_error = true;
                     }
                 }
             }
@@ -1518,6 +1520,7 @@ impl CPU {
                     }
                     _ => {
                         println!("op 8F unknown reg = {}", x.reg);
+                        self.fatal_error = true;
                     }
                 }
             }
@@ -1604,6 +1607,7 @@ impl CPU {
                     }
                     _ => {
                         println!("op C6 unknown reg = {}", x.reg);
+                        self.fatal_error = true;
                     }
                 }
             }
@@ -1618,6 +1622,7 @@ impl CPU {
                     }
                     _ => {
                         println!("op C7 unknown reg = {}", x.reg);
+                        self.fatal_error = true;
                     }
                 }
             }
@@ -1643,6 +1648,7 @@ impl CPU {
                     // 7 => Op::Sar8(),
                     _ => {
                         println!("XXX 0xD0 unhandled reg = {}", x.reg);
+                        self.fatal_error = true;
                         Op::Unknown()
                     }
                 };
@@ -1662,6 +1668,7 @@ impl CPU {
                     // 7 => Op::Sar16(),
                     _ => {
                         println!("XXX 0xD1 unhandled reg = {}", x.reg);
+                        self.fatal_error = true;
                         Op::Unknown()
                     }
                 };
@@ -1681,6 +1688,7 @@ impl CPU {
                     //7 => Op::Sar16(),
                     _ => {
                         println!("XXX 0xD3 unhandled reg = {}", x.reg);
+                        self.fatal_error = true;
                         Op::Unknown()
                     }
                 };
@@ -1744,6 +1752,7 @@ impl CPU {
                     }
                     _ => {
                         println!("op f3 error: unhandled op {:02X}", b);
+                        self.fatal_error = true;
                     }
                 }
             }
@@ -1771,6 +1780,7 @@ impl CPU {
                     // 7 => op.Cmd = "idiv"
                     _ => {
                         println!("op F6 unknown reg={}", x.reg);
+                        self.fatal_error = true;
                     }
                 }
             }
@@ -1795,6 +1805,7 @@ impl CPU {
                     // 7 => op.Cmd = "idiv"
                     _ => {
                         println!("op F7 unknown reg={}", x.reg);
+                        self.fatal_error = true;
                     }
                 }
             }
@@ -1827,6 +1838,7 @@ impl CPU {
                     }
                     _ => {
                         println!("op FE error: unknown reg {}", x.reg);
+                        self.fatal_error = true;
                     }
                 }
             }
@@ -1849,11 +1861,13 @@ impl CPU {
                     }
                     _ => {
                         println!("op FF error: unknown reg {}", x.reg);
+                        self.fatal_error = true;
                     }
                 }
             }
             _ => {
                 println!("cpu: unknown op {:02X} at {:06X}", b, self.get_offset() - 1);
+                self.fatal_error = true;
             }
         }
         op

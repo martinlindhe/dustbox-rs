@@ -27,8 +27,8 @@ fn main() {
     //let app = "../dos-software-decoding/samples/adrmode/adrmode.com";
     let games_root = "../dos-software-decoding/games".to_owned();
     //let app = games_root + "/8088 Othello (1985)(Bayley)/8088_othello.com";
-    let app = games_root + "/Apple Panic (1982)(Broderbund Software Inc)/panic.com";
-    //let app = games_root + "/Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com";
+    //let app = games_root + "/Apple Panic (1982)(Broderbund Software Inc)/panic.com";
+    let app = games_root + "/Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com";
     //let app = games_root + "/Beast (1984)(Dan Baker)/beast.com";
     //let app = games_root + "/Blort (1987)(Hennsoft)/blort.com";
     //let app = games_root + "/Crossfire (1982)(Sierra Online)/cfire.com";
@@ -129,20 +129,14 @@ fn main() {
                 warn!("Executing until we hit a breakpoint");
 
                 loop {
-                    let op = cpu.disasm_instruction();
-                    match op.instruction.command {
-                        cpu::Op::Unknown() => {
-                            error!("Failed to execute instruction, breaking. {:?}",
-                                   op.instruction);
-                            break;
-                        }
-                        _ => {}
-                    }
-
                     cpu.execute_instruction();
+                    if cpu.fatal_error {
+                        error!("Failed to execute instruction, breaking.");
+                        break;
+                    }
                     let offset = cpu.get_offset();
 
-                    // if op.offset is in list, break
+                    // break if we hit a breakpoint
                     let mut list_iter = list.iter();
                     match list_iter.find(|&&x| x == offset) {
                         Some(n) => {
