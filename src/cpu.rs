@@ -147,15 +147,15 @@ pub struct Instruction {
     params: ParameterPair,
 }
 
-impl Instruction {
-    fn describe(&self) -> String {
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.params.dst {
-            Parameter::None() => format!("{:?}", self.command),
+            Parameter::None() => write!(f, "{:?}", self.command),
             _ => {
                 let cmd = right_pad(&format!("{:?}", self.command), 9);
                 match self.params.src {
-                    Parameter::None() => format!("{}{}", cmd, self.params.dst),
-                    _ => format!("{}{}, {}", cmd, self.params.dst, self.params.src),
+                    Parameter::None() => write!(f, "{}{}", cmd, self.params.dst),
+                    _ => write!(f, "{}{}, {}", cmd, self.params.dst, self.params.src),
                 }
             }
         }
@@ -512,7 +512,7 @@ impl CPU {
             segment: self.sreg16[CS].val as usize,
             offset: old_ip as usize,
             length: length as usize,
-            text: op.describe(),
+            text: format!("{}", op),
             bytes: self.read_u8_slice(old_ip as usize, length as usize),
             instruction: op,
         }
