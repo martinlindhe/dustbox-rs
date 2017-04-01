@@ -961,7 +961,13 @@ impl CPU {
             }
             Op::Xchg16() => {
                 // two parameters (registers)
-                println!("XXX impl xchg16");
+                let mut src = self.read_parameter_value(&op.params.src) as usize;
+                let mut dst = self.read_parameter_value(&op.params.dst) as usize;
+                let tmp = src;
+                src = dst;
+                dst = tmp;
+                self.write_parameter_u16(&op.params.dst, op.segment, dst as u16);
+                self.write_parameter_u16(&op.params.src, op.segment, src as u16);
             }
             Op::Xor8() => {
                 // two parameters (dst=reg)
@@ -2690,6 +2696,24 @@ fn can_execute_lea() {
     cpu.execute_instruction();
     assert_eq!(0x104, cpu.ip);
     assert_eq!(0x1BF0, cpu.r16[SP].val);
+}
+
+
+#[test]
+fn can_execute_xchg() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0x91, // xchg ax,cx
+    ];
+
+    cpu.load_rom(&code, 0x100);
+
+    cpu.r16[AX].val = 0x1234;
+    cpu.r16[CX].val = 0xFFFF;
+
+    cpu.execute_instruction();
+    assert_eq!(0xFFFF, cpu.r16[AX].val);
+    assert_eq!(0x1234, cpu.r16[CX].val);
 }
 
 #[test]
