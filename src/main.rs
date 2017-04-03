@@ -44,7 +44,7 @@ fn main() {
                     error!("Filename not provided.");
                 } else {
                     let data = tools::read_binary(parts[1].as_ref());
-                    cpu.load_rom(&data);
+                    cpu.load_com(&data);
                 }
             }
             "flat" => {

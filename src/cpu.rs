@@ -517,8 +517,8 @@ impl CPU {
         // XXX clear memory
     }
 
-    // copy rom into CS:0100 (.com file)
-    pub fn load_rom(&mut self, data: &Vec<u8>) {
+    // load .com program into CS:0100 and set IP to program start
+    pub fn load_com(&mut self, data: &Vec<u8>) {
         self.ip = 0x100;
         let min = self.get_offset();
         let max = min + data.len();
@@ -2805,7 +2805,7 @@ fn can_handle_stack() {
         0x1E,             // push ds
         0x07,             // pop es
     ];
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.execute_instruction(); // mov
     cpu.execute_instruction(); // mov
@@ -2829,7 +2829,7 @@ fn can_execute_mov_r8() {
         0xB2, 0x13, // mov dl,0x13
         0x88, 0xD0, // mov al,dl
     ];
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x102, cpu.ip);
@@ -2849,7 +2849,7 @@ fn can_execute_mov_r8_rm8() {
         0x99,             // db 0x99
     ];
 
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -2867,7 +2867,7 @@ fn can_execute_mv_r16() {
         0xB8, 0x23, 0x01, // mov ax,0x123
         0x8B, 0xE0,       // mov sp,ax   | r16, r16
     ];
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -2885,7 +2885,7 @@ fn can_execute_mov_r16_rm16() {
         0xB9, 0x23, 0x01, // mov cx,0x123
         0x8E, 0xC1,       // mov es,cx   | r/m16, r16
     ];
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -2904,7 +2904,7 @@ fn can_execute_mov_rm16_sreg() {
         0x8E, 0xC3,             // mov es,bx
         0x8C, 0x06, 0x09, 0x01, // mov [0x109],es  | r/m16, sreg
     ];
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -2926,7 +2926,7 @@ fn can_execute_mov_data() {
     let code: Vec<u8> = vec![
         0xC6, 0x06, 0x31, 0x10, 0x38,       // mov byte [0x1031],0x38
     ];
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
@@ -2945,7 +2945,7 @@ fn can_execute_segment_prefixed() {
         0x26, 0x8A, 0x05, // mov al,[es:di]
     ];
 
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -2978,7 +2978,7 @@ fn can_execute_imms8() {
         0x83, 0xC7, 0xC6, // add di,byte -0x3a
     ];
 
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -3001,7 +3001,7 @@ fn can_execute_with_flags() {
         0x80, 0xC4, 0x02, // add ah,0x2   - OF and ZF should be set
     ];
 
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x102, cpu.ip);
@@ -3034,7 +3034,7 @@ fn can_execute_cmp() {
         0x81, 0xFF, 0x00, 0x20, // cmp di,0x2000
     ];
 
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x103, cpu.ip);
@@ -3062,7 +3062,7 @@ fn can_execute_xchg() {
         0x91, // xchg ax,cx
     ];
 
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.r16[AX].val = 0x1234;
     cpu.r16[CX].val = 0xFFFF;
@@ -3083,7 +3083,7 @@ fn can_execute_rep() {
         0xF3, 0xA4,             // rep movsb
     ];
 
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     cpu.execute_instruction();
     assert_eq!(0x100, cpu.r16[SI].val);
@@ -3118,7 +3118,7 @@ fn can_execute_addressing() {
         0x8A, 0x85, 0xAE, 0x06,       // mov al,[di+0x6ae]
     ];
 
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     let res = cpu.disassemble_block(0x100, 9);
     assert_eq!("[085F:0100] BB0002     Mov16    bx, 0x0200
@@ -3176,7 +3176,7 @@ fn can_execute_math() {
         0xF6, 0x06, 0x2C, 0x12, 0xFF, // test byte [0x122c],0xff
     ];
 
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     let res = cpu.disassemble_block(0x100, 1);
     assert_eq!("[085F:0100] F6062C12FF Test8    byte [0x122C], 0xFF
@@ -3196,7 +3196,7 @@ fn can_disassemble_basic() {
         0xCD, 0x21,       // l_0x108: int 0x21
         0xE8, 0xFB, 0xFF, // call l_0x108   ; call an earlier offset
     ];
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
     let res = cpu.disassemble_block(0x100, 5);
 
     assert_eq!("[085F:0100] E80500     CallNear 0x0108
@@ -3215,7 +3215,7 @@ fn can_disassemble_segment_prefixed() {
         0x26, 0x88, 0x25, // mov [es:di],ah
         0x26, 0x8A, 0x25, // mov ah,[es:di]
     ];
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
     let res = cpu.disassemble_block(0x100, 2);
 
     assert_eq!("[085F:0100] 268825     Mov8     byte [es:di], ah
@@ -3233,7 +3233,7 @@ fn can_disassemble_arithmetic() {
         0x83, 0xC7, 0x3A,             // add di,byte +0x3a
         0x83, 0xC7, 0xC6,             // add di,byte -0x3a
     ];
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
     let res = cpu.disassemble_block(0x100, 4);
 
     assert_eq!("[085F:0100] 803E311000 Cmp8     byte [0x1031], 0x00
@@ -3253,7 +3253,7 @@ fn can_disassemble_jz_rel() {
         0x74, 0x00, // jz 0x106
         0x74, 0xFA, // jz 0x102
     ];
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
     let res = cpu.disassemble_block(0x100, 4);
 
     assert_eq!("[085F:0100] 7404       Jz       0x0106
@@ -3274,7 +3274,7 @@ fn exec_simple_loop(b: &mut Bencher) {
         0xEB, 0xFA,       // jmp short 0x100
     ];
 
-    cpu.load_rom(&code);
+    cpu.load_com(&code);
 
     b.iter(|| cpu.execute_instruction())
 }
