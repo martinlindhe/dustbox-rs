@@ -344,6 +344,7 @@ pub enum Op {
     Dec16(),
     Div8(),
     Div16(),
+    Hlt(),
     In8(),
     Inc8(),
     Inc16(),
@@ -381,6 +382,7 @@ pub enum Op {
     Retn(),
     Ror8(),
     Ror16(),
+    Sahf(),
     Shl8(),
     Shl16(),
     Shr8(),
@@ -489,13 +491,6 @@ impl CPU {
         // offset of last word available in first 64k segment
         cpu.r16[SP].val = 0xFFFE;
 
-        // CS,DS,ES,SS = PSP segment
-        let psp_segment = 0x085F; // is what dosbox used
-        cpu.sreg16[CS] = psp_segment;
-        cpu.sreg16[DS] = psp_segment;
-        cpu.sreg16[ES] = psp_segment;
-        cpu.sreg16[SS] = psp_segment;
-
         cpu
     }
 
@@ -517,8 +512,31 @@ impl CPU {
         // XXX clear memory
     }
 
+    pub fn load_bios(&mut self, data: &Vec<u8>) {
+        self.sreg16[CS] = 0xF000;
+        self.ip = 0x0000;
+        let min = 0xF0000;
+        let max = min + data.len();
+        println!("loading bios to {:06X}..{:06X}", min, max);
+        self.rom_base = min;
+
+        let mut rom_pos = 0;
+        for i in min..max {
+            self.memory[i] = data[rom_pos];
+            rom_pos += 1;
+        }
+    }
+
+
     // load .com program into CS:0100 and set IP to program start
     pub fn load_com(&mut self, data: &Vec<u8>) {
+        // CS,DS,ES,SS = PSP segment
+        let psp_segment = 0x085F; // is what dosbox used
+        self.sreg16[CS] = psp_segment;
+        self.sreg16[DS] = psp_segment;
+        self.sreg16[ES] = psp_segment;
+        self.sreg16[SS] = psp_segment;
+
         self.ip = 0x100;
         let min = self.get_offset();
         let max = min + data.len();
@@ -750,6 +768,9 @@ impl CPU {
             Op::Div16() => {
                 println!("XXX impl div16");
                 // XXX flags
+            }
+            Op::Hlt() => {
+                println!("XXX impl hlt");
             }
             Op::In8() => {
                 // Input from Port
@@ -996,6 +1017,10 @@ impl CPU {
                 // two arguments
                 println!("XXX impl ror16");
                 // XXX flags
+            }
+            Op::Sahf() => {
+                // Store AH into Flags
+                println!("XXX impl sahf");
             }
             Op::Shl8() => {
                 // two arguments
@@ -1603,6 +1628,10 @@ impl CPU {
                 // pushf
                 op.command = Op::Pushf();
             }
+            0x9E => {
+                // sahf
+                op.command = Op::Sahf();
+            }
             0xA0 => {
                 // mov AL, moffs8
                 op.command = Op::Mov8();
@@ -1819,6 +1848,9 @@ impl CPU {
                         self.fatal_error = true;
                     }
                 }
+            }
+            0xF4 => {
+                op.command = Op::Hlt();
             }
             0xF6 => {
                 // byte sized math

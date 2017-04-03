@@ -26,6 +26,9 @@ fn main() {
 
     let mut cpu = cpu::CPU::new();
 
+    let bios = tools::read_binary("../dos-software-decoding/ibm-pc/ibm5550/ipl5550.rom");
+    cpu.load_bios(&bios);
+
     let stdin = io::stdin();
 
     loop {
