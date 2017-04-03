@@ -24,19 +24,7 @@ fn main() {
 
     drop(colog::init());
 
-    //let app = "../dos-software-decoding/samples/adrmode/adrmode.com";
-    let games_root = "../dos-software-decoding/games".to_owned();
-    //let app = games_root + "/8088 Othello (1985)(Bayley)/8088_othello.com";
-    //let app = games_root + "/Apple Panic (1982)(Broderbund Software Inc)/panic.com";
-    let app = games_root + "/Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com";
-    //let app = games_root + "/Beast (1984)(Dan Baker)/beast.com";
-    //let app = games_root + "/Blort (1987)(Hennsoft)/blort.com";
-    //let app = games_root + "/Crossfire (1982)(Sierra Online)/cfire.com";
-    //let app = games_root + "/Dig Dug (1982)(Namco)/digdug.com";
-    let data = tools::read_binary(&app);
-
     let mut cpu = cpu::CPU::new();
-    cpu.load_rom(&data);
 
     let stdin = io::stdin();
 
@@ -51,6 +39,14 @@ fn main() {
             .map(|s| s.trim_right().to_string())
             .collect();
         match parts[0].as_ref() {
+            "load" => {
+                if parts.len() < 2 {
+                    error!("Filename not provided.");
+                } else {
+                    let data = tools::read_binary(parts[1].as_ref());
+                    cpu.load_rom(&data);
+                }
+            }
             "flat" => {
                 let offset = cpu.get_offset();
                 let rom_offset = offset - cpu.get_rom_base() + 0x100;

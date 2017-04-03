@@ -111,6 +111,50 @@ impl Flags {
     fn set_carry_u16(&mut self, res: usize, v1: usize, v2: usize) {
         self.carry = res & 0x10000 != 0;
     }
+    // returns the FLAGS register
+    fn u16(&self) -> u16 {
+        let mut val = 0 as u16;
+
+        if self.carry {
+            val |= 1 << 0;
+        }
+        if self.parity {
+            val |= 1 << 2;
+        }
+        if self.auxiliary_carry {
+            val |= 1 << 4;
+        }
+        if self.zero {
+            val |= 1 << 6;
+        }
+        if self.sign {
+            val |= 1 << 7;
+        }
+        if self.trap {
+            val |= 1 << 8;
+        }
+        if self.interrupt {
+            val |= 1 << 9;
+        }
+        if self.direction {
+            val |= 1 << 10;
+        }
+        if self.overflow {
+            val |= 1 << 11;
+        }
+        if self.iopl12 {
+            val |= 1 << 12;
+        }
+        if self.iopl13 {
+            val |= 1 << 13;
+        }
+        if self.nested_task {
+            val |= 1 << 14;
+        }
+        val |= 1 << 15; // always 1 on 8086 and 186, always 0 on later models
+
+        val
+    }
 }
 
 
@@ -328,6 +372,7 @@ pub enum Op {
     Out8(),
     Pop16(),
     Push16(),
+    Pushf(),
     Rcl8(),
     Rcr8(),
     RepMovsb(),
@@ -518,6 +563,10 @@ impl CPU {
 
     pub fn execute_instruction(&mut self) {
         let op = self.decode_instruction(Segment::CS());
+        if self.fatal_error {
+            println!("XXX fatal error occured");
+            return;
+        }
         self.execute(&op);
         self.gpu.progress_scanline();
     }
@@ -858,6 +907,12 @@ impl CPU {
                 let data = self.read_parameter_value(&op.params.dst) as u16;
                 self.push16(data);
             }
+            Op::Pushf() => {
+                // push FLAGS register onto stack
+                let data = self.flags.u16();
+                println!("XXX push flags: {:04X}", data);
+                self.push16(data);
+            }
             Op::Rcl8() => {
                 // two arguments
                 // rotate 9 bits `src` times
@@ -1148,6 +1203,11 @@ impl CPU {
                 // or r8, r/m8
                 op.command = Op::Or8();
                 op.params = self.r8_rm8(op.segment);
+            }
+            0x0B => {
+                // or r16, r/m16
+                op.command = Op::Or16();
+                op.params = self.r16_rm16(op.segment);
             }
             0x0C => {
                 // or AL, imm8
@@ -1538,6 +1598,10 @@ impl CPU {
             0x98 => {
                 // cbw
                 op.command = Op::Cbw();
+            }
+            0x9C => {
+                // pushf
+                op.command = Op::Pushf();
             }
             0xA0 => {
                 // mov AL, moffs8
@@ -2033,6 +2097,8 @@ impl CPU {
               self.sreg16[CS],
               self.ip);
         */
+
+        // self.ip = (Wrapping(self.ip) + Wrapping(1)).0;  // XXX what do if ip wraps?
         self.ip += 1;
         b
     }
@@ -2351,9 +2417,18 @@ impl CPU {
         // http://wiki.osdev.org/Interrupt_Vector_Table
         match int {
             0x10 => self.int10(),
+            0x20 => {
+                // DOS 1+ - TERMINATE PROGRAM
+                // NOTE: Windows overloads INT 20
+                println!("INT 20 - Terminating program");
+                exit(0);
+            }
             0x21 => self.int21(),
             _ => {
-                println!("int error: unknown interrupt {:02X}", int);
+                println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}",
+                         int,
+                         self.r16[AX].val,
+                         self.r16[BX].val);
             }
         }
     }
@@ -2587,6 +2662,75 @@ impl CPU {
                 self.r16[CX].set_lo(now.tm_min as u8); // CL = minute
                 self.r16[DX].set_hi(now.tm_sec as u8); // DH = second
                 self.r16[DX].set_lo(centi_sec as u8); // DL = 1/100 second
+            }
+            0x30 => {
+                // DOS 2+ - GET DOS VERSION
+                // ---DOS 5+ ---
+                // AL = what to return in BH
+                // 00h OEM number (see #01394)
+                // 01h version flag
+                //
+                // Return:
+                // AL = major version number (00h if DOS 1.x)
+                // AH = minor version number
+                // BL:CX = 24-bit user serial number (most versions do not use this)
+                // ---if DOS <5 or AL=00h---
+                // BH = MS-DOS OEM number (see #01394)
+                // ---if DOS 5+ and AL=01h---
+                // BH = version flag
+                //
+                // bit 3: DOS is in ROM
+
+
+                // (Table 01394)
+                // Values for DOS OEM number:
+                // 00h *  IBM
+                // -  (Novell DOS, Caldera OpenDOS, DR-OpenDOS, and DR-DOS 7.02+ report IBM
+                // as their OEM)
+                // 01h *  Compaq
+                // 02h *  MS Packaged Product
+                // 04h *  AT&T
+                // 05h *  ZDS (Zenith Electronics, Zenith Electronics).
+
+                // fake MS-DOS 3.10, as needed by msdos32/APPEND.COM
+                self.r16[AX].set_lo(3); // AL = major version number (00h if DOS 1.x)
+                self.r16[AX].set_hi(10); // AH = minor version number
+            }
+            0x40 => {
+                // DOS 2+ - WRITE - WRITE TO FILE OR DEVICE
+
+                // BX = file handle
+                // CX = number of bytes to write
+                // DS:DX -> data to write
+                //
+                // Return:
+                // CF clear if successful
+                // AX = number of bytes actually written
+                // CF set on error
+                // AX = error code (05h,06h) (see #01680 at AH=59h/BX=0000h)
+
+                // Notes: If CX is zero, no data is written, and the file is truncated or extended
+                // to the current position. Data is written beginning at the current file position,
+                // and the file position is updated after a successful write. For FAT32 drives, the
+                // file must have been opened with AX=6C00h with the "extended size" flag in order
+                // to expand the file beyond 2GB; otherwise the write will fail with error code
+                // 0005h (access denied). The usual cause for AX < CX on return is a full disk
+                println!("XXX DOS - WRITE TO FILE OR DEVICE, handle={:04X}, count={:04X}, data from {:04X}:{:04X}",
+                         self.r16[BX].val,
+                         self.r16[CX].val,
+                         self.sreg16[DS],
+                         self.r16[DX].val);
+            }
+            0x4C => {
+                // DOS 2+ - EXIT - TERMINATE WITH RETURN CODE
+                // AL = return code
+
+                // Notes: Unless the process is its own parent (see #01378 [offset 16h] at AH=26h),
+                // all open files are closed and all memory belonging to the process is freed. All
+                // network file locks should be removed before calling this function
+                let al = self.r16[AX].lo_u8();
+                print!("DOS - TERMINATE WITH RETURN CODE {:02X}", al);
+                exit(0);
             }
             _ => {
                 println!("int21 error: unknown AH={:02X}, AX={:04X}",
