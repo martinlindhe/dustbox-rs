@@ -3,10 +3,9 @@
 #![allow(unused_variables)]
 
 use test::Bencher;
-use std::fmt;
+use std::{fmt, mem, u8};
 use std::process::exit;
 use std::num::Wrapping;
-use std::u8;
 use time;
 
 pub struct CPU {
@@ -116,7 +115,7 @@ impl Flags {
         let mut val = 0 as u16;
 
         if self.carry {
-            val |= 1 << 0;
+            val |= 1;
         }
         if self.parity {
             val |= 1 << 2;
@@ -252,19 +251,19 @@ enum Parameter {
 
 impl fmt::Display for Parameter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Parameter::Imm8(imm) => write!(f, "0x{:02X}", imm),
-            &Parameter::Imm16(imm) => write!(f, "0x{:04X}", imm),
-            &Parameter::ImmS8(imm) => {
+        match *self {
+            Parameter::Imm8(imm) => write!(f, "0x{:02X}", imm),
+            Parameter::Imm16(imm) => write!(f, "0x{:04X}", imm),
+            Parameter::ImmS8(imm) => {
                 write!(f,
                        "byte {}0x{:02X}",
                        if imm < 0 { "-" } else { "+" },
                        if imm < 0 { -imm } else { imm })
             }
-            &Parameter::Ptr8(seg, v) => write!(f, "byte [{}0x{:04X}]", seg, v),
-            &Parameter::Ptr16(seg, v) => write!(f, "word [{}0x{:04X}]", seg, v),
-            &Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}{}]", seg, amode(v as u8)),
-            &Parameter::Ptr8AmodeS8(seg, v, imm) => {
+            Parameter::Ptr8(seg, v) => write!(f, "byte [{}0x{:04X}]", seg, v),
+            Parameter::Ptr16(seg, v) => write!(f, "word [{}0x{:04X}]", seg, v),
+            Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}{}]", seg, amode(v as u8)),
+            Parameter::Ptr8AmodeS8(seg, v, imm) => {
                 write!(f,
                        "byte [{}{}{}0x{:02X}]",
                        seg,
@@ -272,7 +271,7 @@ impl fmt::Display for Parameter {
                        if imm < 0 { "-" } else { "+" },
                        if imm < 0 { -imm } else { imm })
             }
-            &Parameter::Ptr8AmodeS16(seg, v, imm) => {
+            Parameter::Ptr8AmodeS16(seg, v, imm) => {
                 write!(f,
                        "byte [{}{}{}0x{:04X}]",
                        seg,
@@ -280,8 +279,8 @@ impl fmt::Display for Parameter {
                        if imm < 0 { "-" } else { "+" },
                        if imm < 0 { -imm } else { imm })
             }
-            &Parameter::Ptr16Amode(seg, v) => write!(f, "word [{}{}]", seg, amode(v as u8)),
-            &Parameter::Ptr16AmodeS8(seg, v, imm) => {
+            Parameter::Ptr16Amode(seg, v) => write!(f, "word [{}{}]", seg, amode(v as u8)),
+            Parameter::Ptr16AmodeS8(seg, v, imm) => {
                 write!(f,
                        "word [{}{}{}0x{:02X}]",
                        seg,
@@ -289,7 +288,7 @@ impl fmt::Display for Parameter {
                        if imm < 0 { "-" } else { "+" },
                        if imm < 0 { -imm } else { imm })
             }
-            &Parameter::Ptr16AmodeS16(seg, v, imm) => {
+            Parameter::Ptr16AmodeS16(seg, v, imm) => {
                 write!(f,
                        "word [{}{}{}0x{:04X}]",
                        seg,
@@ -297,10 +296,10 @@ impl fmt::Display for Parameter {
                        if imm < 0 { "-" } else { "+" },
                        if imm < 0 { -imm } else { imm })
             }
-            &Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
-            &Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
-            &Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
-            &Parameter::None() => write!(f, ""),
+            Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
+            Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
+            Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
+            Parameter::None() => write!(f, ""),
         }
     }
 }
@@ -316,12 +315,12 @@ enum Segment {
 
 impl fmt::Display for Segment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Segment::CS() => write!(f, "cs:"),
-            &Segment::DS() => write!(f, "ds:"),
-            &Segment::ES() => write!(f, "es:"),
-            &Segment::SS() => write!(f, "ss:"),
-            &Segment::Default() => write!(f, ""),
+        match *self {
+            Segment::CS() => write!(f, "cs:"),
+            Segment::DS() => write!(f, "ds:"),
+            Segment::ES() => write!(f, "es:"),
+            Segment::SS() => write!(f, "ss:"),
+            Segment::Default() => write!(f, ""),
         }
     }
 }
@@ -419,7 +418,7 @@ impl InstructionInfo {
                 right_pad(&hex, 10),
                 self.text)
     }
-    fn to_hex_string(&self, bytes: &Vec<u8>) -> String {
+    fn to_hex_string(&self, bytes: &[u8]) -> String {
         let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
         strs.join("")
     }
@@ -512,7 +511,7 @@ impl CPU {
         // XXX clear memory
     }
 
-    pub fn load_bios(&mut self, data: &Vec<u8>) {
+    pub fn load_bios(&mut self, data: &[u8]) {
         self.sreg16[CS] = 0xF000;
         self.ip = 0x0000;
         let min = 0xF0000;
@@ -529,7 +528,7 @@ impl CPU {
 
 
     // load .com program into CS:0100 and set IP to program start
-    pub fn load_com(&mut self, data: &Vec<u8>) {
+    pub fn load_com(&mut self, data: &[u8]) {
         // CS,DS,ES,SS = PSP segment
         let psp_segment = 0x085F; // is what dosbox used
         self.sreg16[CS] = psp_segment;
@@ -829,10 +828,7 @@ impl CPU {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::JmpNear() => {
-                self.ip = self.read_parameter_value(&op.params.dst) as u16;
-            }
-            Op::JmpShort() => {
+            Op::JmpNear() | Op::JmpShort() => {
                 self.ip = self.read_parameter_value(&op.params.dst) as u16;
             }
             Op::Jna() => {
@@ -1114,9 +1110,7 @@ impl CPU {
                 // two parameters (registers)
                 let mut src = self.read_parameter_value(&op.params.src);
                 let mut dst = self.read_parameter_value(&op.params.dst);
-                let tmp = src;
-                src = dst;
-                dst = tmp;
+                mem::swap(&mut src, &mut dst);
                 self.write_parameter_u8(&op.params.dst, dst as u8);
                 self.write_parameter_u8(&op.params.src, src as u8);
             }
@@ -1124,9 +1118,7 @@ impl CPU {
                 // two parameters (registers)
                 let mut src = self.read_parameter_value(&op.params.src);
                 let mut dst = self.read_parameter_value(&op.params.dst);
-                let tmp = src;
-                src = dst;
-                dst = tmp;
+                mem::swap(&mut src, &mut dst);
                 self.write_parameter_u16(&op.params.dst, op.segment, dst as u16);
                 self.write_parameter_u16(&op.params.src, op.segment, src as u16);
             }
@@ -2180,9 +2172,9 @@ impl CPU {
 
     // returns the offset part, excluding segment. used by LEA
     fn read_parameter_address(&mut self, p: &Parameter) -> usize {
-        match p {
-            &Parameter::Ptr16AmodeS8(seg, r, imm) => self.amode16(r) + imm as usize,
-            &Parameter::Ptr16(seg, imm) => imm as usize,
+        match *p {
+            Parameter::Ptr16AmodeS8(seg, r, imm) => self.amode16(r) + imm as usize,
+            Parameter::Ptr16(seg, imm) => imm as usize,
             _ => {
                 println!("read_parameter_address error: unhandled parameter: {:?} at {:06X}",
                          p,
@@ -2193,55 +2185,55 @@ impl CPU {
     }
 
     fn read_parameter_value(&mut self, p: &Parameter) -> usize {
-        match p {
-            &Parameter::Imm8(imm) => imm as usize,
-            &Parameter::Imm16(imm) => imm as usize,
-            &Parameter::ImmS8(imm) => imm as usize,
-            &Parameter::Ptr8(seg, imm) => {
+        match *p {
+            Parameter::Imm8(imm) => imm as usize,
+            Parameter::Imm16(imm) => imm as usize,
+            Parameter::ImmS8(imm) => imm as usize,
+            Parameter::Ptr8(seg, imm) => {
                 let offset = (self.segment(seg) as usize * 16) + imm as usize;
                 self.peek_u8_at(offset) as usize
             }
-            &Parameter::Ptr16(seg, imm) => {
+            Parameter::Ptr16(seg, imm) => {
                 let offset = (self.segment(seg) as usize * 16) + imm as usize;
                 self.peek_u16_at(offset) as usize
             }
-            &Parameter::Ptr8Amode(seg, r) => {
+            Parameter::Ptr8Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
                 self.peek_u8_at(offset) as usize
             }
-            &Parameter::Ptr8AmodeS8(seg, r, imm) => {
+            Parameter::Ptr8AmodeS8(seg, r, imm) => {
                 let offset = (Wrapping(self.segment(seg) as usize * 16) +
                               Wrapping(self.amode16(r)) +
                               Wrapping(imm as usize))
                         .0;
                 self.peek_u8_at(offset) as usize
             }
-            &Parameter::Ptr8AmodeS16(seg, r, imm) => {
+            Parameter::Ptr8AmodeS16(seg, r, imm) => {
                 let offset = (Wrapping(self.segment(seg) as usize * 16) +
                               Wrapping(self.amode16(r)) +
                               Wrapping(imm as usize))
                         .0;
                 self.peek_u8_at(offset) as usize
             }
-            &Parameter::Ptr16Amode(seg, r) => {
+            Parameter::Ptr16Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
                 self.peek_u16_at(offset) as usize
             }
-            &Parameter::Ptr16AmodeS8(seg, r, imm) => {
+            Parameter::Ptr16AmodeS8(seg, r, imm) => {
                 let offset = (Wrapping(self.segment(seg) as usize * 16) +
                               Wrapping(self.amode16(r)) +
                               Wrapping(imm as usize))
                         .0;
                 self.peek_u16_at(offset) as usize
             }
-            &Parameter::Ptr16AmodeS16(seg, r, imm) => {
+            Parameter::Ptr16AmodeS16(seg, r, imm) => {
                 let offset = (Wrapping(self.segment(seg) as usize * 16) +
                               Wrapping(self.amode16(r)) +
                               Wrapping(imm as usize))
                         .0;
                 self.peek_u16_at(offset) as usize
             }
-            &Parameter::Reg8(r) => {
+            Parameter::Reg8(r) => {
                 let lor = r & 3;
                 if r & 4 == 0 {
                     self.r16[lor].lo_u8() as usize
@@ -2249,8 +2241,8 @@ impl CPU {
                     self.r16[lor].hi_u8() as usize
                 }
             }
-            &Parameter::Reg16(r) => self.r16[r].val as usize,
-            &Parameter::SReg16(r) => self.sreg16[r] as usize,
+            Parameter::Reg16(r) => self.r16[r].val as usize,
+            Parameter::SReg16(r) => self.sreg16[r] as usize,
             _ => {
                 println!("read_parameter_value error: unhandled parameter: {:?} at {:06X}",
                          p,
@@ -2261,8 +2253,8 @@ impl CPU {
     }
 
     fn write_parameter_u8(&mut self, p: &Parameter, data: u8) {
-        match p {
-            &Parameter::Reg8(r) => {
+        match *p {
+            Parameter::Reg8(r) => {
                 let lor = r & 3;
                 if r & 4 == 0 {
                     self.r16[lor].set_lo(data);
@@ -2270,22 +2262,22 @@ impl CPU {
                     self.r16[lor].set_hi(data);
                 }
             }
-            &Parameter::Ptr8(seg, imm) => {
+            Parameter::Ptr8(seg, imm) => {
                 let offset = (self.segment(seg) as usize * 16) + imm as usize;
                 self.write_u8(offset, data);
             }
-            &Parameter::Ptr8Amode(seg, r) => {
+            Parameter::Ptr8Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
                 self.write_u8(offset, data);
             }
-            &Parameter::Ptr8AmodeS8(seg, r, imm) => {
+            Parameter::Ptr8AmodeS8(seg, r, imm) => {
                 let offset = (Wrapping(self.segment(seg) as usize * 16) +
                               Wrapping(self.amode16(r)) +
                               Wrapping(imm as usize))
                         .0;
                 self.write_u8(offset, data);
             }
-            &Parameter::Ptr8AmodeS16(seg, r, imm) => {
+            Parameter::Ptr8AmodeS16(seg, r, imm) => {
                 let offset = (Wrapping(self.segment(seg) as usize * 16) +
                               Wrapping(self.amode16(r)) +
                               Wrapping(imm as usize))
@@ -2301,33 +2293,33 @@ impl CPU {
     }
 
     fn write_parameter_u16(&mut self, p: &Parameter, segment: Segment, data: u16) {
-        match p {
-            &Parameter::Reg16(r) => {
+        match *p {
+            Parameter::Reg16(r) => {
                 self.r16[r].val = data;
             }
-            &Parameter::SReg16(r) => {
+            Parameter::SReg16(r) => {
                 self.sreg16[r] = data;
             }
-            &Parameter::Imm16(imm) => {
+            Parameter::Imm16(imm) => {
                 let offset = (self.segment(segment) as usize * 16) + imm as usize;
                 self.write_u16(offset, data);
             }
-            &Parameter::Ptr16(seg, imm) => {
+            Parameter::Ptr16(seg, imm) => {
                 let offset = (Wrapping(self.segment(seg) as usize * 16) + Wrapping(imm as usize)).0;
                 self.write_u16(offset, data);
             }
-            &Parameter::Ptr16Amode(seg, r) => {
+            Parameter::Ptr16Amode(seg, r) => {
                 let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
                 self.write_u16(offset, data);
             }
-            &Parameter::Ptr16AmodeS8(seg, r, imm) => {
+            Parameter::Ptr16AmodeS8(seg, r, imm) => {
                 let offset = (Wrapping(self.segment(seg) as usize * 16) +
                               Wrapping(self.amode16(r)) +
                               Wrapping(imm as usize))
                         .0;
                 self.write_u16(offset, data);
             }
-            &Parameter::Ptr16AmodeS16(seg, r, imm) => {
+            Parameter::Ptr16AmodeS16(seg, r, imm) => {
                 let offset = (Wrapping(self.segment(seg) as usize * 16) +
                               Wrapping(self.amode16(r)) +
                               Wrapping(imm as usize))
@@ -2358,11 +2350,11 @@ impl CPU {
 
     fn segment(&self, seg: Segment) -> u16 {
         match seg {
-            Segment::CS() => self.sreg16[CS],
+            Segment::CS() |
+            Segment::Default() => self.sreg16[CS],
             Segment::DS() => self.sreg16[DS],
             Segment::ES() => self.sreg16[ES],
             Segment::SS() => self.sreg16[SS],
-            Segment::Default() => self.sreg16[CS],
         }
     }
 
@@ -2385,9 +2377,9 @@ impl CPU {
 
     // output byte to I/O port
     fn out_u8(&mut self, p: &Parameter, data: u8) {
-        let dst = match p {
-            &Parameter::Reg16(r) => self.r16[r].val,
-            &Parameter::Imm8(imm) => imm as u16,
+        let dst = match *p {
+            Parameter::Reg16(r) => self.r16[r].val,
+            Parameter::Imm8(imm) => imm as u16,
             _ => {
                 println!("out_u8 unhandled type {:?}", p);
                 0
@@ -2426,7 +2418,7 @@ impl CPU {
 
                 // HACK: fake bit 0:
                 if self.gpu.scanline == 0 {
-                    flags |= 1 << 0; // set bit 0
+                    flags |= 1; // set bit 0
                 } else {
                     flags &= !(1 << 1); // clear bit 0
                 }
@@ -2667,7 +2659,7 @@ impl CPU {
                     }
                     print!("{}", b as char);
                 }
-                self.r16[AX].set_lo('$' as u8);
+                self.r16[AX].set_lo(b'$');
             }
             0x0C => {
                 // DOS 1+ - FLUSH BUFFER AND READ STANDARD INPUT
@@ -3309,4 +3301,18 @@ fn exec_simple_loop(b: &mut Bencher) {
     cpu.load_com(&code);
 
     b.iter(|| cpu.execute_instruction())
+}
+
+#[bench]
+fn disasm_block(b: &mut Bencher) {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB9, 0xFF, 0xFF, // mov cx,0xffff
+        0x49,             // dec cx
+        0xEB, 0xFA,       // jmp short 0x100
+    ];
+
+    cpu.load_com(&code);
+
+    b.iter(|| cpu.disassemble_block(0x100, 3))
 }

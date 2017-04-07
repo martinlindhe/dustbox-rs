@@ -38,7 +38,7 @@ fn main() {
         let mut line = String::new();
         stdin.lock().read_line(&mut line).unwrap();
 
-        let parts: Vec<String> = line.split(" ")
+        let parts: Vec<String> = line.split(' ')
             .map(|s| s.trim_right().to_string())
             .collect();
         match parts[0].as_ref() {
@@ -137,12 +137,9 @@ fn main() {
 
                     // break if we hit a breakpoint
                     let mut list_iter = list.iter();
-                    match list_iter.find(|&&x| x == offset) {
-                        Some(n) => {
-                            warn!("Breakpoint reached {:04X}", n);
-                            break;
-                        }
-                        None => {}
+                    if let Some(n) = list_iter.find(|&&x| x == offset) {
+                        warn!("Breakpoint reached {:04X}", n);
+                        break;
                     }
                 }
             }
@@ -161,9 +158,8 @@ fn main() {
 
 fn parse_number_string(s: &str) -> usize {
     // XXX return Option, none = failed to parse
-    if &s[0..2] == "0x" {
-        let x = usize::from_str_radix(&s[2..], 16).unwrap();
-        x
+    if s[0..2] == *"0x" {
+        usize::from_str_radix(&s[2..], 16).unwrap()
     } else {
         // decimal
         s.parse::<usize>().unwrap()
