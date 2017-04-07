@@ -22,7 +22,7 @@ mod tools;
 
 fn main() {
 
-    drop(colog::init());
+    colog::init();
 
     let mut cpu = cpu::CPU::new();
 
