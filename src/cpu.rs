@@ -519,13 +519,10 @@ impl CPU {
         println!("loading bios to {:06X}..{:06X}", min, max);
         self.rom_base = min;
 
-        let mut rom_pos = 0;
-        for i in min..max {
-            self.memory[i] = data[rom_pos];
-            rom_pos += 1;
+        for (pos, i) in (min..max).enumerate() {
+            self.memory[i] = data[pos];
         }
     }
-
 
     // load .com program into CS:0100 and set IP to program start
     pub fn load_com(&mut self, data: &[u8]) {
@@ -542,10 +539,8 @@ impl CPU {
         println!("loading rom to {:06X}..{:06X}", min, max);
         self.rom_base = min;
 
-        let mut rom_pos = 0;
-        for i in min..max {
-            self.memory[i] = data[rom_pos];
-            rom_pos += 1;
+        for (pos, i) in (min..max).enumerate() {
+            self.memory[i] = data[pos];
         }
     }
 
