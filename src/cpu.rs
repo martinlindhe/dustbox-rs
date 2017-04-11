@@ -519,9 +519,7 @@ impl CPU {
         println!("loading bios to {:06X}..{:06X}", min, max);
         self.rom_base = min;
 
-        for (pos, i) in (min..max).enumerate() {
-            self.memory[i] = data[pos];
-        }
+        self.memory[min..max].copy_from_slice(data);
     }
 
     // load .com program into CS:0100 and set IP to program start
@@ -539,9 +537,7 @@ impl CPU {
         println!("loading rom to {:06X}..{:06X}", min, max);
         self.rom_base = min;
 
-        for (pos, i) in (min..max).enumerate() {
-            self.memory[i] = data[pos];
-        }
+        self.memory[min..max].copy_from_slice(data);
     }
 
     // base address the rom was loaded to
