@@ -649,13 +649,31 @@ impl CPU {
             }
             Op::And8() => {
                 // two parameters (dst=reg)
-                println!("XXX impl and8");
-                // XXX flags
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
+                let res = dst & src;
+
+                // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result.
+                self.flags.overflow = false;
+                self.flags.carry = false;
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_parity(res);
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::And16() => {
                 // two parameters (dst=reg)
-                println!("XXX impl and16");
-                // XXX flags
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
+                let res = dst & src;
+
+                // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result.
+                self.flags.overflow = false;
+                self.flags.carry = false;
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_parity(res);
+                self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
             }
             Op::CallNear() => {
                 // call near rel
@@ -1238,6 +1256,11 @@ impl CPU {
                 // pop ds
                 op.command = Op::Pop16();
                 op.params.dst = Parameter::SReg16(DS);
+            }
+            0x20 => {
+                // AND r/m8, r8
+                op.command = Op::And8();
+                op.params = self.rm8_r8(op.segment);
             }
             0x21 => {
                 // and r/m16, r16
@@ -3200,6 +3223,39 @@ fn can_execute_math() {
 
     // XXX also execute
 }
+
+#[test]
+fn can_execute_and() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB0, 0xF0, // mov al,0xF0
+        0xB4, 0x1F, // mov ah,0x1F
+        0x20, 0xC4, // and ah,al
+    ];
+
+    cpu.load_com(&code);
+
+    let res = cpu.disassemble_block(0x100, 3);
+
+    assert_eq!("[085F:0100] B0F0       Mov8     al, 0xF0
+[085F:0102] B41F       Mov8     ah, 0x1F
+[085F:0104] 20C4       And8     ah, al
+",
+               res);
+
+    cpu.execute_instruction();
+    assert_eq!(0xF0, cpu.r16[AX].lo_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x1F, cpu.r16[AX].hi_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x10, cpu.r16[AX].hi_u8());
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.zero);
+    //assert_eq!(false, cpu.flags.parity); // XXX dosbox set it to false. need proper debugging with bochs
+}
+
 
 #[test]
 fn can_disassemble_basic() {

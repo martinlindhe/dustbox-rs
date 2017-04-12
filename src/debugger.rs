@@ -21,8 +21,8 @@ pub fn new() -> Debugger {
 
 impl Debugger {
     pub fn start(&mut self) {
-        let bios = tools::read_binary("../dos-software-decoding/ibm-pc/ibm5550/ipl5550.rom");
-        self.cpu.load_bios(&bios);
+        //let bios = tools::read_binary("../dos-software-decoding/ibm-pc/ibm5550/ipl5550.rom");
+        //self.cpu.load_bios(&bios);
 
         loop {
             self.prompt();
@@ -40,7 +40,7 @@ impl Debugger {
                 if parts.len() < 2 {
                     error!("Filename not provided.");
                 } else {
-                    self.load_binary(parts[1].as_ref());
+                    self.load_binary(parts[1..].join(" ").as_ref());
                 }
             }
             "flat" => {
