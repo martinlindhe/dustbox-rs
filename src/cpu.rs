@@ -782,8 +782,17 @@ impl CPU {
                 self.r16[AX].set_hi((rem & 0xFF) as u8);
             }
             Op::Div16() => {
-                // XXX Unsigned divide DX:AX by r/m16, with result stored in AX ← Quotient, DX ← Remainder.
-                println!("XXX impl div16");
+                let dst = ((self.r16[DX].val as usize) << 16) + self.r16[AX].val as usize; // DX:AX
+                println!("XXX div16 {:04X}", dst);
+                let src = self.read_parameter_value(&op.params.dst);
+                let res = (Wrapping(dst) / Wrapping(src)).0;
+                let rem = (Wrapping(dst) % Wrapping(src)).0;
+
+                // The CF, OF, SF, ZF, AF, and PF flags are undefined.
+
+                // result stored in AX ← Quotient, DX ← Remainder.
+                self.r16[AX].val = (res & 0xFFFF) as u16;
+                self.r16[DX].val = (rem & 0xFFFF) as u16;
             }
             Op::Hlt() => {
                 println!("XXX impl hlt");
@@ -3325,7 +3334,7 @@ fn can_execute_mul() {
 }
 
 #[test]
-fn can_execute_div() {
+fn can_execute_div8() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB8, 0x40, 0x00, // mov ax,0x40
@@ -3352,6 +3361,41 @@ fn can_execute_div() {
     cpu.execute_instruction();
     assert_eq!(0x04, cpu.r16[AX].lo_u8()); // quotient
     assert_eq!(0x00, cpu.r16[AX].hi_u8()); // remainder
+}
+
+#[test]
+fn can_execute_div16() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xBA, 0x10, 0x00, // mov dx,0x10
+        0xB8, 0x00, 0x40, // mov ax,0x4000
+        0xBB, 0x00, 0x01, // mov bx,0x100
+        0xF7, 0xF3,       // div bx
+    ];
+
+    cpu.load_com(&code);
+
+    let res = cpu.disassemble_block(0x100, 4);
+
+    assert_eq!("[085F:0100] BA1000     Mov16    dx, 0x0010
+[085F:0103] B80040     Mov16    ax, 0x4000
+[085F:0106] BB0001     Mov16    bx, 0x0100
+[085F:0109] F7F3       Div16    bx
+",
+               res);
+
+    cpu.execute_instruction();
+    assert_eq!(0x10, cpu.r16[DX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x4000, cpu.r16[AX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x100, cpu.r16[BX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x1040, cpu.r16[AX].val); // quotient
+    assert_eq!(0x0000, cpu.r16[DX].val); // remainder
 }
 
 
