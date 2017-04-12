@@ -912,11 +912,29 @@ impl CPU {
             Op::Nop() => {}
             Op::Or8() => {
                 // two arguments (dst=AL)
-                println!("XXX impl or8");
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
+                let res = dst | src;
+                // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result.
+                self.flags.overflow = false;
+                self.flags.carry = false;
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_parity(res);
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Or16() => {
                 // two arguments (dst=AX)
-                println!("XXX impl or16");
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
+                let res = dst | src;
+                // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result.
+                self.flags.overflow = false;
+                self.flags.carry = false;
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_parity(res);
+                self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
             }
             Op::Out8() => {
                 // two arguments (dst=DX or imm8)
