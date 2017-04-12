@@ -770,12 +770,20 @@ impl CPU {
                 self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
             }
             Op::Div8() => {
-                println!("XXX impl div8");
-                // XXX flags
+                let dst = self.r16[AX].val as usize; // AX
+                let src = self.read_parameter_value(&op.params.dst);
+                let res = (Wrapping(dst) / Wrapping(src)).0;
+                let rem = (Wrapping(dst) % Wrapping(src)).0;
+
+                // The CF, OF, SF, ZF, AF, and PF flags are undefined.
+
+                // result stored in AL ← Quotient, AH ← Remainder.
+                self.r16[AX].set_lo((res & 0xFF) as u8);
+                self.r16[AX].set_hi((rem & 0xFF) as u8);
             }
             Op::Div16() => {
+                // XXX Unsigned divide DX:AX by r/m16, with result stored in AX ← Quotient, DX ← Remainder.
                 println!("XXX impl div16");
-                // XXX flags
             }
             Op::Hlt() => {
                 println!("XXX impl hlt");
@@ -907,7 +915,17 @@ impl CPU {
                 self.write_parameter_u16(&op.params.dst, op.segment, data);
             }
             Op::Mul8() => {
-                println!("XXX impl mul8");
+                // dst = AX
+                let src = self.r16[AX].lo_u8() as usize; // AL
+                let dst = self.read_parameter_value(&op.params.dst);
+                let res = (Wrapping(dst) * Wrapping(src)).0;
+
+                // The OF and CF flags are set to 0 if the upper half of the
+                // result is 0; otherwise, they are set to 1.
+                // The SF, ZF, AF, and PF flags are undefined.
+                println!("XXX mul8 flags");
+
+                self.r16[AX].val = (res & 0xFFFF) as u16;
             }
             Op::Nop() => {}
             Op::Or8() => {
@@ -2454,9 +2472,11 @@ impl CPU {
                 } else {
                     flags &= !(1 << 1); // clear bit 0
                 }
+                /*
                 println!("XXX read io port CGA status register at {:06X} = {:02X}",
                          self.get_offset(),
                          flags);
+                */
                 flags
             }
             _ => {
@@ -3272,6 +3292,66 @@ fn can_execute_and() {
     assert_eq!(false, cpu.flags.sign);
     assert_eq!(false, cpu.flags.zero);
     //assert_eq!(false, cpu.flags.parity); // XXX dosbox set it to false. need proper debugging with bochs
+}
+
+#[test]
+fn can_execute_mul() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB0, 0x40, // mov al,0x40
+        0xB3, 0x10, // mov bl,0x10
+        0xF6, 0xE3, // mul bl
+    ];
+
+    cpu.load_com(&code);
+
+    let res = cpu.disassemble_block(0x100, 3);
+
+    assert_eq!("[085F:0100] B040       Mov8     al, 0x40
+[085F:0102] B310       Mov8     bl, 0x10
+[085F:0104] F6E3       Mul8     bl
+",
+               res);
+
+    cpu.execute_instruction();
+    assert_eq!(0x40, cpu.r16[AX].lo_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x10, cpu.r16[BX].lo_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x400, cpu.r16[AX].val);
+    // XXX flags
+}
+
+#[test]
+fn can_execute_div() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x40, 0x00, // mov ax,0x40
+        0xB3, 0x10,       // mov bl,0x10
+        0xF6, 0xF3,       // div bl
+    ];
+
+    cpu.load_com(&code);
+
+    let res = cpu.disassemble_block(0x100, 3);
+
+    assert_eq!("[085F:0100] B84000     Mov16    ax, 0x0040
+[085F:0103] B310       Mov8     bl, 0x10
+[085F:0105] F6F3       Div8     bl
+",
+               res);
+
+    cpu.execute_instruction();
+    assert_eq!(0x40, cpu.r16[AX].lo_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x10, cpu.r16[BX].lo_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x04, cpu.r16[AX].lo_u8()); // quotient
+    assert_eq!(0x00, cpu.r16[AX].hi_u8()); // remainder
 }
 
 
