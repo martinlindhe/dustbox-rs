@@ -376,9 +376,12 @@ pub enum Op {
     Loop(),
     Mov8(),
     Mov16(),
+    Movsb(),
+    Movsw(),
     Mul8(),
     Neg16(),
     Nop(),
+    Not8(),
     Not16(),
     Or8(),
     Or16(),
@@ -390,7 +393,9 @@ pub enum Op {
     Push16(),
     Pushf(),
     Rcl8(),
+    Rcl16(),
     Rcr8(),
+    Rcr16(),
     RepMovsb(),
     RepMovsw(),
     RepStosb(),
@@ -402,6 +407,8 @@ pub enum Op {
     Ror8(),
     Ror16(),
     Sahf(),
+    Sar16(),
+    Sbb8(),
     Shl8(),
     Shl16(),
     Shr8(),
@@ -409,6 +416,7 @@ pub enum Op {
     Stc(),
     Sti(),
     Stosb(),
+    Stosw(),
     Sub8(),
     Sub16(),
     Test8(),
@@ -988,6 +996,12 @@ impl CPU {
                 let data = self.read_parameter_value(&op.params.src) as u16;
                 self.write_parameter_u16(&op.params.dst, op.segment, data);
             }
+            Op::Movsb() => {
+                println!("XXX impl movsb");
+            }
+            Op::Movsw() => {
+                println!("XXX impl movsw");
+            }
             Op::Mul8() => {
                 // dst = AX
                 let src = self.r16[AX].lo_u8() as usize; // AL
@@ -1005,6 +1019,9 @@ impl CPU {
                 println!("XXX impl neg16");
             }
             Op::Nop() => {}
+            Op::Not8() => {
+                println!("XXX impl not8");
+            }
             Op::Not16() => {
                 println!("XXX impl not16");
             }
@@ -1072,9 +1089,12 @@ impl CPU {
                 let src = self.read_parameter_value(&op.params.src) as u8;
                 let dst = self.read_parameter_value(&op.params.dst) as u8;
 
-
                 // XXX do + flags + write result
                 println!("XXX impl rcl8");
+            }
+            Op::Rcl16() => {
+                // two arguments
+                println!("XXX impl rcl16");
             }
             Op::Rcr8() => {
                 // two arguments
@@ -1089,6 +1109,9 @@ impl CPU {
                 // The OF flag is affected only for single-bit rotates; it is undefined
                 // for multi-bit rotates. The SF, ZF, AF, and PF flags are not affected.
                 println!("XXX impl rcr8");
+            }
+            Op::Rcr16() => {
+                println!("XXX impl rcr16");
             }
             Op::RepMovsb() => {
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
@@ -1170,6 +1193,12 @@ impl CPU {
                 // Store AH into Flags
                 println!("XXX impl sahf");
             }
+            Op::Sar16() => {
+                println!("XXX impl sar16");
+            }
+            Op::Sbb8() => {
+                println!("XXX impl sbb8");
+            }
             Op::Shl8() => {
                 // two arguments
                 println!("XXX impl shl8");
@@ -1215,6 +1244,9 @@ impl CPU {
                 } else {
                     self.r16[DI].val -= 1;
                 }
+            }
+            Op::Stosw() => {
+                println!("XXX impl stosw");
             }
             Op::Sub8() => {
                 // two parameters (dst=reg)
@@ -1410,6 +1442,12 @@ impl CPU {
                 op.command = Op::Push16();
                 op.params.dst = Parameter::SReg16(CS);
             }
+            0x1C => {
+                // sbb AL, imm8
+                op.command = Op::Sbb8();
+                op.params.dst = Parameter::Reg8(AL);
+                op.params.src = Parameter::Imm8(self.read_u8());
+            }
             0x1E => {
                 // push ds
                 op.command = Op::Push16();
@@ -1506,6 +1544,12 @@ impl CPU {
                 op.command = Op::Xor8();
                 op.params.dst = Parameter::Reg8(AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
+            }
+            0x35 => {
+                // xor AX, imm16
+                op.command = Op::Xor16();
+                op.params.dst = Parameter::Reg16(AX);
+                op.params.src = Parameter::Imm16(self.read_u16());
             }
             0x36 => {
                 // ss segment prefix
@@ -1677,10 +1721,10 @@ impl CPU {
                     0 => {
                         op.command = Op::Add16();
                     }
-                    /*
                     1 => {
                         op.command = Op::Or16();
                     }
+                    /*
                     2 => {
                         op.command = Op::Adc16();
                     }
@@ -1868,14 +1912,33 @@ impl CPU {
                 op.params.dst = Parameter::Ptr16(op.segment, self.read_u16());
                 op.params.src = Parameter::Reg16(AX);
             }
+            0xA4 => {
+                // movsb
+                op.command = Op::Movsb();
+            }
+            0xA5 => {
+                // movsw
+                op.command = Op::Movsw();
+            }
             0xA8 => {
+                // test AL, imm8
                 op.command = Op::Test8();
                 op.params.dst = Parameter::Reg8(AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
+            0xA9 => {
+                // test AX, imm16
+                op.command = Op::Test16();
+                op.params.dst = Parameter::Reg16(AX);
+                op.params.src = Parameter::Imm16(self.read_u16());
+            }
             0xAA => {
                 // stosb
                 op.command = Op::Stosb();
+            }
+            0xAB => {
+                // stosw
+                op.command = Op::Stosw();
             }
             0xAC => {
                 // lodsb
@@ -1970,12 +2033,12 @@ impl CPU {
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     0 => Op::Rol16(),
-                    // 1 => Op::Ror16(),
-                    //2 => Op::Rcl16(),
-                    //3 => Op::Rcr16(),
+                    1 => Op::Ror16(),
+                    2 => Op::Rcl16(),
+                    3 => Op::Rcr16(),
                     4 => Op::Shl16(), // alias: sal
                     5 => Op::Shr16(),
-                    // 7 => Op::Sar16(),
+                    7 => Op::Sar16(),
                     _ => {
                         println!("XXX 0xD1 unhandled reg = {}", x.reg);
                         self.fatal_error = true;
@@ -2141,7 +2204,10 @@ impl CPU {
                         op.command = Op::Test8();
                         op.params.src = Parameter::Imm8(self.read_u8());
                     }
-                    // 2 => op.Cmd = "not"
+                    2 => {
+                        // not r/m8
+                        op.command = Op::Not8();
+                    }
                     // 3 => op.Cmd = "neg"
                     4 => {
                         // mul r/m8
@@ -2177,7 +2243,10 @@ impl CPU {
                         // neg r/m16
                         op.command = Op::Neg16();
                     }
-                    // 4 => op.Cmd = "mul"
+                    4 => {
+                        // mul r/m16
+                        op.command = Op::Mul8();
+                    }
                     // 5 => op.Cmd = "imul"
                     6 => {
                         // div r/m16
