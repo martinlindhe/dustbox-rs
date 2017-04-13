@@ -2,18 +2,19 @@ use std::io::{self, stdout, BufRead, Write};
 use regex::Regex;
 use std::process::exit;
 
-use cpu;
+use cpu::CPU;
+use register::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES, FS, GS};
 use tools;
 
 pub struct Debugger {
-    cpu: cpu::CPU,
+    cpu: CPU,
     stdin: io::Stdin,
     stdout: io::Stdout,
 }
 
 pub fn new() -> Debugger {
     Debugger {
-        cpu: cpu::CPU::new(),
+        cpu: CPU::new(),
         stdin: io::stdin(),
         stdout: io::stdout(),
     }
@@ -30,7 +31,7 @@ impl Debugger {
     }
 
     fn prompt(&mut self) {
-        print!("{:04X}:{:04X}> ", self.cpu.sreg16[cpu::CS], self.cpu.ip);
+        print!("{:04X}:{:04X}> ", self.cpu.sreg16[CS], self.cpu.ip);
         let _ = self.stdout.flush();
 
         let parts = self.read_line();
@@ -128,7 +129,7 @@ impl Debugger {
         let offset = self.cpu.get_offset();
         let rom_offset = offset - self.cpu.get_rom_base() + 0x100;
         info!("{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
-              self.cpu.sreg16[cpu::CS],
+              self.cpu.sreg16[CS],
               self.cpu.ip,
               offset,
               rom_offset);

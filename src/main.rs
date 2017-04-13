@@ -14,8 +14,18 @@ extern crate time;
 extern crate test;
 
 mod debugger;
-mod cpu;
 mod tools;
+
+mod cpu;
+mod flags;
+mod register;
+mod instruction;
+mod segment;
+mod gpu;
+
+mod int10;
+mod int16;
+mod int21;
 
 fn main() {
     colog::init();

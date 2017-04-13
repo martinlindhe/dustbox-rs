@@ -4,9 +4,17 @@
 
 use test::Bencher;
 use std::{fmt, mem, u8};
-use std::process::exit;
 use std::num::Wrapping;
-use time;
+
+use register::Register16;
+use flags::Flags;
+use segment::Segment;
+use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm};
+use int10;
+use int16;
+use int21;
+use gpu::GPU;
+use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
 
 pub struct CPU {
     pub ip: u16,
@@ -21,466 +29,6 @@ pub struct CPU {
     pub fatal_error: bool, // for debugging: signals to debugger we hit an error
 }
 
-struct GPU {
-    scanline: u16,
-}
-impl GPU {
-    fn new() -> GPU {
-        GPU { scanline: 0 }
-    }
-    fn progress_scanline(&mut self) {
-        // HACK to have a source of info to toggle CGA status register
-        self.scanline += 1;
-        if self.scanline > 100 {
-            self.scanline = 0;
-        }
-    }
-}
-
-// https://en.wikipedia.org/wiki/FLAGS_register
-struct Flags {
-    carry: bool, // 0: carry flag
-    reserved1: bool, // 1: Reserved, always 1 in EFLAGS
-    parity: bool, // 2: parity flag
-    reserved3: bool,
-    auxiliary_carry: bool, // 4: auxiliary carry flag
-    reserved5: bool,
-    zero: bool, // 6: zero flag
-    sign: bool, // 7: sign flag
-    trap: bool, // 8: trap flag (single step)
-    interrupt: bool, // 9: interrupt flag
-    direction: bool, // 10: direction flag (control with cld, std)
-    overflow: bool, // 11: overflow flag
-    iopl12: bool, // 12: I/O privilege level (286+ only), always 1 on 8086 and 186
-    iopl13: bool, // 13 --""---
-    nested_task: bool, // 14: Nested task flag (286+ only), always 1 on 8086 and 186
-    reserved15: bool, // 15: Reserved, always 1 on 8086 and 186, always 0 on later models
-}
-
-impl Flags {
-    fn set_sign_u8(&mut self, v: usize) {
-        // Set equal to the most-significant bit of the result,
-        // which is the sign bit of a signed integer.
-        // (0 indicates a positive value and 1 indicates a negative value.)
-        self.sign = v & 0x80 != 0;
-    }
-    fn set_sign_u16(&mut self, v: usize) {
-        self.sign = v & 0x8000 != 0;
-    }
-    fn set_parity(&mut self, v: usize) {
-        // Set if the least-significant byte of the result contains an
-        // even number of 1 bits; cleared otherwise.
-        self.parity = v & 1 == 0;
-    }
-    fn set_zero_u8(&mut self, v: usize) {
-        // Zero flag — Set if the result is zero; cleared otherwise.
-        self.zero = (v & 0xFF) == 0;
-    }
-    fn set_zero_u16(&mut self, v: usize) {
-        self.zero = (v & 0xFFFF) == 0;
-    }
-    fn set_auxiliary(&mut self, res: usize, v1: usize, v2: usize) {
-        // Set if an arithmetic operation generates a carry or a borrow out
-        // of bit 3 of the result; cleared otherwise. This flag is used in
-        // binary-coded decimal (BCD) arithmetic.
-        self.auxiliary_carry = (res ^ (v1 ^ v2)) & 0x10 != 0;
-    }
-    fn set_overflow_add_u8(&mut self, res: usize, v1: usize, v2: usize) {
-        // Set if the integer result is too large a positive number or too
-        // small a negative number (excluding the sign-bit) to fit in the
-        // destination operand; cleared otherwise. This flag indicates an
-        // overflow condition for signed-integer (two’s complement) arithmetic.
-        self.overflow = (res ^ v1) & (res ^ v2) & 0x80 != 0;
-    }
-    fn set_overflow_add_u16(&mut self, res: usize, v1: usize, v2: usize) {
-        self.overflow = (res ^ v1) & (res ^ v2) & 0x8000 != 0;
-    }
-    fn set_overflow_sub_u8(&mut self, res: usize, v1: usize, v2: usize) {
-        self.overflow = (v2 ^ v1) & (v2 ^ res) & 0x80 != 0;
-    }
-    fn set_overflow_sub_u16(&mut self, res: usize, v1: usize, v2: usize) {
-        self.overflow = (v2 ^ v1) & (v2 ^ res) & 0x8000 != 0;
-    }
-    fn set_carry_u8(&mut self, res: usize, v1: usize, v2: usize) {
-        // Set if an arithmetic operation generates a carry or a borrow out of
-        // the most-significant bit of the result; cleared otherwise. This flag
-        // indicates an overflow condition for unsigned-integer arithmetic.
-        self.carry = res & 0x100 != 0;
-    }
-    fn set_carry_u16(&mut self, res: usize, v1: usize, v2: usize) {
-        self.carry = res & 0x10000 != 0;
-    }
-    // returns the FLAGS register
-    fn u16(&self) -> u16 {
-        let mut val = 0 as u16;
-
-        if self.carry {
-            val |= 1;
-        }
-        if self.parity {
-            val |= 1 << 2;
-        }
-        if self.auxiliary_carry {
-            val |= 1 << 4;
-        }
-        if self.zero {
-            val |= 1 << 6;
-        }
-        if self.sign {
-            val |= 1 << 7;
-        }
-        if self.trap {
-            val |= 1 << 8;
-        }
-        if self.interrupt {
-            val |= 1 << 9;
-        }
-        if self.direction {
-            val |= 1 << 10;
-        }
-        if self.overflow {
-            val |= 1 << 11;
-        }
-        if self.iopl12 {
-            val |= 1 << 12;
-        }
-        if self.iopl13 {
-            val |= 1 << 13;
-        }
-        if self.nested_task {
-            val |= 1 << 14;
-        }
-        val |= 1 << 15; // always 1 on 8086 and 186, always 0 on later models
-
-        val
-    }
-}
-
-
-#[derive(Copy, Clone)]
-pub struct Register16 {
-    pub val: u16,
-}
-
-impl Register16 {
-    fn set_hi(&mut self, val: u8) {
-        self.val = (self.val & 0xFF) + ((val as u16) << 8);
-    }
-    fn set_lo(&mut self, val: u8) {
-        self.val = (self.val & 0xFF00) + val as u16;
-    }
-    fn set_u16(&mut self, val: u16) {
-        self.val = val;
-    }
-    fn lo_u8(&mut self) -> u8 {
-        (self.val & 0xFF) as u8
-    }
-    fn hi_u8(&mut self) -> u8 {
-        (self.val >> 8) as u8
-    }
-    fn u16(&self) -> u16 {
-        self.val
-    }
-}
-
-
-fn right_pad(s: &str, len: usize) -> String {
-    let mut res = String::new();
-    res.push_str(s);
-    if s.len() < len {
-        let padding_len = len - s.len();
-        for _ in 0..padding_len {
-            res.push_str(" ");
-        }
-    }
-    res
-}
-
-struct ModRegRm {
-    md: u8, // NOTE: "mod" is reserved in rust
-    reg: u8,
-    rm: u8,
-}
-
-#[derive(Debug)]
-pub struct Instruction {
-    pub command: Op,
-    segment: Segment,
-    params: ParameterPair,
-}
-
-impl fmt::Display for Instruction {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.params.dst {
-            Parameter::None() => write!(f, "{:?}", self.command),
-            _ => {
-                let cmd = right_pad(&format!("{:?}", self.command), 9);
-                match self.params.src {
-                    Parameter::None() => write!(f, "{}{}", cmd, self.params.dst),
-                    _ => write!(f, "{}{}, {}", cmd, self.params.dst, self.params.src),
-                }
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct ParameterPair {
-    src: Parameter,
-    dst: Parameter,
-}
-
-#[derive(Debug)]
-enum Parameter {
-    Imm8(u8),
-    Imm16(u16),
-    ImmS8(i8), // byte +0x3f
-    Ptr8(Segment, u16), // byte [u16]
-    Ptr16(Segment, u16), // word [u16]
-    Ptr16Imm(u16, u16), // jmp far u16:u16
-    Ptr8Amode(Segment, usize), // byte [amode], like "byte [bp+si]"
-    Ptr8AmodeS8(Segment, usize, i8), // byte [amode+s8], like "byte [bp-0x20]"
-    Ptr8AmodeS16(Segment, usize, i16), // byte [amode+s16], like "byte [bp-0x2020]"
-    Ptr16Amode(Segment, usize), // word [amode], like "word [bx]"
-    Ptr16AmodeS8(Segment, usize, i8), // word [amode+s8], like "word [bp-0x20]"
-    Ptr16AmodeS16(Segment, usize, i16), // word [amode+s16], like "word [bp-0x2020]"
-    Reg8(usize), // index into the low 4 of CPU.r16
-    Reg16(usize), // index into CPU.r16
-    SReg16(usize), // index into cpu.sreg16
-    None(),
-}
-
-impl fmt::Display for Parameter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Parameter::Imm8(imm) => write!(f, "0x{:02X}", imm),
-            Parameter::Imm16(imm) => write!(f, "0x{:04X}", imm),
-            Parameter::ImmS8(imm) => {
-                write!(f,
-                       "byte {}0x{:02X}",
-                       if imm < 0 { "-" } else { "+" },
-                       if imm < 0 { -imm } else { imm })
-            }
-            Parameter::Ptr8(seg, v) => write!(f, "byte [{}0x{:04X}]", seg, v),
-            Parameter::Ptr16(seg, v) => write!(f, "word [{}0x{:04X}]", seg, v),
-            Parameter::Ptr16Imm(ip, seg) => write!(f, "{:04X}:{:04X}", seg, ip),
-            Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}{}]", seg, amode(v as u8)),
-            Parameter::Ptr8AmodeS8(seg, v, imm) => {
-                write!(f,
-                       "byte [{}{}{}0x{:02X}]",
-                       seg,
-                       amode(v as u8),
-                       if imm < 0 { "-" } else { "+" },
-                       if imm < 0 { -imm } else { imm })
-            }
-            Parameter::Ptr8AmodeS16(seg, v, imm) => {
-                write!(f,
-                       "byte [{}{}{}0x{:04X}]",
-                       seg,
-                       amode(v as u8),
-                       if imm < 0 { "-" } else { "+" },
-                       if imm < 0 { -imm } else { imm })
-            }
-            Parameter::Ptr16Amode(seg, v) => write!(f, "word [{}{}]", seg, amode(v as u8)),
-            Parameter::Ptr16AmodeS8(seg, v, imm) => {
-                write!(f,
-                       "word [{}{}{}0x{:02X}]",
-                       seg,
-                       amode(v as u8),
-                       if imm < 0 { "-" } else { "+" },
-                       if imm < 0 { -imm } else { imm })
-            }
-            Parameter::Ptr16AmodeS16(seg, v, imm) => {
-                write!(f,
-                       "word [{}{}{}0x{:04X}]",
-                       seg,
-                       amode(v as u8),
-                       if imm < 0 { "-" } else { "+" },
-                       if imm < 0 { -imm } else { imm })
-            }
-            Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
-            Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
-            Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
-            Parameter::None() => write!(f, ""),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-enum Segment {
-    CS(),
-    DS(),
-    ES(),
-    SS(),
-    GS(),
-    Default(), // is treated as CS
-}
-
-impl fmt::Display for Segment {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Segment::CS() => write!(f, "cs:"),
-            Segment::DS() => write!(f, "ds:"),
-            Segment::ES() => write!(f, "es:"),
-            Segment::SS() => write!(f, "ss:"),
-            Segment::GS() => write!(f, "gs:"),
-            Segment::Default() => write!(f, ""),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Op {
-    Add8(),
-    Add16(),
-    And8(),
-    And16(),
-    CallNear(),
-    Cbw(),
-    Clc(),
-    Cld(),
-    Cli(),
-    Cmc(),
-    Cmp8(),
-    Cmp16(),
-    Cwd(),
-    Daa(),
-    Dec8(),
-    Dec16(),
-    Div8(),
-    Div16(),
-    Hlt(),
-    In8(),
-    Inc8(),
-    Inc16(),
-    Int(),
-    Ja(),
-    Jc(),
-    Jcxz(),
-    Jg(),
-    Jl(),
-    JmpFar(),
-    JmpNear(),
-    JmpShort(),
-    Jna(),
-    Jnc(),
-    Jnl(),
-    Jns(),
-    Jnz(),
-    Js(),
-    Jz(),
-    Lea16(),
-    Les(),
-    Lodsb(),
-    Lodsw(),
-    Loop(),
-    Mov8(),
-    Mov16(),
-    Movsb(),
-    Movsw(),
-    Mul8(),
-    Neg16(),
-    Nop(),
-    Not8(),
-    Not16(),
-    Or8(),
-    Or16(),
-    Out8(),
-    Out16(),
-    Outsb(),
-    Outsw(),
-    Pop16(),
-    Push16(),
-    Pushf(),
-    Rcl8(),
-    Rcl16(),
-    Rcr8(),
-    Rcr16(),
-    RepMovsb(),
-    RepMovsw(),
-    RepStosb(),
-    RepStosw(),
-    RepneScasb(),
-    Retf(),
-    Retn(),
-    Rol16(),
-    Ror8(),
-    Ror16(),
-    Sahf(),
-    Sar16(),
-    Sbb8(),
-    Shl8(),
-    Shl16(),
-    Shr8(),
-    Shr16(),
-    Stc(),
-    Sti(),
-    Stosb(),
-    Stosw(),
-    Sub8(),
-    Sub16(),
-    Test8(),
-    Test16(),
-    Xchg8(),
-    Xchg16(),
-    Xor8(),
-    Xor16(),
-    Unknown(),
-}
-
-#[derive(Debug)]
-pub struct InstructionInfo {
-    pub segment: usize,
-    pub offset: usize,
-    pub length: usize,
-    pub text: String,
-    pub bytes: Vec<u8>,
-    pub instruction: Instruction,
-}
-
-impl InstructionInfo {
-    pub fn pretty_string(&self) -> String {
-        let hex = self.to_hex_string(&self.bytes);
-        format!("[{:04X}:{:04X}] {} {}",
-                self.segment,
-                self.offset,
-                right_pad(&hex, 10),
-                self.text)
-    }
-    fn to_hex_string(&self, bytes: &[u8]) -> String {
-        let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
-        strs.join("")
-    }
-}
-
-// r8 (4 low of r16)
-const AL: usize = 0;
-const CL: usize = 1;
-const DL: usize = 2;
-const BL: usize = 3;
-const AH: usize = 4;
-const CH: usize = 5;
-const DH: usize = 6;
-const BH: usize = 7;
-
-// r16
-const AX: usize = 0;
-const CX: usize = 1;
-const DX: usize = 2;
-const BX: usize = 3;
-const SP: usize = 4;
-const BP: usize = 5;
-const SI: usize = 6;
-const DI: usize = 7;
-
-// sreg16
-const ES: usize = 0;
-pub const CS: usize = 1;
-const SS: usize = 2;
-const DS: usize = 3;
-const FS: usize = 4;
-const GS: usize = 5;
-
 impl CPU {
     pub fn new() -> CPU {
         let mut cpu = CPU {
@@ -489,24 +37,7 @@ impl CPU {
             memory: vec![0u8; 0x10000 * 64],
             r16: [Register16 { val: 0 }; 8],
             sreg16: [0; 6],
-            flags: Flags {
-                carry: false,
-                reserved1: false,
-                parity: false,
-                reserved3: false,
-                auxiliary_carry: false,
-                reserved5: false,
-                zero: false,
-                sign: false,
-                trap: false,
-                interrupt: false,
-                direction: false,
-                overflow: false,
-                iopl12: false,
-                iopl13: false,
-                nested_task: false,
-                reserved15: false,
-            },
+            flags: Flags::new(),
             breakpoints: vec![0; 0],
             gpu: GPU::new(),
             rom_base: 0,
@@ -586,7 +117,6 @@ impl CPU {
                self.r16[BP].val,
                self.r16[SI].val,
                self.r16[DI].val);
-
         print!("   es:{:04X} cs:{:04X} ss:{:04X} ds:{:04X} fs:{:04X} gs:{:04X}",
                self.sreg16[ES],
                self.sreg16[CS],
@@ -594,7 +124,6 @@ impl CPU {
                self.sreg16[DS],
                self.sreg16[FS],
                self.sreg16[GS]);
-
         println!("");
     }
 
@@ -655,7 +184,7 @@ impl CPU {
                 self.flags.set_sign_u8(res);
                 self.flags.set_zero_u8(res);
                 self.flags.set_auxiliary(res, src, dst);
-                self.flags.set_carry_u8(res, src, dst);
+                self.flags.set_carry_u8(res);
                 self.flags.set_parity(res);
 
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
@@ -671,7 +200,7 @@ impl CPU {
                 self.flags.set_sign_u16(res);
                 self.flags.set_zero_u16(res);
                 self.flags.set_auxiliary(res, src, dst);
-                self.flags.set_carry_u16(res, src, dst);
+                self.flags.set_carry_u16(res);
                 self.flags.set_parity(res);
 
                 self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
@@ -744,7 +273,7 @@ impl CPU {
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
-                self.flags.set_carry_u8(res, src, dst);
+                self.flags.set_carry_u8(res);
                 self.flags.set_overflow_sub_u8(res, src, dst);
                 self.flags.set_sign_u8(res);
                 self.flags.set_zero_u8(res);
@@ -761,7 +290,7 @@ impl CPU {
                 let res = (Wrapping(dst) - Wrapping(src)).0;
 
                 // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
-                self.flags.set_carry_u16(res, src, dst);
+                self.flags.set_carry_u16(res);
                 self.flags.set_overflow_sub_u16(res, src, dst);
                 self.flags.set_sign_u16(res);
                 self.flags.set_zero_u16(res);
@@ -1281,7 +810,7 @@ impl CPU {
                 self.flags.set_zero_u8(res);
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
-                self.flags.set_carry_u8(res, src, dst);
+                self.flags.set_carry_u8(res);
 
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
@@ -1297,7 +826,7 @@ impl CPU {
                 self.flags.set_zero_u16(res);
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
-                self.flags.set_carry_u16(res, src, dst);
+                self.flags.set_carry_u16(res);
 
                 self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
             }
@@ -2548,7 +2077,7 @@ impl CPU {
         (self.ip as i16 + val) as u16
     }
 
-    fn peek_u8_at(&mut self, pos: usize) -> u8 {
+    pub fn peek_u8_at(&mut self, pos: usize) -> u8 {
         // println!("peek_u8_at   pos {:04X}  = {:02X}", pos, self.memory[pos]);
         self.memory[pos]
     }
@@ -2840,15 +2369,15 @@ impl CPU {
         // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
         // http://wiki.osdev.org/Interrupt_Vector_Table
         match int {
-            0x10 => self.int10(),
-            0x16 => self.int16(),
+            0x10 => int10::handle(self),
+            0x16 => int16::handle(self),
             0x20 => {
                 // DOS 1+ - TERMINATE PROGRAM
                 // NOTE: Windows overloads INT 20
                 println!("INT 20 - Terminating program");
                 self.fatal_error = true; // XXX just to stop debugger.run() function
             }
-            0x21 => self.int21(),
+            0x21 => int21::handle(self),
             _ => {
                 println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}",
                          int,
@@ -2856,416 +2385,6 @@ impl CPU {
                          self.r16[BX].val);
             }
         }
-    }
-
-    // video related interrupts
-    fn int10(&mut self) {
-        match self.r16[AX].hi_u8() {
-            0x00 => {
-                // VIDEO - SET VIDEO MODE
-                //
-                // AL = desired video mode
-                //
-                // Return:
-                // AL = video mode flag (Phoenix, AMI BIOS)
-                // 20h mode > 7
-                // 30h modes 0-5 and 7
-                // 3Fh mode 6
-                // AL = CRT controller mode byte (Phoenix 386 BIOS v1.10)
-                //
-                // Desc: Specify the display mode for the currently
-                // active display adapter
-                //
-                // more info and video modes: http://www.ctyme.com/intr/rb-0069.htm
-                match self.r16[AX].lo_u8() {
-                    0x03 => {
-                        // 03h = T  80x25  8x8   640x200   16       4   B800 CGA,PCjr,Tandy
-                        //     = T  80x25  8x14  640x350   16/64    8   B800 EGA
-                        //     = T  80x25  8x16  640x400   16       8   B800 MCGA
-                        //     = T  80x25  9x16  720x400   16       8   B800 VGA
-                        //     = T  80x43  8x8   640x350   16       4   B800 EGA,VGA [17]
-                        //     = T  80x50  8x8   640x400   16       4   B800 VGA [17]
-                        println!("XXX video: set video mode to 640x200, 16 colors (text)");
-                    }
-                    0x04 => {
-                        // 04h = G  40x25  8x8   320x200    4       .   B800 CGA,PCjr,EGA,MCGA,VGA
-                        println!("XXX video: set video mode to 320x200, 4 colors");
-                    }
-                    0x06 => {
-                        // 06h = G  80x25  8x8   640x200    2       .   B800 CGA,PCjr,EGA,MCGA,VGA
-                        //     = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
-                        println!("XXX video: set video mode to 640x200, 2 colors");
-                    }
-                    0x13 => {
-                        // 13h = G  40x25  8x8   320x200  256/256K  .   A000 VGA,MCGA,ATI VIP
-                        println!("XXX video: set video mode to 320x200, 256 colors (VGA)");
-                    }
-                    _ => {
-                        println!("video error: unknown video mode {:02X}",
-                                 self.r16[AX].lo_u8());
-                    }
-                }
-            }
-            0x02 => {
-                // VIDEO - SET CURSOR POSITION
-                //
-                // BH = page number
-                // 0-3 in modes 2&3
-                // 0-7 in modes 0&1
-                // 0 in graphics modes
-                // DH = row (00h is top)
-                // DL = column (00h is left)
-                // Return: Nothing
-                println!("XXX set cursor position, page={}, row={}, column={}",
-                         self.r16[BX].hi_u8(),
-                         self.r16[DX].hi_u8(),
-                         self.r16[DX].lo_u8());
-            }
-            0x06 => {
-                // VIDEO - SCROLL UP WINDOW
-
-                // AL = number of lines by which to scroll up (00h = clear entire window)
-                // BH = attribute used to write blank lines at bottom of window
-                // CH,CL = row,column of window's upper left corner
-                // DH,DL = row,column of window's lower right corner
-                // Return: Nothing
-                //
-                // Note: Affects only the currently active page (see AH=05h)
-                println!("XXX scroll window up: lines={},attrib={},topleft={},{},btmright={},{}",
-                         self.r16[AL].lo_u8(),
-                         self.r16[BX].hi_u8(),
-                         self.r16[CX].hi_u8(),
-                         self.r16[CX].lo_u8(),
-                         self.r16[DX].hi_u8(),
-                         self.r16[DX].lo_u8());
-            }
-            0x09 => {
-                // VIDEO - WRITE CHARACTER AND ATTRIBUTE AT CURSOR POSITION
-                //
-                // AL = character to display
-                // BH = page number (00h to number of pages - 1) (see #00010)
-                //      background color in 256-color graphics modes (ET4000)
-                // BL = attribute (text mode) or color (graphics mode)
-                //      if bit 7 set in <256-color graphics mode, character
-                //      is XOR'ed onto screen
-                // CX = number of times to write character
-                // Return: Nothing
-                //
-                // Notes: All characters are displayed, including CR, LF, and BS.
-                // Replication count in CX may produce an unpredictable result
-                // in graphics modes if it is greater than the number of positions
-                // remaining in the current row. With PhysTechSoft's PTS ROM-DOS
-                // the BH, BL, and CX values are ignored on entry.
-
-                println!("XXX write character at pos: char={}, page={}, attrib={}, count={}",
-                         self.r16[AX].lo_u8() as char,
-                         self.r16[BX].hi_u8(),
-                         self.r16[BX].lo_u8(),
-                         self.r16[CX].val);
-            }
-            0x0B => {
-                match self.r16[BX].hi_u8() {
-                    0x00 => {
-                        // VIDEO - SET BACKGROUND/BORDER COLOR
-                        // BL = background/border color (border only in text modes)
-                        // Return: Nothing
-                        println!("XXX set bg/border color to {:02X}", self.r16[BX].lo_u8());
-                    }
-                    0x01 => {
-                        // VIDEO - SET PALETTE
-                        // BL = palette ID
-                        //    00h background, green, red, and brown/yellow
-                        //    01h background, cyan, magenta, and white
-                        // Return: Nothing
-                        //
-                        // Note: This call was only valid in 320x200 graphics on
-                        // the CGA, but newer cards support it in many or all
-                        // graphics modes
-                        println!("XXX set palette id to {:02X}", self.r16[BX].lo_u8());
-                    }
-                    _ => {
-                        println!("video error: unknown int 10, ah=0B, bh={:02X}",
-                                 self.r16[BX].hi_u8());
-                    }
-                }
-            }
-            0x0E => {
-                // VIDEO - TELETYPE OUTPUT
-                // Display a character on the screen, advancing the cursor
-                // and scrolling the screen as necessary
-                //
-                // AL = character to write
-                // BH = page number
-                // BL = foreground color (graphics modes only)
-                // Return: Nothing
-                //
-                // Notes: Characters 07h (BEL), 08h (BS), 0Ah (LF),
-                // and 0Dh (CR) are interpreted and do the expected things.
-                // IBM PC ROMs dated 1981/4/24 and 1981/10/19 require
-                // that BH be the same as the current active page
-                //
-                // BUG: If the write causes the screen to scroll, BP is destroyed
-                // by BIOSes for which AH=06h destroys BP
-                print!("{}", self.r16[AX].lo_u8() as char);
-            }
-            0x0F => {
-                // VIDEO - GET CURRENT VIDEO MODE
-                //
-                // Return:
-                // AH = number of character columns
-                // AL = display mode (see AH=00h)
-                // BH = active page (see AH=05h)
-                //
-                // more info: http://www.ctyme.com/intr/rb-0108.htm
-                println!("XXX int10,0F - get video mode impl");
-            }
-            0x10 => {
-                match self.r16[AX].lo_u8() {
-                    0x12 => {
-                        // VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA)
-                        //
-                        // BX = starting color register
-                        // CX = number of registers to set
-                        // ES:DX -> table of 3*CX bytes where each 3 byte group represents one
-                        // byte each of red, green and blue (0-63)
-                        println!("XXX VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA)");
-                    }
-                    _ => {
-                        println!("int10 error: unknown AL, AH={:02X}, AL={:02X}",
-                                 self.r16[AX].hi_u8(),
-                                 self.r16[AX].lo_u8());
-                    }
-                }
-            }
-            _ => {
-                println!("int10 error: unknown AH={:02X}, AX={:04X}",
-                         self.r16[AX].hi_u8(),
-                         self.r16[AX].val);
-            }
-        }
-    }
-
-    // keyboard related interrupts
-    fn int16(&mut self) {
-        match self.r16[AX].hi_u8() {
-            0x00 => {
-                // KEYBOARD - GET KEYSTROKE
-                // Return:
-                // AH = BIOS scan code
-                // AL = ASCII character
-                self.r16[AX].val = 0; // XXX
-                println!("XXX impl KEYBOARD - GET KEYSTROKE");
-            }
-            _ => {
-                println!("int16 error: unknown AH={:02X}, AX={:04X}",
-                         self.r16[AX].hi_u8(),
-                         self.r16[AX].val);
-            }
-        }
-    }
-
-    // dos related interrupts
-    fn int21(&mut self) {
-        match self.r16[AX].hi_u8() {
-            0x06 => {
-                // DOS 1+ - DIRECT CONSOLE OUTPUT
-                //
-                // DL = character (except FFh)
-                //
-                // Notes: Does not check ^C/^Break. Writes to standard output,
-                // which is always the screen under DOS 1.x, but may be redirected
-                // under DOS 2+
-                let b = self.r16[DX].lo_u8();
-                if b != 0xFF {
-                    print!("{}", b as char);
-                } else {
-                    println!("XXX character out: {:02X}", b);
-                }
-                // Return:
-                // AL = character output (despite official docs which
-                // state nothing is returned) (at least DOS 2.1-7.0)
-                self.r16[AX].set_lo(b);
-            }
-            0x09 => {
-                // DOS 1+ - WRITE STRING TO STANDARD OUTPUT
-                //
-                // DS:DX -> '$'-terminated string
-                //
-                // Return:
-                // AL = 24h (the '$' terminating the string, despite official docs which
-                // state that nothing is returned) (at least DOS 2.1-7.0 and NWDOS)
-                //
-                // Notes: ^C/^Break are checked, and INT 23 is called if either pressed.
-                // Standard output is always the screen under DOS 1.x, but may be
-                // redirected under DOS 2+. Under the FlashTek X-32 DOS extender,
-                // the pointer is in DS:EDX
-                let mut offset = (self.sreg16[DS] as usize) * 16 + (self.r16[DX].val as usize);
-                loop {
-                    let b = self.peek_u8_at(offset) as char;
-                    offset += 1;
-                    if b == '$' {
-                        break;
-                    }
-                    print!("{}", b as char);
-                }
-                self.r16[AX].set_lo(b'$');
-            }
-            0x0C => {
-                // DOS 1+ - FLUSH BUFFER AND READ STANDARD INPUT
-                // AL = STDIN input function to execute after flushing buffer
-                // other registers as appropriate for the input function
-                // Return: As appropriate for the specified input function
-                //
-                // Note: If AL is not one of 01h,06h,07h,08h, or 0Ah, the
-                // buffer is flushed but no input is attempted
-                println!("XXX int21, 0x0c - read stdin");
-            }
-            0x2C => {
-                // DOS 1+ - GET SYSTEM TIME
-                //
-                // Note: On most systems, the resolution of the system clock
-                // is about 5/100sec, so returned times generally do not increment
-                // by 1. On some systems, DL may always return 00h
-
-                let now = time::now();
-                let centi_sec = now.tm_nsec / 10000000; // nanosecond to 1/100 sec
-
-                // Return:
-                self.r16[CX].set_hi(now.tm_hour as u8); // CH = hour
-                self.r16[CX].set_lo(now.tm_min as u8); // CL = minute
-                self.r16[DX].set_hi(now.tm_sec as u8); // DH = second
-                self.r16[DX].set_lo(centi_sec as u8); // DL = 1/100 second
-            }
-            0x30 => {
-                // DOS 2+ - GET DOS VERSION
-                // ---DOS 5+ ---
-                // AL = what to return in BH
-                // 00h OEM number (see #01394)
-                // 01h version flag
-                //
-                // Return:
-                // AL = major version number (00h if DOS 1.x)
-                // AH = minor version number
-                // BL:CX = 24-bit user serial number (most versions do not use this)
-                // ---if DOS <5 or AL=00h---
-                // BH = MS-DOS OEM number (see #01394)
-                // ---if DOS 5+ and AL=01h---
-                // BH = version flag
-                //
-                // bit 3: DOS is in ROM
-
-
-                // (Table 01394)
-                // Values for DOS OEM number:
-                // 00h *  IBM
-                // -  (Novell DOS, Caldera OpenDOS, DR-OpenDOS, and DR-DOS 7.02+ report IBM
-                // as their OEM)
-                // 01h *  Compaq
-                // 02h *  MS Packaged Product
-                // 04h *  AT&T
-                // 05h *  ZDS (Zenith Electronics, Zenith Electronics).
-
-                // fake MS-DOS 3.10, as needed by msdos32/APPEND.COM
-                self.r16[AX].set_lo(3); // AL = major version number (00h if DOS 1.x)
-                self.r16[AX].set_hi(10); // AH = minor version number
-            }
-            0x40 => {
-                // DOS 2+ - WRITE - WRITE TO FILE OR DEVICE
-
-                // BX = file handle
-                // CX = number of bytes to write
-                // DS:DX -> data to write
-                //
-                // Return:
-                // CF clear if successful
-                // AX = number of bytes actually written
-                // CF set on error
-                // AX = error code (05h,06h) (see #01680 at AH=59h/BX=0000h)
-
-                // Notes: If CX is zero, no data is written, and the file is truncated or extended
-                // to the current position. Data is written beginning at the current file position,
-                // and the file position is updated after a successful write. For FAT32 drives, the
-                // file must have been opened with AX=6C00h with the "extended size" flag in order
-                // to expand the file beyond 2GB; otherwise the write will fail with error code
-                // 0005h (access denied). The usual cause for AX < CX on return is a full disk
-                println!("XXX DOS - WRITE TO FILE OR DEVICE, handle={:04X}, count={:04X}, data from {:04X}:{:04X}",
-                         self.r16[BX].val,
-                         self.r16[CX].val,
-                         self.sreg16[DS],
-                         self.r16[DX].val);
-            }
-            0x4C => {
-                // DOS 2+ - EXIT - TERMINATE WITH RETURN CODE
-                // AL = return code
-
-                // Notes: Unless the process is its own parent (see #01378 [offset 16h] at AH=26h),
-                // all open files are closed and all memory belonging to the process is freed. All
-                // network file locks should be removed before calling this function
-                let al = self.r16[AX].lo_u8();
-                println!("DOS - TERMINATE WITH RETURN CODE {:02X}", al);
-                self.fatal_error = true; // XXX just to stop debugger.run() function
-            }
-            _ => {
-                println!("int21 error: unknown AH={:02X}, AX={:04X}",
-                         self.r16[AX].hi_u8(),
-                         self.r16[AX].val);
-            }
-        }
-    }
-}
-
-fn r8(reg: u8) -> &'static str {
-    match reg {
-        0 => "al",
-        1 => "cl",
-        2 => "dl",
-        3 => "bl",
-        4 => "ah",
-        5 => "ch",
-        6 => "dh",
-        7 => "bh",
-        _ => "?",
-    }
-}
-
-fn r16(reg: u8) -> &'static str {
-    match reg {
-        0 => "ax",
-        1 => "cx",
-        2 => "dx",
-        3 => "bx",
-        4 => "sp",
-        5 => "bp",
-        6 => "si",
-        7 => "di",
-        _ => "?",
-    }
-}
-
-fn sr16(reg: u8) -> &'static str {
-    match reg {
-        0 => "es",
-        1 => "cs",
-        2 => "ss",
-        3 => "ds",
-        4 => "fs",
-        5 => "gs",
-        _ => "?",
-    }
-}
-
-// 16 bit addressing modes
-fn amode(reg: u8) -> &'static str {
-    match reg {
-        0 => "bx+si",
-        1 => "bx+di",
-        2 => "bp+si",
-        3 => "bp+di",
-        4 => "si",
-        5 => "di",
-        6 => "bp",
-        7 => "bx",
-        _ => "?",
     }
 }
 

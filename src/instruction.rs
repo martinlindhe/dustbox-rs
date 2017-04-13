@@ -1,0 +1,304 @@
+use std::fmt;
+
+use segment::Segment;
+
+#[derive(Debug)]
+pub struct Instruction {
+    pub command: Op,
+    pub segment: Segment,
+    pub params: ParameterPair,
+}
+
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.params.dst {
+            Parameter::None() => write!(f, "{:?}", self.command),
+            _ => {
+                let cmd = right_pad(&format!("{:?}", self.command), 9);
+                match self.params.src {
+                    Parameter::None() => write!(f, "{}{}", cmd, self.params.dst),
+                    _ => write!(f, "{}{}, {}", cmd, self.params.dst, self.params.src),
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ParameterPair {
+    pub src: Parameter,
+    pub dst: Parameter,
+}
+
+#[derive(Debug)]
+pub enum Parameter {
+    Imm8(u8),
+    Imm16(u16),
+    ImmS8(i8), // byte +0x3f
+    Ptr8(Segment, u16), // byte [u16]
+    Ptr16(Segment, u16), // word [u16]
+    Ptr16Imm(u16, u16), // jmp far u16:u16
+    Ptr8Amode(Segment, usize), // byte [amode], like "byte [bp+si]"
+    Ptr8AmodeS8(Segment, usize, i8), // byte [amode+s8], like "byte [bp-0x20]"
+    Ptr8AmodeS16(Segment, usize, i16), // byte [amode+s16], like "byte [bp-0x2020]"
+    Ptr16Amode(Segment, usize), // word [amode], like "word [bx]"
+    Ptr16AmodeS8(Segment, usize, i8), // word [amode+s8], like "word [bp-0x20]"
+    Ptr16AmodeS16(Segment, usize, i16), // word [amode+s16], like "word [bp-0x2020]"
+    Reg8(usize), // index into the low 4 of CPU.r16
+    Reg16(usize), // index into CPU.r16
+    SReg16(usize), // index into cpu.sreg16
+    None(),
+}
+
+impl fmt::Display for Parameter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Parameter::Imm8(imm) => write!(f, "0x{:02X}", imm),
+            Parameter::Imm16(imm) => write!(f, "0x{:04X}", imm),
+            Parameter::ImmS8(imm) => {
+                write!(f,
+                       "byte {}0x{:02X}",
+                       if imm < 0 { "-" } else { "+" },
+                       if imm < 0 { -imm } else { imm })
+            }
+            Parameter::Ptr8(seg, v) => write!(f, "byte [{}0x{:04X}]", seg, v),
+            Parameter::Ptr16(seg, v) => write!(f, "word [{}0x{:04X}]", seg, v),
+            Parameter::Ptr16Imm(ip, seg) => write!(f, "{:04X}:{:04X}", seg, ip),
+            Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}{}]", seg, amode(v as u8)),
+            Parameter::Ptr8AmodeS8(seg, v, imm) => {
+                write!(f,
+                       "byte [{}{}{}0x{:02X}]",
+                       seg,
+                       amode(v as u8),
+                       if imm < 0 { "-" } else { "+" },
+                       if imm < 0 { -imm } else { imm })
+            }
+            Parameter::Ptr8AmodeS16(seg, v, imm) => {
+                write!(f,
+                       "byte [{}{}{}0x{:04X}]",
+                       seg,
+                       amode(v as u8),
+                       if imm < 0 { "-" } else { "+" },
+                       if imm < 0 { -imm } else { imm })
+            }
+            Parameter::Ptr16Amode(seg, v) => write!(f, "word [{}{}]", seg, amode(v as u8)),
+            Parameter::Ptr16AmodeS8(seg, v, imm) => {
+                write!(f,
+                       "word [{}{}{}0x{:02X}]",
+                       seg,
+                       amode(v as u8),
+                       if imm < 0 { "-" } else { "+" },
+                       if imm < 0 { -imm } else { imm })
+            }
+            Parameter::Ptr16AmodeS16(seg, v, imm) => {
+                write!(f,
+                       "word [{}{}{}0x{:04X}]",
+                       seg,
+                       amode(v as u8),
+                       if imm < 0 { "-" } else { "+" },
+                       if imm < 0 { -imm } else { imm })
+            }
+            Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
+            Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
+            Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
+            Parameter::None() => write!(f, ""),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum Op {
+    Add8(),
+    Add16(),
+    And8(),
+    And16(),
+    CallNear(),
+    Cbw(),
+    Clc(),
+    Cld(),
+    Cli(),
+    Cmc(),
+    Cmp8(),
+    Cmp16(),
+    Cwd(),
+    Daa(),
+    Dec8(),
+    Dec16(),
+    Div8(),
+    Div16(),
+    Hlt(),
+    In8(),
+    Inc8(),
+    Inc16(),
+    Int(),
+    Ja(),
+    Jc(),
+    Jcxz(),
+    Jg(),
+    Jl(),
+    JmpFar(),
+    JmpNear(),
+    JmpShort(),
+    Jna(),
+    Jnc(),
+    Jnl(),
+    Jns(),
+    Jnz(),
+    Js(),
+    Jz(),
+    Lea16(),
+    Les(),
+    Lodsb(),
+    Lodsw(),
+    Loop(),
+    Mov8(),
+    Mov16(),
+    Movsb(),
+    Movsw(),
+    Mul8(),
+    Neg16(),
+    Nop(),
+    Not8(),
+    Not16(),
+    Or8(),
+    Or16(),
+    Out8(),
+    Out16(),
+    Outsb(),
+    Outsw(),
+    Pop16(),
+    Push16(),
+    Pushf(),
+    Rcl8(),
+    Rcl16(),
+    Rcr8(),
+    Rcr16(),
+    RepMovsb(),
+    RepMovsw(),
+    RepStosb(),
+    RepStosw(),
+    RepneScasb(),
+    Retf(),
+    Retn(),
+    Rol16(),
+    Ror8(),
+    Ror16(),
+    Sahf(),
+    Sar16(),
+    Sbb8(),
+    Shl8(),
+    Shl16(),
+    Shr8(),
+    Shr16(),
+    Stc(),
+    Sti(),
+    Stosb(),
+    Stosw(),
+    Sub8(),
+    Sub16(),
+    Test8(),
+    Test16(),
+    Xchg8(),
+    Xchg16(),
+    Xor8(),
+    Xor16(),
+    Unknown(),
+}
+
+#[derive(Debug)]
+pub struct InstructionInfo {
+    pub segment: usize,
+    pub offset: usize,
+    pub length: usize,
+    pub text: String,
+    pub bytes: Vec<u8>,
+    pub instruction: Instruction,
+}
+
+impl InstructionInfo {
+    pub fn pretty_string(&self) -> String {
+        let hex = self.to_hex_string(&self.bytes);
+        format!("[{:04X}:{:04X}] {} {}",
+                self.segment,
+                self.offset,
+                right_pad(&hex, 10),
+                self.text)
+    }
+    fn to_hex_string(&self, bytes: &[u8]) -> String {
+        let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
+        strs.join("")
+    }
+}
+
+pub struct ModRegRm {
+    pub md: u8, // NOTE: "mod" is reserved in rust
+    pub reg: u8,
+    pub rm: u8,
+}
+
+fn r8(reg: u8) -> &'static str {
+    match reg {
+        0 => "al",
+        1 => "cl",
+        2 => "dl",
+        3 => "bl",
+        4 => "ah",
+        5 => "ch",
+        6 => "dh",
+        7 => "bh",
+        _ => "?",
+    }
+}
+
+fn r16(reg: u8) -> &'static str {
+    match reg {
+        0 => "ax",
+        1 => "cx",
+        2 => "dx",
+        3 => "bx",
+        4 => "sp",
+        5 => "bp",
+        6 => "si",
+        7 => "di",
+        _ => "?",
+    }
+}
+
+fn sr16(reg: u8) -> &'static str {
+    match reg {
+        0 => "es",
+        1 => "cs",
+        2 => "ss",
+        3 => "ds",
+        4 => "fs",
+        5 => "gs",
+        _ => "?",
+    }
+}
+
+// 16 bit addressing modes
+fn amode(reg: u8) -> &'static str {
+    match reg {
+        0 => "bx+si",
+        1 => "bx+di",
+        2 => "bp+si",
+        3 => "bp+di",
+        4 => "si",
+        5 => "di",
+        6 => "bp",
+        7 => "bx",
+        _ => "?",
+    }
+}
+
+fn right_pad(s: &str, len: usize) -> String {
+    let mut res = String::new();
+    res.push_str(s);
+    if s.len() < len {
+        let padding_len = len - s.len();
+        for _ in 0..padding_len {
+            res.push_str(" ");
+        }
+    }
+    res
+}
