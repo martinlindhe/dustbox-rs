@@ -1,9 +1,8 @@
-use std::io::{self, stdout, BufRead, Write};
-use regex::Regex;
+use std::io::{self, BufRead, Write};
 use std::process::exit;
 
 use cpu::CPU;
-use register::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES, FS, GS};
+use register::CS;
 use tools;
 
 pub struct Debugger {

@@ -1,5 +1,5 @@
 use cpu::CPU;
-use register::{AX, BX, CX, DX, AH, AL};
+use register::{AX, BX, CX, DX, AL};
 
 // video related interrupts
 pub fn handle(cpu: &mut CPU) {

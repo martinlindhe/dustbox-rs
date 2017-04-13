@@ -1,9 +1,5 @@
-#![feature(test)]
-
-#![allow(unused_variables)]
-
 use test::Bencher;
-use std::{fmt, mem, u8};
+use std::{mem, u8};
 use std::num::Wrapping;
 
 use register::Register16;
@@ -142,7 +138,7 @@ impl CPU {
         self.ip = origin as u16;
         let mut res = String::new();
 
-        for i in 0..count {
+        for _ in 0..count {
             let op = self.disasm_instruction();
             res.push_str(&op.pretty_string());
             res.push_str("\n");
@@ -494,7 +490,6 @@ impl CPU {
             }
             Op::Lea16() => {
                 // Load Effective Address
-                // Store effective address for m in register r16
                 let src = self.read_parameter_address(&op.params.src) as u16;
                 self.write_parameter_u16(&op.params.dst, op.segment, src);
             }
@@ -615,10 +610,6 @@ impl CPU {
             Op::Rcl8() => {
                 // two arguments
                 // rotate 9 bits `src` times
-                let src = self.read_parameter_value(&op.params.src) as u8;
-                let dst = self.read_parameter_value(&op.params.dst) as u8;
-
-                // XXX do + flags + write result
                 println!("XXX impl rcl8");
             }
             Op::Rcl16() => {
@@ -628,10 +619,6 @@ impl CPU {
             Op::Rcr8() => {
                 // two arguments
                 // rotate 9 bits `src` times
-                let src = self.read_parameter_value(&op.params.src) as u8;
-                let dst = self.read_parameter_value(&op.params.dst) as u8;
-
-                // XXX do + flags + write result
 
                 // The RCR instruction shifts the CF flag into the most-significant
                 // bit and shifts the least-significant bit into the CF flag.
@@ -2099,8 +2086,8 @@ impl CPU {
     // returns the offset part, excluding segment. used by LEA
     fn read_parameter_address(&mut self, p: &Parameter) -> usize {
         match *p {
-            Parameter::Ptr16AmodeS8(seg, r, imm) => self.amode16(r) + imm as usize,
-            Parameter::Ptr16(seg, imm) => imm as usize,
+            Parameter::Ptr16AmodeS8(_, r, imm) => self.amode16(r) + imm as usize,
+            Parameter::Ptr16(_, imm) => imm as usize,
             _ => {
                 println!("read_parameter_address error: unhandled parameter: {:?} at {:06X}",
                          p,
