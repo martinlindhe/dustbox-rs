@@ -350,7 +350,9 @@ pub enum Op {
     Int(),
     Ja(),
     Jc(),
+    Jcxz(),
     Jg(),
+    Jl(),
     JmpNear(),
     JmpShort(),
     Jna(),
@@ -367,6 +369,7 @@ pub enum Op {
     Mov16(),
     Mul8(),
     Nop(),
+    Not16(),
     Or8(),
     Or16(),
     Out8(),
@@ -377,6 +380,9 @@ pub enum Op {
     Rcr8(),
     RepMovsb(),
     RepMovsw(),
+    RepStosb(),
+    RepStosw(),
+    RepneScasb(),
     Retf(),
     Retn(),
     Ror8(),
@@ -386,6 +392,7 @@ pub enum Op {
     Shl16(),
     Shr8(),
     Shr16(),
+    Stc(),
     Sti(),
     Stosb(),
     Sub8(),
@@ -847,9 +854,21 @@ impl CPU {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
+            Op::Jcxz() => {
+                // Jump short if CX register is 0.
+                if self.r16[CX].val == 0 {
+                    self.ip = self.read_parameter_value(&op.params.dst) as u16;
+                }
+            }
             Op::Jg() => {
                 // Jump short if greater (ZF=0 and SF=OF).
                 if !self.flags.zero & self.flags.sign == self.flags.overflow {
+                    self.ip = self.read_parameter_value(&op.params.dst) as u16;
+                }
+            }
+            Op::Jl() => {
+                // Jump short if less (SF ≠ OF).
+                if self.flags.sign != self.flags.overflow {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
@@ -936,6 +955,9 @@ impl CPU {
                 self.r16[AX].val = (res & 0xFFFF) as u16;
             }
             Op::Nop() => {}
+            Op::Not16() => {
+                println!("XXX impl not16");
+            }
             Op::Or8() => {
                 // two arguments (dst=AL)
                 let src = self.read_parameter_value(&op.params.src);
@@ -1049,6 +1071,16 @@ impl CPU {
                     }
                 }
             }
+            Op::RepStosb() => {
+                println!("XXX impl rep stos byte");
+            }
+            Op::RepStosw() => {
+                println!("XXX impl rep stos word");
+            }
+            Op::RepneScasb() => {
+                // Find AL, starting at ES:[(E)DI].
+                println!("XXX impl repne scas byte");
+            }
             Op::Retf() => {
                 //no arguments
                 self.ip = self.pop16();
@@ -1097,6 +1129,10 @@ impl CPU {
                 // two arguments
                 println!("XXX impl shr16");
                 // XXX flags
+            }
+            Op::Stc() => {
+                // Set Carry Flag
+                self.flags.carry = true;
             }
             Op::Sti() => {
                 // Set Interrupt Flag
@@ -1270,6 +1306,11 @@ impl CPU {
                 // pop es
                 op.command = Op::Pop16();
                 op.params.dst = Parameter::SReg16(ES);
+            }
+            0x08 => {
+                // or r/m8, r8
+                op.command = Op::Or8();
+                op.params = self.rm8_r8(op.segment);
             }
             0x09 => {
                 // or r/m16, r16
@@ -1467,6 +1508,11 @@ impl CPU {
             0x78 => {
                 // js rel8
                 op.command = Op::Js();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
+            }
+            0x7C => {
+                // jl rel8    (alias: jnge)
+                op.command = Op::Jl();
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x7D => {
@@ -1854,7 +1900,7 @@ impl CPU {
                     //2 => Op::Rcl16(),
                     //3 => Op::Rcr16(),
                     4 => Op::Shl16(), // alias: sal
-                    //5 => Op::Shr16(),
+                    5 => Op::Shr16(),
                     //7 => Op::Sar16(),
                     _ => {
                         println!("XXX 0xD3 unhandled reg = {}", x.reg);
@@ -1868,6 +1914,11 @@ impl CPU {
             0xE2 => {
                 // loop rel8
                 op.command = Op::Loop();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
+            }
+            0xE3 => {
+                // jcxz rel8
+                op.command = Op::Jcxz();
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0xE4 => {
@@ -1908,6 +1959,20 @@ impl CPU {
                 op.params.dst = Parameter::Reg16(DX);
                 op.params.src = Parameter::Reg8(AL);
             }
+            0xF2 => {
+                // repne  (alias repnz)
+                let b = self.read_u8();
+                match b {
+                    0xAE => {
+                        // repne scas byte
+                        op.command = Op::RepneScasb();
+                    }
+                    _ => {
+                        println!("op F2 error: unhandled op {:02X}", b);
+                        self.fatal_error = true;
+                    }
+                }
+            }
             0xF3 => {
                 // rep
                 let b = self.read_u8();
@@ -1920,8 +1985,16 @@ impl CPU {
                         // rep movs word
                         op.command = Op::RepMovsw();
                     }
+                    0xAA => {
+                        // rep stos byte
+                        op.command = Op::RepStosb();
+                    }
+                    0xAB => {
+                        // rep stos word
+                        op.command = Op::RepStosw();
+                    }
                     _ => {
-                        println!("op f3 error: unhandled op {:02X}", b);
+                        println!("op F3 error: unhandled op {:02X}", b);
                         self.fatal_error = true;
                     }
                 }
@@ -1967,7 +2040,10 @@ impl CPU {
                         op.command = Op::Test16();
                         op.params.src = Parameter::Imm16(self.read_u16());
                     }
-                    // 2 => op.Cmd = "not"
+                    2 => {
+                        // not r/m16
+                        op.command = Op::Not16();
+                    }
                     // 3 => op.Cmd = "neg"
                     // 4 => op.Cmd = "mul"
                     // 5 => op.Cmd = "imul"
@@ -1985,6 +2061,10 @@ impl CPU {
             0xF8 => {
                 // clc
                 op.command = Op::Clc();
+            }
+            0xF9 => {
+                // stc
+                op.command = Op::Stc();
             }
             0xFA => {
                 // cli
