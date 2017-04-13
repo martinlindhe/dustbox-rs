@@ -1138,11 +1138,10 @@ impl CPU {
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
                 let mut src = (self.sreg16[DS] as usize) * 16 + (self.r16[SI].val as usize);
                 let mut dst = (self.sreg16[ES] as usize) * 16 + (self.r16[DI].val as usize);
-                let count = self.r16[CX].val as usize;
                 println!("rep movsw   src = {:04X}, dst = {:04X}, count = {:04X}",
                          src,
                          dst,
-                         count);
+                         self.r16[CX].val);
                 loop {
                     let b = self.peek_u16_at(src);
                     src += 1;
@@ -1156,7 +1155,29 @@ impl CPU {
                 }
             }
             Op::RepStosb() => {
-                println!("XXX impl rep stos byte");
+                // Fill (E)CX bytes at ES:[(E)DI] with AL.
+
+                let data = self.r16[AX].lo_u8(); // = AL
+
+                println!("rep stosb   dst = {:04X}:{:04X}, count = {:04X}",
+                         self.sreg16[ES] as usize,
+                         self.r16[DI].val as usize,
+                         self.r16[CX].val);
+
+                loop {
+                    let dst = (self.sreg16[ES] as usize) * 16 + (self.r16[DI].val as usize);
+                    self.write_u8(dst, data);
+                    if !self.flags.direction {
+                        self.r16[DI].val += 1;
+                    } else {
+                        self.r16[DI].val -= 1;
+                    }
+                    self.r16[CX].val -= 1;
+                    if self.r16[CX].val == 0 {
+                        break;
+                    }
+                }
+
             }
             Op::RepStosw() => {
                 println!("XXX impl rep stos word");
@@ -2820,11 +2841,12 @@ impl CPU {
         // http://wiki.osdev.org/Interrupt_Vector_Table
         match int {
             0x10 => self.int10(),
+            0x16 => self.int16(),
             0x20 => {
                 // DOS 1+ - TERMINATE PROGRAM
                 // NOTE: Windows overloads INT 20
                 println!("INT 20 - Terminating program");
-                exit(0);
+                self.fatal_error = true; // XXX just to stop debugger.run() function
             }
             0x21 => self.int21(),
             _ => {
@@ -2856,16 +2878,27 @@ impl CPU {
                 //
                 // more info and video modes: http://www.ctyme.com/intr/rb-0069.htm
                 match self.r16[AX].lo_u8() {
+                    0x03 => {
+                        // 03h = T  80x25  8x8   640x200   16       4   B800 CGA,PCjr,Tandy
+                        //     = T  80x25  8x14  640x350   16/64    8   B800 EGA
+                        //     = T  80x25  8x16  640x400   16       8   B800 MCGA
+                        //     = T  80x25  9x16  720x400   16       8   B800 VGA
+                        //     = T  80x43  8x8   640x350   16       4   B800 EGA,VGA [17]
+                        //     = T  80x50  8x8   640x400   16       4   B800 VGA [17]
+                        println!("XXX video: set video mode to 640x200, 16 colors (text)");
+                    }
                     0x04 => {
-                        // G  40x25  8x8   320x200    4       .   B800 CGA,PCjr,EGA,MCGA,VGA
+                        // 04h = G  40x25  8x8   320x200    4       .   B800 CGA,PCjr,EGA,MCGA,VGA
                         println!("XXX video: set video mode to 320x200, 4 colors");
-                        self.r16[AX].set_lo(0x30);
                     }
                     0x06 => {
-                        //   G  80x25  8x8   640x200    2       .   B800 CGA,PCjr,EGA,MCGA,VGA
-                        // = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
+                        // 06h = G  80x25  8x8   640x200    2       .   B800 CGA,PCjr,EGA,MCGA,VGA
+                        //     = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
                         println!("XXX video: set video mode to 640x200, 2 colors");
-                        self.r16[AX].set_lo(0x3F);
+                    }
+                    0x13 => {
+                        // 13h = G  40x25  8x8   320x200  256/256K  .   A000 VGA,MCGA,ATI VIP
+                        println!("XXX video: set video mode to 320x200, 256 colors (VGA)");
                     }
                     _ => {
                         println!("video error: unknown video mode {:02X}",
@@ -2986,8 +3019,45 @@ impl CPU {
                 // more info: http://www.ctyme.com/intr/rb-0108.htm
                 println!("XXX int10,0F - get video mode impl");
             }
+            0x10 => {
+                match self.r16[AX].lo_u8() {
+                    0x12 => {
+                        // VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA)
+                        //
+                        // BX = starting color register
+                        // CX = number of registers to set
+                        // ES:DX -> table of 3*CX bytes where each 3 byte group represents one
+                        // byte each of red, green and blue (0-63)
+                        println!("XXX VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA)");
+                    }
+                    _ => {
+                        println!("int10 error: unknown AL, AH={:02X}, AL={:02X}",
+                                 self.r16[AX].hi_u8(),
+                                 self.r16[AX].lo_u8());
+                    }
+                }
+            }
             _ => {
                 println!("int10 error: unknown AH={:02X}, AX={:04X}",
+                         self.r16[AX].hi_u8(),
+                         self.r16[AX].val);
+            }
+        }
+    }
+
+    // keyboard related interrupts
+    fn int16(&mut self) {
+        match self.r16[AX].hi_u8() {
+            0x00 => {
+                // KEYBOARD - GET KEYSTROKE
+                // Return:
+                // AH = BIOS scan code
+                // AL = ASCII character
+                self.r16[AX].val = 0; // XXX
+                println!("XXX impl KEYBOARD - GET KEYSTROKE");
+            }
+            _ => {
+                println!("int16 error: unknown AH={:02X}, AX={:04X}",
                          self.r16[AX].hi_u8(),
                          self.r16[AX].val);
             }
@@ -3132,8 +3202,8 @@ impl CPU {
                 // all open files are closed and all memory belonging to the process is freed. All
                 // network file locks should be removed before calling this function
                 let al = self.r16[AX].lo_u8();
-                print!("DOS - TERMINATE WITH RETURN CODE {:02X}", al);
-                exit(0);
+                println!("DOS - TERMINATE WITH RETURN CODE {:02X}", al);
+                self.fatal_error = true; // XXX just to stop debugger.run() function
             }
             _ => {
                 println!("int21 error: unknown AH={:02X}, AX={:04X}",

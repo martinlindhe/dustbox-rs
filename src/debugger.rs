@@ -153,7 +153,7 @@ impl Debugger {
                 error!("Failed to execute instruction, breaking.");
                 break;
             }
-            let offset = self.cpu.get_offset();
+            let offset = self.cpu.get_offset(); // XXX debugger should hold breakpoints
 
             // break if we hit a breakpoint
             let mut list_iter = list.iter();
