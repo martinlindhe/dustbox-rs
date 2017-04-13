@@ -783,7 +783,6 @@ impl CPU {
             }
             Op::Div16() => {
                 let dst = ((self.r16[DX].val as usize) << 16) + self.r16[AX].val as usize; // DX:AX
-                println!("XXX div16 {:04X}", dst);
                 let src = self.read_parameter_value(&op.params.dst);
                 let res = (Wrapping(dst) / Wrapping(src)).0;
                 let rem = (Wrapping(dst) % Wrapping(src)).0;
@@ -990,6 +989,7 @@ impl CPU {
                 let src = self.read_parameter_value(&op.params.src) as u8;
                 let dst = self.read_parameter_value(&op.params.dst) as u8;
 
+
                 // XXX do + flags + write result
                 println!("XXX impl rcl8");
             }
@@ -1084,8 +1084,14 @@ impl CPU {
             }
             Op::Shr8() => {
                 // two arguments
-                println!("XXX impl shr8");
+                let src = self.read_parameter_value(&op.params.src) as u8;
+                let dst = self.read_parameter_value(&op.params.dst) as u8;
+
+                let res = dst >> src;
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
+
                 // XXX flags
+                println!("XXX shr8 flags");
             }
             Op::Shr16() => {
                 // two arguments
@@ -1780,7 +1786,7 @@ impl CPU {
                 op.params.dst = Parameter::Imm8(self.read_u8());
             }
             0xD0 => {
-                // bit shift byte
+                // bit shift byte by 1
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     // 0 => Op::Rol8(),
@@ -1800,7 +1806,7 @@ impl CPU {
                 op.params.src = Parameter::Imm8(1);
             }
             0xD1 => {
-                // bit shift word
+                // bit shift word by 1
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     // 0 => Op::Rol16(),
@@ -1819,8 +1825,28 @@ impl CPU {
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm16(1);
             }
+            0xD2 => {
+                // bit shift byte by CL
+                let x = self.read_mod_reg_rm();
+                op.command = match x.reg {
+                    // 0 => Op::Rol8(),
+                    //1 => Op::Ror8(),
+                    //2 => Op::Rcl8(),
+                    //3 => Op::Rcr8(),
+                    //4 => Op::Shl8(), // alias: sal
+                    5 => Op::Shr8(),
+                    // 7 => Op::Sar8(),
+                    _ => {
+                        println!("XXX 0xD2 unhandled reg = {}", x.reg);
+                        self.fatal_error = true;
+                        Op::Unknown()
+                    }
+                };
+                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                op.params.src = Parameter::Reg8(CL);
+            }
             0xD3 => {
-                // bit shift word
+                // bit shift word by CL
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     //0 => Op::Rol16(),
@@ -3396,6 +3422,35 @@ fn can_execute_div16() {
     cpu.execute_instruction();
     assert_eq!(0x1040, cpu.r16[AX].val); // quotient
     assert_eq!(0x0000, cpu.r16[DX].val); // remainder
+}
+
+#[test]
+fn can_execute_shr() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB6,0xF0, // mov dh,0xf0
+        0xB1,0x05, // mov cl,0x5
+        0xD2,0xEE, // shr dh,cl
+    ];
+
+    cpu.load_com(&code);
+
+    let res = cpu.disassemble_block(0x100, 3);
+
+    assert_eq!("[085F:0100] B6F0       Mov8     dh, 0xF0
+[085F:0102] B105       Mov8     cl, 0x05
+[085F:0104] D2EE       Shr8     dh, cl
+",
+               res);
+
+    cpu.execute_instruction();
+    assert_eq!(0xF0, cpu.r16[DX].hi_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x05, cpu.r16[CX].lo_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x07, cpu.r16[DX].hi_u8()); // == 7.5
 }
 
 
