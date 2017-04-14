@@ -1,3 +1,5 @@
+#[allow(unused_imports)]
+
 use test::Bencher;
 use std::{mem, u8};
 use std::num::Wrapping;
