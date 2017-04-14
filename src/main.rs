@@ -10,6 +10,10 @@ extern crate difference;
 extern crate time;
 extern crate test;
 
+extern crate piston_window;
+extern crate image;
+extern crate vecmath;
+
 mod debugger;
 mod tools;
 
@@ -17,6 +21,7 @@ mod cpu;
 mod flags;
 mod register;
 mod instruction;
+mod memory;
 mod segment;
 mod gpu;
 

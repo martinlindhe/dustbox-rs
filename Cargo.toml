@@ -9,8 +9,10 @@ colog = { git = "https://github.com/chrivers/rust-colog" }
 log = "*"
 time = "0.1"
 gfx = "0.14"
-glutin ="*"
-gfx_window_glutin = "*"
+piston_window = "0.64"
+image = "0.12"
+gfx_device_gl = "0.13"
+vecmath = "0.3"
 
 [profile.release]
 debug = true

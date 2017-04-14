@@ -69,6 +69,19 @@ impl Debugger {
                 };
                 self.execute_n_instructions(n);
             }
+            "dump" => {
+                // XXX dump memory at <offset> <length>
+                if parts.len() < 3 {
+                    error!("Syntax error: <offset> <length>");
+                } else {
+                    let offset = parse_number_string(&parts[1]);
+                    let length = parse_number_string(&parts[2]);
+                    for i in offset..(offset + length) {
+                        print!("{:02X} ", self.cpu.memory.memory[i]);
+                    }
+                    println!("");
+                }
+            }
             "bp" | "breakpoint" => {
                 // breakpoints - all values are flat offsets
                 // XXX: "bp remove 0x123"

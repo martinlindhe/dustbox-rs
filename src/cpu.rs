@@ -6,6 +6,7 @@ use std::num::Wrapping;
 
 use register::Register16;
 use flags::Flags;
+use memory::Memory;
 use segment::Segment;
 use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm};
 use int10;
@@ -17,7 +18,7 @@ use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
 pub struct CPU {
     pub ip: u16,
     pub instruction_count: usize,
-    memory: Vec<u8>,
+    pub memory: Memory,
     pub r16: [Register16; 8], // general purpose registers
     pub sreg16: [u16; 6], // segment registers
     flags: Flags,
@@ -32,7 +33,7 @@ impl CPU {
         let mut cpu = CPU {
             ip: 0,
             instruction_count: 0,
-            memory: vec![0u8; 0x10000 * 64],
+            memory: Memory::new(),
             r16: [Register16 { val: 0 }; 8],
             sreg16: [0; 6],
             flags: Flags::new(),
@@ -77,7 +78,7 @@ impl CPU {
         println!("loading bios to {:06X}..{:06X}", min, max);
         self.rom_base = min;
 
-        self.memory[min..max].copy_from_slice(data);
+        self.memory.memory[min..max].copy_from_slice(data);
     }
 
     // load .com program into CS:0100 and set IP to program start
@@ -95,7 +96,7 @@ impl CPU {
         println!("loading rom to {:06X}..{:06X}", min, max);
         self.rom_base = min;
 
-        self.memory[min..max].copy_from_slice(data);
+        self.memory.memory[min..max].copy_from_slice(data);
     }
 
     // base address the rom was loaded to
@@ -132,7 +133,7 @@ impl CPU {
             return;
         }
         self.execute(&op);
-        self.gpu.progress_scanline();
+        self.gpu.progress_scanline(&mut self.memory);
     }
 
     pub fn disassemble_block(&mut self, origin: u16, count: usize) -> String {
@@ -2028,7 +2029,7 @@ impl CPU {
 
     fn read_u8(&mut self) -> u8 {
         let offset = self.get_offset();
-        let b = self.memory[offset];
+        let b = self.memory.memory[offset];
         /*
         println!("___ DBG: read u8 {:02X} from {:06X} ... {:04X}:{:04X}",
               b,
@@ -2068,7 +2069,7 @@ impl CPU {
 
     pub fn peek_u8_at(&mut self, pos: usize) -> u8 {
         // println!("peek_u8_at   pos {:04X}  = {:02X}", pos, self.memory[pos]);
-        self.memory[pos]
+        self.memory.memory[pos]
     }
 
     fn peek_u16_at(&mut self, pos: usize) -> u16 {
@@ -2251,14 +2252,14 @@ impl CPU {
 
     fn write_u8(&mut self, offset: usize, data: u8) {
         // println!("debug: write_u8 to {:06X} = {:02X}", offset, data);
-        self.memory[offset] = data;
+        self.memory.memory[offset] = data;
     }
 
     // used by disassembler
     pub fn read_u8_slice(&mut self, offset: usize, length: usize) -> Vec<u8> {
         let mut res = vec![0u8; length];
         for i in offset..offset + length {
-            res[i - offset] = self.memory[i];
+            res[i - offset] = self.memory.memory[i];
         }
         res
     }
@@ -2680,7 +2681,7 @@ fn can_execute_rep() {
     let min = ((cpu.sreg16[CS] as usize) * 16) + 0x100;
     let max = min + 5;
     for i in min..max {
-        assert_eq!(cpu.memory[i], cpu.memory[i + 0x100]);
+        assert_eq!(cpu.memory.memory[i], cpu.memory.memory[i + 0x100]);
     }
 }
 
