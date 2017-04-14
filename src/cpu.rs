@@ -134,10 +134,9 @@ impl CPU {
         }
         self.execute(&op);
 
-        // XXX need instruction timing or something to do this properly
-
+        // XXX need instruction timing to do this properly
         if self.instruction_count % 100 == 0 {
-            self.gpu.progress_scanline(&mut self.memory);
+            self.gpu.progress_scanline();
         }
     }
 

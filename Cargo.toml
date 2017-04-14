@@ -8,11 +8,21 @@ difference = "1.0"
 colog = { git = "https://github.com/chrivers/rust-colog" }
 log = "*"
 time = "0.1"
-gfx = "0.14"
-piston_window = "0.64"
 image = "0.12"
-gfx_device_gl = "0.13"
-vecmath = "0.3"
+rand = "0.3"
+find_folder = "0.3"
+
+# glutin deps:
+gfx = "0.14"
+gfx_core = "0.6"
+gfx_window_glutin = "0.14"
+glutin = "0.7"
+
+# conrod deps:
+piston_window = "0.63"
+conrod = { version = "*", features = ["piston"] }
+
+
 
 [profile.release]
 debug = true
