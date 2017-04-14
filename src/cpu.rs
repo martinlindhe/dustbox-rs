@@ -23,7 +23,7 @@ pub struct CPU {
     pub sreg16: [u16; 6], // segment registers
     flags: Flags,
     breakpoints: Vec<usize>,
-    gpu: GPU,
+    pub gpu: GPU,
     rom_base: usize,
     pub fatal_error: bool, // for debugging: signals to debugger we hit an error
 }

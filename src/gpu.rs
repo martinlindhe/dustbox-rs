@@ -8,6 +8,14 @@ pub struct GPU {
     pub width: u32,
     pub height: u32,
     window: PistonWindow,
+    pub palette: Vec<DACPalette>,
+}
+
+#[derive(Clone)]
+pub struct DACPalette {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
 }
 
 impl GPU {
@@ -22,6 +30,7 @@ impl GPU {
                 .opengl(OpenGL::V3_2)
                 .build()
                 .unwrap(),
+            palette: vec![DACPalette { r: 0, g: 0, b: 0 }; 256],
         }
     }
     pub fn progress_scanline(&mut self, memory: &mut Memory) {
@@ -35,7 +44,7 @@ impl GPU {
 
     fn redraw_window(&mut self, memory: &mut Memory) {
 
-        println!("redraw_window");
+        // println!("redraw_window");
 
         let mut canvas = ImageBuffer::new(self.width, self.height);
 
@@ -43,16 +52,12 @@ impl GPU {
             Texture::from_image(&mut self.window.factory, &canvas, &TextureSettings::new())
                 .unwrap();
 
-        // XXX use palette
-
         for y in 0..self.height {
             for x in 0..self.width {
                 let offset = 0xA0000 + ((y * self.width) + x) as usize;
                 let byte = memory.memory[offset];
-                let r = (byte & 7) * 36; // just hax. low 3 bits
-                let g = ((byte >> 3) & 7) * 36; // mid 3 bits
-                let b = ((byte >> 5) & 3) * 36; // hi 2 bits
-                canvas.put_pixel(x, y, Rgba([r, g, b, 255]));
+                let ref pal = self.palette[byte as usize];
+                canvas.put_pixel(x, y, Rgba([pal.r, pal.g, pal.b, 255]));
             }
         }
 

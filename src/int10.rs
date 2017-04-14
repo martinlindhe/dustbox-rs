@@ -1,5 +1,5 @@
 use cpu::CPU;
-use register::{AX, BX, CX, DX, AL};
+use register::{AX, BX, CX, DX, AL, ES};
 
 // video related interrupts
 pub fn handle(cpu: &mut CPU) {
@@ -124,7 +124,7 @@ pub fn handle(cpu: &mut CPU) {
                     // Note: This call was only valid in 320x200 graphics on
                     // the CGA, but newer cards support it in many or all
                     // graphics modes
-                    println!("XXX set palette id to {:02X}", cpu.r16[BX].lo_u8());
+                    println!("XXX TODO set palette id to {:02X}", cpu.r16[BX].lo_u8());
                 }
                 _ => {
                     println!("video error: unknown int 10, ah=0B, bh={:02X}",
@@ -171,7 +171,26 @@ pub fn handle(cpu: &mut CPU) {
                     // CX = number of registers to set
                     // ES:DX -> table of 3*CX bytes where each 3 byte group represents one
                     // byte each of red, green and blue (0-63)
-                    println!("XXX VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA)");
+                    let count = cpu.r16[CX].val as usize;
+                    let reg = cpu.r16[BX].val as usize;
+                    let mut offset = ((cpu.sreg16[ES] as usize) * 16) + cpu.r16[DX].val as usize;
+                    println!("VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA) start={}, count={}",
+                             reg,
+                             count);
+
+                    for i in reg..count {
+                        let r = cpu.peek_u8_at(offset) as usize;
+                        let g = cpu.peek_u8_at(offset + 1) as usize;
+                        let b = cpu.peek_u8_at(offset + 2) as usize;
+
+                        // XXX each value is 6 bits (0-63), scale it to 8 bits
+
+                        cpu.gpu.palette[i].r = ((r << 2) & 0xFF) as u8;
+                        cpu.gpu.palette[i].g = ((g << 2) & 0xFF) as u8;
+                        cpu.gpu.palette[i].b = ((b << 2) & 0xFF) as u8;
+                        offset += 3;
+                    }
+
                 }
                 _ => {
                     println!("int10 error: unknown AL, AH={:02X}, AL={:02X}",
