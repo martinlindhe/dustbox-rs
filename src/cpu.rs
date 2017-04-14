@@ -133,7 +133,12 @@ impl CPU {
             return;
         }
         self.execute(&op);
-        self.gpu.progress_scanline(&mut self.memory);
+
+        // XXX need instruction timing or something to do this properly
+
+        if self.instruction_count % 100 == 0 {
+            self.gpu.progress_scanline(&mut self.memory);
+        }
     }
 
     pub fn disassemble_block(&mut self, origin: u16, count: usize) -> String {

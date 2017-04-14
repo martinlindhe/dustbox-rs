@@ -4,7 +4,7 @@ use image::*;
 use memory::Memory;
 
 pub struct GPU {
-    pub scanline: u16,
+    pub scanline: u32,
     pub width: u32,
     pub height: u32,
     window: PistonWindow,
@@ -36,7 +36,7 @@ impl GPU {
     pub fn progress_scanline(&mut self, memory: &mut Memory) {
         // HACK to have a source of info to toggle CGA status register
         self.scanline += 1;
-        if self.scanline > 100 {
+        if self.scanline > self.width {
             self.redraw_window(memory);
             self.scanline = 0;
         }
