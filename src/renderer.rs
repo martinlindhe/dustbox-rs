@@ -160,6 +160,8 @@ widget_ids! {
 
         // debugger buttons
         button_step
+
+        registers,
     }
 }
 
@@ -188,6 +190,13 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
     for _click in stepBtn.set(ids.button_step, ui) {
         app.cpu.execute_instruction();
     }
+
+    // XXX registers
+    widget::RoundedRectangle::fill([100, 100], radius)
+        .color(conrod::color::CHARCOAL.alpha(0.25))
+        .middle_of(ids.canvas)
+        .set(ids.registers, ui);
+
 
     let disasm = app.disasm_n_instructions_to_text(20);
 
