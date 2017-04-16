@@ -29,7 +29,7 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new() -> CPU {
+    pub fn new() -> Self {
         let mut cpu = CPU {
             ip: 0,
             instruction_count: 0,

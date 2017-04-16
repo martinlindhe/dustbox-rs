@@ -1,5 +1,6 @@
 use std::io::{self, BufRead, Write};
 use std::process::exit;
+use conrod;
 
 use cpu::CPU;
 use register::CS;
@@ -8,19 +9,21 @@ use instruction;
 
 pub struct Debugger {
     pub cpu: CPU,
+    pub video_out_id: conrod::image::Id,
     stdin: io::Stdin,
     stdout: io::Stdout,
 }
 
-pub fn new() -> Debugger {
-    Debugger {
-        cpu: CPU::new(),
-        stdin: io::stdin(),
-        stdout: io::stdout(),
-    }
-}
-
 impl Debugger {
+    pub fn new(video_id: conrod::image::Id) -> Self {
+        Debugger {
+            cpu: CPU::new(),
+            stdin: io::stdin(),
+            stdout: io::stdout(),
+            video_out_id: video_id,
+        }
+    }
+
     pub fn start(&mut self) {
         //let bios = tools::read_binary("../dos-software-decoding/ibm-pc/ibm5550/ipl5550.rom");
         //self.cpu.load_bios(&bios);

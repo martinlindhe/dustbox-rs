@@ -18,7 +18,7 @@ pub struct DACPalette {
 }
 
 impl GPU {
-    pub fn new() -> GPU {
+    pub fn new() -> Self {
         let (width, height) = (320, 200);
         GPU {
             scanline: 0,

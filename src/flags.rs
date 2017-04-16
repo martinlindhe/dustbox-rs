@@ -21,7 +21,7 @@ pub struct Flags {
 }
 
 impl Flags {
-    pub fn new() -> Flags {
+    pub fn new() -> Self {
         Flags {
             carry: false,
             reserved1: false,

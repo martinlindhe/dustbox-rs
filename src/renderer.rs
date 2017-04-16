@@ -9,6 +9,7 @@ use piston_window::{PistonWindow, UpdateEvent, Window, WindowSettings};
 use piston_window::{Flip, G2d, G2dTexture, Texture, TextureSettings};
 use piston_window::OpenGL;
 use piston_window::texture::UpdateTexture;
+use image::ImageBuffer;
 use memory::Memory;
 
 use debugger;
@@ -55,15 +56,24 @@ pub fn main() {
         (cache, texture)
     };
 
-    // Instantiate the generated list of widget identifiers.
-    let ids = Ids::new(ui.widget_id_generator());
+    let pixels = vec![0u8; 320*200*4]; // XXXX this should happen in render_frame()
+    let img = ImageBuffer::from_raw(320, 200, pixels).unwrap();
+
+    // Load the rust logo from file to a piston_window texture.
+    let video_out: G2dTexture = {
+        Texture::from_image(&mut window.factory, &img, &TextureSettings::new()).unwrap()
+    };
 
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
-    let image_map = conrod::image::Map::new();
+    let mut image_map = conrod::image::Map::new();
 
-    // A demonstration of some state that we'd like to control with the App.
-    let mut app = debugger::new();
+    // Instantiate the generated list of widget identifiers.
+    let ids = Ids::new(ui.widget_id_generator());
+    let video_id = image_map.insert(video_out);
+
+    let mut app = debugger::Debugger::new(video_id);
+
 
     // XXX for quick testing while building the ui
     app.load_binary("../dos-software-decoding/samples/bar/bar.com");
@@ -160,11 +170,14 @@ widget_ids! {
         disasm,
 
         // debugger buttons
+        button_canvas, // container
         button_step,
         button_run,
 
         registers_bg,
         registers,
+
+        video_out,
     }
 }
 
@@ -181,8 +194,17 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
     // By default, its size is the size of the window.
     widget::Canvas::new().pad(MARGIN).set(ids.canvas, ui);
 
+
+    widget::Canvas::new()
+        .align_bottom_of(ids.canvas)
+        .kid_area_w_of(ids.canvas)
+        .h(360.0)
+        .color(conrod::color::TRANSPARENT)
+        .pad(MARGIN)
+        .set(ids.button_canvas, ui);
+
     let btn_step = widget::Button::new()
-        .bottom_left_of(ids.canvas)
+        .mid_left_of(ids.button_canvas)
         .w_h(80.0, 30.0)
         .label("Step");
 
@@ -190,9 +212,17 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
         app.cpu.execute_instruction();
     }
 
-    // XXX group of buttons at the bottom
+    // video output
+    widget::Image::new(app.video_out_id) // XXX
+        .w_h(320.0, 200.0)
+        .down(60.0)
+        .top_right_of(ids.canvas)
+        .set(ids.video_out, ui);
+
+
+    // group of buttons at the bottom
     let btn_run = widget::Button::new()
-        .middle_of(ids.canvas)
+        .middle_of(ids.button_canvas)
         .w_h(80.0, 30.0)
         .label("Run");
 

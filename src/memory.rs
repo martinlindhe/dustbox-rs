@@ -3,7 +3,7 @@ pub struct Memory {
 }
 
 impl Memory {
-    pub fn new() -> Memory {
+    pub fn new() -> Self {
         Memory { memory: vec![0u8; 0x10000 * 64] }
     }
 }
