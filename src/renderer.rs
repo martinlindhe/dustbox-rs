@@ -178,12 +178,8 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
     const DISASM_SIZE: conrod::FontSize = 12;
 
     // `Canvas` is a widget that provides some basic functionality for laying out children widgets.
-    // By default, its size is the size of the window. We'll use this as a background for the
-    // following widgets, as well as a scrollable container for the children widgets.
-    widget::Canvas::new()
-        .pad(MARGIN)
-        .scroll_kids_vertically()
-        .set(ids.canvas, ui);
+    // By default, its size is the size of the window.
+    widget::Canvas::new().pad(MARGIN).set(ids.canvas, ui);
 
     let btn_step = widget::Button::new()
         .bottom_left_of(ids.canvas)
