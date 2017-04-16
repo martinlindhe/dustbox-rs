@@ -161,6 +161,7 @@ widget_ids! {
 
         // debugger buttons
         button_step,
+        button_run,
 
         registers_bg,
         registers,
@@ -191,6 +192,16 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
 
     for _click in btn_step.set(ids.button_step, ui) {
         app.cpu.execute_instruction();
+    }
+
+    // XXX group of buttons at the bottom
+    let btn_run = widget::Button::new()
+        .middle_of(ids.canvas)
+        .w_h(80.0, 30.0)
+        .label("Run");
+
+    for _click in btn_run.set(ids.button_run, ui) {
+        println!("XXXX run");
     }
 
     widget::RoundedRectangle::fill([300.0, 90.0], 10.0)
