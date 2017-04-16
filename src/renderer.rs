@@ -64,6 +64,9 @@ pub fn main() {
     // A demonstration of some state that we'd like to control with the App.
     let mut app = debugger::new();
 
+    // XXX for quick testing while building the ui
+    app.load_binary("../dos-software-decoding/samples/bar/bar.com");
+
     // Poll events from the window.
     while let Some(event) = window.next() {
 
@@ -150,12 +153,13 @@ fn theme() -> conrod::Theme {
 // Generate a unique `WidgetId` for each widget.
 widget_ids! {
     pub struct Ids {
-
-        // The scrollable canvas.
         canvas,
 
-        // The title and introduction widgets.
-        title,
+        // The disasm text
+        disasm,
+
+        // debugger buttons
+        button_step
     }
 }
 
@@ -165,24 +169,32 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
     use conrod::{widget, Colorable, Labelable, Positionable, Sizeable, Widget};
     use std::iter::once;
 
-    const MARGIN: conrod::Scalar = 30.0;
-    const SHAPE_GAP: conrod::Scalar = 50.0;
-    const TITLE_SIZE: conrod::FontSize = 42;
-    const SUBTITLE_SIZE: conrod::FontSize = 32;
+    const MARGIN: conrod::Scalar = 20.0;
+    const DISASM_SIZE: conrod::FontSize = 12;
 
     // `Canvas` is a widget that provides some basic functionality for laying out children widgets.
     // By default, its size is the size of the window. We'll use this as a background for the
     // following widgets, as well as a scrollable container for the children widgets.
-    const TITLE: &'static str = "All Widgets";
     widget::Canvas::new()
         .pad(MARGIN)
         .scroll_kids_vertically()
         .set(ids.canvas, ui);
 
-    widget::Text::new(TITLE)
-        .font_size(TITLE_SIZE)
+    let stepBtn = widget::Button::new()
+        .bottom_left_of(ids.canvas)
+        .w_h(80.0, 30.0)
+        .label("Step");
+
+    for _click in stepBtn.set(ids.button_step, ui) {
+        app.cpu.execute_instruction();
+    }
+
+    let disasm = app.disasm_n_instructions_to_text(20);
+
+    widget::Text::new(disasm.as_ref())
+        .font_size(DISASM_SIZE)
         .mid_top_of(ids.canvas)
-        .set(ids.title, ui);
+        .set(ids.disasm, ui);
 }
 
 
@@ -194,10 +206,8 @@ impl Renderer {
         Renderer {}
     }
 
-    pub fn main() {}
-
     // draws a VGA frame. XXX should be called in a callback from render loop
-    fn redraw_window(&mut self, memory: &mut Memory) {
+    fn draw_frame(&mut self, memory: &mut Memory) {
         /*
         // println!("redraw_window");
 

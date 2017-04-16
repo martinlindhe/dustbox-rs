@@ -4,9 +4,10 @@ use std::process::exit;
 use cpu::CPU;
 use register::CS;
 use tools;
+use instruction;
 
 pub struct Debugger {
-    cpu: CPU,
+    pub cpu: CPU,
     stdin: io::Stdin,
     stdout: io::Stdout,
 }
@@ -27,6 +28,27 @@ impl Debugger {
         loop {
             self.prompt();
         }
+    }
+
+    pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
+        let mut disasm = String::new();
+        for op in self.disasm_n_instructions(n) {
+            disasm += op.pretty_string().as_ref();
+            disasm += "\n";
+        }
+        return disasm;
+    }
+
+    fn disasm_n_instructions(&mut self, n: usize) -> Vec<instruction::InstructionInfo> {
+        let mut res: Vec<instruction::InstructionInfo> = Vec::new();
+        let org_ip = self.cpu.ip;
+        for _ in 0..n {
+            let op = self.cpu.disasm_instruction();
+            self.cpu.ip += op.length as u16;
+            res.push(op);
+        }
+        self.cpu.ip = org_ip;
+        return res;
     }
 
     fn prompt(&mut self) {
@@ -132,7 +154,7 @@ impl Debugger {
         }
     }
 
-    fn load_binary(&mut self, name: &str) {
+    pub fn load_binary(&mut self, name: &str) {
         let data = tools::read_binary(name);
         self.cpu.load_com(&data);
     }
