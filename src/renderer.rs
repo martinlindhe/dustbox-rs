@@ -1,7 +1,9 @@
+#![allow(unused_imports)]
+
 extern crate find_folder;
 
+use std;
 use conrod;
-use support;
 use piston_window;
 use piston_window::{PistonWindow, UpdateEvent, Window, WindowSettings};
 use piston_window::{Flip, G2d, G2dTexture, Texture, TextureSettings};
@@ -12,11 +14,11 @@ use memory::Memory;
 use debugger;
 
 pub fn main() {
-    const WIDTH: u32 = support::WIN_W;
-    const HEIGHT: u32 = support::WIN_H;
+    const WIDTH: u32 = 800;
+    const HEIGHT: u32 = 600;
 
     // Construct the window.
-    let mut window: PistonWindow = WindowSettings::new("All Widgets - Piston Backend", [WIDTH, HEIGHT])
+    let mut window: PistonWindow = WindowSettings::new("x86emu", [WIDTH, HEIGHT])
                 .opengl(OpenGL::V3_2) // If not working, try `OpenGL::V2_1`.
                 .samples(4)
                 .exit_on_esc(true)
@@ -26,7 +28,7 @@ pub fn main() {
 
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64])
-        .theme(support::theme())
+        .theme(theme())
         .build();
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
@@ -53,25 +55,11 @@ pub fn main() {
     };
 
     // Instantiate the generated list of widget identifiers.
-    let ids = support::Ids::new(ui.widget_id_generator());
-
-    /*
-    // Load the rust logo from file to a piston_window texture.
-    let rust_logo: G2dTexture = {
-        let assets = find_folder::Search::ParentsThenKids(3, 3)
-            .for_folder("assets")
-            .unwrap();
-        let path = assets.join("images/rust.png");
-        let factory = &mut window.factory;
-        let settings = TextureSettings::new();
-        Texture::from_path(factory, &path, Flip::None, &settings).unwrap()
-    };
-*/
+    let ids = Ids::new(ui.widget_id_generator());
 
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
-    let mut image_map = conrod::image::Map::new();
-    //let rust_logo = image_map.insert(rust_logo);
+    let image_map = conrod::image::Map::new();
 
     // A demonstration of some state that we'd like to control with the App.
     let mut app = debugger::new();
@@ -88,7 +76,7 @@ pub fn main() {
 
         event.update(|_| {
                          let mut ui = ui.set_widgets();
-                         support::gui(&mut ui, &ids, &mut app);
+                         gui(&mut ui, &ids, &mut app);
                      });
 
         window.draw_2d(&event, |context, graphics| {
@@ -133,6 +121,70 @@ pub fn main() {
         });
     }
 }
+
+/// A set of reasonable stylistic defaults that works for the `gui` below.
+fn theme() -> conrod::Theme {
+    use conrod::position::{Align, Direction, Padding, Position, Relative};
+    conrod::Theme {
+        name: "Demo Theme".to_string(),
+        padding: Padding::none(),
+        x_position: Position::Relative(Relative::Align(Align::Start), None),
+        y_position: Position::Relative(Relative::Direction(Direction::Backwards, 20.0), None),
+        background_color: conrod::color::DARK_CHARCOAL,
+        shape_color: conrod::color::LIGHT_CHARCOAL,
+        border_color: conrod::color::BLACK,
+        border_width: 0.0,
+        label_color: conrod::color::WHITE,
+        font_id: None,
+        font_size_large: 26,
+        font_size_medium: 18,
+        font_size_small: 12,
+        widget_styling: std::collections::HashMap::new(),
+        mouse_drag_threshold: 0.0,
+        double_click_threshold: std::time::Duration::from_millis(500),
+    }
+}
+
+
+
+// Generate a unique `WidgetId` for each widget.
+widget_ids! {
+    pub struct Ids {
+
+        // The scrollable canvas.
+        canvas,
+
+        // The title and introduction widgets.
+        title,
+    }
+}
+
+
+/// Instantiate a GUI demonstrating every widget available in conrod.
+fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
+    use conrod::{widget, Colorable, Labelable, Positionable, Sizeable, Widget};
+    use std::iter::once;
+
+    const MARGIN: conrod::Scalar = 30.0;
+    const SHAPE_GAP: conrod::Scalar = 50.0;
+    const TITLE_SIZE: conrod::FontSize = 42;
+    const SUBTITLE_SIZE: conrod::FontSize = 32;
+
+    // `Canvas` is a widget that provides some basic functionality for laying out children widgets.
+    // By default, its size is the size of the window. We'll use this as a background for the
+    // following widgets, as well as a scrollable container for the children widgets.
+    const TITLE: &'static str = "All Widgets";
+    widget::Canvas::new()
+        .pad(MARGIN)
+        .scroll_kids_vertically()
+        .set(ids.canvas, ui);
+
+    widget::Text::new(TITLE)
+        .font_size(TITLE_SIZE)
+        .mid_top_of(ids.canvas)
+        .set(ids.title, ui);
+}
+
 
 
 pub struct Renderer {}

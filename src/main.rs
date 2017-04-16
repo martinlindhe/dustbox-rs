@@ -31,7 +31,6 @@ mod renderer;
 mod int10;
 mod int16;
 mod int21;
-mod support; // XXX merge with renderer.rs
 
 fn main() {
     colog::init();
