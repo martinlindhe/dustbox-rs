@@ -12,6 +12,7 @@ use piston_window::texture::UpdateTexture;
 use memory::Memory;
 
 use debugger;
+use register::{AX, BX, CX, DX};
 
 pub fn main() {
     const WIDTH: u32 = 800;
@@ -159,8 +160,9 @@ widget_ids! {
         disasm,
 
         // debugger buttons
-        button_step
+        button_step,
 
+        registers_bg,
         registers,
     }
 }
@@ -182,19 +184,24 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
         .scroll_kids_vertically()
         .set(ids.canvas, ui);
 
-    let stepBtn = widget::Button::new()
+    let btn_step = widget::Button::new()
         .bottom_left_of(ids.canvas)
         .w_h(80.0, 30.0)
         .label("Step");
 
-    for _click in stepBtn.set(ids.button_step, ui) {
+    for _click in btn_step.set(ids.button_step, ui) {
         app.cpu.execute_instruction();
     }
 
-    // XXX registers
-    widget::RoundedRectangle::fill([100, 100], radius)
+    widget::RoundedRectangle::fill([300.0, 90.0], 10.0)
         .color(conrod::color::CHARCOAL.alpha(0.25))
-        .middle_of(ids.canvas)
+        .mid_right_of(ids.canvas)
+        .set(ids.registers_bg, ui);
+
+    let regs = app.cpu.print_registers();
+    widget::Text::new(regs.as_ref())
+        .font_size(DISASM_SIZE)
+        .middle_of(ids.registers_bg)
         .set(ids.registers, ui);
 
 
@@ -202,7 +209,7 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
 
     widget::Text::new(disasm.as_ref())
         .font_size(DISASM_SIZE)
-        .mid_top_of(ids.canvas)
+        .top_left_of(ids.canvas)
         .set(ids.disasm, ui);
 }
 
