@@ -9,7 +9,7 @@ use piston_window::{PistonWindow, UpdateEvent, Window, WindowSettings};
 use piston_window::{Flip, G2d, G2dTexture, Texture, TextureSettings};
 use piston_window::OpenGL;
 use piston_window::texture::UpdateTexture;
-use image::ImageBuffer;
+use image::{ImageBuffer, RgbaImage, Rgba};
 use memory::Memory;
 
 use debugger;
@@ -56,8 +56,7 @@ pub fn main() {
         (cache, texture)
     };
 
-    let pixels = vec![0u8; 320*200*4]; // XXXX this should happen in render_frame()
-    let img = ImageBuffer::from_raw(320, 200, pixels).unwrap();
+    let img = RgbaImage::new(320, 200);
 
     // Load the rust logo from file to a piston_window texture.
     let video_out: G2dTexture = {
@@ -72,7 +71,7 @@ pub fn main() {
     let ids = Ids::new(ui.widget_id_generator());
     let video_id = image_map.insert(video_out);
 
-    let mut app = debugger::Debugger::new(video_id);
+    let mut app = debugger::Debugger::new(video_id, img);
 
 
     // XXX for quick testing while building the ui
@@ -212,13 +211,6 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
         app.cpu.execute_instruction();
     }
 
-    let frame = app.gpu.draw_frame();
-    // XXX update the texture
-/*
-        texture
-            .update(&mut self.window.encoder, &canvas)
-            .unwrap();
-*/
 
 
     // video output
@@ -227,6 +219,23 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
         .down(60.0)
         .top_right_of(ids.canvas)
         .set(ids.video_out, ui);
+
+
+    /*
+        let mut texture =
+            Texture::from_image(&mut self.window.factory, &canvas, &TextureSettings::new())
+                .unwrap();
+        */
+    for y in 0..app.cpu.gpu.height {
+        for x in 0..app.cpu.gpu.width {
+            let offset = 0xA0000 + ((y * app.cpu.gpu.width) + x) as usize;
+            let byte = app.cpu.memory.memory[offset];
+            let ref pal = app.cpu.gpu.palette[byte as usize];
+            app.video_out
+                .put_pixel(x, y, Rgba([pal.r, pal.g, pal.b, 255]));
+        }
+    }
+
 
 
     // group of buttons at the bottom

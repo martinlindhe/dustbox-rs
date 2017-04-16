@@ -1,6 +1,7 @@
 use std::io::{self, BufRead, Write};
 use std::process::exit;
 use conrod;
+use image::RgbaImage;
 
 use cpu::CPU;
 use register::CS;
@@ -9,18 +10,20 @@ use instruction;
 
 pub struct Debugger {
     pub cpu: CPU,
+    pub video_out: RgbaImage,
     pub video_out_id: conrod::image::Id,
     stdin: io::Stdin,
     stdout: io::Stdout,
 }
 
 impl Debugger {
-    pub fn new(video_id: conrod::image::Id) -> Self {
+    pub fn new(video_id: conrod::image::Id, img: RgbaImage) -> Self {
         Debugger {
             cpu: CPU::new(),
             stdin: io::stdin(),
             stdout: io::stdout(),
             video_out_id: video_id,
+            video_out: img,
         }
     }
 
