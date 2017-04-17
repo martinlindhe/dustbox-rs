@@ -12,10 +12,8 @@ extern crate test;
 extern crate image;
 
 
-#[macro_use]
-extern crate conrod;
+extern crate orbtk;
 
-extern crate glium;
 
 mod debugger;
 mod tools;

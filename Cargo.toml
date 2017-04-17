@@ -10,18 +10,10 @@ log = "0.3"
 time = "0.1"
 image = "0.12"
 rand = "0.3"
-find_folder = "0.3"
+#find_folder = "0.3"
 
-# glutin deps:
-gfx = "0.14"
-gfx_core = "0.6"
-gfx_window_glutin = "0.14"
-glutin = "0.7"
-
-# conrod deps:
-glium = "0.16"
-winit = "0.6"
-conrod = { version = "*", features = ["glium", "winit"] }
+# orbtk deps:
+orbtk = "0.2"
 
 
 [profile.release]

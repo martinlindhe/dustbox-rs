@@ -108,7 +108,7 @@ impl CPU {
 
         let mut res = String::new();
 
-        res += format!("AX:{:04X}   SP:{:04X}    CS:{:04X}    IP:{:04X}\n",
+        res += format!("AX:{:04X}  SP:{:04X}  CS:{:04X}  IP:{:04X}\n",
                        self.r16[AX].val,
                        self.r16[SP].val,
                        self.sreg16[CS],
@@ -116,21 +116,21 @@ impl CPU {
                 .as_ref();
 
 
-        res += format!("BX:{:04X}   BP:{:04X}    DS:{:04X}    fl:{:04X}\n",
+        res += format!("BX:{:04X}  BP:{:04X}  DS:{:04X}  fl:{:04X}\n",
                        self.r16[BX].val,
                        self.r16[BP].val,
                        self.sreg16[DS],
                        self.flags.u16())
                 .as_ref();
 
-        res += format!("CX:{:04X}   SI:{:04X}    ES:{:04X}    FS:{:04X}\n",
+        res += format!("CX:{:04X}  SI:{:04X}  ES:{:04X}  FS:{:04X}\n",
                        self.r16[CX].val,
                        self.r16[SI].val,
                        self.sreg16[ES],
                        self.sreg16[FS])
                 .as_ref();
 
-        res += format!("DX:{:04X}   DI:{:04X}    SS:{:04X}    GS:{:04X}",
+        res += format!("DX:{:04X}  DI:{:04X}  SS:{:04X}  GS:{:04X}",
                        self.r16[DX].val,
                        self.r16[DI].val,
                        self.sreg16[SS],

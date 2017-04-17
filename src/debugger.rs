@@ -1,7 +1,5 @@
 use std::io::{self, BufRead, Write};
 use std::process::exit;
-use conrod;
-use image;
 
 use cpu::CPU;
 use register::CS;
@@ -10,20 +8,16 @@ use instruction;
 
 pub struct Debugger {
     pub cpu: CPU,
-    pub video_out: image::RgbaImage,
-    pub video_out_id: conrod::image::Id, // XXX "rust_logo"
     stdin: io::Stdin,
     stdout: io::Stdout,
 }
 
 impl Debugger {
-    pub fn new(video_id: conrod::image::Id, img: image::RgbaImage) -> Self {
+    pub fn new() -> Self {
         Debugger {
             cpu: CPU::new(),
             stdin: io::stdin(),
             stdout: io::stdout(),
-            video_out_id: video_id,
-            video_out: img,
         }
     }
 
@@ -34,6 +28,10 @@ impl Debugger {
         loop {
             self.prompt();
         }
+    }
+
+    pub fn step_into(&mut self) {
+        self.cpu.execute_instruction();
     }
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
