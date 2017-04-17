@@ -6,7 +6,7 @@ authors = ["name"]
 [dependencies]
 difference = "1.0"
 colog = { git = "https://github.com/chrivers/rust-colog" }
-log = "*"
+log = "0.3"
 time = "0.1"
 image = "0.12"
 rand = "0.3"
@@ -19,11 +19,9 @@ gfx_window_glutin = "0.14"
 glutin = "0.7"
 
 # conrod deps:
-#piston_window = "0.63"
-glium = { version = "0.16.0" }
-winit = { version = "0.5.9" }
+glium = "0.16"
+winit = "0.6"
 conrod = { version = "*", features = ["glium", "winit"] }
-
 
 
 [profile.release]

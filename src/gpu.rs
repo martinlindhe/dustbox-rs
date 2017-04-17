@@ -1,6 +1,3 @@
-use image::*;
-use memory::Memory;
-
 pub struct GPU {
     pub scanline: u32,
     pub width: u32,

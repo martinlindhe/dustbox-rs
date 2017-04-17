@@ -1,7 +1,7 @@
 use std::io::{self, BufRead, Write};
 use std::process::exit;
 use conrod;
-use image::RgbaImage;
+use image;
 
 use cpu::CPU;
 use register::CS;
@@ -10,14 +10,14 @@ use instruction;
 
 pub struct Debugger {
     pub cpu: CPU,
-    pub video_out: RgbaImage,
+    pub video_out: image::RgbaImage,
     pub video_out_id: conrod::image::Id, // XXX "rust_logo"
     stdin: io::Stdin,
     stdout: io::Stdout,
 }
 
 impl Debugger {
-    pub fn new(video_id: conrod::image::Id, img: RgbaImage) -> Self {
+    pub fn new(video_id: conrod::image::Id, img: image::RgbaImage) -> Self {
         Debugger {
             cpu: CPU::new(),
             stdin: io::stdin(),
