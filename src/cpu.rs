@@ -105,7 +105,6 @@ impl CPU {
     }
 
     pub fn print_registers(&mut self) -> String {
-
         let mut res = String::new();
 
         res += format!("AX:{:04X}  SP:{:04X}  CS:{:04X}  IP:{:04X}\n",
@@ -114,22 +113,18 @@ impl CPU {
                        self.sreg16[CS],
                        self.ip)
                 .as_ref();
-
-
         res += format!("BX:{:04X}  BP:{:04X}  DS:{:04X}  fl:{:04X}\n",
                        self.r16[BX].val,
                        self.r16[BP].val,
                        self.sreg16[DS],
                        self.flags.u16())
                 .as_ref();
-
         res += format!("CX:{:04X}  SI:{:04X}  ES:{:04X}  FS:{:04X}\n",
                        self.r16[CX].val,
                        self.r16[SI].val,
                        self.sreg16[ES],
                        self.sreg16[FS])
                 .as_ref();
-
         res += format!("DX:{:04X}  DI:{:04X}  SS:{:04X}  GS:{:04X}",
                        self.r16[DX].val,
                        self.r16[DI].val,
@@ -137,7 +132,7 @@ impl CPU {
                        self.sreg16[GS])
                 .as_ref();
 
-        return res;
+        res
     }
 
     pub fn execute_instruction(&mut self) {

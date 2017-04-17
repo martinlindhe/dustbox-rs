@@ -35,12 +35,12 @@ impl Debugger {
     }
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
-        let mut disasm = String::new();
+        let mut res = String::new();
         for op in self.disasm_n_instructions(n) {
-            disasm += op.pretty_string().as_ref();
-            disasm += "\n";
+            res += op.pretty_string().as_ref();
+            res += "\n";
         }
-        return disasm;
+        res
     }
 
     fn disasm_n_instructions(&mut self, n: usize) -> Vec<instruction::InstructionInfo> {
@@ -52,7 +52,7 @@ impl Debugger {
             res.push(op);
         }
         self.cpu.ip = org_ip;
-        return res;
+        res
     }
 
     fn prompt(&mut self) {
