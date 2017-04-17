@@ -67,7 +67,19 @@ pub fn main() {
 
             // XXX draw on img
             let mut image = canvas.image.borrow_mut();
-            image.pixel(1,1,orbtk::Color::rgb(0, 0, 0) );
+            //image.pixel(1,1,orbtk::Color::rgb(0, 0, 0) );
+
+            let height = app.lock().unwrap().cpu.gpu.height;
+            let width = app.lock().unwrap().cpu.gpu.width;
+
+            for y in 0..height {
+                for x in 0..width {
+                    let offset = 0xA0000 + ((y * width) + x) as usize;
+                    let byte = app.lock().unwrap().cpu.memory.memory[offset];
+                    let ref pal = app.lock().unwrap().cpu.gpu.palette[byte as usize];
+                    image.pixel(x as i32, y as i32, Color::rgb(pal.r, pal.g, pal.b));
+                }
+            }
         });
     window.add(&button);
 
