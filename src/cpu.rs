@@ -137,11 +137,13 @@ impl CPU {
 
     pub fn execute_instruction(&mut self) {
         let op = self.decode_instruction(Segment::CS());
-        if self.fatal_error {
-            println!("XXX fatal error occured");
-            return;
+        match op.command {
+            Op::Unknown() => {
+                self.fatal_error = true;
+                println!("unknown op");
+            }
+            _ => self.execute(&op),
         }
-        self.execute(&op);
 
         // XXX need instruction timing to do this properly
         if self.instruction_count % 100 == 0 {
@@ -691,11 +693,12 @@ impl CPU {
 
                 let data = self.r16[AX].lo_u8(); // = AL
 
+                /*
                 println!("rep stosb   dst = {:04X}:{:04X}, count = {:04X}",
                          self.sreg16[ES] as usize,
                          self.r16[DI].val as usize,
                          self.r16[CX].val);
-
+                */
                 loop {
                     let dst = (self.sreg16[ES] as usize) * 16 + (self.r16[DI].val as usize);
                     self.write_u8(dst, data);
@@ -1883,8 +1886,13 @@ impl CPU {
                 }
             }
             _ => {
-                println!("cpu: unknown op {:02X} at {:06X}", b, self.get_offset() - 1);
-                self.fatal_error = true;
+                /*
+                println!("cpu: unknown op {:02X} at {:04X}:{:04X} ({} instructions executed)",
+                         b,
+                         self.sreg16[CS],
+                         self.ip - 1,
+                         self.instruction_count);
+                */
             }
         }
         op

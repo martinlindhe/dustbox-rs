@@ -1,6 +1,3 @@
-use std::io::{self, BufRead, Write};
-use std::process::exit;
-
 use cpu::CPU;
 use register::CS;
 use tools;
@@ -8,19 +5,17 @@ use instruction;
 
 pub struct Debugger {
     pub cpu: CPU,
-    stdin: io::Stdin,
-    stdout: io::Stdout,
 }
 
 impl Debugger {
     pub fn new() -> Self {
-        Debugger {
-            cpu: CPU::new(),
-            stdin: io::stdin(),
-            stdout: io::stdout(),
-        }
+        let mut dbg = Debugger { cpu: CPU::new() };
+        // XXX for quick testing while building the ui
+        dbg.load_binary("../dos-software-decoding/samples/bar/bar.com");
+        dbg
     }
 
+    /*
     pub fn start(&mut self) {
         //let bios = tools::read_binary("../dos-software-decoding/ibm-pc/ibm5550/ipl5550.rom");
         //self.cpu.load_bios(&bios);
@@ -29,8 +24,13 @@ impl Debugger {
             self.prompt();
         }
     }
+    */
 
     pub fn step_into(&mut self) {
+        if self.cpu.fatal_error {
+            // println!("XXX fatal error, not executing more");
+            return;
+        }
         self.cpu.execute_instruction();
     }
 
@@ -55,6 +55,7 @@ impl Debugger {
         res
     }
 
+    /*
     fn prompt(&mut self) {
         print!("{:04X}:{:04X}> ", self.cpu.sreg16[CS], self.cpu.ip);
         let _ = self.stdout.flush();
@@ -157,6 +158,7 @@ impl Debugger {
             }
         }
     }
+    */
 
     pub fn load_binary(&mut self, name: &str) {
         let data = tools::read_binary(name);
@@ -203,6 +205,7 @@ impl Debugger {
         }
     }
 
+    /*
     fn read_line(&mut self) -> Vec<String> {
         let mut line = String::new();
         self.stdin.lock().read_line(&mut line).unwrap();
@@ -210,6 +213,7 @@ impl Debugger {
             .map(|s| s.trim_right().to_string())
             .collect()
     }
+    */
 }
 
 fn parse_number_string(s: &str) -> usize {

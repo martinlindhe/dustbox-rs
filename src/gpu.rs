@@ -1,3 +1,6 @@
+use orbtk::{Image, Color};
+use std::sync::Arc;
+
 pub struct GPU {
     pub scanline: u32,
     pub width: u32,
@@ -28,5 +31,24 @@ impl GPU {
         if self.scanline > self.width {
             self.scanline = 0;
         }
+    }
+
+    pub fn render_frame(&mut self) -> Arc<Image> {
+
+        let canvas = Image::from_color(320, 200, Color::rgb(0, 0, 0));
+        /*
+            let height = dbg.cpu.gpu.height;
+            let width = dbg.cpu.gpu.width;
+
+            for y in 0..height {
+                for x in 0..width {
+                    let offset = 0xA0000 + ((y * width) + x) as usize;
+                    let byte = dbg.cpu.memory.memory[offset];
+                    let pal = &dbg.cpu.gpu.palette[byte as usize];
+                    image.pixel(x as i32, y as i32, Color::rgb(pal.r, pal.g, pal.b));
+                }
+            }
+        */
+        canvas
     }
 }
