@@ -4,11 +4,16 @@ extern crate find_folder;
 
 use std;
 use conrod;
+use conrod::backend::glium::glium;
+use conrod::backend::glium::glium::{DisplayBuild, Surface};
+/*
 use piston_window;
 use piston_window::{PistonWindow, UpdateEvent, Window, WindowSettings};
 use piston_window::{Flip, G2d, G2dTexture, Texture, TextureSettings};
 use piston_window::OpenGL;
 use piston_window::texture::UpdateTexture;
+*/
+use image;
 use image::{ImageBuffer, RgbaImage, Rgba};
 use memory::Memory;
 
@@ -20,13 +25,13 @@ pub fn main() {
     const HEIGHT: u32 = 600;
 
     // Construct the window.
-    let mut window: PistonWindow = WindowSettings::new("x86emu", [WIDTH, HEIGHT])
-                .opengl(OpenGL::V3_2) // If not working, try `OpenGL::V2_1`.
-                .samples(4)
-                .exit_on_esc(true)
-                .vsync(true)
-                .build()
-                .unwrap();
+    let display = glium::glutin::WindowBuilder::new()
+        .with_vsync()
+        .with_dimensions(WIDTH, HEIGHT)
+        .with_title("x86emu")
+        .with_multisampling(8)
+        .build_glium()
+        .unwrap();
 
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64])
@@ -40,35 +45,38 @@ pub fn main() {
     let font_path = assets.join("fonts/IosevkaTerm/iosevka-term-light.ttf");
     ui.fonts.insert_from_file(font_path).unwrap();
 
-    // Create a texture to use for efficiently caching text on the GPU.
-    let mut text_vertex_data = Vec::new();
-    let (mut glyph_cache, mut text_texture_cache) = {
-        const SCALE_TOLERANCE: f32 = 0.1;
-        const POSITION_TOLERANCE: f32 = 0.1;
-        let cache =
-            conrod::text::GlyphCache::new(WIDTH, HEIGHT, SCALE_TOLERANCE, POSITION_TOLERANCE);
-        let buffer_len = WIDTH as usize * HEIGHT as usize;
-        let init = vec![128; buffer_len];
-        let settings = TextureSettings::new();
-        let factory = &mut window.factory;
-        let texture = G2dTexture::from_memory_alpha(factory, &init, WIDTH, HEIGHT, &settings)
-            .unwrap();
-        (cache, texture)
-    };
+
+    // Instantiate the generated list of widget identifiers.
+    let ids = Ids::new(ui.widget_id_generator());
 
     let img = RgbaImage::new(320, 200);
 
+    /*
     // Load the rust logo from file to a piston_window texture.
     let video_out: G2dTexture = {
         Texture::from_image(&mut window.factory, &img, &TextureSettings::new()).unwrap()
     };
+*/
+
+    // Load the rust logo from file to a piston_window texture.
+    let video_out: glium::texture::Texture2d = {
+        let assets = find_folder::Search::ParentsThenKids(3, 3)
+            .for_folder("assets")
+            .unwrap();
+        let path = assets.join("images/rust.png");
+        let rgba_image = image::open(&std::path::Path::new(&path))
+            .unwrap()
+            .to_rgba();
+        let image_dimensions = rgba_image.dimensions();
+        let raw_image = glium::texture::RawImage2d::from_raw_rgba_reversed(rgba_image.into_raw(),
+                                                                           image_dimensions);
+        glium::texture::Texture2d::new(&display, raw_image).unwrap()
+    };
+
 
     // Create our `conrod::image::Map` which describes each of our widget->image mappings.
     // In our case we only have one image, however the macro may be used to list multiple.
     let mut image_map = conrod::image::Map::new();
-
-    // Instantiate the generated list of widget identifiers.
-    let ids = Ids::new(ui.widget_id_generator());
     let video_id = image_map.insert(video_out);
 
     let mut app = debugger::Debugger::new(video_id, img);
@@ -77,62 +85,59 @@ pub fn main() {
     // XXX for quick testing while building the ui
     app.load_binary("../dos-software-decoding/samples/bar/bar.com");
 
-    // Poll events from the window.
-    while let Some(event) = window.next() {
 
-        // Convert the piston event to a conrod event.
-        let size = window.size();
-        let (win_w, win_h) = (size.width as conrod::Scalar, size.height as conrod::Scalar);
-        if let Some(e) = conrod::backend::piston::event::convert(event.clone(), win_w, win_h) {
-            ui.handle_event(e);
+    // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
+    // for drawing to the glium `Surface`.
+    //
+    // Internally, the `Renderer` maintains:
+    // - a `backend::glium::GlyphCache` for caching text onto a `glium::texture::Texture2d`.
+    // - a `glium::Program` to use as the shader program when drawing to the `glium::Surface`.
+    // - a `Vec` for collecting `backend::glium::Vertex`s generated when translating the
+    // `conrod::render::Primitive`s.
+    // - a `Vec` of commands that describe how to draw the vertices.
+    let mut renderer = conrod::backend::glium::Renderer::new(&display).unwrap();
+
+
+    // Start the loop:
+    //
+    // - Poll the window for available events.
+    // - Update the widgets via the `support::gui` fn.
+    // - Render the current state of the `Ui`.
+    // - Repeat.
+    let mut event_loop = EventLoop::new();
+    'main: loop {
+
+        // Handle all events.
+        for event in event_loop.next(&display) {
+
+            // Use the `winit` backend feature to convert the winit event to a conrod one.
+            if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
+                ui.handle_event(event);
+                event_loop.needs_update();
+            }
+
+            match event {
+                // Break from the loop upon `Escape`.
+                glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
+                    glium::glutin::Event::Closed =>
+                        break 'main,
+                _ => {}
+            }
         }
 
-        event.update(|_| {
-                         let mut ui = ui.set_widgets();
-                         gui(&mut ui, &ids, &mut app);
-                     });
+        // Instantiate a GUI demonstrating every widget type provided by conrod.
+        gui(&mut ui.set_widgets(), &ids, &mut app);
 
-        window.draw_2d(&event, |context, graphics| {
-            if let Some(primitives) = ui.draw_if_changed() {
-
-                // A function used for caching glyphs to the texture cache.
-                let cache_queued_glyphs = |graphics: &mut G2d,
-                                           cache: &mut G2dTexture,
-                                           rect: conrod::text::rt::Rect<u32>,
-                                           data: &[u8]| {
-                    let offset = [rect.min.x, rect.min.y];
-                    let size = [rect.width(), rect.height()];
-                    let format = piston_window::texture::Format::Rgba8;
-                    let encoder = &mut graphics.encoder;
-                    text_vertex_data.clear();
-                    text_vertex_data.extend(data.iter().flat_map(|&b| vec![255, 255, 255, b]));
-                    UpdateTexture::update(cache,
-                                          encoder,
-                                          format,
-                                          &text_vertex_data[..],
-                                          offset,
-                                          size)
-                            .expect("failed to update texture")
-                };
-
-                // Specify how to get the drawable texture from the image. In this case, the image
-                // *is* the texture.
-                fn texture_from_image<T>(img: &T) -> &T {
-                    img
-                }
-
-                // Draw the conrod `render::Primitives`.
-                conrod::backend::piston::draw::primitives(primitives,
-                                                          context,
-                                                          graphics,
-                                                          &mut text_texture_cache,
-                                                          &mut glyph_cache,
-                                                          &image_map,
-                                                          cache_queued_glyphs,
-                                                          texture_from_image);
-            }
-        });
+        // Draw the `Ui`.
+        if let Some(primitives) = ui.draw_if_changed() {
+            renderer.fill(&display, primitives, &image_map);
+            let mut target = display.draw();
+            target.clear_color(0.0, 0.0, 0.0, 1.0);
+            renderer.draw(&display, &mut target, &image_map).unwrap();
+            target.finish().unwrap();
+        }
     }
+
 }
 
 /// A set of reasonable stylistic defaults that works for the `gui` below.
@@ -211,21 +216,7 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
         app.cpu.execute_instruction();
     }
 
-
-
-    // video output
-    widget::Image::new(app.video_out_id)
-        .w_h(320.0, 200.0)
-        .down(60.0)
-        .top_right_of(ids.canvas)
-        .set(ids.video_out, ui);
-
-
-    /*
-        let mut texture =
-            Texture::from_image(&mut self.window.factory, &canvas, &TextureSettings::new())
-                .unwrap();
-        */
+    println!("updated app.video_out");
     for y in 0..app.cpu.gpu.height {
         for x in 0..app.cpu.gpu.width {
             let offset = 0xA0000 + ((y * app.cpu.gpu.width) + x) as usize;
@@ -235,6 +226,17 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
                 .put_pixel(x, y, Rgba([pal.r, pal.g, pal.b, 255]));
         }
     }
+
+    // XXX update texture with image
+
+
+
+
+    // video output
+    widget::Image::new(app.video_out_id)
+        .w_h(320.0, 200.0)
+        .top_right_of(ids.canvas)
+        .set(ids.video_out, ui);
 
 
 
@@ -266,4 +268,55 @@ fn gui(ui: &mut conrod::UiCell, ids: &Ids, app: &mut debugger::Debugger) {
         .font_size(DISASM_SIZE)
         .top_left_of(ids.canvas)
         .set(ids.disasm, ui);
+}
+
+
+
+pub struct EventLoop {
+    ui_needs_update: bool,
+    last_update: std::time::Instant,
+}
+
+impl EventLoop {
+    pub fn new() -> Self {
+        EventLoop {
+            last_update: std::time::Instant::now(),
+            ui_needs_update: true,
+        }
+    }
+
+    /// Produce an iterator yielding all available events.
+    pub fn next(&mut self, display: &glium::Display) -> Vec<glium::glutin::Event> {
+        // We don't want to loop any faster than 60 FPS, so wait until it has been at least 16ms
+        // since the last yield.
+        let last_update = self.last_update;
+        let sixteen_ms = std::time::Duration::from_millis(16);
+        let duration_since_last_update = std::time::Instant::now().duration_since(last_update);
+        if duration_since_last_update < sixteen_ms {
+            std::thread::sleep(sixteen_ms - duration_since_last_update);
+        }
+
+        // Collect all pending events.
+        let mut events = Vec::new();
+        events.extend(display.poll_events());
+
+        // If there are no events and the `Ui` does not need updating, wait for the next event.
+        if events.is_empty() && !self.ui_needs_update {
+            events.extend(display.wait_events().next());
+        }
+
+        self.ui_needs_update = false;
+        self.last_update = std::time::Instant::now();
+
+        events
+    }
+
+    /// Notifies the event loop that the `Ui` requires another update whether or not there are any
+    /// pending events.
+    ///
+    /// This is primarily used on the occasion that some part of the `Ui` is still animating and
+    /// requires further updates to do so.
+    pub fn needs_update(&mut self) {
+        self.ui_needs_update = true;
+    }
 }

@@ -11,7 +11,7 @@ use instruction;
 pub struct Debugger {
     pub cpu: CPU,
     pub video_out: RgbaImage,
-    pub video_out_id: conrod::image::Id,
+    pub video_out_id: conrod::image::Id, // XXX "rust_logo"
     stdin: io::Stdin,
     stdout: io::Stdout,
 }

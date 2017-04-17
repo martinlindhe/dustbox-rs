@@ -19,8 +19,10 @@ gfx_window_glutin = "0.14"
 glutin = "0.7"
 
 # conrod deps:
-piston_window = "0.63"
-conrod = { version = "*", features = ["piston"] }
+#piston_window = "0.63"
+glium = { version = "0.16.0" }
+winit = { version = "0.5.9" }
+conrod = { version = "*", features = ["glium", "winit"] }
 
 
 
