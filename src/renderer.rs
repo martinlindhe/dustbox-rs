@@ -255,14 +255,17 @@ fn gui<T>(ui: &mut conrod::UiCell,
         println!("XXXX run");
     }
 
-    widget::RoundedRectangle::fill([300.0, 90.0], 10.0)
+    widget::RoundedRectangle::fill([300.0, 80.0], 10.0)
         .color(conrod::color::CHARCOAL.alpha(0.25))
         .mid_right_of(ids.canvas)
         .set(ids.registers_bg, ui);
 
+    let reg_color = conrod::color::YELLOW; // XXX change color for changed regs
+
     let regs = app.cpu.print_registers();
     widget::Text::new(regs.as_ref())
         .font_size(DISASM_SIZE)
+        .color(reg_color)
         .middle_of(ids.registers_bg)
         .set(ids.registers, ui);
 

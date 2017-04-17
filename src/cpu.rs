@@ -106,16 +106,7 @@ impl CPU {
 
     pub fn print_registers(&mut self) -> String {
 
-        /*
-    let regs = format!("AX:{:04X}\nBX:{:04X}\nCX:{:04X}\nDX:{:04X}", // XXX move to fn on debugger obj
-                       app.cpu.r16[AX].val,
-                       app.cpu.r16[BX].val,
-                       app.cpu.r16[CX].val,
-                       app.cpu.r16[DX].val);
-*/
-
         let mut res = String::new();
-
 
         res += format!("AX:{:04X}   SP:{:04X}    CS:{:04X}    IP:{:04X}\n",
                        self.r16[AX].val,
@@ -139,37 +130,13 @@ impl CPU {
                        self.sreg16[FS])
                 .as_ref();
 
-        res += format!("DX:{:04X}   DI:{:04X}    SS:{:04X}    GS:{:04X}\n",
+        res += format!("DX:{:04X}   DI:{:04X}    SS:{:04X}    GS:{:04X}",
                        self.r16[DX].val,
                        self.r16[DI].val,
                        self.sreg16[SS],
                        self.sreg16[GS])
                 .as_ref();
-        /*
-        res += format!("ip:{:04X}  ax:{:04X} bx:{:04X} cx:{:04X} dx:{:04X}",
-                       self.ip,
-                       self.r16[AX].val,
-                       self.r16[BX].val,
-                       self.r16[CX].val,
-                       self.r16[DX].val)
-                .as_ref();
-        res += "\n";
-        res += format!("  sp:{:04X} bp:{:04X} si:{:04X} di:{:04X}",
-                       self.r16[SP].val,
-                       self.r16[BP].val,
-                       self.r16[SI].val,
-                       self.r16[DI].val)
-                .as_ref();
-        res += "\n";
-        res += format!("   es:{:04X} cs:{:04X} ss:{:04X} ds:{:04X} fs:{:04X} gs:{:04X}",
-                       self.sreg16[ES],
-                       self.sreg16[CS],
-                       self.sreg16[SS],
-                       self.sreg16[DS],
-                       self.sreg16[FS],
-                       self.sreg16[GS])
-                .as_ref();
-        */
+
         return res;
     }
 
