@@ -125,10 +125,11 @@ impl CPU {
                 .as_ref();
 
 
-        res += format!("BX:{:04X}   BP:{:04X}    DS:{:04X}    flags \n",
+        res += format!("BX:{:04X}   BP:{:04X}    DS:{:04X}    fl:{:04X}\n",
                        self.r16[BX].val,
                        self.r16[BP].val,
-                       self.sreg16[DS])
+                       self.sreg16[DS],
+                       self.flags.u16())
                 .as_ref();
 
         res += format!("CX:{:04X}   SI:{:04X}    ES:{:04X}    FS:{:04X}\n",
