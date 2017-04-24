@@ -383,6 +383,9 @@ impl CPU {
             Op::Hlt() => {
                 println!("XXX impl hlt");
             }
+            Op::Idiv16() => {
+                println!("XXX impl idiv16");
+            }
             Op::In8() => {
                 // Input from Port
                 // two parameters (dst=AL)
@@ -761,7 +764,25 @@ impl CPU {
                 println!("XXX impl sar16");
             }
             Op::Sbb8() => {
-                println!("XXX impl sbb8");
+                // Integer Subtraction with Borrow
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
+                let cf = if self.flags.carry {
+                    1
+                } else {
+                    0
+                };
+                let res = (Wrapping(dst) - (Wrapping(src) + Wrapping(cf))).0;
+
+                // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
+                self.flags.set_overflow_sub_u8(res, src, dst);
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_parity(res);
+                self.flags.set_carry_u8(res);
+
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Shl8() => {
                 // two arguments
@@ -1883,7 +1904,10 @@ impl CPU {
                         // div r/m16
                         op.command = Op::Div16();
                     }
-                    // 7 => op.Cmd = "idiv"
+                    7 => {
+                        // idiv r/m16
+                        op.command = Op::Idiv16();
+                    }
                     _ => {
                         println!("op F7 unknown reg={} at {:04X}:{:04X}", x.reg,self.sreg16[CS],self.ip);
                         self.fatal_error = true;
@@ -2398,11 +2422,19 @@ impl CPU {
         };
 
         match dst {
+            0x03C8 => {
+                // (VGA,MCGA) PEL address register
+		        // Sets DAC in write mode and assign start of color register
+		        // index (0..255) for following write accesses to 3C9h.
+                // Next access to 03C8h will stop pending mode immediatly.
+                self.gpu.dac_index = data;
+                println!("dac index = {}", data);
+            }
             0x03C9 => {
                 // (VGA,MCGA) PEL data register
                 // Three consequtive writes in the order: red, green, blue.
                 // The internal DAC index is incremented each 3rd access.
-                if self.gpu.dac_color >= 2 {
+                if self.gpu.dac_color > 2 {
                     let i = self.gpu.dac_index as usize;
                     self.gpu.palette[i].r = self.gpu.dac_current_palette[0];
                     self.gpu.palette[i].g = self.gpu.dac_current_palette[1];
@@ -2418,7 +2450,6 @@ impl CPU {
                     }
                 }
                 self.gpu.dac_current_palette[self.gpu.dac_color] = data;
-
                 self.gpu.dac_color += 1;
             }
             _ => {

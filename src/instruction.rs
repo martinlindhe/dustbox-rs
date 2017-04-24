@@ -128,6 +128,7 @@ pub enum Op {
     Div8(),
     Div16(),
     Hlt(),
+    Idiv16(),
     In8(),
     Inc8(),
     Inc16(),
