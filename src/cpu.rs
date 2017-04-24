@@ -21,7 +21,7 @@ pub struct CPU {
     pub memory: Memory,
     pub r16: [Register16; 8], // general purpose registers
     pub sreg16: [u16; 6], // segment registers
-    flags: Flags,
+    pub flags: Flags,
     breakpoints: Vec<usize>,
     pub gpu: GPU,
     rom_base: usize,
@@ -385,10 +385,13 @@ impl CPU {
                 println!("XXX impl hlt");
             }
             Op::Idiv16() => {
-                println!("XXX impl idiv16");
+                println!("XXX impl idiv16: {}", op);
+            }
+            Op::Imul8() => {
+                println!("XXX impl imul8: {}", op);
             }
             Op::Imul16() => {
-                println!("XXX impl imul16");
+                println!("XXX impl imul16: {}", op);
             }
             Op::In8() => {
                 // Input from Port
@@ -640,6 +643,17 @@ impl CPU {
                 let data = self.pop16();
                 self.write_parameter_u16(&op.params.dst, op.segment, data);
             }
+            Op::Popa() => {
+                // Pop All General-Purpose Registers
+                self.r16[AX].val = self.pop16();
+                self.r16[CX].val = self.pop16();
+                self.r16[DX].val = self.pop16();
+                self.r16[BX].val = self.pop16();
+                self.r16[SP].val += 2;
+                self.r16[BP].val = self.pop16();
+                self.r16[SI].val = self.pop16();
+                self.r16[DI].val = self.pop16();
+            }
             Op::Popf() => {
                 // Pop top of stack into lower 16 bits of EFLAGS.
                 let data = self.pop16();
@@ -738,8 +752,10 @@ impl CPU {
                     // println!("rep movsb   write {:02X} to {:04X}", b, dst);
                     self.write_u16(dst, b);
                     dst += 1;
-                    self.r16[CX].val -= 1;
-                    if self.r16[CX].val == 0 {
+
+                    let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                    self.r16[CX].val = res;
+                    if res == 0 {
                         break;
                     }
                 }
@@ -767,8 +783,10 @@ impl CPU {
                     } else {
                         self.r16[DI].val -= 1;
                     }
-                    self.r16[CX].val -= 1;
-                    if self.r16[CX].val == 0 {
+
+                    let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                    self.r16[CX].val = res;
+                    if res == 0 {
                         break;
                     }
                 }
@@ -794,8 +812,10 @@ impl CPU {
                     } else {
                         self.r16[DI].val -= 2;
                     }
-                    self.r16[CX].val -= 1;
-                    if self.r16[CX].val == 0 {
+
+                    let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                    self.r16[CX].val = res;
+                    if res == 0 {
                         break;
                     }
                 }
@@ -831,6 +851,9 @@ impl CPU {
             Op::Sahf() => {
                 // Store AH into Flags
                 println!("XXX impl sahf");
+            }
+            Op::Sar8() => {
+                println!("XXX impl sar8");
             }
             Op::Sar16() => {
                 println!("XXX impl sar16");
@@ -1191,6 +1214,11 @@ impl CPU {
                 // daa
                 op.command = Op::Daa();
             }
+            0x29 => {
+                // sub r/m16, r16
+                op.command = Op::Sub16();
+                op.params = self.rm16_r16(op.segment);
+            }
             0x2A => {
                 // sub r8, r/m8
                 op.command = Op::Sub8();
@@ -1306,7 +1334,12 @@ impl CPU {
                 op.params.dst = Parameter::Reg16((b & 7) as usize);
             }
             0x60 => {
+                // pusha
                 op.command = Op::Pusha();
+            }
+            0x61 => {
+                // popa
+                op.command = Op::Popa();
             }
             0x65 => {
                 // gs segment prefix
@@ -1814,7 +1847,7 @@ impl CPU {
                     3 => Op::Rcr8(),
                     4 => Op::Shl8(),
                     5 => Op::Shr8(),
-                    // 7 => Op::Sar8(),
+                    7 => Op::Sar8(),
                     _ => {
                         println!("XXX 0xD0 unhandled reg = {}", x.reg);
                         self.fatal_error = true;
@@ -2017,7 +2050,10 @@ impl CPU {
                         // mul r/m8
                         op.command = Op::Mul8();
                     }
-                    // 5 => op.Cmd = "imul"
+                    5 => {
+                        // imul r/m8
+                        op.command = Op::Imul8();
+                    }
                     6 => {
                         // div r/m8
                         op.command = Op::Div8();
@@ -2049,9 +2085,12 @@ impl CPU {
                     }
                     4 => {
                         // mul r/m16
-                        op.command = Op::Mul8();
+                        op.command = Op::Mul8(); // XXX mul16!?
                     }
-                    // 5 => op.Cmd = "imul"
+                    5 => {
+                        // imul r/m16
+                        op.command = Op::Imul16();
+                    }
                     6 => {
                         // div r/m16
                         op.command = Op::Div16();
