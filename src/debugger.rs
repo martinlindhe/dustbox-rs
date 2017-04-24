@@ -12,7 +12,7 @@ impl Debugger {
         let mut dbg = Debugger { cpu: CPU::new() };
         // XXX for quick testing while building the ui
         // let name = "../dos-software-decoding/samples/bar/bar.com";
-        let name = "../dos-software-decoding/demo-256/fire3d/fire3d.com";
+        let name = "../dos-software-decoding/demo-256/sqwerz3/sqwerz3.com";
         dbg.load_binary(name);
         dbg
     }
@@ -34,6 +34,7 @@ impl Debugger {
             return;
         }
         self.cpu.execute_instruction();
+        println!("{}", self.cpu.disasm_instruction().pretty_string());
     }
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {

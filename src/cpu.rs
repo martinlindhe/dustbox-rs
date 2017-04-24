@@ -449,19 +449,19 @@ impl CPU {
                 self.int(int as u8);
             }
             Op::Ja() => {
-                // Jump short if above (CF=0 and ZF=0).
+                // Jump if above (CF=0 and ZF=0).
                 if !self.flags.carry & !self.flags.zero {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Jc() => {
-                // Jump short if carry (CF=1).
+                // Jump if carry (CF=1).
                 if self.flags.carry {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Jcxz() => {
-                // Jump short if CX register is 0.
+                // Jump if CX register is 0.
                 if self.r16[CX].val == 0 {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
@@ -479,13 +479,13 @@ impl CPU {
                 }
             }
             Op::Jg() => {
-                // Jump short if greater (ZF=0 and SF=OF).
+                // Jump if greater (ZF=0 and SF=OF).
                 if !self.flags.zero & self.flags.sign == self.flags.overflow {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Jl() => {
-                // Jump short if less (SF ≠ OF).
+                // Jump if less (SF ≠ OF).
                 if self.flags.sign != self.flags.overflow {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
@@ -494,43 +494,49 @@ impl CPU {
                 self.ip = self.read_parameter_value(&op.params.dst) as u16;
             }
             Op::Jna() => {
-                // Jump short if not above (CF=1 or ZF=1).
+                // Jump if not above (CF=1 or ZF=1).
                 if self.flags.carry | self.flags.zero {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Jnc() => {
-                // Jump short if not carry (CF=0).
+                // Jump if not carry (CF=0).
                 if !self.flags.carry {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Jnl() => {
-                // Jump short if not less (SF=OF).
+                // Jump if not less (SF=OF).
                 if self.flags.sign == self.flags.overflow {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Jns() => {
-                // Jump short if not sign (SF=0).
+                // Jump if not sign (SF=0).
                 if !self.flags.sign {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Jne() => {
-                // Jump short if not equal (ZF=0).    (alias: jnz)
+                // Jump if not equal (ZF=0).    (alias: jnz)
                 if !self.flags.zero {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
+            Op::Jno() => {
+                // Jump if not overflow (OF=0).
+                if !self.flags.overflow {
+                    self.ip = self.read_parameter_value(&op.params.dst) as u16;
+                }
+            }
             Op::Js() => {
-                // Jump short if sign (SF=1).
+                // Jump if sign (SF=1).
                 if self.flags.sign {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
             Op::Je() => {
-                // Jump short if equal (ZF ← 1).    (alias: jz)
+                // Jump if equal (ZF ← 1).    (alias: jz)
                 if self.flags.zero {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
@@ -1416,6 +1422,11 @@ impl CPU {
                 // outs word
                 op.command = Op::Outsw();
             }
+            0x71 => {
+                // jno rel8
+                op.command = Op::Jno();
+                op.params.dst = Parameter::Imm16(self.read_rel8());
+            }
             0x72 => {
                 // jc rel8    (alias: jb, jnae)
                 op.command = Op::Jc();
@@ -1765,6 +1776,7 @@ impl CPU {
                 op.params.src = Parameter::Imm16(self.read_u16());
             }
             0xC0 => {
+                // r8, byte imm8
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     /*
@@ -1780,10 +1792,8 @@ impl CPU {
                     3 => {
                         op.Cmd = "rcr"
                     }
-                    4 => {
-                        Op::Shl8()
-                    }
                     */
+                    4 => Op::Shl8(),
                     5 => Op::Shr8(),
                     /*
                     7 => {
@@ -1791,7 +1801,7 @@ impl CPU {
                     }
                     */
                     _ => {
-                        println!("XXX 0xC1 unhandled reg = {}", x.reg);
+                        println!("XXX 0xC0 unhandled reg = {}", x.reg);
                         self.fatal_error = true;
                         Op::Unknown()
                     }
@@ -1800,6 +1810,7 @@ impl CPU {
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
             0xC1 => {
+                // r16, byte imm8
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     /*
@@ -1818,11 +1829,7 @@ impl CPU {
                     */
                     4 => Op::Shl16(),
                     5 => Op::Shr16(),
-                    /*
-                    7 => {
-                        op.Cmd = "sar"
-                    }
-                    */
+                    7 => Op::Sar16(),
                     _ => {
                         println!("XXX 0xC1 unhandled reg = {}", x.reg);
                         self.fatal_error = true;
@@ -2705,12 +2712,13 @@ impl CPU {
                     self.gpu.palette[i].r = self.gpu.dac_current_palette[0];
                     self.gpu.palette[i].g = self.gpu.dac_current_palette[1];
                     self.gpu.palette[i].b = self.gpu.dac_current_palette[2];
-
+                    /*
                     println!("DAC palette {} = {}, {}, {}",
                              self.gpu.dac_index,
                              self.gpu.palette[i].r,
                              self.gpu.palette[i].g,
                              self.gpu.palette[i].b);
+                    */
                     self.gpu.dac_color = 0;
                     if self.gpu.dac_index == 255 {
                         self.gpu.dac_index = 0;

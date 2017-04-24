@@ -163,6 +163,7 @@ pub enum Op {
     Jnc(),
     Jnl(),
     Jne(),
+    Jno(),
     Jns(),
     Js(),
     Lea16(),
