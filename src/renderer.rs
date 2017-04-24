@@ -40,7 +40,7 @@ pub fn main() {
     let disasm = Label::new();
     disasm
         .position(x, y)
-        .size(400, 20 * 20)
+        .size(450, 20 * 20)
         .text(disasm_text);
     window.add(&disasm);
 
@@ -60,7 +60,7 @@ pub fn main() {
 
             let mut dbg = app.lock().unwrap();
             // XXX
-            for _ in 0..3000 {
+            for _ in 0..6000 {
                 dbg.step_into();
             }
             println!("Executed {} instructions", dbg.cpu.instruction_count);

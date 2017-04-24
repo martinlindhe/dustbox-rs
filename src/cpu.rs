@@ -425,6 +425,9 @@ impl CPU {
 
                 self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
             }
+            Op::Insb() => {
+                println!("XXX impl insb");
+            }
             Op::Int() => {
                 let int = self.read_parameter_value(&op.params.dst);
                 self.int(int as u8);
@@ -498,8 +501,8 @@ impl CPU {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jnz() => {
-                // Jump short if not zero (ZF=0).
+            Op::Jne() => {
+                // Jump short if not equal (ZF=0).    (alias: jnz)
                 if !self.flags.zero {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
@@ -510,8 +513,8 @@ impl CPU {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jz() => {
-                // Jump short if zero (ZF ← 1).
+            Op::Je() => {
+                // Jump short if equal (ZF ← 1).    (alias: jz)
                 if self.flags.zero {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
@@ -541,8 +544,9 @@ impl CPU {
             }
             Op::Loop() => {
                 let dst = self.read_parameter_value(&op.params.dst) as u16;
-                self.r16[CX].val -= 1;
-                if self.r16[CX].val != 0 {
+                let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                self.r16[CX].val = res;
+                if res != 0 {
                     self.ip = dst;
                 }
                 // No flags affected.
@@ -871,7 +875,13 @@ impl CPU {
             }
             Op::Shr16() => {
                 // two arguments
-                println!("XXX impl shr16");
+                let src = self.read_parameter_value(&op.params.src) as u16;
+                let dst = self.read_parameter_value(&op.params.dst) as u16;
+
+                let res = dst >> src;
+                self.write_parameter_u16(&op.params.dst, op.segment, (res & 0xFFFF) as u16);
+
+                println!("XXX shr16 flags");
                 // XXX flags
             }
             Op::Stc() => {
@@ -1110,6 +1120,11 @@ impl CPU {
             0x0F => {
                 let b = self.read_u8();
                 match b {
+                    0x85 => {
+                        // jne rel16
+                        op.command = Op::Jne();
+                        op.params.dst = Parameter::Imm16(self.read_rel16());
+                    }
                     0xA1 => {
                         // pop fs
                         op.command = Op::Pop16();
@@ -1313,6 +1328,10 @@ impl CPU {
                 op.command = Op::Push8();
                 op.params.dst = Parameter::ImmS8(self.read_s8());
             }
+            0x6C => {
+                // insb
+                op.command = Op::Insb();
+            }
             0x6E => {
                 // outs byte
                 op.command = Op::Outsb();
@@ -1332,13 +1351,13 @@ impl CPU {
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x74 => {
-                // jz rel8    (alias: je)
-                op.command = Op::Jz();
+                // je rel8
+                op.command = Op::Je();
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x75 => {
-                // jnz rel8   (alias: jne)
-                op.command = Op::Jnz();
+                // jne rel8
+                op.command = Op::Jne();
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x76 => {
@@ -3342,21 +3361,21 @@ fn can_disassemble_imul() {
 }
 
 #[test]
-fn can_disassemble_jz_rel() {
+fn can_disassemble_je_rel() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
-        0x74, 0x04, // jz 0x106
-        0x74, 0xFE, // jz 0x102
-        0x74, 0x00, // jz 0x106
-        0x74, 0xFA, // jz 0x102
+        0x74, 0x04, // je 0x106
+        0x74, 0xFE, // je 0x102
+        0x74, 0x00, // je 0x106
+        0x74, 0xFA, // je 0x102
     ];
     cpu.load_com(&code);
     let res = cpu.disassemble_block(0x100, 4);
 
-    assert_eq!("[085F:0100] 7404       Jz       0x0106
-[085F:0102] 74FE       Jz       0x0102
-[085F:0104] 7400       Jz       0x0106
-[085F:0106] 74FA       Jz       0x0102
+    assert_eq!("[085F:0100] 7404       Je       0x0106
+[085F:0102] 74FE       Je       0x0102
+[085F:0104] 7400       Je       0x0106
+[085F:0106] 74FA       Je       0x0102
 ",
                res);
 }
