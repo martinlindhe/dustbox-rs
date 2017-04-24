@@ -189,7 +189,20 @@ impl CPU {
         self.instruction_count += 1;
         match op.command {
             Op::Adc8() => {
-                println!("XXX impl adc8");
+                // two parameters (dst=reg)
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
+                let carry = if self.flags.carry { 1 } else { 0 };
+                let res = (Wrapping(dst) + Wrapping(src) + Wrapping(carry)).0;
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
+
+                // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
+                self.flags.set_overflow_add_u8(res, src, dst); // XXX take into account carry
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_auxiliary(res, src, dst); // XXX take into account carry
+                self.flags.set_carry_u8(res);
+                self.flags.set_parity(res);
             }
             Op::Add8() => {
                 // two parameters (dst=reg)
