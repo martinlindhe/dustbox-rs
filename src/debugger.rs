@@ -12,7 +12,7 @@ impl Debugger {
         let mut dbg = Debugger { cpu: CPU::new() };
         // XXX for quick testing while building the ui
         // let name = "../dos-software-decoding/samples/bar/bar.com";
-        let name = "../dos-software-decoding/demo-256/nicefire/nicefire.com";
+        let name = "../dos-software-decoding/demo-256/aquan/aquan.com";
         dbg.load_binary(name);
         dbg
     }

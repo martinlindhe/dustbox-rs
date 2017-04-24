@@ -3431,6 +3431,20 @@ fn can_disassemble_basic() {
 }
 
 #[test]
+fn can_disassemble_lea() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0x8D, 0x47, 0x80, // lea ax,[bx-0x80]
+ ];
+    cpu.load_com(&code);
+    let res = cpu.disassemble_block(0x100, 1);
+
+    assert_eq!("x
+",
+               res);
+}
+
+#[test]
 fn can_disassemble_segment_prefixed() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
