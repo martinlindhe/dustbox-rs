@@ -5,8 +5,9 @@ pub enum Segment {
     CS(),
     DS(),
     ES(),
-    SS(),
+    FS(),
     GS(),
+    SS(),
     Default(), // is treated as CS
 }
 
@@ -16,8 +17,9 @@ impl fmt::Display for Segment {
             Segment::CS() => write!(f, "cs:"),
             Segment::DS() => write!(f, "ds:"),
             Segment::ES() => write!(f, "es:"),
-            Segment::SS() => write!(f, "ss:"),
+            Segment::FS() => write!(f, "fs:"),
             Segment::GS() => write!(f, "gs:"),
+            Segment::SS() => write!(f, "ss:"),
             Segment::Default() => write!(f, ""),
         }
     }

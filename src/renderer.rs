@@ -60,7 +60,7 @@ pub fn main() {
 
             let mut dbg = app.lock().unwrap();
             // XXX
-            for _ in 0..6000 {
+            for _ in 0..30000 {
                 dbg.step_into();
             }
             println!("Executed {} instructions", dbg.cpu.instruction_count);

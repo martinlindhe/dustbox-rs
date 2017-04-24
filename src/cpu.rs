@@ -188,6 +188,10 @@ impl CPU {
     fn execute(&mut self, op: &Instruction) {
         self.instruction_count += 1;
         match op.command {
+            Op::Aas() => {
+                // ASCII Adjust AL After Subtraction
+                println!("XXX impl aas");
+            }
             Op::Adc8() => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.params.src);
@@ -951,6 +955,9 @@ impl CPU {
                 println!("XXX shr16 flags");
                 // XXX flags
             }
+            Op::Shrd() => {
+                println!("XXX impl shrd");
+            }
             Op::Stc() => {
                 // Set Carry Flag
                 self.flags.carry = true;
@@ -1197,6 +1204,12 @@ impl CPU {
                         op.command = Op::Pop16();
                         op.params.dst = Parameter::SReg16(FS);
                     }
+                    0xAC => {
+                        // shrd r/m16, r16, imm8
+                        op.command = Op::Shrd();
+                        op.params = self.rm16_r16(op.segment);
+                        op.params.src2 = Parameter::Imm8(self.read_u8());
+                    }
                     0xB6 => {
                         // movzx r16, r/m8
                         op.command = Op::Movzx16();
@@ -1206,6 +1219,12 @@ impl CPU {
                         println!("op 0F error: unknown {:02X}", b);
                     }
                 }
+            }
+            0x14 => {
+                // adc AL, imm8
+                op.command = Op::Adc8();
+                op.params.dst = Parameter::Reg8(AL);
+                op.params.src = Parameter::Imm8(self.read_u8());
             }
             0x1C => {
                 // sbb AL, imm8
@@ -1362,6 +1381,9 @@ impl CPU {
                 // XXX if next op is a Jcc, then this is a "branch taken" hint
                 op = self.decode_instruction(Segment::DS());
             }
+            0x3F => {
+                op.command = Op::Aas();
+            }
             0x40...0x47 => {
                 // inc r16
                 op.command = Op::Inc16();
@@ -1389,6 +1411,10 @@ impl CPU {
             0x61 => {
                 // popa
                 op.command = Op::Popa();
+            }
+            0x64 => {
+                // fs segment prefix
+                op = self.decode_instruction(Segment::FS());
             }
             0x65 => {
                 // gs segment prefix
@@ -1559,7 +1585,6 @@ impl CPU {
                     }
                     _ => {
                         println!("op 81 error: unknown reg {}", x.reg);
-                        self.fatal_error = true;
                     }
                 }
             }
@@ -1599,7 +1624,6 @@ impl CPU {
                     }
                     _ => {
                         println!("op 83 error: unknown reg {}", x.reg);
-                        self.fatal_error = true;
                     }
                 }
             }
@@ -1668,7 +1692,6 @@ impl CPU {
                     }
                     _ => {
                         println!("op 8F unknown reg = {}", x.reg);
-                        self.fatal_error = true;
                     }
                 }
             }
@@ -1795,14 +1818,9 @@ impl CPU {
                     */
                     4 => Op::Shl8(),
                     5 => Op::Shr8(),
-                    /*
-                    7 => {
-                        op.Cmd = "sar"
-                    }
-                    */
+                    7 => Op::Sar8(),
                     _ => {
                         println!("XXX 0xC0 unhandled reg = {}", x.reg);
-                        self.fatal_error = true;
                         Op::Unknown()
                     }
                 };
@@ -1817,9 +1835,9 @@ impl CPU {
                     0 => {
                         op.Cmd = "rol"
                     }
-                    1 => {
-                        op.Cmd = "ror"
-                    }
+                    */
+                    1 => Op::Ror16(),
+                    /*
                     2 => {
                         op.Cmd = "rcl"
                     }
@@ -1832,7 +1850,6 @@ impl CPU {
                     7 => Op::Sar16(),
                     _ => {
                         println!("XXX 0xC1 unhandled reg = {}", x.reg);
-                        self.fatal_error = true;
                         Op::Unknown()
                     }
                 };
@@ -1859,7 +1876,6 @@ impl CPU {
                     }
                     _ => {
                         println!("op C6 unknown reg = {}", x.reg);
-                        self.fatal_error = true;
                     }
                 }
             }
@@ -1874,7 +1890,6 @@ impl CPU {
                     }
                     _ => {
                         println!("op C7 unknown reg = {}", x.reg);
-                        self.fatal_error = true;
                     }
                 }
             }
@@ -1900,7 +1915,6 @@ impl CPU {
                     7 => Op::Sar8(),
                     _ => {
                         println!("XXX 0xD0 unhandled reg = {}", x.reg);
-                        self.fatal_error = true;
                         Op::Unknown()
                     }
                 };
@@ -1920,7 +1934,6 @@ impl CPU {
                     7 => Op::Sar16(),
                     _ => {
                         println!("XXX 0xD1 unhandled reg = {}", x.reg);
-                        self.fatal_error = true;
                         Op::Unknown()
                     }
                 };
@@ -1935,12 +1948,11 @@ impl CPU {
                     //1 => Op::Ror8(),
                     //2 => Op::Rcl8(),
                     //3 => Op::Rcr8(),
-                    //4 => Op::Shl8(),
+                    4 => Op::Shl8(),
                     5 => Op::Shr8(),
                     // 7 => Op::Sar8(),
                     _ => {
                         println!("XXX 0xD2 unhandled reg = {}", x.reg);
-                        self.fatal_error = true;
                         Op::Unknown()
                     }
                 };
@@ -1960,7 +1972,6 @@ impl CPU {
                     //7 => Op::Sar16(),
                     _ => {
                         println!("XXX 0xD3 unhandled reg = {}", x.reg);
-                        self.fatal_error = true;
                         Op::Unknown()
                     }
                 };
@@ -2037,7 +2048,6 @@ impl CPU {
                     }
                     _ => {
                         println!("op F2 error: unhandled op {:02X}", b);
-                        self.fatal_error = true;
                     }
                 }
             }
@@ -2068,7 +2078,6 @@ impl CPU {
                     }
                     _ => {
                         println!("op F3 error: unhandled op {:02X}", b);
-                        self.fatal_error = true;
                     }
                 }
             }
@@ -2111,7 +2120,6 @@ impl CPU {
                     // 7 => op.Cmd = "idiv"
                     _ => {
                         println!("op F6 unknown reg={}", x.reg);
-                        self.fatal_error = true;
                     }
                 }
             }
@@ -2154,7 +2162,6 @@ impl CPU {
                                  x.reg,
                                  self.sreg16[CS],
                                  self.ip);
-                        self.fatal_error = true;
                     }
                 }
             }
@@ -2191,7 +2198,6 @@ impl CPU {
                     }
                     _ => {
                         println!("op FE error: unknown reg {}", x.reg);
-                        self.fatal_error = true;
                     }
                 }
             }
@@ -2224,7 +2230,6 @@ impl CPU {
                     }
                     _ => {
                         println!("op FF error: unknown reg {}", x.reg);
-                        self.fatal_error = true;
                     }
                 }
             }
@@ -2661,8 +2666,9 @@ impl CPU {
             Segment::Default() => self.sreg16[CS],
             Segment::DS() => self.sreg16[DS],
             Segment::ES() => self.sreg16[ES],
-            Segment::SS() => self.sreg16[SS],
+            Segment::FS() => self.sreg16[FS],
             Segment::GS() => self.sreg16[GS],
+            Segment::SS() => self.sreg16[SS],
         }
     }
 
@@ -3484,6 +3490,20 @@ fn can_disassemble_imul() {
     let res = cpu.disassemble_block(0x100, 1);
 
     assert_eq!("[085F:0100] 69F84001   Imul16   di, ax, 0x0140
+",
+               res);
+}
+
+#[test]
+fn can_disassemble_shrd() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0x0F, 0xAC, 0xD0, 0x08, // shrd ax,dx,0x8
+    ];
+    cpu.load_com(&code);
+    let res = cpu.disassemble_block(0x100, 1);
+
+    assert_eq!("[085F:0100] 0FACD008   Shrd     ax, dx, 0x08
 ",
                res);
 }

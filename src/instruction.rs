@@ -122,6 +122,7 @@ impl fmt::Display for Parameter {
 
 #[derive(Debug)]
 pub enum Op {
+    Aas(),
     Adc8(),
     Add8(),
     Add16(),
@@ -218,6 +219,7 @@ pub enum Op {
     Shl16(),
     Shr8(),
     Shr16(),
+    Shrd(),
     Stc(),
     Sti(),
     Stosb(),
