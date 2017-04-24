@@ -570,6 +570,9 @@ impl CPU {
             Op::Movsw() => {
                 println!("XXX impl movsw");
             }
+            Op::Movzx16() => {
+                println!("XXX impl movzx16");
+            }
             Op::Mul8() => {
                 // dst = AX
                 let src = self.r16[AX].lo_u8() as usize; // AL
@@ -587,7 +590,24 @@ impl CPU {
                 println!("XXX impl neg8");
             }
             Op::Neg16() => {
-                println!("XXX impl neg16");
+                // one argument
+                let dst = self.read_parameter_value(&op.params.dst);
+                let src = 0;
+                let res = (Wrapping(src) - Wrapping(dst)).0;
+                self.write_parameter_u16(&op.params.dst, op.segment, res as u16);
+
+                // The CF flag set to 0 if the source operand is 0; otherwise it is set to 1.
+                if src == 0 {
+                    self.flags.carry = false;
+                } else {
+                    self.flags.carry = true;
+                }
+                // The OF, SF, ZF, AF, and PF flags are set according to the result.
+                self.flags.set_overflow_sub_u16(res, src, dst);
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_parity(res);
             }
             Op::Nop() => {}
             Op::Not8() => {
@@ -807,11 +827,16 @@ impl CPU {
                 loop {
                     let dst = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
                     self.write_u16(dst, data);
-                    if !self.flags.direction {
-                        self.r16[DI].val += 2;
+
+                    let di = if !self.flags.direction {
+                        (Wrapping(self.r16[DI].val) + Wrapping(2)).0
                     } else {
-                        self.r16[DI].val -= 2;
-                    }
+                        (Wrapping(self.r16[DI].val) - Wrapping(2)).0
+                    };
+
+                    self.r16[DI].val = di;
+
+                    println!("DI {:04X}", self.r16[DI].val);
 
                     let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
                     self.r16[CX].val = res;
@@ -1152,6 +1177,11 @@ impl CPU {
                         // pop fs
                         op.command = Op::Pop16();
                         op.params.dst = Parameter::SReg16(FS);
+                    }
+                    0xB6 => {
+                        // movzx r16, r/m8
+                        op.command = Op::Movzx16();
+                        op.params = self.r16_rm8(op.segment);
                     }
                     _ => {
                         println!("op 0F error: unknown {:02X}", b);
@@ -2239,6 +2269,16 @@ impl CPU {
         }
     }
 
+    // decode r16, r/m8 (movzx)
+    fn r16_rm8(&mut self, seg: Segment) -> ParameterPair {
+        let x = self.read_mod_reg_rm();
+        ParameterPair {
+            dst: Parameter::Reg16(x.reg as usize),
+            src: self.rm8(seg, x.rm, x.md),
+            src2: Parameter::None(),
+        }
+    }
+
     // decode r/m16, r16
     fn rm16_r16(&mut self, seg: Segment) -> ParameterPair {
         let x = self.read_mod_reg_rm();
@@ -3293,6 +3333,34 @@ fn can_execute_shr() {
     assert_eq!(0x07, cpu.r16[DX].hi_u8()); // == 7.5
 }
 
+#[test]
+fn can_execute_neg() {
+
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xBB, 0x23, 0x01, // mov bx,0x123
+        0xF7, 0xDB,       // neg bx
+    ];
+    cpu.load_com(&code);
+    let res = cpu.disassemble_block(0x100, 2);
+
+    assert_eq!("[085F:0100] BB2301     Mov16    bx, 0x0123
+[085F:0103] F7DB       Neg16    bx
+",
+               res);
+
+    cpu.execute_instruction();
+    assert_eq!(0x0123, cpu.r16[BX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0xFEDD, cpu.r16[BX].val);
+    // assert_eq!(true, cpu.flags.carry);  // XXX dosbox = TRUE
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(true, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+    assert_eq!(true, cpu.flags.auxiliary_carry);
+    // assert_eq!(true, cpu.flags.parity);  // XXX dosbox = true
+}
 
 #[test]
 fn can_execute_jmp_far() {
@@ -3395,6 +3463,20 @@ fn can_disassemble_imul() {
     let res = cpu.disassemble_block(0x100, 1);
 
     assert_eq!("[085F:0100] 69F84001   Imul16   di, ax, 0x0140
+",
+               res);
+}
+
+#[test]
+fn can_disassemble_movzx() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0x0F, 0xB6, 0x45, 0x02, // movzx ax,[di+0x2]
+    ];
+    cpu.load_com(&code);
+    let res = cpu.disassemble_block(0x100, 1);
+
+    assert_eq!("[085F:0100] 0FB64502   Movzx16  ax, byte [di+0x02]
 ",
                res);
 }
