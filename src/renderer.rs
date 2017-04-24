@@ -63,6 +63,8 @@ pub fn main() {
             for _ in 0..3000 {
                 dbg.step_into();
             }
+            println!("Executed {} instructions", dbg.cpu.instruction_count);
+
             // update disasm
             let disasm_text = dbg.disasm_n_instructions_to_text(20);
             disasm.text(disasm_text);

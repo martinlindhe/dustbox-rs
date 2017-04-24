@@ -140,7 +140,7 @@ impl CPU {
         match op.command {
             Op::Unknown() => {
                 self.fatal_error = true;
-                println!("unknown op");
+                println!("unknown op, {} instructions executed", self.instruction_count);
             }
             _ => self.execute(&op),
         }
@@ -187,6 +187,9 @@ impl CPU {
     fn execute(&mut self, op: &Instruction) {
         self.instruction_count += 1;
         match op.command {
+            Op::Adc8() => {
+                println!("XXX impl adc8");
+            }
             Op::Add8() => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.params.src);
@@ -614,6 +617,11 @@ impl CPU {
                 let data = self.pop16();
                 self.write_parameter_u16(&op.params.dst, op.segment, data);
             }
+            Op::Popf() => {
+                // Pop top of stack into lower 16 bits of EFLAGS.
+                let data = self.pop16();
+                self.flags.set_u16(data);
+            }
             Op::Push16() => {
                 // single parameter (dst)
                 let data = self.read_parameter_value(&op.params.dst) as u16;
@@ -929,6 +937,11 @@ impl CPU {
                 op.command = Op::Add8();
                 op.params = self.rm8_r8(op.segment);
             }
+            0x01 => {
+                // add r/m16, r16
+                op.command = Op::Add16();
+                op.params = self.rm16_r16(op.segment);
+            }
             0x02 => {
                 // add r8, r/m8
                 op.command = Op::Add8();
@@ -997,6 +1010,19 @@ impl CPU {
                 // push cs
                 op.command = Op::Push16();
                 op.params.dst = Parameter::SReg16(CS);
+            }
+            0x0F => {
+                let b = self.read_u8();
+                match b {
+                    0xA1 => {
+                        // pop fs
+                        op.command = Op::Pop16();
+                        op.params.dst = Parameter::SReg16(FS);
+                    }
+                    _ => {
+                        println!("op 0F error: unknown {:02X}", b);
+                    }
+                }
             }
             0x1C => {
                 // sbb AL, imm8
@@ -1167,6 +1193,11 @@ impl CPU {
                 // gs segment prefix
                 op = self.decode_instruction(Segment::GS());
             }
+            0x68 => {
+                // push imm16
+                op.command = Op::Push16();
+                op.params.dst = Parameter::Imm16(self.read_u16());
+            }
             0x6E => {
                 // outs byte
                 op.command = Op::Outsb();
@@ -1237,35 +1268,38 @@ impl CPU {
                 op.params.src = Parameter::Imm8(self.read_u8());
                 match x.reg {
                     0 => {
+                        // add r/m8, imm8
                         op.command = Op::Add8();
                     }
                     1 => {
+                        // or r/m8, imm8
                         op.command = Op::Or8();
                     }
-                    /*
                     2 => {
+                        // adc r/m8, imm8
                         op.command = Op::Adc8();
                     }
                     3 => {
+                        // sbb r/m8, imm8
                         op.command = Op::Sbb8();
                     }
-                    */
                     4 => {
+                        // and r/m8, imm8
                         op.command = Op::And8();
                     }
                     5 => {
+                        // sub r/m8, imm8
                         op.command = Op::Sub8();
                     }
                     6 => {
+                        // xor r/m8, imm8
                         op.command = Op::Xor8();
                     }
                     7 => {
+                        // cmp r/m8, imm8
                         op.command = Op::Cmp8();
                     }
-                    _ => {
-                        println!("op 80 error: unknown reg {}", x.reg);
-                        self.fatal_error = true;
-                    }
+                    _ => {} // XXX how to get rid of this pattern, x.reg is only 3 bits
                 }
             }
             0x81 => {
@@ -1440,6 +1474,10 @@ impl CPU {
                 // pushf
                 op.command = Op::Pushf();
             }
+            0x9D => {
+                // popf
+                op.command = Op::Popf();
+            }
             0x9E => {
                 // sahf
                 op.command = Op::Sahf();
@@ -1515,6 +1553,43 @@ impl CPU {
                 op.command = Op::Mov16();
                 op.params.dst = Parameter::Reg16((b & 7) as usize);
                 op.params.src = Parameter::Imm16(self.read_u16());
+            }
+            0xC1 => {
+                let x = self.read_mod_reg_rm();
+                op.command = match x.reg {
+                    /*
+                    0 => {
+                        op.Cmd = "rol"
+                    }
+                    1 => {
+                        op.Cmd = "ror"
+                    }
+                    2 => {
+                        op.Cmd = "rcl"
+                    }
+                    3 => {
+                        op.Cmd = "rcr"
+                    }
+                    4 => {
+                        op.Cmd = "shl" // alias: sal
+                    }
+                    */
+                    5 => {
+                        Op::Shr16()
+                    },
+                    /*
+                    7 => {
+                        op.Cmd = "sar"
+                    }
+                    */
+                    _ => {
+                        println!("XXX 0xC1 unhandled reg = {}", x.reg);
+                        self.fatal_error = true;
+                        Op::Unknown()
+                    }
+                };
+                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.src = Parameter::Imm8(self.read_u8());
             }
             0xC3 => {
                 // ret [near]
@@ -1810,7 +1885,7 @@ impl CPU {
                     }
                     // 7 => op.Cmd = "idiv"
                     _ => {
-                        println!("op F7 unknown reg={}", x.reg);
+                        println!("op F7 unknown reg={} at {:04X}:{:04X}", x.reg,self.sreg16[CS],self.ip);
                         self.fatal_error = true;
                     }
                 }
@@ -1886,13 +1961,11 @@ impl CPU {
                 }
             }
             _ => {
-                /*
                 println!("cpu: unknown op {:02X} at {:04X}:{:04X} ({} instructions executed)",
                          b,
                          self.sreg16[CS],
                          self.ip - 1,
                          self.instruction_count);
-                */
             }
         }
         op
@@ -2324,7 +2397,34 @@ impl CPU {
             }
         };
 
-        println!("XXX unhandled out_u8 to {:04X}, data {:02X}", dst, data);
+        match dst {
+            0x03C9 => {
+                // (VGA,MCGA) PEL data register
+                // Three consequtive writes in the order: red, green, blue.
+                // The internal DAC index is incremented each 3rd access.
+                if self.gpu.dac_color >= 2 {
+                    let i = self.gpu.dac_index as usize;
+                    self.gpu.palette[i].r = self.gpu.dac_current_palette[0];
+                    self.gpu.palette[i].g = self.gpu.dac_current_palette[1];
+                    self.gpu.palette[i].b = self.gpu.dac_current_palette[2];
+
+                    println!("DAC palette {} = {}, {}, {}",self.gpu.dac_index, self.gpu.palette[i].r,self.gpu.palette[i].g,self.gpu.palette[i].b);
+                    self.gpu.dac_color = 0;
+                    if self.gpu.dac_index == 255 {
+                        self.gpu.dac_index = 0; 
+                        println!("XXX dac palette index wrapped");
+                    } else {
+                        self.gpu.dac_index += 1;
+                    }
+                }
+                self.gpu.dac_current_palette[self.gpu.dac_color] = data;
+
+                self.gpu.dac_color += 1;
+            }
+            _ => {
+                println!("XXX unhandled out_u8 to {:04X}, data {:02X}", dst, data);
+            }
+        }
     }
 
     // read byte from I/O port
@@ -3019,6 +3119,20 @@ fn can_disassemble_arithmetic() {
 [085F:0105] 81C7C000   Add16    di, 0x00C0
 [085F:0109] 83C73A     Add16    di, byte +0x3A
 [085F:010C] 83C7C6     Add16    di, byte -0x3A
+",
+               res);
+}
+
+#[test]
+fn can_disassemble_shr() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xC1, 0xE8, 0x02, // shr ax,byte 0x2
+    ];
+    cpu.load_com(&code);
+    let res = cpu.disassemble_block(0x100, 1);
+
+    assert_eq!("[085F:0100] C1E802     Shr16    ax, 0x02
 ",
                res);
 }

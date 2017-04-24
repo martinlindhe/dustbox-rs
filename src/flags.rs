@@ -93,6 +93,10 @@ impl Flags {
     pub fn set_carry_u16(&mut self, res: usize) {
         self.carry = res & 0x10000 != 0;
     }
+    pub fn set_u16(&mut self, val: u16) {
+        println!("XXX impl flags.set_u16");
+    }
+
     // returns the FLAGS register
     pub fn u16(&self) -> u16 {
         let mut val = 0 as u16;
