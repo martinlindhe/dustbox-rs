@@ -164,6 +164,15 @@ pub fn handle(cpu: &mut CPU) {
         }
         0x10 => {
             match cpu.r16[AX].lo_u8() {
+                0x00 => {
+                    // VIDEO - SET SINGLE PALETTE REGISTER (PCjr,Tandy,EGA,MCGA,VGA)
+                    // BL = palette register number (00h-0Fh)
+                    //    = attribute register number (undocumented) (see #00017)
+                    // BH = color or attribute register value
+                    println!("XXX VIDEO - SET SINGLE PALETTE REGISTER, palette register number {:02X}, color = {:02X}",
+                        cpu.r16[BX].lo_u8(),
+                        cpu.r16[BX].hi_u8());
+                }
                 0x12 => {
                     // VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA)
                     //
@@ -173,7 +182,7 @@ pub fn handle(cpu: &mut CPU) {
                     // byte each of red, green and blue (0-63)
                     let count = cpu.r16[CX].val as usize;
                     let reg = cpu.r16[BX].val as usize;
-                    let mut offset = ((cpu.sreg16[ES] as usize) * 16) + cpu.r16[DX].val as usize;
+                    let mut offset = (cpu.sreg16[ES] as usize * 16) + cpu.r16[DX].val as usize;
                     println!("VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA) start={}, count={}",
                              reg,
                              count);
@@ -190,11 +199,9 @@ pub fn handle(cpu: &mut CPU) {
                         cpu.gpu.palette[i].b = ((b << 2) & 0xFF) as u8;
                         offset += 3;
                     }
-
                 }
                 _ => {
-                    println!("int10 error: unknown AL, AH={:02X}, AL={:02X}",
-                             cpu.r16[AX].hi_u8(),
+                    println!("int10 error: unknown AH 10, AL={:02X}",
                              cpu.r16[AX].lo_u8());
                 }
             }

@@ -15,9 +15,22 @@ impl fmt::Display for Instruction {
             Parameter::None() => write!(f, "{:?}", self.command),
             _ => {
                 let cmd = right_pad(&format!("{:?}", self.command), 9);
-                match self.params.src {
-                    Parameter::None() => write!(f, "{}{}", cmd, self.params.dst),
-                    _ => write!(f, "{}{}, {}", cmd, self.params.dst, self.params.src),
+
+                match self.params.src2 {
+                    Parameter::None() => {
+                        match self.params.src {
+                            Parameter::None() => write!(f, "{}{}", cmd, self.params.dst),
+                            _ => write!(f, "{}{}, {}", cmd, self.params.dst, self.params.src),
+                        }
+                    }
+                    _ => {
+                        write!(f,
+                               "{}{}, {}, {}",
+                               cmd,
+                               self.params.dst,
+                               self.params.src,
+                               self.params.src2)
+                    }
                 }
             }
         }
@@ -26,8 +39,9 @@ impl fmt::Display for Instruction {
 
 #[derive(Debug)]
 pub struct ParameterPair {
-    pub src: Parameter,
     pub dst: Parameter,
+    pub src: Parameter,
+    pub src2: Parameter,
 }
 
 #[derive(Debug)]
@@ -129,6 +143,7 @@ pub enum Op {
     Div16(),
     Hlt(),
     Idiv16(),
+    Imul16(),
     In8(),
     Inc8(),
     Inc16(),
@@ -158,6 +173,7 @@ pub enum Op {
     Movsb(),
     Movsw(),
     Mul8(),
+    Neg8(),
     Neg16(),
     Nop(),
     Not8(),
@@ -170,7 +186,9 @@ pub enum Op {
     Outsw(),
     Pop16(),
     Popf(),
+    Push8(),
     Push16(),
+    Pusha(),
     Pushf(),
     Rcl8(),
     Rcl16(),
@@ -178,6 +196,7 @@ pub enum Op {
     Rcr16(),
     RepMovsb(),
     RepMovsw(),
+    RepOutsb(),
     RepStosb(),
     RepStosw(),
     RepneScasb(),

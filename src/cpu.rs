@@ -140,7 +140,8 @@ impl CPU {
         match op.command {
             Op::Unknown() => {
                 self.fatal_error = true;
-                println!("unknown op, {} instructions executed", self.instruction_count);
+                println!("unknown op, {} instructions executed",
+                         self.instruction_count);
             }
             _ => self.execute(&op),
         }
@@ -172,7 +173,7 @@ impl CPU {
         let op = self.decode_instruction(Segment::Default());
         let length = self.ip - old_ip;
         self.ip = old_ip;
-        let offset = ((self.sreg16[CS] as usize) * 16) + old_ip as usize;
+        let offset = (self.sreg16[CS] as usize * 16) + old_ip as usize;
 
         InstructionInfo {
             segment: self.sreg16[CS] as usize,
@@ -386,6 +387,9 @@ impl CPU {
             Op::Idiv16() => {
                 println!("XXX impl idiv16");
             }
+            Op::Imul16() => {
+                println!("XXX impl imul16");
+            }
             Op::In8() => {
                 // Input from Port
                 // two parameters (dst=AL)
@@ -521,7 +525,16 @@ impl CPU {
                 println!("XXX imp les");
             }
             Op::Lodsb() => {
-                println!("XXX impl lodsb");
+                // no parameters
+                // Load byte at address DS:(E)SI into AL.
+                let offset = (self.sreg16[DS] as usize * 16) + (self.r16[SI].val as usize);
+                let val = self.peek_u8_at(offset);
+                self.r16[AX].set_lo(val); // AL =
+                if !self.flags.direction {
+                    self.r16[SI].val += 1;
+                } else {
+                    self.r16[SI].val -= 1;
+                }
             }
             Op::Lodsw() => {
                 println!("XXX impl lodsw");
@@ -562,6 +575,9 @@ impl CPU {
                 println!("XXX mul8 flags");
 
                 self.r16[AX].val = (res & 0xFFFF) as u16;
+            }
+            Op::Neg8() => {
+                println!("XXX impl neg8");
             }
             Op::Neg16() => {
                 println!("XXX impl neg16");
@@ -625,10 +641,35 @@ impl CPU {
                 let data = self.pop16();
                 self.flags.set_u16(data);
             }
+            Op::Push8() => {
+                // single parameter (dst)
+                let data = self.read_parameter_value(&op.params.dst) as u8;
+                self.push8(data);
+            }
             Op::Push16() => {
                 // single parameter (dst)
                 let data = self.read_parameter_value(&op.params.dst) as u16;
                 self.push16(data);
+            }
+            Op::Pusha() => {
+                // Push All General-Purpose Registers
+                let ax = self.r16[AX].val;
+                let cx = self.r16[CX].val;
+                let dx = self.r16[DX].val;
+                let bx = self.r16[BX].val;
+                let sp = self.r16[SP].val;
+                let bp = self.r16[BP].val;
+                let si = self.r16[SI].val;
+                let di = self.r16[DI].val;
+
+                self.push16(ax);
+                self.push16(cx);
+                self.push16(dx);
+                self.push16(bx);
+                self.push16(sp);
+                self.push16(bp);
+                self.push16(si);
+                self.push16(di);
             }
             Op::Pushf() => {
                 // push FLAGS register onto stack
@@ -660,8 +701,8 @@ impl CPU {
             }
             Op::RepMovsb() => {
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
-                let mut src = (self.sreg16[DS] as usize) * 16 + (self.r16[SI].val as usize);
-                let mut dst = (self.sreg16[ES] as usize) * 16 + (self.r16[DI].val as usize);
+                let mut src = (self.sreg16[DS] as usize * 16) + (self.r16[SI].val as usize);
+                let mut dst = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
                 let count = self.r16[CX].val as usize;
                 println!("rep movsb   src = {:04X}, dst = {:04X}, count = {:04X}",
                          src,
@@ -681,8 +722,8 @@ impl CPU {
             }
             Op::RepMovsw() => {
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
-                let mut src = (self.sreg16[DS] as usize) * 16 + (self.r16[SI].val as usize);
-                let mut dst = (self.sreg16[ES] as usize) * 16 + (self.r16[DI].val as usize);
+                let mut src = (self.sreg16[DS] as usize * 16) + (self.r16[SI].val as usize);
+                let mut dst = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
                 println!("rep movsw   src = {:04X}, dst = {:04X}, count = {:04X}",
                          src,
                          dst,
@@ -699,19 +740,23 @@ impl CPU {
                     }
                 }
             }
+            Op::RepOutsb() => {
+                println!("XXX impl rep outsb");
+            }
             Op::RepStosb() => {
                 // Fill (E)CX bytes at ES:[(E)DI] with AL.
 
                 let data = self.r16[AX].lo_u8(); // = AL
 
                 /*
-                println!("rep stosb   dst = {:04X}:{:04X}, count = {:04X}",
+                println!("rep stosb   dst = {:04X}:{:04X}, count = {:04X}, data = {:02X}",
                          self.sreg16[ES] as usize,
                          self.r16[DI].val as usize,
-                         self.r16[CX].val);
+                         self.r16[CX].val,
+                         data);
                 */
                 loop {
-                    let dst = (self.sreg16[ES] as usize) * 16 + (self.r16[DI].val as usize);
+                    let dst = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
                     self.write_u8(dst, data);
                     if !self.flags.direction {
                         self.r16[DI].val += 1;
@@ -726,7 +771,30 @@ impl CPU {
 
             }
             Op::RepStosw() => {
-                println!("XXX impl rep stos word");
+                // Fill (E)CX words at ES:[(E)DI] with AX.
+                // println!("XXX impl rep stos word");
+
+                let data = self.r16[AX].val; // = AX
+
+                println!("rep stosw   dst = {:04X}:{:04X}, count = {:04X}, data = {:04X}",
+                         self.sreg16[ES] as usize,
+                         self.r16[DI].val as usize,
+                         self.r16[CX].val,
+                         data);
+
+                loop {
+                    let dst = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
+                    self.write_u16(dst, data);
+                    if !self.flags.direction {
+                        self.r16[DI].val += 2;
+                    } else {
+                        self.r16[DI].val -= 2;
+                    }
+                    self.r16[CX].val -= 1;
+                    if self.r16[CX].val == 0 {
+                        break;
+                    }
+                }
             }
             Op::RepneScasb() => {
                 // Find AL, starting at ES:[(E)DI].
@@ -767,11 +835,7 @@ impl CPU {
                 // Integer Subtraction with Borrow
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
-                let cf = if self.flags.carry {
-                    1
-                } else {
-                    0
-                };
+                let cf = if self.flags.carry { 1 } else { 0 };
                 let res = (Wrapping(dst) - (Wrapping(src) + Wrapping(cf))).0;
 
                 // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
@@ -785,12 +849,12 @@ impl CPU {
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Shl8() => {
-                // two arguments
+                // two arguments    (alias: sal)
                 println!("XXX impl shl8");
                 // XXX flags
             }
             Op::Shl16() => {
-                // two arguments
+                // two arguments    (alias: sal)
                 println!("XXX impl shl16");
                 // XXX flags
             }
@@ -821,7 +885,7 @@ impl CPU {
             Op::Stosb() => {
                 // no parameters
                 // store AL at ES:(E)DI
-                let offset = (self.sreg16[ES] as usize) * 16 + (self.r16[DI].val as usize);
+                let offset = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
                 let data = self.r16[AX].lo_u8(); // = AL
                 self.write_u8(offset, data);
                 if !self.flags.direction {
@@ -831,7 +895,17 @@ impl CPU {
                 }
             }
             Op::Stosw() => {
-                println!("XXX impl stosw");
+                // no parameters
+                // store AX at address ES:(E)DI
+                let offset = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
+                let data = self.r16[AX].val;
+                self.write_u16(offset, data);
+                if !self.flags.direction {
+                    self.r16[DI].val += 2;
+                } else {
+                    self.r16[DI].val -= 2;
+                }
+
             }
             Op::Sub8() => {
                 // two parameters (dst=reg)
@@ -949,6 +1023,7 @@ impl CPU {
             params: ParameterPair {
                 dst: Parameter::None(),
                 src: Parameter::None(),
+                src2: Parameter::None(),
             },
         };
 
@@ -1062,7 +1137,7 @@ impl CPU {
                 op.params.dst = Parameter::SReg16(DS);
             }
             0x20 => {
-                // AND r/m8, r8
+                // and r/m8, r8
                 op.command = Op::And8();
                 op.params = self.rm8_r8(op.segment);
             }
@@ -1075,6 +1150,11 @@ impl CPU {
                 // and r8, r/m8
                 op.command = Op::And8();
                 op.params = self.r8_rm8(op.segment);
+            }
+            0x23 => {
+                // and r16, r/m16
+                op.command = Op::And16();
+                op.params = self.r16_rm16(op.segment);
             }
             0x24 => {
                 // and AL, imm8
@@ -1210,6 +1290,9 @@ impl CPU {
                 op.command = Op::Pop16();
                 op.params.dst = Parameter::Reg16((b & 7) as usize);
             }
+            0x60 => {
+                op.command = Op::Pusha();
+            }
             0x65 => {
                 // gs segment prefix
                 op = self.decode_instruction(Segment::GS());
@@ -1218,6 +1301,17 @@ impl CPU {
                 // push imm16
                 op.command = Op::Push16();
                 op.params.dst = Parameter::Imm16(self.read_u16());
+            }
+            0x69 => {
+                // imul r16, r/m16, imm16
+                op.command = Op::Imul16();
+                op.params = self.r16_rm16(op.segment);
+                op.params.src2 = Parameter::Imm16(self.read_u16());
+            }
+            0x6A => {
+                // push imm8
+                op.command = Op::Push8();
+                op.params.dst = Parameter::ImmS8(self.read_s8());
             }
             0x6E => {
                 // outs byte
@@ -1575,7 +1669,7 @@ impl CPU {
                 op.params.dst = Parameter::Reg16((b & 7) as usize);
                 op.params.src = Parameter::Imm16(self.read_u16());
             }
-            0xC1 => {
+            0xC0 => {
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     /*
@@ -1592,12 +1686,43 @@ impl CPU {
                         op.Cmd = "rcr"
                     }
                     4 => {
-                        op.Cmd = "shl" // alias: sal
+                        Op::Shl8()
                     }
                     */
-                    5 => {
-                        Op::Shr16()
-                    },
+                    5 => Op::Shr8(),
+                    /*
+                    7 => {
+                        op.Cmd = "sar"
+                    }
+                    */
+                    _ => {
+                        println!("XXX 0xC1 unhandled reg = {}", x.reg);
+                        self.fatal_error = true;
+                        Op::Unknown()
+                    }
+                };
+                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                op.params.src = Parameter::Imm8(self.read_u8());
+            }
+            0xC1 => {
+                let x = self.read_mod_reg_rm();
+                op.command = match x.reg {
+                    /*
+                    0 => {
+                        op.Cmd = "rol"
+                    }
+                    1 => {
+                        op.Cmd = "ror"
+                    }
+                    2 => {
+                        op.Cmd = "rcl"
+                    }
+                    3 => {
+                        op.Cmd = "rcr"
+                    }
+                    */
+                    4 => Op::Shl16(),
+                    5 => Op::Shr16(),
                     /*
                     7 => {
                         op.Cmd = "sar"
@@ -1668,7 +1793,7 @@ impl CPU {
                     1 => Op::Ror8(),
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
-                    4 => Op::Shl8(), // alias: sal
+                    4 => Op::Shl8(),
                     5 => Op::Shr8(),
                     // 7 => Op::Sar8(),
                     _ => {
@@ -1688,7 +1813,7 @@ impl CPU {
                     1 => Op::Ror16(),
                     2 => Op::Rcl16(),
                     3 => Op::Rcr16(),
-                    4 => Op::Shl16(), // alias: sal
+                    4 => Op::Shl16(),
                     5 => Op::Shr16(),
                     7 => Op::Sar16(),
                     _ => {
@@ -1708,7 +1833,7 @@ impl CPU {
                     //1 => Op::Ror8(),
                     //2 => Op::Rcl8(),
                     //3 => Op::Rcr8(),
-                    //4 => Op::Shl8(), // alias: sal
+                    //4 => Op::Shl8(),
                     5 => Op::Shr8(),
                     // 7 => Op::Sar8(),
                     _ => {
@@ -1818,6 +1943,11 @@ impl CPU {
                 // rep
                 let b = self.read_u8();
                 match b {
+                    0x6E => {
+                        // XXXX intel dec-2016 manual says "REP OUTS DX, r/m8" which seems wrong?
+                        // rep outs byte
+                        op.command = Op::RepOutsb();
+                    }
                     0xA4 => {
                         // rep movs byte
                         op.command = Op::RepMovsb();
@@ -1860,7 +1990,10 @@ impl CPU {
                         // not r/m8
                         op.command = Op::Not8();
                     }
-                    // 3 => op.Cmd = "neg"
+                    3 => {
+                        // neg r/m8
+                        op.command = Op::Neg8();
+                    }
                     4 => {
                         // mul r/m8
                         op.command = Op::Mul8();
@@ -1909,7 +2042,10 @@ impl CPU {
                         op.command = Op::Idiv16();
                     }
                     _ => {
-                        println!("op F7 unknown reg={} at {:04X}:{:04X}", x.reg,self.sreg16[CS],self.ip);
+                        println!("op F7 unknown reg={} at {:04X}:{:04X}",
+                                 x.reg,
+                                 self.sreg16[CS],
+                                 self.ip);
                         self.fatal_error = true;
                     }
                 }
@@ -2001,6 +2137,7 @@ impl CPU {
         ParameterPair {
             dst: Parameter::Reg8(x.reg as usize),
             src: self.rm8(seg, x.rm, x.md),
+            src2: Parameter::None(),
         }
     }
 
@@ -2010,6 +2147,7 @@ impl CPU {
         ParameterPair {
             dst: self.rm8(seg, x.rm, x.md),
             src: Parameter::Reg8(x.reg as usize),
+            src2: Parameter::None(),
         }
     }
 
@@ -2019,6 +2157,7 @@ impl CPU {
         ParameterPair {
             dst: Parameter::SReg16(x.reg as usize),
             src: self.rm16(seg, x.rm, x.md),
+            src2: Parameter::None(),
         }
     }
 
@@ -2028,6 +2167,7 @@ impl CPU {
         ParameterPair {
             dst: self.rm16(seg, x.rm, x.md),
             src: Parameter::SReg16(x.reg as usize),
+            src2: Parameter::None(),
         }
     }
 
@@ -2037,6 +2177,7 @@ impl CPU {
         ParameterPair {
             dst: Parameter::Reg16(x.reg as usize),
             src: self.rm16(seg, x.rm, x.md),
+            src2: Parameter::None(),
         }
     }
 
@@ -2046,6 +2187,7 @@ impl CPU {
         ParameterPair {
             dst: self.rm16(seg, x.rm, x.md),
             src: Parameter::Reg16(x.reg as usize),
+            src2: Parameter::None(),
         }
     }
 
@@ -2058,6 +2200,7 @@ impl CPU {
         ParameterPair {
             dst: Parameter::Reg16(x.reg as usize),
             src: self.rm16(seg, x.rm, x.md),
+            src2: Parameter::None(),
         }
     }
 
@@ -2103,9 +2246,21 @@ impl CPU {
         }
     }
 
+    fn push8(&mut self, data: u8) {
+        self.r16[SP].val -= 1;
+        let offset = (self.sreg16[SS] as usize * 16) + (self.r16[SP].val as usize);
+        println!("push8 {:02X}  to {:04X}:{:04X}  =>  {:06X}       instr {}",
+                 data,
+                 self.sreg16[SS],
+                 self.r16[SP].val,
+                 offset,
+                 self.instruction_count);
+        self.write_u8(offset, data);
+    }
+
     fn push16(&mut self, data: u16) {
         self.r16[SP].val -= 2;
-        let offset = (self.sreg16[SS] as usize) * 16 + (self.r16[SP].val as usize);
+        let offset = (self.sreg16[SS] as usize * 16) + (self.r16[SP].val as usize);
         /*
         println!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}       instr {}",
                  data,
@@ -2118,7 +2273,7 @@ impl CPU {
     }
 
     fn pop16(&mut self) -> u16 {
-        let offset = (self.sreg16[SS] as usize) * 16 + (self.r16[SP].val as usize);
+        let offset = (self.sreg16[SS] as usize * 16) + (self.r16[SP].val as usize);
         let data = self.peek_u16_at(offset);
         /*
         println!("pop16 {:04X}  from {:04X}:{:04X}  =>  {:06X}       instr {}",
@@ -2142,7 +2297,7 @@ impl CPU {
     }
 
     pub fn get_offset(&self) -> usize {
-        ((self.sreg16[CS] as usize) * 16) + self.ip as usize
+        (self.sreg16[CS] as usize * 16) + self.ip as usize
     }
 
     fn read_u8(&mut self) -> u8 {
@@ -2424,8 +2579,8 @@ impl CPU {
         match dst {
             0x03C8 => {
                 // (VGA,MCGA) PEL address register
-		        // Sets DAC in write mode and assign start of color register
-		        // index (0..255) for following write accesses to 3C9h.
+                // Sets DAC in write mode and assign start of color register
+                // index (0..255) for following write accesses to 3C9h.
                 // Next access to 03C8h will stop pending mode immediatly.
                 self.gpu.dac_index = data;
                 println!("dac index = {}", data);
@@ -2440,10 +2595,14 @@ impl CPU {
                     self.gpu.palette[i].g = self.gpu.dac_current_palette[1];
                     self.gpu.palette[i].b = self.gpu.dac_current_palette[2];
 
-                    println!("DAC palette {} = {}, {}, {}",self.gpu.dac_index, self.gpu.palette[i].r,self.gpu.palette[i].g,self.gpu.palette[i].b);
+                    println!("DAC palette {} = {}, {}, {}",
+                             self.gpu.dac_index,
+                             self.gpu.palette[i].r,
+                             self.gpu.palette[i].g,
+                             self.gpu.palette[i].b);
                     self.gpu.dac_color = 0;
                     if self.gpu.dac_index == 255 {
-                        self.gpu.dac_index = 0; 
+                        self.gpu.dac_index = 0;
                         println!("XXX dac palette index wrapped");
                     } else {
                         self.gpu.dac_index += 1;
@@ -2830,7 +2989,7 @@ fn can_execute_rep() {
 
     cpu.execute_instruction(); // rep movsb
     assert_eq!(0x0, cpu.r16[CX].val);
-    let min = ((cpu.sreg16[CS] as usize) * 16) + 0x100;
+    let min = (cpu.sreg16[CS] as usize * 16) + 0x100;
     let max = min + 5;
     for i in min..max {
         assert_eq!(cpu.memory.memory[i], cpu.memory.memory[i + 0x100]);
@@ -3164,6 +3323,20 @@ fn can_disassemble_shr() {
     let res = cpu.disassemble_block(0x100, 1);
 
     assert_eq!("[085F:0100] C1E802     Shr16    ax, 0x02
+",
+               res);
+}
+
+#[test]
+fn can_disassemble_imul() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0x69, 0xF8, 0x40, 0x01, // imul di,ax,word 0x140
+    ];
+    cpu.load_com(&code);
+    let res = cpu.disassemble_block(0x100, 1);
+
+    assert_eq!("[085F:0100] 69F84001   Imul16   di, ax, 0x0140
 ",
                res);
 }
