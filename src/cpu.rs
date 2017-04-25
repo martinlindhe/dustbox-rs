@@ -884,11 +884,11 @@ impl CPU {
                 loop {
                     let dst = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
                     self.write_u8(dst, data);
-                    if !self.flags.direction {
-                        self.r16[DI].val += 1;
+                    self.r16[DI].val = if !self.flags.direction {
+                        (Wrapping(self.r16[DI].val) + Wrapping(1)).0
                     } else {
-                        self.r16[DI].val -= 1;
-                    }
+                        (Wrapping(self.r16[DI].val) - Wrapping(1)).0
+                    };
 
                     let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
                     self.r16[CX].val = res;
@@ -1711,11 +1711,9 @@ impl CPU {
                     5 => {
                         op.command = Op::Sub16();
                     }
-                    /*
                     6 => {
                         op.command = Op::Xor16();
                     }
-                    */
                     7 => {
                         op.command = Op::Cmp16();
                     }
