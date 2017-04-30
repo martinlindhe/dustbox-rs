@@ -8,9 +8,7 @@ difference = "1.0"
 colog = { git = "https://github.com/chrivers/rust-colog" }
 log = "0.3"
 time = "0.1"
-image = "0.12"
 rand = "0.3"
-#find_folder = "0.3"
 
 # orbtk deps:
 orbtk = "0.2"
