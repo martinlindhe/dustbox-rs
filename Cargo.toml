@@ -9,6 +9,7 @@ colog = { git = "https://github.com/chrivers/rust-colog" }
 log = "0.3"
 time = "0.1"
 rand = "0.3"
+image = "0.12"
 
 # orbtk deps:
 orbtk = "0.2"
