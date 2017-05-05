@@ -262,7 +262,8 @@ impl CPU {
                 let dst = self.read_parameter_value(&op.params.dst);
                 let res = dst & src;
 
-                // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result.
+                // The OF and CF flags are cleared; the SF, ZF, and PF flags
+                // are set according to the result.
                 self.flags.overflow = false;
                 self.flags.carry = false;
                 self.flags.set_sign_u8(res);
@@ -276,7 +277,8 @@ impl CPU {
                 let dst = self.read_parameter_value(&op.params.dst);
                 let res = dst & src;
 
-                // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result.
+                // The OF and CF flags are cleared; the SF, ZF, and PF flags
+                // are set according to the result.
                 self.flags.overflow = false;
                 self.flags.carry = false;
                 self.flags.set_sign_u16(res);
@@ -707,7 +709,8 @@ impl CPU {
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
                 let res = dst | src;
-                // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result.
+                // The OF and CF flags are cleared; the SF, ZF, and PF flags
+                // are set according to the result.
                 self.flags.overflow = false;
                 self.flags.carry = false;
                 self.flags.set_sign_u8(res);
@@ -720,7 +723,8 @@ impl CPU {
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
                 let res = dst | src;
-                // The OF and CF flags are cleared; the SF, ZF, and PF flags are set according to the result.
+                // The OF and CF flags are cleared; the SF, ZF, and PF flags
+                // are set according to the result.
                 self.flags.overflow = false;
                 self.flags.carry = false;
                 self.flags.set_sign_u16(res);
@@ -3372,7 +3376,8 @@ fn can_execute_and() {
     assert_eq!(0x10, cpu.r16[AX].hi_u8());
     assert_eq!(false, cpu.flags.sign);
     assert_eq!(false, cpu.flags.zero);
-    //assert_eq!(false, cpu.flags.parity); // XXX dosbox set it to false. need proper debugging with bochs
+    // XXX dosbox set it to false. need proper debugging with bochs
+    //assert_eq!(false, cpu.flags.parity);
 }
 
 #[test]

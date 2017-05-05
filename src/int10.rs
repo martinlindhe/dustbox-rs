@@ -169,9 +169,9 @@ pub fn handle(cpu: &mut CPU) {
                     // BL = palette register number (00h-0Fh)
                     //    = attribute register number (undocumented) (see #00017)
                     // BH = color or attribute register value
-                    println!("XXX VIDEO - SET SINGLE PALETTE REGISTER, palette register number {:02X}, color = {:02X}",
-                        cpu.r16[BX].lo_u8(),
-                        cpu.r16[BX].hi_u8());
+                    println!("XXX VIDEO - SET SINGLE PALETTE REGISTER {:02X}, color = {:02X}",
+                             cpu.r16[BX].lo_u8(),
+                             cpu.r16[BX].hi_u8());
                 }
                 0x12 => {
                     // VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA)
@@ -201,8 +201,7 @@ pub fn handle(cpu: &mut CPU) {
                     }
                 }
                 _ => {
-                    println!("int10 error: unknown AH 10, AL={:02X}",
-                             cpu.r16[AX].lo_u8());
+                    println!("int10 error: unknown AH 10, AL={:02X}", cpu.r16[AX].lo_u8());
                 }
             }
         }

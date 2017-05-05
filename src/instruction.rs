@@ -74,7 +74,11 @@ impl fmt::Display for Parameter {
                 write!(f,
                        "byte {}0x{:02X}",
                        if imm < 0 { "-" } else { "+" },
-                       if imm < 0 { (Wrapping(0)-Wrapping(imm)).0 } else { imm })
+                       if imm < 0 {
+                           (Wrapping(0) - Wrapping(imm)).0
+                       } else {
+                           imm
+                       })
             }
             Parameter::Ptr8(seg, v) => write!(f, "byte [{}0x{:04X}]", seg, v),
             Parameter::Ptr16(seg, v) => write!(f, "word [{}0x{:04X}]", seg, v),
@@ -86,7 +90,11 @@ impl fmt::Display for Parameter {
                        seg,
                        amode(v as u8),
                        if imm < 0 { "-" } else { "+" },
-                       if imm < 0 { (Wrapping(0)-Wrapping(imm)).0 } else { imm })
+                       if imm < 0 {
+                           (Wrapping(0) - Wrapping(imm)).0
+                       } else {
+                           imm
+                       })
             }
             Parameter::Ptr8AmodeS16(seg, v, imm) => {
                 write!(f,
@@ -94,7 +102,11 @@ impl fmt::Display for Parameter {
                        seg,
                        amode(v as u8),
                        if imm < 0 { "-" } else { "+" },
-                       if imm < 0 { (Wrapping(0)-Wrapping(imm)).0 } else { imm })
+                       if imm < 0 {
+                           (Wrapping(0) - Wrapping(imm)).0
+                       } else {
+                           imm
+                       })
             }
             Parameter::Ptr16Amode(seg, v) => write!(f, "word [{}{}]", seg, amode(v as u8)),
             Parameter::Ptr16AmodeS8(seg, v, imm) => {
@@ -103,7 +115,11 @@ impl fmt::Display for Parameter {
                        seg,
                        amode(v as u8),
                        if imm < 0 { "-" } else { "+" },
-                       if imm < 0 { (Wrapping(0)-Wrapping(imm)).0 } else { imm })
+                       if imm < 0 {
+                           (Wrapping(0) - Wrapping(imm)).0
+                       } else {
+                           imm
+                       })
             }
             Parameter::Ptr16AmodeS16(seg, v, imm) => {
                 write!(f,
@@ -111,7 +127,11 @@ impl fmt::Display for Parameter {
                        seg,
                        amode(v as u8),
                        if imm < 0 { "-" } else { "+" },
-                       if imm < 0 { (Wrapping(0)-Wrapping(imm)).0 } else { imm })
+                       if imm < 0 {
+                           (Wrapping(0) - Wrapping(imm)).0
+                       } else {
+                           imm
+                       })
             }
             Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
             Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
