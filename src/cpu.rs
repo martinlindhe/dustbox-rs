@@ -3601,7 +3601,7 @@ fn can_disassemble_lea() {
     cpu.load_com(&code);
     let res = cpu.disassemble_block(0x100, 1);
 
-    assert_eq!("x
+    assert_eq!("[085F:0100] 8D4780     Lea16    ax, word [bx-0x80]
 ",
                res);
 }
