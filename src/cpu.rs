@@ -3685,21 +3685,21 @@ fn can_disassemble_shrd() {
 }
 
 #[test]
-fn can_disassemble_je_rel() {
+fn can_disassemble_jz_rel() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
-        0x74, 0x04, // je 0x106
-        0x74, 0xFE, // je 0x102
-        0x74, 0x00, // je 0x106
-        0x74, 0xFA, // je 0x102
+        0x74, 0x04, // jz 0x106
+        0x74, 0xFE, // jz 0x102
+        0x74, 0x00, // jz 0x106
+        0x74, 0xFA, // jz 0x102
     ];
     cpu.load_com(&code);
     let res = cpu.disassemble_block(0x100, 4);
 
-    assert_eq!("[085F:0100] 7404       Je       0x0106
-[085F:0102] 74FE       Je       0x0102
-[085F:0104] 7400       Je       0x0106
-[085F:0106] 74FA       Je       0x0102
+    assert_eq!("[085F:0100] 7404       Jz       0x0106
+[085F:0102] 74FE       Jz       0x0102
+[085F:0104] 7400       Jz       0x0106
+[085F:0106] 74FA       Jz       0x0102
 ",
                res);
 }
