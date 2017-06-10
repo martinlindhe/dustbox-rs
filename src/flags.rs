@@ -94,7 +94,7 @@ impl Flags {
         self.carry = res & 0x10000 != 0;
     }
     pub fn set_u16(&mut self, val: u16) {
-        println!("XXX impl flags.set_u16");
+        println!("XXX impl flags.set_u16 = {:04X}", val);
     }
 
     // returns the FLAGS register
@@ -142,3 +142,4 @@ impl Flags {
         val
     }
 }
+
