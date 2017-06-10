@@ -5,7 +5,7 @@ authors = ["name"]
 
 [dependencies]
 difference = "1.0"
-colog = { git = "https://github.com/chrivers/rust-colog" }
+colog = "0.1"
 log = "0.3"
 time = "0.1"
 rand = "0.3"
