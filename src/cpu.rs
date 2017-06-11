@@ -626,7 +626,7 @@ impl CPU {
             }
             Op::Lodsb() => {
                 // no arguments
-                // Load byte at address DS:(E)SI into AL.
+                // For legacy mode, load byte at address DS:(E)SI into AL.
                 let offset = (self.sreg16[DS] as usize * 16) + (self.r16[SI].val as usize);
                 let val = self.peek_u8_at(offset);
                 self.r16[AX].set_lo(val); // AL =
@@ -637,7 +637,16 @@ impl CPU {
                 };
             }
             Op::Lodsw() => {
-                println!("XXX impl lodsw");
+                // no arguments
+                // For legacy mode, Load word at address DS:(E)SI into AX.
+                let offset = (self.sreg16[DS] as usize * 16) + (self.r16[SI].val as usize);
+                let val = self.peek_u16_at(offset);
+                self.r16[AX].val = val;
+                self.r16[SI].val = if !self.flags.direction {
+                    (Wrapping(self.r16[SI].val) + Wrapping(2)).0
+                } else {
+                    (Wrapping(self.r16[SI].val) - Wrapping(2)).0
+                };
             }
             Op::Loop() => {
                 let dst = self.read_parameter_value(&op.params.dst) as u16;
