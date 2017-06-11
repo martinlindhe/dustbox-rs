@@ -861,7 +861,7 @@ impl CPU {
                 // The OF flag is affected only for single-bit rotates; it is undefined
                 // for multi-bit rotates. The SF, ZF, AF, and PF flags are not affected.
                 let dst = self.read_parameter_value(&op.params.dst);
-                let shift = self.read_parameter_value(&op.params.src);
+                let count = self.read_parameter_value(&op.params.src);
 
                 // shift least-significant bit into the CF flag.
                 let new_carry = (dst & 1) != 0;
@@ -870,10 +870,10 @@ impl CPU {
                 } else {
                     0
                 };
-                let res = msb | (dst >> shift);
+                let res = msb | (dst >> count);
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
                 self.flags.carry = new_carry;
-                if shift == 1 {
+                if count  == 1 {
                     println!("XXX rcr8 OF flag");
                     // IF (COUNT & COUNTMASK) = 1
                     // THEN OF ← MSB(DEST) XOR CF;
@@ -1023,7 +1023,27 @@ impl CPU {
                 println!("XXX impl sar8");
             }
             Op::Sar16() => {
-                println!("XXX impl sar16");
+                // Signed divide* r/m8 by 2, imm8 times.
+                // two arguments
+
+                let dst = self.read_parameter_value(&op.params.dst);
+                let count = self.read_parameter_value(&op.params.src);
+
+                let res = dst >> count;
+                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+
+                // The CF flag contains the value of the last bit shifted out of the destination operand.
+                // The OF flag is affected only for 1-bit shifts; otherwise, it is undefined.
+                // The SF, ZF, and PF flags are set according to the result.
+                // If the count is 0, the flags are not affected. For a non-zero count, the AF flag is undefined.
+                self.flags.carry = (dst & 1) != 0;
+                if count == 1 {
+                    self.flags.overflow = false;
+                }
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_parity(res);
+                // XXX aux flag ?
             }
             Op::Sbb8() => {
                 // Integer Subtraction with Borrow
@@ -1072,6 +1092,7 @@ impl CPU {
                 // XXX flags
             }
             Op::Shr8() => {
+                // Unsigned divide r/m8 by 2, `src` times.
                 // two arguments
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -3437,8 +3458,7 @@ fn can_execute_and() {
     assert_eq!(0x10, cpu.r16[AX].hi_u8());
     assert_eq!(false, cpu.flags.sign);
     assert_eq!(false, cpu.flags.zero);
-    // XXX dosbox set it to false. need proper debugging with bochs
-    //assert_eq!(false, cpu.flags.parity);
+    assert_eq!(false, cpu.flags.parity);
 }
 
 #[test]
@@ -3581,7 +3601,7 @@ fn can_execute_dec() {
     cpu.execute_instruction();
     assert_eq!(0x1FF, cpu.r16[BP].val);
     assert_eq!(false, cpu.flags.sign);
-    // assert_eq!(true, cpu.flags.parity); // XXX unsure. set in dosbox
+    assert_eq!(true, cpu.flags.parity);
 }
 
 #[test]
@@ -3610,7 +3630,7 @@ fn can_execute_neg() {
     assert_eq!(true, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
     assert_eq!(true, cpu.flags.auxiliary_carry);
-    // assert_eq!(true, cpu.flags.parity);  // XXX dosbox = true
+    assert_eq!(true, cpu.flags.parity);
 }
 
 #[test]
@@ -3671,7 +3691,29 @@ let mut cpu = CPU::new();
     assert_eq!(0x1F,  cpu.r16[CX].lo_u8());
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(false, cpu.flags.overflow); // XXX unsure
+}
 
+
+#[test]
+fn can_execute_sar() {
+let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0xF5, 0x05, // mov ax,0x5f5
+        0xC1, 0xF8, 0x09, // sar ax,byte 0x9
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    assert_eq!(0x05F5, cpu.r16[AX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x0002,  cpu.r16[AX].val);
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+    // assert_eq!(true, cpu.flags.auxiliary_carry); // is true in dosbox, undefined in intel docs for non-zero count
+    assert_eq!(false, cpu.flags.parity);
 }
 
 #[test]

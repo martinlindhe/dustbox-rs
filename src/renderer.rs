@@ -57,10 +57,10 @@ pub fn main() {
 
             let mut dbg = app.lock().unwrap();
             // XXX have separate "step into" & "step over" buttons
-            for _ in 0..500000 {
-               dbg.step_into();
-            }
-            //dbg.step_over();
+            //for _ in 0..500000 {
+            //   dbg.step_into();
+            //}
+            dbg.step_over();
             println!("Executed {} instructions", dbg.cpu.instruction_count);
 
             // update disasm
