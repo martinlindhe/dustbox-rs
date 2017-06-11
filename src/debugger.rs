@@ -12,8 +12,7 @@ impl Debugger {
         let mut dbg = Debugger { cpu: CPU::new() };
         // XXX for quick testing while building the ui
         // let name = "../dos-software-decoding/samples/bar/bar.com";
-        //let name = "../dos-software-decoding/demo-256/plasmexp/debug/plasmexp.com";
-        let name = "../dos-software-decoding/samples/bar/bar.com";
+        let name = "../dos-software-decoding/demo-256/optimize/debug/optimize.com";
         dbg.load_binary(name);
         dbg
     }
@@ -56,7 +55,9 @@ impl Debugger {
                 break;
             }
         }
-        println!("Step-over to {:04X} done, executed {} instructions", dst_ip, cnt);
+        println!("Step-over to {:04X} done, executed {} instructions",
+                 dst_ip,
+                 cnt);
     }
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
