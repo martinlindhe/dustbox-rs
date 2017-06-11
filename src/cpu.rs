@@ -2889,22 +2889,18 @@ impl CPU {
                     self.gpu.palette[i].r = self.gpu.dac_current_palette[0];
                     self.gpu.palette[i].g = self.gpu.dac_current_palette[1];
                     self.gpu.palette[i].b = self.gpu.dac_current_palette[2];
-                    /*
+
                     println!("DAC palette {} = {}, {}, {}",
                              self.gpu.dac_index,
                              self.gpu.palette[i].r,
                              self.gpu.palette[i].g,
                              self.gpu.palette[i].b);
-                    */
+
                     self.gpu.dac_color = 0;
-                    if self.gpu.dac_index == 255 {
-                        self.gpu.dac_index = 0;
-                        println!("XXX dac palette index wrapped");
-                    } else {
-                        self.gpu.dac_index += 1;
-                    }
+                    self.gpu.dac_index = (Wrapping(self.gpu.dac_index) + Wrapping(1)).0;
                 }
-                self.gpu.dac_current_palette[self.gpu.dac_color] = data;
+                // map 6-bit color into 8 bits
+                self.gpu.dac_current_palette[self.gpu.dac_color] = data << 2;
                 self.gpu.dac_color += 1;
             }
             _ => {
@@ -3530,6 +3526,33 @@ fn can_execute_shr() {
 
     cpu.execute_instruction();
     assert_eq!(0x07, cpu.r16[DX].hi_u8()); // == 7.5
+}
+
+#[test]
+fn can_execute_dec() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xBD, 0x00, 0x02, // mov bp,0x200
+        0x4D,             // dec bp
+    ];
+
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    assert_eq!(0x200, cpu.r16[BP].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x1FF, cpu.r16[BP].val);
+    // XXX flags. P1 got set in dosbox.
+
+//    jns fails afterwards.
+
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(true, cpu.flags.parity);
+
+    //C1 Z0 S0 O0 A1 P0 D0 I0 T0
+    //C1 Z0 S0 O0 A1 P1 D0 I0 T0
+
 }
 
 #[test]

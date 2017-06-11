@@ -56,11 +56,11 @@ pub fn main() {
         .on_click(move |_button: &Button, _point: Point| {
 
             let mut dbg = app.lock().unwrap();
-            // XXX
-            for _ in 0..30000 {
-                dbg.step_into();
+            // XXX have separate "step into" & "step over" buttons
+            for _ in 0..500000 {
+               dbg.step_into();
             }
-            //            dbg.step_over();
+            //dbg.step_over();
             println!("Executed {} instructions", dbg.cpu.instruction_count);
 
             // update disasm
