@@ -854,13 +854,32 @@ impl CPU {
             }
             Op::Rcr8() => {
                 // two arguments
-                // rotate 9 bits `src` times
+                // rotate 9 bits right `src` times
 
                 // The RCR instruction shifts the CF flag into the most-significant
                 // bit and shifts the least-significant bit into the CF flag.
                 // The OF flag is affected only for single-bit rotates; it is undefined
                 // for multi-bit rotates. The SF, ZF, AF, and PF flags are not affected.
-                println!("XXX impl rcr8");
+                let dst = self.read_parameter_value(&op.params.dst);
+                let shift = self.read_parameter_value(&op.params.src);
+
+                // shift least-significant bit into the CF flag.
+                let new_carry = (dst & 1) != 0;
+                let msb = if self.flags.carry {
+                    0x80
+                } else {
+                    0
+                };
+                let res = msb | (dst >> shift);
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
+                self.flags.carry = new_carry;
+                if shift == 1 {
+                    println!("XXX rcr8 OF flag");
+                    // IF (COUNT & COUNTMASK) = 1
+                    // THEN OF ← MSB(DEST) XOR CF;
+                    // ELSE OF is undefined;
+                    // FI
+                }
             }
             Op::Rcr16() => {
                 println!("XXX impl rcr16");
@@ -3634,6 +3653,25 @@ fn can_execute_movzx() {
 
     cpu.execute_instruction();
     assert_eq!(0xFFFF, cpu.r16[BX].val);
+}
+
+#[test]
+fn can_execute_rcr() {
+let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB1, 0x3E, // mov cl,0x3e     ; 0x3e     = 0b00111110
+        0xD0, 0xD9, // rcr cl,1        ; cl = 0x1f, 0b00011111
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    assert_eq!(0x3E, cpu.r16[CX].lo_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x1F,  cpu.r16[CX].lo_u8());
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.overflow); // XXX unsure
+
 }
 
 #[test]
