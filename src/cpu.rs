@@ -107,29 +107,29 @@ impl CPU {
     pub fn print_registers(&mut self) -> String {
         let mut res = String::new();
 
-        res += format!("AX:{:04X}  SP:{:04X}  CS:{:04X}  IP:{:04X}\n",
+        res += format!("AX:{:04X}  SI:{:04X}  DS:{:04X}  IP:{:04X}\n",
                        self.r16[AX].val,
-                       self.r16[SP].val,
-                       self.sreg16[CS],
+                       self.r16[SI].val,
+                       self.sreg16[DS],
                        self.ip)
                 .as_ref();
-        res += format!("BX:{:04X}  BP:{:04X}  DS:{:04X}  fl:{:04X}\n",
+        res += format!("BX:{:04X}  DI:{:04X}  CS:{:04X}  fl:{:04X}\n",
                        self.r16[BX].val,
-                       self.r16[BP].val,
-                       self.sreg16[DS],
+                       self.r16[DI].val,
+                       self.sreg16[CS],
                        self.flags.u16())
                 .as_ref();
-        res += format!("CX:{:04X}  SI:{:04X}  ES:{:04X}  FS:{:04X}\n",
+        res += format!("CX:{:04X}  BP:{:04X}  ES:{:04X}  GS:{:04X}\n",
                        self.r16[CX].val,
-                       self.r16[SI].val,
+                       self.r16[BP].val,
                        self.sreg16[ES],
-                       self.sreg16[FS])
-                .as_ref();
-        res += format!("DX:{:04X}  DI:{:04X}  SS:{:04X}  GS:{:04X}",
-                       self.r16[DX].val,
-                       self.r16[DI].val,
-                       self.sreg16[SS],
                        self.sreg16[GS])
+                .as_ref();
+        res += format!("DX:{:04X}  SP:{:04X}  FS:{:04X}  SS:{:04X}",
+                       self.r16[DX].val,
+                       self.r16[SP].val,
+                       self.sreg16[FS],
+                       self.sreg16[SS])
                 .as_ref();
 
         res
@@ -361,6 +361,11 @@ impl CPU {
             Op::Daa() => {
                 // Decimal Adjust AL after Addition
                 println!("XXX impl daa");
+                // XXX there is examples in manual that can be made into tests
+            }
+            Op::Das() => {
+                // Decimal Adjust AL after Subtraction
+                println!("XXX impl das");
                 // XXX there is examples in manual that can be made into tests
             }
             Op::Dec8() => {
@@ -1426,6 +1431,9 @@ impl CPU {
             0x2E => {
                 // XXX if next op is a Jcc, then this is a "branch not taken" hint
                 op = self.decode_instruction(Segment::CS());
+            }
+            0x2F => {
+                op.command = Op::Das();
             }
             0x30 => {
                 // xor r/m8, r8

@@ -38,10 +38,7 @@ pub fn main() {
     let reg_text = app.lock().unwrap().cpu.print_registers();
 
     let disasm = Label::new();
-    disasm
-        .position(x, y)
-        .size(450, 20 * 20)
-        .text(disasm_text);
+    disasm.position(x, y).size(450, 20 * 20).text(disasm_text);
     window.add(&disasm);
 
     let regs = Label::new();
@@ -60,9 +57,10 @@ pub fn main() {
 
             let mut dbg = app.lock().unwrap();
             // XXX
-            for _ in 0..30000 {
-                dbg.step_into();
-            }
+            //for _ in 0..30000 {
+            //dbg.step_into();
+            dbg.step_over();
+            //}
             println!("Executed {} instructions", dbg.cpu.instruction_count);
 
             // update disasm
@@ -98,3 +96,4 @@ pub fn main() {
     window.exec();
 
 }
+

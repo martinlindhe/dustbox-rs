@@ -161,6 +161,7 @@ pub enum Op {
     Cmp16(),
     Cwd(),
     Daa(),
+    Das(),
     Dec8(),
     Dec16(),
     Div8(),

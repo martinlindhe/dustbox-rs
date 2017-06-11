@@ -12,7 +12,7 @@ impl Debugger {
         let mut dbg = Debugger { cpu: CPU::new() };
         // XXX for quick testing while building the ui
         // let name = "../dos-software-decoding/samples/bar/bar.com";
-        let name = "../dos-software-decoding/demo-256/fire2/fire2.com";
+        let name = "../dos-software-decoding/demo-256/plasmexp/debug/plasmexp.com";
         dbg.load_binary(name);
         dbg
     }
@@ -34,7 +34,28 @@ impl Debugger {
             return;
         }
         self.cpu.execute_instruction();
-        println!("{}", self.cpu.disasm_instruction().pretty_string());
+        //println!("{}", self.cpu.disasm_instruction().pretty_string());
+    }
+
+    pub fn step_over(&mut self) {
+        if self.cpu.fatal_error {
+            // println!("XXX fatal error, not executing more");
+            return;
+        }
+        let op = self.cpu.disasm_instruction();
+
+        let dst_ip = self.cpu.ip + op.length as u16;
+        println!("Step-over running to {:04X}", dst_ip);
+
+        let mut cnt = 0;
+        loop {
+            cnt += 1;
+            self.cpu.execute_instruction();
+            if self.cpu.ip == dst_ip {
+                break;
+            }
+        }
+        println!("Step-over to {:04X} done, executed {} instructions", dst_ip, cnt);
     }
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
@@ -228,3 +249,4 @@ fn parse_number_string(s: &str) -> usize {
         s.parse::<usize>().unwrap()
     }
 }
+
