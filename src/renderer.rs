@@ -57,10 +57,10 @@ pub fn main() {
 
             let mut dbg = app.lock().unwrap();
             // XXX
-            //for _ in 0..30000 {
-            //dbg.step_into();
-            dbg.step_over();
-            //}
+            for _ in 0..30000 {
+                dbg.step_into();
+            }
+            //            dbg.step_over();
             println!("Executed {} instructions", dbg.cpu.instruction_count);
 
             // update disasm

@@ -45,6 +45,26 @@ pub struct ParameterPair {
     pub src2: Parameter,
 }
 
+impl ParameterPair {
+    // returns the number of parameters
+    pub fn count(&self) -> usize {
+        return match self.dst {
+            Parameter::None() => 0,
+            _ => {
+                match self.src {
+                    Parameter::None() => 1,
+                    _ => {
+                        match self.src2 {
+                            Parameter::None() => 2,
+                            _ => 3,
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Parameter {
     Imm8(u8),

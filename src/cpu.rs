@@ -93,7 +93,7 @@ impl CPU {
         self.ip = 0x100;
         let min = self.get_offset();
         let max = min + data.len();
-        println!("loading rom to {:06X}..{:06X}", min, max);
+        // println!("loading rom to {:06X}..{:06X}", min, max);
         self.rom_base = min;
 
         self.memory.memory[min..max].copy_from_slice(data);
@@ -434,7 +434,27 @@ impl CPU {
                 println!("XXX impl imul8: {}", op);
             }
             Op::Imul16() => {
-                println!("XXX impl imul16: {}", op);
+                if op.params.count() == 1 {
+                    // IMUL r/m16               : DX:AX ← AX ∗ r/m word.
+                    let dst = self.read_parameter_value(&op.params.dst) as i16;
+                    let tmp = (self.r16[AX].val as i16) as isize * dst as isize;
+                    self.r16[AX].val = tmp as u16;
+                    self.r16[DX].val = (tmp >> 16) as u16;
+                } else {
+                    // IMUL r16, r/m16          : word register ← word register ∗ r/m16.
+                    // IMUL r16, r/m16, imm8    : word register ← r/m16 ∗ sign-extended immediate byte.
+                    // IMUL r16, r/m16, imm16   : word register ← r/m16 ∗ immediate word.
+                    println!("XXX impl imul16 with multiple parameters: {}", op);
+                }
+
+                println!("XXX imul16 impl carry & overflow flag");
+                if self.r16[DX].val != 0 {
+                    self.flags.carry = true;
+                    self.flags.overflow = true;
+                } else {
+                    self.flags.carry = false;
+                    self.flags.overflow = false;
+                }
             }
             Op::In8() => {
                 // Input from Port
@@ -3584,6 +3604,34 @@ fn can_execute_movzx() {
 }
 
 #[test]
+fn can_execute_imul() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xBB, 0x8F, 0x79, // mov bx,0x798f
+        0xB8, 0xD9, 0xFF, // mov ax,0xffd9
+        0xF7, 0xEB,       // imul bx
+    ];
+    cpu.load_com(&code);
+    let res = cpu.disassemble_block(0x100, 3);
+
+    assert_eq!("[085F:0100] BB8F79     Mov16    bx, 0x798F
+[085F:0103] B8D9FF     Mov16    ax, 0xFFD9
+[085F:0106] F7EB       Imul16   bx
+",
+               res);
+
+    cpu.execute_instruction();
+    assert_eq!(0x798F, cpu.r16[BX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0xFFD9, cpu.r16[AX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0xFFED, cpu.r16[DX].val);
+    assert_eq!(0x7B37, cpu.r16[AX].val);
+}
+
+#[test]
 fn can_disassemble_basic() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
@@ -3665,20 +3713,6 @@ fn can_disassemble_shr() {
     let res = cpu.disassemble_block(0x100, 1);
 
     assert_eq!("[085F:0100] C1E802     Shr16    ax, 0x02
-",
-               res);
-}
-
-#[test]
-fn can_disassemble_imul() {
-    let mut cpu = CPU::new();
-    let code: Vec<u8> = vec![
-        0x69, 0xF8, 0x40, 0x01, // imul di,ax,word 0x140
-    ];
-    cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 1);
-
-    assert_eq!("[085F:0100] 69F84001   Imul16   di, ax, 0x0140
 ",
                res);
 }
