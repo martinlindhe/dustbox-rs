@@ -3,7 +3,7 @@ use std::time::Instant;
 use cpu::CPU;
 use register::CS;
 use tools;
-use instruction::{InstructionInfo, seg_offs_as_flat};
+use instruction::{InstructionInfo};
 
 pub struct Debugger {
     pub cpu: CPU,
@@ -14,10 +14,10 @@ impl Debugger {
         let mut dbg = Debugger { cpu: CPU::new() };
         // XXX for quick testing while building the ui
         // let name = "../dos-software-decoding/samples/bar/bar.com";
-        let name = "../dos-software-decoding/demo-256/165plasm/debug/165plasm.com";
+        let name = "../dos-software-decoding/demo-256/beziesux/beziesux.com";
         dbg.load_binary(name);
-        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x0149)); // XXX the write occurs here
-        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x017D)); // xxx: 165plasm writes to 085F:017D and corrupts program code
+        //dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x0108)); 
+        //dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x017D));
         dbg
     }
 
@@ -33,26 +33,30 @@ impl Debugger {
     */
 
     pub fn step_into(&mut self)  {
+        self.cpu.execute_instruction();
+
         if self.cpu.fatal_error {
             // println!("XXX fatal error, not executing more");
             return;
         }
 
         if self.cpu.is_ip_at_breakpoint() {
+            self.cpu.fatal_error = true;
             warn!("Breakpoint reached (step-into), ip = {:04X}:{:04X}",
                 self.cpu.sreg16[CS],
                 self.cpu.ip);
             return;
         }
-        self.cpu.execute_instruction();
     }
 
     pub fn step_into_n_instructions(&mut self, cnt: usize) {
-                // measure time
+        // measure time
         let start = Instant::now();
         let mut done = 0;
         for _ in 0..cnt {
-            // step-into
+            if self.cpu.fatal_error {
+                break;
+            }
             self.step_into();
             done += 1;
         }

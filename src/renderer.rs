@@ -52,67 +52,99 @@ pub fn main() {
     let pad = 10;
 
 
-        let step_copy = app.clone();
-        let disasm_step_copy = disasm.clone();
-        let regs_step_copy = regs.clone();
-        let canvas_step_copy = canvas.clone();
+    let step_copy = app.clone();
+    let disasm_step_copy = disasm.clone();
+    let regs_step_copy = regs.clone();
+    let canvas_step_copy = canvas.clone();
 
-        let btn_step = Button::new();
-        btn_step
-            .position(x, HEIGHT as i32 - 50)
-            .size(button_width, 30)
-            .text("Step into")
-            .text_offset(6, 6)
-            .on_click(move |_button: &Button, _point: Point| {
+    let btn_step_over = Button::new();
+    btn_step_over
+        .position(x, HEIGHT as i32 - 50)
+        .size(button_width, 30)
+        .text("Step over")
+        .text_offset(6, 6)
+        .on_click(move |_button: &Button, _point: Point| {
 
-                let mut shared = step_copy.lock().unwrap();
+            let mut shared = step_copy.lock().unwrap();
 
-                shared.cpu.fatal_error = false;
-                shared.step_into();
+            shared.cpu.fatal_error = false;
+            shared.step_over();
 
-                // update disasm
-                let disasm_text = shared.disasm_n_instructions_to_text(20);
-                disasm_step_copy.lock().unwrap().text(disasm_text);
+            // update disasm
+            let disasm_text = shared.disasm_n_instructions_to_text(20);
+            disasm_step_copy.lock().unwrap().text(disasm_text);
 
-                // update regs
-                let reg_text = shared.cpu.print_registers();
-                regs_step_copy.lock().unwrap().text(reg_text);
+            // update regs
+            let reg_text = shared.cpu.print_registers();
+            regs_step_copy.lock().unwrap().text(reg_text);
 
-                render_canvas(&canvas_step_copy.lock().unwrap(), &shared.cpu);
-            });
-        window.add(&btn_step);
+            render_canvas(&canvas_step_copy.lock().unwrap(), &shared.cpu);
+        });
+    window.add(&btn_step_over);
 
 
-        let step2_copy = app.clone();
-        let disasm_step2_copy = disasm.clone();
-        let regs_step2_copy = regs.clone();
-        let canvas_step2_copy = canvas.clone();
+    let step2_copy = app.clone();
+    let disasm_step2_copy = disasm.clone();
+    let regs_step2_copy = regs.clone();
+    let canvas_step2_copy = canvas.clone();
 
-        let btn_step2 = Button::new();
-        btn_step2
-            .position(x + button_width as i32 + pad, HEIGHT as i32 - 50)
-            .size(button_width, 30)
-            .text("Step over")
-            .text_offset(6, 6)
-            .on_click(move |_button: &Button, _point: Point| {
+    let btn_step_over_into = Button::new();
+    btn_step_over_into
+        .position(x + button_width as i32 + pad, HEIGHT as i32 - 50)
+        .size(button_width, 30)
+        .text("Step into")
+        .text_offset(6, 6)
+        .on_click(move |_button: &Button, _point: Point| {
 
-                let mut shared = step2_copy.lock().unwrap();
+            let mut shared = step2_copy.lock().unwrap();
 
-                shared.cpu.fatal_error = false;
-                shared.step_over();
+            shared.cpu.fatal_error = false;
+            shared.step_into();
 
-                // update disasm
-                let disasm_text = shared.disasm_n_instructions_to_text(20);
-                disasm_step2_copy.lock().unwrap().text(disasm_text);
+            // update disasm
+            let disasm_text = shared.disasm_n_instructions_to_text(20);
+            disasm_step2_copy.lock().unwrap().text(disasm_text);
 
-                // update regs
-                let reg_text = shared.cpu.print_registers();
-                regs_step2_copy.lock().unwrap().text(reg_text);
+            // update regs
+            let reg_text = shared.cpu.print_registers();
+            regs_step2_copy.lock().unwrap().text(reg_text);
 
-                render_canvas(&canvas_step2_copy.lock().unwrap(), &shared.cpu);
-            });
-        window.add(&btn_step2);
+            render_canvas(&canvas_step2_copy.lock().unwrap(), &shared.cpu);
+        });
+    window.add(&btn_step_over_into);
 
+
+    let step3_copy = app.clone();
+    let disasm_step3_copy = disasm.clone();
+    let regs_step3_copy = regs.clone();
+    let canvas_step3_copy = canvas.clone();
+
+    let btn_run = Button::new();
+    btn_run
+        .position(x + (button_width * 2) as i32 + (pad * 2), HEIGHT as i32 - 50)
+        .size(button_width, 30)
+        .text("Run")
+        .text_offset(6, 6)
+        .on_click(move |_button: &Button, _point: Point| {
+
+            let mut shared = step3_copy.lock().unwrap();
+
+            shared.cpu.fatal_error = false;
+
+            // run until bp is reached or 1M instructions was executed
+            shared.step_into_n_instructions(1_000_000);
+
+            // update disasm
+            let disasm_text = shared.disasm_n_instructions_to_text(20);
+            disasm_step3_copy.lock().unwrap().text(disasm_text);
+
+            // update regs
+            let reg_text = shared.cpu.print_registers();
+            regs_step3_copy.lock().unwrap().text(reg_text);
+
+            render_canvas(&canvas_step3_copy.lock().unwrap(), &shared.cpu);
+        });
+    window.add(&btn_run);
 
     window.exec();
 }

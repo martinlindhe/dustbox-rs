@@ -2760,7 +2760,7 @@ impl CPU {
     // returns the offset part, excluding segment. used by LEA
     fn read_parameter_address(&mut self, p: &Parameter) -> usize {
         match *p {
-            Parameter::Ptr16AmodeS8(_, r, imm) => self.amode16(r) as usize + imm as usize,
+            Parameter::Ptr16AmodeS8(_, r, imm) => (Wrapping(self.amode16(r) as usize) + Wrapping(imm as usize)).0,
             Parameter::Ptr16(_, imm) => imm as usize,
             _ => {
                 println!("read_parameter_address error: unhandled parameter: {:?} at {:06X}",
@@ -2846,11 +2846,11 @@ impl CPU {
                 self.write_u8(offset, data);
             }
             Parameter::Ptr8AmodeS8(seg, r, imm) => {
-                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
+                let offset = (Wrapping(seg_offs_as_flat(self.segment(seg), self.amode16(r)) ) + Wrapping(imm as usize)).0;
                 self.write_u8(offset, data);
             }
             Parameter::Ptr8AmodeS16(seg, r, imm) => {
-                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
+                let offset = (Wrapping(seg_offs_as_flat(self.segment(seg), self.amode16(r)) ) + Wrapping(imm as usize)).0;
                 self.write_u8(offset, data);
             }
             _ => {
@@ -2882,11 +2882,11 @@ impl CPU {
                 self.write_u16(offset, data);
             }
             Parameter::Ptr16AmodeS8(seg, r, imm) => {
-                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
+                let offset = (Wrapping(seg_offs_as_flat(self.segment(seg), self.amode16(r)) ) + Wrapping(imm as usize)).0;
                 self.write_u16(offset, data);
             }
             Parameter::Ptr16AmodeS16(seg, r, imm) => {
-                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
+                let offset = (Wrapping(seg_offs_as_flat(self.segment(seg), self.amode16(r)) ) + Wrapping(imm as usize)).0;
                 self.write_u16(offset, data);
             }
             _ => {
@@ -2982,7 +2982,7 @@ impl CPU {
                 // index (0..255) for following write accesses to 3C9h.
                 // Next access to 03C8h will stop pending mode immediatly.
                 self.gpu.dac_index = data;
-                println!("dac index = {}", data);
+                // println!("dac index = {}", data);
             }
             0x03C9 => {
                 // (VGA,MCGA) PEL data register
@@ -2994,11 +2994,13 @@ impl CPU {
                     self.gpu.palette[i].g = self.gpu.dac_current_palette[1];
                     self.gpu.palette[i].b = self.gpu.dac_current_palette[2];
 
-                    println!("DAC palette {} = {}, {}, {}",
-                             self.gpu.dac_index,
-                             self.gpu.palette[i].r,
-                             self.gpu.palette[i].g,
-                             self.gpu.palette[i].b);
+                    if self.gpu.dac_index == 0 {
+                        println!("DAC palette {} = {}, {}, {}",
+                                self.gpu.dac_index,
+                                self.gpu.palette[i].r,
+                                self.gpu.palette[i].g,
+                                self.gpu.palette[i].b);
+                    }
 
                     self.gpu.dac_color = 0;
                     self.gpu.dac_index = (Wrapping(self.gpu.dac_index) + Wrapping(1)).0;
