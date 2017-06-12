@@ -3926,10 +3926,10 @@ fn can_disassemble_jz_rel() {
                res);
 }
 
-use std::time::Instant;
-
 #[test]
 fn calc_mips() {
+    use std::time::Instant;
+
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB9, 0xFF, 0xFF, // mov cx,0xffff
@@ -3950,7 +3950,7 @@ fn calc_mips() {
     }
 
     let mips = (cpu.instruction_count as f64) / 1_000_000.;
-    println!("MIPS {}", mips);
+    println!("MIPS: {}", mips);
 }
 
 #[bench]
