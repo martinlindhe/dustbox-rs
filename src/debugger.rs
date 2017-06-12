@@ -14,7 +14,7 @@ impl Debugger {
         // let name = "../dos-software-decoding/samples/bar/bar.com";
         let name = "../dos-software-decoding/demo-256/165plasm/165plasm.com";
         dbg.load_binary(name);
-        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x0148)); // XXX the write occurs here
+        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x0147)); // XXX the write occurs here
         dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x017D)); // xxx: 165plasm writes to 085F:017D and corrupts program code
         dbg
     }
@@ -30,15 +30,6 @@ impl Debugger {
     }
     */
 
-    pub fn step_into(&mut self) {
-        if self.cpu.fatal_error {
-            // println!("XXX fatal error, not executing more");
-            return;
-        }
-        self.cpu.execute_instruction();
-        //println!("{}", self.cpu.disasm_instruction().pretty_string());
-    }
-
     pub fn step_over(&mut self) {
         if self.cpu.fatal_error {
             // println!("XXX fatal error, not executing more");
@@ -53,6 +44,12 @@ impl Debugger {
         loop {
             cnt += 1;
             self.cpu.execute_instruction();
+
+            if self.cpu.is_ip_at_breakpoint() {
+                warn!("Breakpoint reached, breaking step-over");
+                break;
+            }
+
             if self.cpu.ip == dst_ip {
                 break;
             }
@@ -215,20 +212,15 @@ impl Debugger {
     fn run_until_breakpoint(&mut self) {
         warn!("Executing until we hit a breakpoint");
 
-        let list = self.cpu.get_breakpoints();
-
         loop {
             self.cpu.execute_instruction();
             if self.cpu.fatal_error {
                 error!("Failed to execute instruction, breaking.");
                 break;
             }
-            let offset = self.cpu.get_offset();
-
-            // break if we hit a breakpoint
-            let mut list_iter = list.iter();
-            if let Some(n) = list_iter.find(|&&x| x == offset) {
-                warn!("Breakpoint reached {:04X}", n);
+            if self.cpu.is_ip_at_breakpoint() {
+                self.cpu.fatal_error = true;
+                 warn!("Breakpoint reached");
                 break;
             }
         }

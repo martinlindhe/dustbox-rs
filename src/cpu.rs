@@ -2888,18 +2888,14 @@ impl CPU {
     fn write_u8(&mut self, offset: usize, data: u8) {
         // println!("debug: write_u8 to {:06X} = {:02X}", offset, data);
 
-        // XXX memory breakpoints
-
         // break if we hit a breakpoint
-        let list = self.get_breakpoints();
-        let mut list_iter = list.iter();
-        if let Some(n) = list_iter.find(|&&x| x == offset) {
+        if self.is_offset_at_breakpoint(offset) {
             self.fatal_error = true;
             warn!("Breakpoint (memory write to {:06X} = {:02X}), ip = {:04X}:{:04X}", 
-                n,
+                offset,
                 data,
                 self.sreg16[CS],
-                self.ip - 1);
+                self.ip);
         }
 
         self.memory.memory[offset] = data;
@@ -2941,6 +2937,19 @@ impl CPU {
                 0
             }
         }
+    }
+
+    pub fn is_ip_at_breakpoint(&mut self) -> bool {
+        let offset = self.get_offset();
+        return self.is_offset_at_breakpoint(offset);
+    }
+
+    pub fn is_offset_at_breakpoint(&mut self, offset: usize) -> bool {
+        let mut list_iter = self.breakpoints.iter();
+        if let Some(_) = list_iter.find(|&&x| x == offset) {
+            return true;
+        }
+        return false;
     }
 
     // output byte to I/O port
