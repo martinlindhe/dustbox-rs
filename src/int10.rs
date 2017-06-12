@@ -39,6 +39,12 @@ pub fn handle(cpu: &mut CPU) {
                     //     = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
                     println!("XXX video: set video mode to 640x200, 2 colors");
                 }
+                0x12 => {
+                    // 12h = G  80x30  8x16  640x480   16/256K  .   A000 VGA,ATI VIP
+                    //     = G  80x30  8x16  640x480   16/64    .   A000 ATI EGA Wonder
+                    //     = G    .     .    640x480   16       .     .  UltraVision+256K EGA
+                    println!("XXX video: set video mode to 640x480, 16 colors");
+                }
                 0x13 => {
                     // 13h = G  40x25  8x8   320x200  256/256K  .   A000 VGA,MCGA,ATI VIP
                     println!("XXX video: set video mode to 320x200, 256 colors (VGA)");
@@ -212,3 +218,4 @@ pub fn handle(cpu: &mut CPU) {
         }
     }
 }
+
