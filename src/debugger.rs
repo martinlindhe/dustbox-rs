@@ -12,7 +12,7 @@ impl Debugger {
         let mut dbg = Debugger { cpu: CPU::new() };
         // XXX for quick testing while building the ui
         // let name = "../dos-software-decoding/samples/bar/bar.com";
-        let name = "../dos-software-decoding/demo-256/plasmexp/plasmexp.com";
+        let name = "../dos-software-decoding/demo-256/pack/pack.com";
         dbg.load_binary(name);
         dbg
     }
@@ -210,7 +210,7 @@ impl Debugger {
         }
     }
 
-    fn run(&mut self) {
+    fn run_until_breakpoint(&mut self) {
         let list = self.cpu.get_breakpoints();
         warn!("Executing until we hit a breakpoint");
 

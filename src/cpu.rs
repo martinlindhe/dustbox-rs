@@ -1074,54 +1074,78 @@ impl CPU {
             Op::Shl8() => {
                 // Multiply `dst` by 2, `src` times.
                 // two arguments    (alias: sal)
-                let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
-                let res = dst << src;
+                let count = self.read_parameter_value(&op.params.src);
+                let res = dst << count;
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
 
-                // XXX flags
-                println!("XXX shl8 flags");
-                self.flags.carry = if res & 0x100 != 0 { true } else { false };
-                //XXX overflow: OF ← MSB(DEST) XOR CF;
-                // The OF flag is affected only for 1-bit shifts (see “Description” above);
-                // otherwise, it is undefined. The SF, ZF, and PF flags are set according to
-                // the result. If the count is 0, the flags are not affected. For a non-zero
-                // count, the AF flag is undefined.
+                self.flags.carry = (dst & 0x80) != 0;
+                if count == 1 {
+                    self.flags.overflow = false;
+                }
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_parity(res);
+                // XXX aux flag ?
             }
             Op::Shl16() => {
                 // Multiply `dst` by 2, `src` times.
                 // two arguments    (alias: sal)
-
-                let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
-                let res = dst << src;
+                let count = self.read_parameter_value(&op.params.src);
+                let res = dst << count;
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
 
-                println!("XXX shl16 flags");
-                // XXX flags
+                self.flags.carry = (dst & 0x8000) != 0;
+                if count == 1 {
+                    self.flags.overflow = false;
+                }
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_parity(res);
+                // XXX aux flag ?
             }
             Op::Shr8() => {
                 // Unsigned divide r/m8 by 2, `src` times.
                 // two arguments
-                let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
+                let count = self.read_parameter_value(&op.params.src);
 
-                let res = dst >> src;
+                let res = dst >> count;
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
 
-                // XXX flags
-                println!("XXX shr8 flags");
+                self.flags.carry = (dst & 1) != 0;
+                if count == 1 {
+                    self.flags.overflow = false;
+                }
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_parity(res);
+                // XXX aux flag ?
             }
             Op::Shr16() => {
                 // two arguments
-                let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
+                let count = self.read_parameter_value(&op.params.src);
 
-                let res = dst >> src;
+                let res = dst >> count;
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
 
-                println!("XXX shr16 flags");
-                // XXX flags
+                // The CF flag contains the value of the last bit shifted out of the destination
+                // operand; it is undefined for SHL and SHR instructions where the count is greater
+                // than or equal to the size (in bits) of the destination operand. The OF flag is
+                // affected only for 1-bit shifts; otherwise, it is undefined. The SF, ZF, and PF
+                // flags are set according to the result. If the count is 0, the flags are not
+                // affected. For a non-zero count, the AF flag is undefined.
+
+                self.flags.carry = (dst & 1) != 0;
+                if count == 1 {
+                    self.flags.overflow = false;
+                }
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_parity(res);
+                // XXX aux flag ?
             }
             Op::Shrd() => {
                 println!("XXX impl shrd");
@@ -3360,13 +3384,13 @@ fn can_execute_addressing() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x02,             // mov bx,0x200
-        0xC6, 0x47, 0x2C, 0xFF,       // mov byte [bx+0x2c],0xff  | rm8 [amode+s8]
+        0xC6, 0x47, 0x2C, 0xFF,       // mov byte [bx+0x2c],0xff  ; rm8 [amode+s8]
         0x8D, 0x36, 0x00, 0x01,       // lea si,[0x100]
-        0x8B, 0x14,                   // mov dx,[si]  | rm16 [reg]
-        0x8B, 0x47, 0x2C,             // mov ax,[bx+0x2c]  | rm16 [amode+s8]
-        0x89, 0x87, 0x30, 0x00,       // mov [bx+0x0030],ax  | rm [amode+s16]
-        0x89, 0x05,                   // mov [di],ax  | rm16 [amode]
-        0xC6, 0x85, 0xAE, 0x06, 0xFE, // mov byte [di+0x6ae],0xfe  | rm8 [amode+s16]
+        0x8B, 0x14,                   // mov dx,[si]              ; rm16 [reg]
+        0x8B, 0x47, 0x2C,             // mov ax,[bx+0x2c]         ; rm16 [amode+s8]
+        0x89, 0x87, 0x30, 0x00,       // mov [bx+0x0030],ax       ; rm [amode+s16]
+        0x89, 0x05,                   // mov [di],ax              ; rm16 [amode]
+        0xC6, 0x85, 0xAE, 0x06, 0xFE, // mov byte [di+0x6ae],0xfe ; rm8 [amode+s16]
         0x8A, 0x85, 0xAE, 0x06,       // mov al,[di+0x6ae]
     ];
 
@@ -3902,6 +3926,32 @@ fn can_disassemble_jz_rel() {
                res);
 }
 
+use std::time::Instant;
+
+#[test]
+fn calc_mips() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB9, 0xFF, 0xFF, // mov cx,0xffff
+        0x49,             // dec cx
+        0xEB, 0xFA,       // jmp short 0x100
+    ];
+
+    cpu.load_com(&code);
+
+    // run for 1 sec
+    const RUN_SECONDS: u64 = 1;
+    let start = Instant::now();
+    loop {
+        cpu.execute_instruction();
+        if  start.elapsed().as_secs() >= RUN_SECONDS {
+            break
+        }
+    }
+
+    let mips = (cpu.instruction_count as f64) / 1_000_000.;
+    println!("MIPS {}", mips);
+}
 
 #[bench]
 fn exec_simple_loop(b: &mut Bencher) {

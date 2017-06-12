@@ -60,7 +60,7 @@ pub fn main() {
 
             // measure time
             let start = Instant::now();
-            let cnt = 500000;
+            let cnt = 1000000;
             for _ in 0..cnt {
                 dbg.step_into();
             }

@@ -1,11 +1,24 @@
 # XXX
 
+
+0. visual diff output test:
+    run all dos-software-decoding samples 1million instructions each,
+    screengrab and save to file
+
+    visual diff images between runs
+
+pro: allows for quick testing of many samples
+
+
+1. measure how many instructions is run in 1 second, to get a Millions of instructions per second (MIPS) value
+
+
 1. just cpu emulation,
     run actual ms-dos in the emu to register interrupt handlers etc...
 
 later:
     high-level emu of ms-dos maybe , so we dont need to boot it.
-    or use freedos ?
+    or pack with freedos/2dos or similar ?
 
 
 
