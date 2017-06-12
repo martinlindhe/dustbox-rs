@@ -10,7 +10,6 @@ use std;
 use std::sync::{Arc, Mutex};
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::time::Instant;
 
 use memory::Memory;
 use debugger;
@@ -56,37 +55,12 @@ pub fn main() {
         .on_click(move |_button: &Button, _point: Point| {
 
             let mut dbg = app.lock().unwrap();
-            // XXX have separate "step into" & "step over" buttons
 
             dbg.cpu.fatal_error = false;
 
-            // measure time
-            let start = Instant::now();
-            let cnt = 1000000;
-            let mut done = 0;
-            for _ in 0..cnt {
-                // step-into
-                dbg.cpu.execute_instruction();
-                done += 1;
-
-                if dbg.cpu.fatal_error {
-                    // println!("XXX fatal error, not executing more");
-                    break;
-                }
-
-                if dbg.cpu.is_ip_at_breakpoint() {
-                    warn!("Breakpoint reached (step-into), ip = {:04X}:{:04X}",
-                        dbg.cpu.sreg16[CS],
-                        dbg.cpu.ip);
-                    break;
-                }
-            }
-            let elapsed = start.elapsed();
-            let ms = (elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64;
-            println!("Executed total {} instructions ({} now) in {} ms", dbg.cpu.instruction_count, done, ms);
-
-
-            //dbg.step_over();
+            // XXX have separate "step into" & "step over" buttons
+            //dbg.step_into();
+            dbg.step_over();
 
             // update disasm
             let disasm_text = dbg.disasm_n_instructions_to_text(20);

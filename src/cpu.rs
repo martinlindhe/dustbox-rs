@@ -90,7 +90,9 @@ impl CPU {
         self.sreg16[ES] = psp_segment;
         self.sreg16[SS] = psp_segment;
 
-        self.ip = 0x100;
+        self.r16[BP].val = 0x091C; // is what dosbox used
+
+        self.ip = 0x0100;
         let min = self.get_offset();
         let max = min + data.len();
         // println!("loading rom to {:06X}..{:06X}", min, max);
@@ -3928,7 +3930,7 @@ fn can_disassemble_jz_rel() {
 }
 
 #[test]
-fn calc_mips() {
+fn estimate_mips() {
     use std::time::Instant;
 
     let mut cpu = CPU::new();
@@ -3955,7 +3957,7 @@ fn calc_mips() {
 }
 
 #[bench]
-fn exec_simple_loop(b: &mut Bencher) {
+fn bench_simple_loop(b: &mut Bencher) {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB9, 0xFF, 0xFF, // mov cx,0xffff
@@ -3969,7 +3971,7 @@ fn exec_simple_loop(b: &mut Bencher) {
 }
 
 #[bench]
-fn disasm_block(b: &mut Bencher) {
+fn bench_disasm_6_bytes(b: &mut Bencher) {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB9, 0xFF, 0xFF, // mov cx,0xffff

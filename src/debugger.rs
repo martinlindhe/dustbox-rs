@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use cpu::CPU;
 use register::CS;
 use tools;
@@ -12,9 +14,9 @@ impl Debugger {
         let mut dbg = Debugger { cpu: CPU::new() };
         // XXX for quick testing while building the ui
         // let name = "../dos-software-decoding/samples/bar/bar.com";
-        let name = "../dos-software-decoding/demo-256/165plasm/165plasm.com";
+        let name = "../dos-software-decoding/demo-256/165plasm/debug/165plasm.com";
         dbg.load_binary(name);
-        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x0147)); // XXX the write occurs here
+        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x0149)); // XXX the write occurs here
         dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x017D)); // xxx: 165plasm writes to 085F:017D and corrupts program code
         dbg
     }
@@ -29,6 +31,34 @@ impl Debugger {
         }
     }
     */
+
+    pub fn step_into(&mut self) {
+        // measure time
+        let start = Instant::now();
+        //let cnt = 1000000;
+        let cnt = 100;
+        let mut done = 0;
+        for _ in 0..cnt {
+            // step-into
+            self.cpu.execute_instruction();
+            done += 1;
+
+            if self.cpu.fatal_error {
+                // println!("XXX fatal error, not executing more");
+                break;
+            }
+
+            if self.cpu.is_ip_at_breakpoint() {
+                warn!("Breakpoint reached (step-into), ip = {:04X}:{:04X}",
+                    self.cpu.sreg16[CS],
+                    self.cpu.ip);
+                break;
+            }
+        }
+        let elapsed = start.elapsed();
+        let ms = (elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64;
+        println!("Executed total {} instructions ({} now) in {} ms", self.cpu.instruction_count, done, ms);
+    }
 
     pub fn step_over(&mut self) {
         if self.cpu.fatal_error {
