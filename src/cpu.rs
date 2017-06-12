@@ -127,11 +127,21 @@ impl CPU {
                        self.sreg16[ES],
                        self.sreg16[GS])
                 .as_ref();
-        res += format!("DX:{:04X}  SP:{:04X}  FS:{:04X}  SS:{:04X}",
+        res += format!("DX:{:04X}  SP:{:04X}  FS:{:04X}  SS:{:04X}\n",
                        self.r16[DX].val,
                        self.r16[SP].val,
                        self.sreg16[FS],
                        self.sreg16[SS])
+                .as_ref();
+        res += format!("C{} Z{} S{} O{} A{} P{} D{} I{}",
+                       self.flags.carry_numeric(),
+                       self.flags.zero_numeric(),
+                       self.flags.sign_numeric(),
+                       self.flags.overflow_numeric(),
+                       self.flags.auxiliary_numeric(),
+                       self.flags.parity_numeric(),
+                       self.flags.direction_numeric(),
+                       self.flags.interrupt_numeric())
                 .as_ref();
 
         res

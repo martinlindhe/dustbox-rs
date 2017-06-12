@@ -129,6 +129,62 @@ impl Flags {
         println!("XXX impl flags.set_u16 = {:04X}", val);
     }
 
+    pub fn carry_numeric(&self) -> String {
+        format!("{}", if self.carry {
+            1
+        } else {
+            0
+        })
+    }
+    pub fn zero_numeric(&self) -> String {
+        format!("{}", if self.zero {
+            1
+        } else {
+            0
+        })
+    }
+    pub fn sign_numeric(&self) -> String {
+        format!("{}", if self.sign { 1 } else { 0 })
+    }
+    pub fn overflow_numeric(&self) -> String {
+        format!("{}", if self.overflow {
+            1
+        } else {
+            0
+        })
+    }
+
+       pub fn auxiliary_numeric(&self) -> String {
+        format!("{}", if self.auxiliary_carry {
+            1
+        } else {
+            0
+        })
+    }
+
+
+     pub fn parity_numeric(&self) -> String {
+        format!("{}", if self.parity {
+            1
+        } else {
+            0
+        })
+    }
+       pub fn direction_numeric(&self) -> String {
+        format!("{}", if self.direction {
+            1
+        } else {
+            0
+        })
+    }
+         pub fn interrupt_numeric(&self) -> String {
+        format!("{}", if self.interrupt {
+            1
+        } else {
+            0
+        })
+    }
+
     // returns the FLAGS register
     pub fn u16(&self) -> u16 {
         let mut val = 0 as u16;

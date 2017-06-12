@@ -32,28 +32,29 @@ impl Debugger {
     }
     */
 
-    pub fn step_into(&mut self) {
-        // measure time
+    pub fn step_into(&mut self)  {
+        if self.cpu.fatal_error {
+            // println!("XXX fatal error, not executing more");
+            return;
+        }
+
+        if self.cpu.is_ip_at_breakpoint() {
+            warn!("Breakpoint reached (step-into), ip = {:04X}:{:04X}",
+                self.cpu.sreg16[CS],
+                self.cpu.ip);
+            return;
+        }
+        self.cpu.execute_instruction();
+    }
+
+    pub fn step_into_n_instructions(&mut self, cnt: usize) {
+                // measure time
         let start = Instant::now();
-        //let cnt = 1000000;
-        let cnt = 100;
         let mut done = 0;
         for _ in 0..cnt {
             // step-into
-            self.cpu.execute_instruction();
+            self.step_into();
             done += 1;
-
-            if self.cpu.fatal_error {
-                // println!("XXX fatal error, not executing more");
-                break;
-            }
-
-            if self.cpu.is_ip_at_breakpoint() {
-                warn!("Breakpoint reached (step-into), ip = {:04X}:{:04X}",
-                    self.cpu.sreg16[CS],
-                    self.cpu.ip);
-                break;
-            }
         }
         let elapsed = start.elapsed();
         let ms = (elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64;

@@ -59,8 +59,9 @@ pub fn main() {
             dbg.cpu.fatal_error = false;
 
             // XXX have separate "step into" & "step over" buttons
-            //dbg.step_into();
-            dbg.step_over();
+            dbg.step_into();
+            //dbg.step_into_n_instructions(1000000);
+            //dbg.step_over();
 
             // update disasm
             let disasm_text = dbg.disasm_n_instructions_to_text(20);
