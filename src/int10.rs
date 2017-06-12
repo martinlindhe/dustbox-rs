@@ -55,6 +55,19 @@ pub fn handle(cpu: &mut CPU) {
                 }
             }
         }
+        0x01 => {
+            // VIDEO - SET TEXT-MODE CURSOR SHAPE
+            //
+            // CH = cursor start and options (see #00013)
+            // CL = bottom scan line containing cursor (bits 0-4)
+
+            // Return:
+            // Nothing
+            println!("XXX set text-mode cursor shape, start_options={:02X}, bottom_line={:02X}",
+                     cpu.r16[CX].hi_u8(),
+                     cpu.r16[CX].lo_u8());
+
+        }
         0x02 => {
             // VIDEO - SET CURSOR POSITION
             //

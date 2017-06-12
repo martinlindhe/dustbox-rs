@@ -8,7 +8,7 @@ use register::Register16;
 use flags::Flags;
 use memory::Memory;
 use segment::Segment;
-use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm};
+use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm, seg_offs_as_flat};
 use int10;
 use int16;
 use int21;
@@ -140,7 +140,7 @@ impl CPU {
         match op.command {
             Op::Unknown() => {
                 self.fatal_error = true;
-                println!("unknown op, {} instructions executed",
+                println!("executed unknown op, stopping. {} instructions executed",
                          self.instruction_count);
             }
             _ => self.execute(&op),
@@ -173,7 +173,7 @@ impl CPU {
         let op = self.decode_instruction(Segment::Default());
         let length = self.ip - old_ip;
         self.ip = old_ip;
-        let offset = (self.sreg16[CS] as usize * 16) + old_ip as usize;
+        let offset = seg_offs_as_flat(self.sreg16[CS], old_ip);
 
         InstructionInfo {
             segment: self.sreg16[CS] as usize,
@@ -627,7 +627,7 @@ impl CPU {
             Op::Lodsb() => {
                 // no arguments
                 // For legacy mode, load byte at address DS:(E)SI into AL.
-                let offset = (self.sreg16[DS] as usize * 16) + (self.r16[SI].val as usize);
+                let offset = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
                 let val = self.peek_u8_at(offset);
                 self.r16[AX].set_lo(val); // AL =
                 self.r16[SI].val = if !self.flags.direction {
@@ -639,7 +639,7 @@ impl CPU {
             Op::Lodsw() => {
                 // no arguments
                 // For legacy mode, Load word at address DS:(E)SI into AX.
-                let offset = (self.sreg16[DS] as usize * 16) + (self.r16[SI].val as usize);
+                let offset = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
                 let val = self.peek_u16_at(offset);
                 self.r16[AX].val = val;
                 self.r16[SI].val = if !self.flags.direction {
@@ -895,8 +895,8 @@ impl CPU {
             }
             Op::RepMovsb() => {
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
-                let mut src = (self.sreg16[DS] as usize * 16) + (self.r16[SI].val as usize);
-                let mut dst = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
+                let mut src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
+                let mut dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
                 let count = self.r16[CX].val as usize;
                 println!("rep movsb   src = {:04X}, dst = {:04X}, count = {:04X}",
                          src,
@@ -916,8 +916,8 @@ impl CPU {
             }
             Op::RepMovsw() => {
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
-                let mut src = (self.sreg16[DS] as usize * 16) + (self.r16[SI].val as usize);
-                let mut dst = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
+                let mut src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
+                let mut dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
                 println!("rep movsw   src = {:04X}, dst = {:04X}, count = {:04X}",
                          src,
                          dst,
@@ -952,7 +952,7 @@ impl CPU {
                          data);
                 */
                 loop {
-                    let dst = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
+                    let dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
                     self.write_u8(dst, data);
                     self.r16[DI].val = if !self.flags.direction {
                         (Wrapping(self.r16[DI].val) + Wrapping(1)).0
@@ -980,7 +980,7 @@ impl CPU {
                          data);
 
                 loop {
-                    let dst = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
+                    let dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
                     self.write_u16(dst, data);
 
                     self.r16[DI].val = if !self.flags.direction {
@@ -1165,7 +1165,7 @@ impl CPU {
             Op::Stosb() => {
                 // no parameters
                 // store AL at ES:(E)DI
-                let offset = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
+                let offset = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
                 let data = self.r16[AX].lo_u8(); // = AL
                 self.write_u8(offset, data);
                 self.r16[DI].val = if !self.flags.direction {
@@ -1177,7 +1177,7 @@ impl CPU {
             Op::Stosw() => {
                 // no parameters
                 // store AX at address ES:(E)DI
-                let offset = (self.sreg16[ES] as usize * 16) + (self.r16[DI].val as usize);
+                let offset = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
                 let data = self.r16[AX].val;
                 self.write_u16(offset, data);
                 self.r16[DI].val = if !self.flags.direction {
@@ -2491,10 +2491,11 @@ impl CPU {
                 }
             }
             _ => {
-                println!("cpu: unknown op {:02X} at {:04X}:{:04X} ({} instructions executed)",
+                println!("cpu: unknown op {:02X} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
                          b,
                          self.sreg16[CS],
                          self.ip - 1,
+                         self.get_offset() - 1,
                          self.instruction_count);
             }
         }
@@ -2629,7 +2630,7 @@ impl CPU {
     fn push8(&mut self, data: u8) {
         let sp = (Wrapping(self.r16[SP].val) - Wrapping(1)).0;
         self.r16[SP].val = sp;
-        let offset = (self.sreg16[SS] as usize * 16) + (self.r16[SP].val as usize);
+        let offset = seg_offs_as_flat(self.sreg16[SS], self.r16[SP].val);
         /*
         println!("push8 {:02X}  to {:04X}:{:04X}  =>  {:06X}       instr {}",
                  data,
@@ -2644,7 +2645,7 @@ impl CPU {
     fn push16(&mut self, data: u16) {
         let sp = (Wrapping(self.r16[SP].val) - Wrapping(2)).0;
         self.r16[SP].val = sp;
-        let offset = (self.sreg16[SS] as usize * 16) + (self.r16[SP].val as usize);
+        let offset = seg_offs_as_flat(self.sreg16[SS], self.r16[SP].val);
         /*
         println!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}       instr {}",
                  data,
@@ -2657,7 +2658,7 @@ impl CPU {
     }
 
     fn pop16(&mut self) -> u16 {
-        let offset = (self.sreg16[SS] as usize * 16) + (self.r16[SP].val as usize);
+        let offset = seg_offs_as_flat(self.sreg16[SS], self.r16[SP].val);
         let data = self.peek_u16_at(offset);
         /*
         println!("pop16 {:04X}  from {:04X}:{:04X}  =>  {:06X}       instr {}",
@@ -2682,7 +2683,7 @@ impl CPU {
     }
 
     pub fn get_offset(&self) -> usize {
-        (self.sreg16[CS] as usize * 16) + self.ip as usize
+        seg_offs_as_flat(self.sreg16[CS], self.ip)
     }
 
     fn read_u8(&mut self) -> u8 {
@@ -2747,7 +2748,7 @@ impl CPU {
     // returns the offset part, excluding segment. used by LEA
     fn read_parameter_address(&mut self, p: &Parameter) -> usize {
         match *p {
-            Parameter::Ptr16AmodeS8(_, r, imm) => self.amode16(r) + imm as usize,
+            Parameter::Ptr16AmodeS8(_, r, imm) => self.amode16(r) as usize + imm as usize,
             Parameter::Ptr16(_, imm) => imm as usize,
             _ => {
                 println!("read_parameter_address error: unhandled parameter: {:?} at {:06X}",
@@ -2764,47 +2765,35 @@ impl CPU {
             Parameter::Imm16(imm) => imm as usize,
             Parameter::ImmS8(imm) => imm as usize,
             Parameter::Ptr8(seg, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + imm as usize;
+                let offset = seg_offs_as_flat(self.segment(seg), imm);
                 self.peek_u8_at(offset) as usize
             }
             Parameter::Ptr16(seg, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + imm as usize;
+                let offset = seg_offs_as_flat(self.segment(seg), imm);
                 self.peek_u16_at(offset) as usize
             }
             Parameter::Ptr8Amode(seg, r) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r));
                 self.peek_u8_at(offset) as usize
             }
             Parameter::Ptr8AmodeS8(seg, r, imm) => {
-                let offset = (Wrapping(self.segment(seg) as usize * 16) +
-                              Wrapping(self.amode16(r)) +
-                              Wrapping(imm as usize))
-                        .0;
+                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
                 self.peek_u8_at(offset) as usize
             }
             Parameter::Ptr8AmodeS16(seg, r, imm) => {
-                let offset = (Wrapping(self.segment(seg) as usize * 16) +
-                              Wrapping(self.amode16(r)) +
-                              Wrapping(imm as usize))
-                        .0;
+                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
                 self.peek_u8_at(offset) as usize
             }
             Parameter::Ptr16Amode(seg, r) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r));
                 self.peek_u16_at(offset) as usize
             }
             Parameter::Ptr16AmodeS8(seg, r, imm) => {
-                let offset = (Wrapping(self.segment(seg) as usize * 16) +
-                              Wrapping(self.amode16(r)) +
-                              Wrapping(imm as usize))
-                        .0;
+                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
                 self.peek_u16_at(offset) as usize
             }
             Parameter::Ptr16AmodeS16(seg, r, imm) => {
-                let offset = (Wrapping(self.segment(seg) as usize * 16) +
-                              Wrapping(self.amode16(r)) +
-                              Wrapping(imm as usize))
-                        .0;
+                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
                 self.peek_u16_at(offset) as usize
             }
             Parameter::Reg8(r) => {
@@ -2837,25 +2826,19 @@ impl CPU {
                 }
             }
             Parameter::Ptr8(seg, imm) => {
-                let offset = (self.segment(seg) as usize * 16) + imm as usize;
+                let offset = seg_offs_as_flat(self.segment(seg), imm);
                 self.write_u8(offset, data);
             }
             Parameter::Ptr8Amode(seg, r) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r));
                 self.write_u8(offset, data);
             }
             Parameter::Ptr8AmodeS8(seg, r, imm) => {
-                let offset = (Wrapping(self.segment(seg) as usize * 16) +
-                              Wrapping(self.amode16(r)) +
-                              Wrapping(imm as usize))
-                        .0;
+                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
                 self.write_u8(offset, data);
             }
             Parameter::Ptr8AmodeS16(seg, r, imm) => {
-                let offset = (Wrapping(self.segment(seg) as usize * 16) +
-                              Wrapping(self.amode16(r)) +
-                              Wrapping(imm as usize))
-                        .0;
+                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
                 self.write_u8(offset, data);
             }
             _ => {
@@ -2875,29 +2858,23 @@ impl CPU {
                 self.sreg16[r] = data;
             }
             Parameter::Imm16(imm) => {
-                let offset = (self.segment(segment) as usize * 16) + imm as usize;
+                let offset = seg_offs_as_flat(self.segment(segment), imm);
                 self.write_u16(offset, data);
             }
             Parameter::Ptr16(seg, imm) => {
-                let offset = (Wrapping(self.segment(seg) as usize * 16) + Wrapping(imm as usize)).0;
+                let offset = seg_offs_as_flat(self.segment(seg), imm);
                 self.write_u16(offset, data);
             }
             Parameter::Ptr16Amode(seg, r) => {
-                let offset = (self.segment(seg) as usize * 16) + self.amode16(r);
+                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r));
                 self.write_u16(offset, data);
             }
             Parameter::Ptr16AmodeS8(seg, r, imm) => {
-                let offset = (Wrapping(self.segment(seg) as usize * 16) +
-                              Wrapping(self.amode16(r)) +
-                              Wrapping(imm as usize))
-                        .0;
+                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
                 self.write_u16(offset, data);
             }
             Parameter::Ptr16AmodeS16(seg, r, imm) => {
-                let offset = (Wrapping(self.segment(seg) as usize * 16) +
-                              Wrapping(self.amode16(r)) +
-                              Wrapping(imm as usize))
-                        .0;
+                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
                 self.write_u16(offset, data);
             }
             _ => {
@@ -2910,6 +2887,21 @@ impl CPU {
 
     fn write_u8(&mut self, offset: usize, data: u8) {
         // println!("debug: write_u8 to {:06X} = {:02X}", offset, data);
+
+        // XXX memory breakpoints
+
+        // break if we hit a breakpoint
+        let list = self.get_breakpoints();
+        let mut list_iter = list.iter();
+        if let Some(n) = list_iter.find(|&&x| x == offset) {
+            self.fatal_error = true;
+            warn!("Breakpoint (memory write to {:06X} = {:02X}), ip = {:04X}:{:04X}", 
+                n,
+                data,
+                self.sreg16[CS],
+                self.ip - 1);
+        }
+
         self.memory.memory[offset] = data;
     }
 
@@ -2934,16 +2926,16 @@ impl CPU {
         }
     }
 
-    fn amode16(&mut self, idx: usize) -> usize {
+    fn amode16(&mut self, idx: usize) -> u16 {
         match idx {
-            0 => self.r16[BX].val as usize + self.r16[SI].val as usize,
-            1 => self.r16[BX].val as usize + self.r16[DI].val as usize,
-            2 => self.r16[BP].val as usize + self.r16[SI].val as usize,
-            3 => self.r16[BP].val as usize + self.r16[DI].val as usize,
-            4 => self.r16[SI].val as usize,
-            5 => self.r16[DI].val as usize,
-            6 => self.r16[BP].val as usize,
-            7 => self.r16[BX].val as usize,
+            0 => (Wrapping(self.r16[BX].val) + Wrapping(self.r16[SI].val)).0,
+            1 => (Wrapping(self.r16[BX].val) + Wrapping(self.r16[DI].val)).0,
+            2 => (Wrapping(self.r16[BP].val) + Wrapping(self.r16[SI].val)).0,
+            3 => (Wrapping(self.r16[BP].val) + Wrapping(self.r16[DI].val)).0,
+            4 => self.r16[SI].val,
+            5 => self.r16[DI].val,
+            6 => self.r16[BP].val,
+            7 => self.r16[BX].val,
             _ => {
                 println!("Impossible amode16, idx {}", idx);
                 0
@@ -3192,8 +3184,8 @@ fn can_execute_mov_rm16_sreg() {
 
     cpu.execute_instruction();
     assert_eq!(0x109, cpu.ip);
-    let cs = cpu.sreg16[CS] as usize;
-    assert_eq!(0x1234, cpu.peek_u16_at((cs * 16) + 0x0109));
+    let cs = cpu.sreg16[CS];
+    assert_eq!(0x1234, cpu.peek_u16_at(seg_offs_as_flat(cs, 0x0109)));
 }
 
 #[test]
@@ -3206,8 +3198,8 @@ fn can_execute_mov_data() {
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    let cs = cpu.sreg16[CS] as usize;
-    assert_eq!(0x38, cpu.peek_u8_at((cs * 16) + 0x1031));
+    let cs = cpu.sreg16[CS];
+    assert_eq!(0x38, cpu.peek_u8_at(seg_offs_as_flat(cs, 0x1031)));
 }
 
 #[test]
@@ -3237,7 +3229,7 @@ fn can_execute_segment_prefixed() {
 
     cpu.execute_instruction();
     assert_eq!(0x10A, cpu.ip);
-    let offset = (cpu.segment(Segment::ES()) as usize * 16) + cpu.amode16(5); // 5=amode DI
+    let offset = seg_offs_as_flat(cpu.segment(Segment::ES()), cpu.amode16(5)); // 5=amode DI
     assert_eq!(0x88, cpu.peek_u8_at(offset));
 
     cpu.execute_instruction();
@@ -3372,7 +3364,7 @@ fn can_execute_rep() {
 
     cpu.execute_instruction(); // rep movsb
     assert_eq!(0x0, cpu.r16[CX].val);
-    let min = (cpu.sreg16[CS] as usize * 16) + 0x100;
+    let min = seg_offs_as_flat(cpu.sreg16[CS], 0x100);
     let max = min + 5;
     for i in min..max {
         assert_eq!(cpu.memory.memory[i], cpu.memory.memory[i + 0x100]);
@@ -3413,8 +3405,8 @@ fn can_execute_addressing() {
     assert_eq!(0x200, cpu.r16[BX].val);
 
     cpu.execute_instruction();
-    let cs = cpu.sreg16[CS] as usize;
-    assert_eq!(0xFF, cpu.peek_u8_at((cs * 16) + 0x22C));
+    let cs = cpu.sreg16[CS];
+    assert_eq!(0xFF, cpu.peek_u8_at(seg_offs_as_flat(cs, 0x22C)));
 
     cpu.execute_instruction();
     assert_eq!(0x100, cpu.r16[SI].val);
@@ -3429,16 +3421,16 @@ fn can_execute_addressing() {
 
     cpu.execute_instruction();
     // should have written word to [0x230]
-    assert_eq!(0x00FF, cpu.peek_u16_at((cs * 16) + 0x230));
+    assert_eq!(0x00FF, cpu.peek_u16_at(seg_offs_as_flat(cs, 0x230)));
 
     cpu.execute_instruction();
     // should have written ax to [di]
-    let di = cpu.r16[DI].val as usize;
-    assert_eq!(0x00FF, cpu.peek_u16_at((cs * 16) + di));
+    let di = cpu.r16[DI].val;
+    assert_eq!(0x00FF, cpu.peek_u16_at(seg_offs_as_flat(cs, di)));
 
     cpu.execute_instruction();
     // should have written byte to [di+0x06AE]
-    assert_eq!(0xFE, cpu.peek_u8_at((cs * 16) + di + 0x06AE));
+    assert_eq!(0xFE, cpu.peek_u8_at(seg_offs_as_flat(cs, di) + 0x06AE));
 
     cpu.execute_instruction();
     // should have read byte from [di+0x06AE] to al

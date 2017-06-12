@@ -1,7 +1,7 @@
 use cpu::CPU;
 use register::CS;
 use tools;
-use instruction;
+use instruction::{InstructionInfo, seg_offs_as_flat};
 
 pub struct Debugger {
     pub cpu: CPU,
@@ -14,6 +14,8 @@ impl Debugger {
         // let name = "../dos-software-decoding/samples/bar/bar.com";
         let name = "../dos-software-decoding/demo-256/165plasm/165plasm.com";
         dbg.load_binary(name);
+        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x0148)); // XXX the write occurs here
+        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x017D)); // xxx: 165plasm writes to 085F:017D and corrupts program code
         dbg
     }
 
@@ -69,8 +71,8 @@ impl Debugger {
         res
     }
 
-    fn disasm_n_instructions(&mut self, n: usize) -> Vec<instruction::InstructionInfo> {
-        let mut res: Vec<instruction::InstructionInfo> = Vec::new();
+    fn disasm_n_instructions(&mut self, n: usize) -> Vec<InstructionInfo> {
+        let mut res: Vec<InstructionInfo> = Vec::new();
         let org_ip = self.cpu.ip;
         for _ in 0..n {
             let op = self.cpu.disasm_instruction();
@@ -211,8 +213,9 @@ impl Debugger {
     }
 
     fn run_until_breakpoint(&mut self) {
-        let list = self.cpu.get_breakpoints();
         warn!("Executing until we hit a breakpoint");
+
+        let list = self.cpu.get_breakpoints();
 
         loop {
             self.cpu.execute_instruction();
@@ -220,7 +223,7 @@ impl Debugger {
                 error!("Failed to execute instruction, breaking.");
                 break;
             }
-            let offset = self.cpu.get_offset(); // XXX debugger should hold breakpoints
+            let offset = self.cpu.get_offset();
 
             // break if we hit a breakpoint
             let mut list_iter = list.iter();
