@@ -1,4 +1,4 @@
-use orbtk::{Image, Color};
+//use orbtk::{Image, Color};
 use std::sync::Arc;
 
 pub struct GPU {
@@ -38,7 +38,7 @@ impl GPU {
             self.scanline = 0;
         }
     }
-
+/*
     pub fn render_frame(&mut self) -> Arc<Image> {
 
         let canvas = Image::from_color(320, 200, Color::rgb(0, 0, 0));
@@ -57,4 +57,5 @@ impl GPU {
         */
         canvas
     }
+*/
 }

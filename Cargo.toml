@@ -11,8 +11,10 @@ time = "0.1"
 rand = "0.3"
 image = "0.12"
 
-# orbtk deps:
-orbtk = "0.2"
+[dependencies.gtk]
+version = "0.1"
+features = ["v3_10"]
+
 
 
 [profile.release]
