@@ -13,7 +13,7 @@ use std::cell::RefCell;
 
 use memory::Memory;
 use debugger;
-use cpu;
+use cpu::{CPU};
 use register::{AX, BX, CX, DX, CS};
 
 pub fn main() {
@@ -46,11 +46,14 @@ pub fn main() {
         .text(reg_text);
     window.add(&regs);
 
+    let button_width = 90;
+    let pad = 10;
+
     let btn_step = Button::new();
     btn_step
         .position(x, HEIGHT as i32 - 50)
-        .size(60, 30)
-        .text("Step")
+        .size(button_width, 30)
+        .text("Step into")
         .text_offset(6, 6)
         .on_click(move |_button: &Button, _point: Point| {
 
@@ -58,10 +61,7 @@ pub fn main() {
 
             dbg.cpu.fatal_error = false;
 
-            // XXX have separate "step into" & "step over" buttons
             dbg.step_into();
-            //dbg.step_into_n_instructions(1000000);
-            //dbg.step_over();
 
             // update disasm
             let disasm_text = dbg.disasm_n_instructions_to_text(20);
@@ -71,29 +71,59 @@ pub fn main() {
             let reg_text = dbg.cpu.print_registers();
             regs.text(reg_text);
 
-            // draw on img
+            render_canvas(&canvas, &dbg.cpu);
+        });
+    window.add(&btn_step);
+
+/*
+    let btn_step2 = Button::new();
+    btn_step2
+        .position(x + button_width as i32 + pad, HEIGHT as i32 - 50)
+        .size(button_width, 30)
+        .text("Step over")
+        .text_offset(6, 6)
+        .on_click(move |_button: &Button, _point: Point| {
+
+            let mut dbg = app.lock().unwrap();
+
+            dbg.cpu.fatal_error = false;
+
+            dbg.step_over();
+
+            // update disasm
+            let disasm_text = dbg.disasm_n_instructions_to_text(20);
+            disasm.text(disasm_text);
+
+            // update regs
+            let reg_text = dbg.cpu.print_registers();
+            regs.text(reg_text);
+
+            render_canvas(&canvas, &dbg.cpu);
+        });
+    window.add(&btn_step2);
+*/
+    window.exec();
+}
+
+fn render_canvas(canvas: &std::sync::Arc<orbtk::Image>, cpu: &CPU) {
+    // draw on img
             let mut image = canvas.image.borrow_mut();
 
             // XXX rather replace image pixels
             // image = dbg.cpu.gpu.render_frame();
             // image.from_data(frame.into_data());
 
-            let height = dbg.cpu.gpu.height;
-            let width = dbg.cpu.gpu.width;
+            // VGA, mode 13h:
+            let height = 320; // dbg.cpu.gpu.height;
+            let width = 240; // dbg.cpu.gpu.width;
 
             for y in 0..height {
                 for x in 0..width {
                     let offset = 0xA0000 + ((y * width) + x) as usize;
-                    let byte = dbg.cpu.memory.memory[offset];
-                    let pal = &dbg.cpu.gpu.palette[byte as usize];
+                    let byte = cpu.memory.memory[offset];
+                    let pal = &cpu.gpu.palette[byte as usize];
                     image.pixel(x as i32, y as i32, Color::rgb(pal.r, pal.g, pal.b));
                 }
             }
-
-        });
-    window.add(&btn_step);
-
-    window.exec();
-
 }
 
