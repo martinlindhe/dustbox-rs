@@ -10,6 +10,7 @@ extern crate time;
 extern crate test;
 extern crate image;
 extern crate gtk;
+extern crate gdk;
 
 mod debugger;
 mod tools;

@@ -1,11 +1,5 @@
 #![allow(unused_imports)]
 
-/*
-use orbtk;
-use orbtk::{Action, Button, Color, Grid, Image, Label, Menu, Point, Renderer, ProgressBar, Rect,
-            Separator, TextBox, Window};
-use orbtk::traits::{Border, Click, Enter, Place, Text};
-*/
 use std;
 use std::sync::{Arc, Mutex};
 use std::rc::Rc;
@@ -13,7 +7,9 @@ use std::cell::RefCell;
 
 use gtk;
 use gtk::prelude::*;
-use gtk::{Button, Label, Image, Color, Window, WindowType};
+use gtk::{Button, Label, Image, Window, WindowType};
+
+use gdk::RGBA;
 
 use memory::Memory;
 use debugger;
