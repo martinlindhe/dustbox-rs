@@ -38,11 +38,12 @@ pub fn main() {
     let x = 10;
     let y = 10;
 
+/*
     let canvas = Arc::new(Mutex::new(Image::from_color(320, 200, Color::rgb(0, 0, 0)))); // XXX can the canvas live in the GPU struct?
     let canvas_copy = canvas.clone();
     canvas_copy.lock().unwrap().position(WIDTH as i32 - 340, 10);
     window.add(&canvas_copy.lock().unwrap());
-
+*/
 
     let disasm_text = app.lock().unwrap().disasm_n_instructions_to_text(20);
     let reg_text = app.lock().unwrap().cpu.print_registers();
@@ -66,7 +67,7 @@ pub fn main() {
     let step_copy = app.clone();
     let disasm_step_copy = disasm.clone();
     let regs_step_copy = regs.clone();
-    let canvas_step_copy = canvas.clone();
+    //let canvas_step_copy = canvas.clone();
 
     let btn_step_over = Button::new_with_label("Step over");
     window.add(&btn_step_over);
@@ -88,7 +89,7 @@ pub fn main() {
         let reg_text = shared.cpu.print_registers();
         regs_step_copy.lock().unwrap().set_label(reg_text.as_ref());
 
-        render_canvas(&canvas_step_copy.lock().unwrap(), &shared.cpu);
+        //render_canvas(&canvas_step_copy.lock().unwrap(), &shared.cpu);
     });
     
 
@@ -96,7 +97,7 @@ pub fn main() {
     let step2_copy = app.clone();
     let disasm_step2_copy = disasm.clone();
     let regs_step2_copy = regs.clone();
-    let canvas_step2_copy = canvas.clone();
+    //let canvas_step2_copy = canvas.clone();
 
     let btn_step_over_into = Button::new_with_label("Step into");
     window.add(&btn_step_over_into);
@@ -117,14 +118,14 @@ pub fn main() {
         let reg_text = shared.cpu.print_registers();
         regs_step2_copy.lock().unwrap().set_label(reg_text.as_ref());
 
-        render_canvas(&canvas_step2_copy.lock().unwrap(), &shared.cpu);
+        //render_canvas(&canvas_step2_copy.lock().unwrap(), &shared.cpu);
     });
 
 
     let step3_copy = app.clone();
     let disasm_step3_copy = disasm.clone();
     let regs_step3_copy = regs.clone();
-    let canvas_step3_copy = canvas.clone();
+    //let canvas_step3_copy = canvas.clone();
 
     let btn_run = Button::new_with_label("Run");
     window.add(&btn_run);
@@ -146,7 +147,7 @@ pub fn main() {
         let reg_text = shared.cpu.print_registers();
         regs_step3_copy.lock().unwrap().set_label(reg_text.as_ref());
 
-        render_canvas(&canvas_step3_copy.lock().unwrap(), &shared.cpu);
+        //render_canvas(&canvas_step3_copy.lock().unwrap(), &shared.cpu);
     });
 
     window.show_all();
@@ -160,6 +161,8 @@ pub fn main() {
 }
 
 fn render_canvas(canvas: &std::sync::Arc<gtk::Image>, cpu: &CPU) {
+    /* XXX rewrite for rs-gtk
+
     let mut image = canvas.image.borrow_mut();
 
     // XXX rather replace image pixels
@@ -178,5 +181,6 @@ fn render_canvas(canvas: &std::sync::Arc<gtk::Image>, cpu: &CPU) {
             image.pixel(x as i32, y as i32, Color::rgb(pal.r, pal.g, pal.b));
         }
     }
+    */
 }
 
