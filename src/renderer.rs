@@ -48,10 +48,10 @@ pub fn main() {
     let disasm_text = app.lock().unwrap().disasm_n_instructions_to_text(20);
     let reg_text = app.lock().unwrap().cpu.print_registers();
 
-    let disasm = Arc::new(Mutex::new(Label::new(disasm_text.as_ref())));
-    let disasm_copy = disasm.clone();
+    let disasm = Label::new(disasm_text.as_ref());
+    //let disasm_copy = disasm.clone();
     // XXX disasm_copy.lock().unwrap().position(x, y).size(450, 20 * 20);
-    window.add(&disasm_copy.lock().unwrap());
+    window.add(&disasm);
 
     let regs = Arc::new(Mutex::new(Label::new(reg_text.as_ref())));
     let regs_copy = regs.clone();
