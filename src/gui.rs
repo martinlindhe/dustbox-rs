@@ -10,6 +10,7 @@ use gtk::prelude::*;
 use gtk::{Button, Label, Image, Window, WindowType};
 
 use gdk::RGBA;
+use gdk_pixbuf;
 
 use memory::Memory;
 use debugger;
@@ -41,6 +42,8 @@ impl GUI {
         let r16 = app.lock().unwrap().cpu.r16;
         let sreg16 = app.lock().unwrap().cpu.sreg16;
         let flags = app.lock().unwrap().cpu.flags;
+
+        let colorspace = 0; // XXX: gdk_pixbuf_sys::GDK_COLORSPACE_RGB
         GUI {
             app: app,
             builder: Arc::new(Mutex::new(gtk::Builder::new_from_string(include_str!("gui.glade")))),
@@ -50,6 +53,7 @@ impl GUI {
                 sreg16: sreg16,
                 flags: flags,
             },
+            pixbuf: unsafe { gdk_pixbuf::Pixbuf::new(colorspace, false, 8, 320, 240).unwrap() },
         }
     }
 
