@@ -1,6 +1,3 @@
-//use orbtk::{Image, Color};
-use std::sync::Arc;
-
 pub struct GPU {
     pub scanline: u32,
     pub width: u32,

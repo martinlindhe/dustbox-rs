@@ -645,7 +645,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkTextView">
+          <object class="GtkTextView" id="disasm_text">
             <property name="width_request">4</property>
             <property name="height_request">9</property>
             <property name="visible">True</property>

@@ -29,24 +29,10 @@ pub fn main() {
 
     let disasm_text: gtk::TextView = builder.get_object("disasm_text").unwrap();
 
-    // --- OLD:::
-
-    const WIDTH: i32 = 800;
-    const HEIGHT: i32 = 600;
-
-
-    /*
-    let window = Window::new(WindowType::Toplevel);
     window.set_title("x86emu");
-    window.set_default_size(WIDTH, HEIGHT);
-    */
 
 
-
-
-    let app = Arc::new(Mutex::new(debugger::Debugger::new())); // XXX
-    let x = 10;
-    let y = 10;
+    let app = Arc::new(Mutex::new(debugger::Debugger::new()));
 
 /*
     let canvas = Arc::new(Mutex::new(Image::from_color(320, 200, Color::rgb(0, 0, 0)))); // XXX can the canvas live in the GPU struct?
@@ -55,21 +41,16 @@ pub fn main() {
     window.add(&canvas_copy.lock().unwrap());
 */
 
-    //let disasm_text = app.lock().unwrap().disasm_n_instructions_to_text(20);
-    let reg_text = app.lock().unwrap().cpu.print_registers();
+    // update disasm
+    let text = app.lock().unwrap().disasm_n_instructions_to_text(20);
+    disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
 
-    //let disasm_copy = disasm.clone();
-    // XXX disasm_copy.lock().unwrap().position(x, y).size(450, 20 * 20);
+    // update regs
+    //let reg_text = app.lock().unwrap().cpu.print_registers();
+    //let regs = Label::new(reg_text.as_ref());
+    //let regs_copy = regs.clone();
+    // XXX regs_copy.lock().unwrap().position(WIDTH as i32 - 300, 300).text(reg_text);
 
-    let regs = Label::new(reg_text.as_ref());
-    let regs_copy = regs.clone();
-    // XXX regs_copy.lock().unwrap().position(WIDTH as i32 - 300, 300)
-        // XXX .size(290, 80)
-        //.text(reg_text);
-    window.add(&regs);
-
-    let button_width = 90;
-    let pad = 10;
     {
         let step_copy = app.clone();
         let disasm = disasm_text.clone();
@@ -84,7 +65,6 @@ pub fn main() {
 
             // update disasm
             let text = shared.disasm_n_instructions_to_text(20);
-            //disasm.set_label(text.as_ref());
             disasm.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
 
             /*
@@ -103,9 +83,6 @@ pub fn main() {
         //let canvas_step2_copy = canvas.clone();
 
         button_step_into.connect_clicked(move |_| {
-            // XXX .position(x + button_width as i32 + pad, HEIGHT as i32 - 50)
-            // XXX .size(button_width, 30)
-
             let mut shared = step2_copy.lock().unwrap();
 
             shared.cpu.fatal_error = false;
@@ -132,8 +109,6 @@ pub fn main() {
         //let canvas_step3_copy = canvas.clone();
 
         button_run.connect_clicked(move |_| {
-            // XXX .position(x + (button_width * 2) as i32 + (pad * 2), HEIGHT as i32 - 50)
-            // XXX .size(button_width, 30)
             let mut shared = step3_copy.lock().unwrap();
 
             shared.cpu.fatal_error = false;
@@ -165,8 +140,9 @@ pub fn main() {
     gtk::main();
 }
 
+/*
 fn render_canvas(canvas: &std::sync::Arc<gtk::Image>, cpu: &CPU) {
-    /* XXX rewrite for rs-gtk
+    XXX rewrite for rs-gtk
 
     let mut image = canvas.image.borrow_mut();
 
@@ -186,6 +162,6 @@ fn render_canvas(canvas: &std::sync::Arc<gtk::Image>, cpu: &CPU) {
             image.pixel(x as i32, y as i32, Color::rgb(pal.r, pal.g, pal.b));
         }
     }
-    */
 }
+*/
 
