@@ -95,12 +95,12 @@ impl Debugger {
     }
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
-        let mut res = String::new();
+        let mut rows: Vec<String> = Vec::new();
         for op in self.disasm_n_instructions(n) {
-            res += op.pretty_string().as_ref();
-            res += "\n";
+            let s = op.pretty_string();
+            rows.push(s);
         }
-        res
+        rows.join("\n")
     }
 
     fn disasm_n_instructions(&mut self, n: usize) -> Vec<InstructionInfo> {
