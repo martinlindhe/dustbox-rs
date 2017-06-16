@@ -29,6 +29,7 @@ pub struct GUI {
     app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>,
     builder: std::sync::Arc<std::sync::Mutex<gtk::Builder>>,
     prevRegs: PrevRegs,
+    pixbuf: gdk_pixbuf::Pixbuf,
 }
 
 impl GUI {
@@ -65,6 +66,7 @@ impl GUI {
         // disasm_text.width = 400; // XXX set fixed width of disasm box, so it wont resize ...
 
         let image_video: gtk::Image = self.builder.lock().unwrap().get_object("image_video").unwrap();
+
 
         // menu items
         let file_quit: gtk::MenuItem = self.builder.lock().unwrap().get_object("file_quit").unwrap();
