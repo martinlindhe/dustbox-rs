@@ -26,38 +26,49 @@ struct PrevRegs {
 }
 
 pub struct GUI {
+    app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>,
+    builder: std::sync::Arc<std::sync::Mutex<gtk::Builder>>,
     prevRegs: PrevRegs,
 }
 
 impl GUI {
-    pub fn new(app: &std::sync::Arc<std::sync::Mutex<debugger::Debugger>>) -> Self {
-        let cpu = &app.lock().unwrap().cpu;
-        GUI {prevRegs: PrevRegs{
-            ip: cpu.ip,
-            r16: cpu.r16,
-            sreg16: cpu.sreg16,
-            flags: cpu.flags}}
-    }
-
-    // start the gtk-rs main loop
-    pub fn main(&mut self, app: &std::sync::Arc<std::sync::Mutex<debugger::Debugger>>) {
+    pub fn new(app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>) -> Self {
 
         gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));
 
-        let builder = gtk::Builder::new_from_string(include_str!("interface.glade"));
-        let window: gtk::Window = builder.get_object("main_window").unwrap();
+        let ip = app.lock().unwrap().cpu.ip;
+        let r16 = app.lock().unwrap().cpu.r16;
+        let sreg16 = app.lock().unwrap().cpu.sreg16;
+        let flags = app.lock().unwrap().cpu.flags;
+        GUI {
+            app: app,
+            builder: Arc::new(Mutex::new(gtk::Builder::new_from_string(include_str!("gui.glade")))),
+            prevRegs: PrevRegs{
+                ip: ip,
+                r16: r16,
+                sreg16: sreg16,
+                flags: flags,
+            },
+        }
+    }
 
-        let button_step_into: gtk::Button = builder.get_object("button_step_into").unwrap();
-        let button_step_over: gtk::Button = builder.get_object("button_step_over").unwrap();
-        let button_run: gtk::Button = builder.get_object("button_run").unwrap();
+    // start the gtk-rs main loop
+    pub fn main(&mut self) {
 
-        let disasm_text: gtk::TextView = builder.get_object("disasm_text").unwrap();
+        let window: gtk::Window = self.builder.lock().unwrap().get_object("main_window").unwrap();
 
-        let image_video: gtk::Image = builder.get_object("image_video").unwrap();
+        let button_step_into: gtk::Button = self.builder.lock().unwrap().get_object("button_step_into").unwrap();
+        let button_step_over: gtk::Button = self.builder.lock().unwrap().get_object("button_step_over").unwrap();
+        let button_run: gtk::Button = self.builder.lock().unwrap().get_object("button_run").unwrap();
+
+        let disasm_text: gtk::TextView = self.builder.lock().unwrap().get_object("disasm_text").unwrap();
+        // disasm_text.width = 400; // XXX set fixed width of disasm box, so it wont resize ...
+
+        let image_video: gtk::Image = self.builder.lock().unwrap().get_object("image_video").unwrap();
 
         // menu items
-        let file_quit: gtk::MenuItem = builder.get_object("file_quit").unwrap();
-        let help_about: gtk::MenuItem = builder.get_object("help_about").unwrap();
+        let file_quit: gtk::MenuItem = self.builder.lock().unwrap().get_object("file_quit").unwrap();
+        let help_about: gtk::MenuItem = self.builder.lock().unwrap().get_object("help_about").unwrap();
 
         window.set_title("x86emu");
 
@@ -90,39 +101,15 @@ impl GUI {
     */
 
         // update disasm
-        let text = app.lock().unwrap().disasm_n_instructions_to_text(20);
+        let text = self.app.lock().unwrap().disasm_n_instructions_to_text(20);
         disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
 
-        // update regs
-        self.update_registers(&app.lock().unwrap(), &builder);
-/*
-        {
-            let app = app.clone();
-            let builder = builder.clone();
-            let disasm_text = disasm_text.clone();
-            //let canvas_step_copy = canvas.clone();
-
-            button_step_over.connect_clicked(move |_| {
-                let mut shared = app.lock().unwrap();
-
-                shared.cpu.fatal_error = false;
-                shared.step_over();
-
-                // update disasm
-                let text = shared.disasm_n_instructions_to_text(20);
-                disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
-
-                // update regs
-                self.update_registers(&shared, &builder);
-            });
-        }
-
+        self.update_registers();
 
         {
-            let app = app.clone();
-            let builder = builder.clone();
+            let app = self.app.clone();
             let disasm_text = disasm_text.clone();
-            //let canvas_step2_copy = canvas.clone();
+            //let canvas = canvas.clone();
 
             button_step_into.connect_clicked(move |_| {
                 let mut shared = app.lock().unwrap();
@@ -134,16 +121,33 @@ impl GUI {
                 let text = shared.disasm_n_instructions_to_text(20);
                 disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
 
-                // update regs
-                self.update_registers(&shared, &builder);
+                //self.update_registers(); // XXX some lifetime error.-.. ?!?!!
             });
         }
 
         {
-            let app = app.clone();
-            let builder = builder.clone();
+            let app = self.app.clone();
             let disasm_text = disasm_text.clone();
-            //let canvas_step3_copy = canvas.clone();
+            //let canvas = canvas.clone();
+
+            button_step_over.connect_clicked(move |_| {
+                let mut app = app.lock().unwrap();
+
+                app.cpu.fatal_error = false;
+                app.step_over();
+
+                // update disasm
+                let text = app.disasm_n_instructions_to_text(20);
+                disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
+
+                //self.update_registers();
+            });
+        }
+
+        {
+            let app = self.app.clone();
+            let disasm_text = disasm_text.clone();
+            //let canvas = canvas.clone();
 
             button_run.connect_clicked(move |_| {
                 let mut shared = app.lock().unwrap();
@@ -158,10 +162,10 @@ impl GUI {
                 disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
 
                 // update regs
-                self.update_registers(&shared, &builder);
+                //self.update_registers(&builder);
             });
         }
-*/
+
         window.show_all();
 
         window.connect_delete_event(|_, _| {
@@ -172,7 +176,10 @@ impl GUI {
         gtk::main();
     }
 
-    fn update_registers(&mut self, app: &debugger::Debugger, builder: &gtk::Builder) {
+    fn update_registers(&mut self) {
+
+        let app = self.app.lock().unwrap();
+        let builder = self.builder.lock().unwrap();
 
         let ax_value: gtk::Label = builder.get_object("ax_value").unwrap();
         let bx_value: gtk::Label = builder.get_object("bx_value").unwrap();

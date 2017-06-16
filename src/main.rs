@@ -33,7 +33,6 @@ fn main() {
 
     let app = Arc::new(Mutex::new(debugger::Debugger::new()));
 
-    let mut gui = gui::GUI::new(&app);
-
-    gui.main(&app);
+    let mut gui = gui::GUI::new(app);
+    gui.main();
 }
