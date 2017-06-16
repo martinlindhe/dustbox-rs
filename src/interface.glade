@@ -219,7 +219,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="ax_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="xpad">4</property>
@@ -231,7 +231,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="bx_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">FFFF</property>
@@ -242,7 +242,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="cx_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">FFFF</property>
@@ -253,7 +253,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="dx_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">FFFF</property>
@@ -308,7 +308,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="si_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="xpad">4</property>
@@ -320,7 +320,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="di_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">FFFF</property>
@@ -331,7 +331,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="bp_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">FFFF</property>
@@ -342,7 +342,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="sp_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">FFFF</property>
@@ -375,7 +375,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="ds_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="xpad">4</property>
@@ -387,7 +387,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="cs_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">FFFF</property>
@@ -409,7 +409,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="es_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="xpad">4</property>
@@ -432,7 +432,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="fs_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="xpad">4</property>
@@ -455,7 +455,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="ip_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">FFFF</property>
@@ -477,7 +477,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="gs_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="xpad">4</property>
@@ -500,7 +500,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel">
+                  <object class="GtkLabel" id="ss_value">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="xpad">4</property>

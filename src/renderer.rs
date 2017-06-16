@@ -14,7 +14,51 @@ use gdk::RGBA;
 use memory::Memory;
 use debugger;
 use cpu::{CPU};
-use register::{AX, BX, CX, DX, CS};
+use register::{AX, BX, CX, DX, SI, DI,BP, SP, DS, CS, ES, FS, GS, SS};
+
+fn update_registers(app: &debugger::Debugger, builder: &gtk::Builder) {
+
+    let ax_value: gtk::Label = builder.get_object("ax_value").unwrap();
+    let bx_value: gtk::Label = builder.get_object("bx_value").unwrap();
+    let cx_value: gtk::Label = builder.get_object("cx_value").unwrap();
+    let dx_value: gtk::Label = builder.get_object("dx_value").unwrap();
+
+    ax_value.set_text(&app.cpu.r16[AX].as_hex_string());
+    bx_value.set_text(&app.cpu.r16[BX].as_hex_string());
+    cx_value.set_text(&app.cpu.r16[CX].as_hex_string());
+    dx_value.set_text(&app.cpu.r16[DX].as_hex_string());
+
+    let si_value: gtk::Label = builder.get_object("si_value").unwrap();
+    let di_value: gtk::Label = builder.get_object("di_value").unwrap();
+    let bp_value: gtk::Label = builder.get_object("bp_value").unwrap();
+    let sp_value: gtk::Label = builder.get_object("sp_value").unwrap();
+
+    si_value.set_text(&app.cpu.r16[SI].as_hex_string());
+    di_value.set_text(&app.cpu.r16[DI].as_hex_string());
+    bp_value.set_text(&app.cpu.r16[BP].as_hex_string());
+    sp_value.set_text(&app.cpu.r16[SP].as_hex_string());
+
+
+    let ds_value: gtk::Label = builder.get_object("ds_value").unwrap();
+    let cs_value: gtk::Label = builder.get_object("cs_value").unwrap();
+    let es_value: gtk::Label = builder.get_object("es_value").unwrap();
+    let fs_value: gtk::Label = builder.get_object("fs_value").unwrap();
+
+    ds_value.set_text(&app.cpu.r16[DS].as_hex_string());
+    cs_value.set_text(&app.cpu.r16[CS].as_hex_string());
+    es_value.set_text(&app.cpu.r16[ES].as_hex_string());
+    fs_value.set_text(&app.cpu.r16[FS].as_hex_string());
+
+
+    let gs_value: gtk::Label = builder.get_object("gs_value").unwrap();
+    let ss_value: gtk::Label = builder.get_object("ss_value").unwrap();
+    let ip_value: gtk::Label = builder.get_object("ip_value").unwrap();
+
+    gs_value.set_text(&app.cpu.r16[GS].as_hex_string());
+    ss_value.set_text(&app.cpu.r16[SS].as_hex_string());
+    let ip = format!("{:04X}", &app.cpu.ip);
+    ip_value.set_text(&ip);
+}
 
 pub fn main() {
 
@@ -46,70 +90,65 @@ pub fn main() {
     disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
 
     // update regs
+    update_registers(&app.lock().unwrap(), &builder);
+
     //let reg_text = app.lock().unwrap().cpu.print_registers();
     //let regs = Label::new(reg_text.as_ref());
     //let regs_copy = regs.clone();
     // XXX regs_copy.lock().unwrap().position(WIDTH as i32 - 300, 300).text(reg_text);
 
     {
-        let step_copy = app.clone();
-        let disasm = disasm_text.clone();
+        let app = app.clone();
+        let builder = builder.clone();
+        let disasm_text = disasm_text.clone();
         //let regs_step_copy = regs.clone();
         //let canvas_step_copy = canvas.clone();
 
         button_step_over.connect_clicked(move |_| {
-            let mut shared = step_copy.lock().unwrap();
+            let mut shared = app.lock().unwrap();
 
             shared.cpu.fatal_error = false;
             shared.step_over();
 
             // update disasm
             let text = shared.disasm_n_instructions_to_text(20);
-            disasm.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
+            disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
 
-            /*
             // update regs
-            let reg_text = shared.cpu.print_registers();
-            regs_step_copy.lock().unwrap().set_label(reg_text.as_ref());
-            */
-
-            //render_canvas(&canvas_step_copy.lock().unwrap(), &shared.cpu);
+            update_registers(&shared, &builder);
         });
     }
 
     {
-        let step2_copy = app.clone();
-        let disasm = disasm_text.clone();
+        let app = app.clone();
+        let builder = builder.clone();
+        let disasm_text = disasm_text.clone();
         //let canvas_step2_copy = canvas.clone();
 
         button_step_into.connect_clicked(move |_| {
-            let mut shared = step2_copy.lock().unwrap();
+            let mut shared = app.lock().unwrap();
 
             shared.cpu.fatal_error = false;
             shared.step_into();
 
             // update disasm
             let text = shared.disasm_n_instructions_to_text(20);
-            disasm.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
+            disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
 
             // update regs
-            /*
-            let reg_text = shared.cpu.print_registers();
-            regs_step2_copy.lock().unwrap().set_label(reg_text.as_ref());
-            */
-
-            //render_canvas(&canvas_step2_copy.lock().unwrap(), &shared.cpu);
+            update_registers(&shared, &builder);
         });
     }
 
     {
-        let step3_copy = app.clone();
-        let disasm = disasm_text.clone();
+        let app = app.clone();
+        let builder = builder.clone();
+        let disasm_text = disasm_text.clone();
         //let regs_step3_copy = regs.clone();
         //let canvas_step3_copy = canvas.clone();
 
         button_run.connect_clicked(move |_| {
-            let mut shared = step3_copy.lock().unwrap();
+            let mut shared = app.lock().unwrap();
 
             shared.cpu.fatal_error = false;
 
@@ -118,15 +157,10 @@ pub fn main() {
 
             // update disasm
             let text = shared.disasm_n_instructions_to_text(20);
-            disasm.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
+            disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
 
-            /*
             // update regs
-            let reg_text = shared.cpu.print_registers();
-            regs_step3_copy.lock().unwrap().set_label(reg_text.as_ref());
-            */
-
-            //render_canvas(&canvas_step3_copy.lock().unwrap(), &shared.cpu);
+            update_registers(&shared, &builder);
         });
     }
 
