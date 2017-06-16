@@ -2,7 +2,7 @@
 <!-- Generated with glade 3.20.0 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
-  <object class="GtkApplicationWindow">
+  <object class="GtkApplicationWindow" id="main_window">
     <property name="can_focus">False</property>
     <child>
       <object class="GtkBox">
@@ -663,7 +663,7 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
-              <object class="GtkButton">
+              <object class="GtkButton" id="button_step_into">
                 <property name="label" translatable="yes">Step into</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -675,7 +675,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton">
+              <object class="GtkButton" id="button_step_over">
                 <property name="label" translatable="yes">Step over</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -687,7 +687,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton">
+              <object class="GtkButton" id="button_run">
                 <property name="label" translatable="yes">Run</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -699,7 +699,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton">
+              <object class="GtkButton" id="button_set_breakpoint">
                 <property name="label" translatable="yes">Set BP</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -711,7 +711,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton">
+              <object class="GtkButton" id="button_list_breakpoints">
                 <property name="label" translatable="yes">List BPs</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
