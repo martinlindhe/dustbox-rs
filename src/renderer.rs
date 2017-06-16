@@ -38,7 +38,6 @@ fn update_registers(app: &debugger::Debugger, builder: &gtk::Builder) {
     bp_value.set_text(&app.cpu.r16[BP].as_hex_string());
     sp_value.set_text(&app.cpu.r16[SP].as_hex_string());
 
-
     let ds_value: gtk::Label = builder.get_object("ds_value").unwrap();
     let cs_value: gtk::Label = builder.get_object("cs_value").unwrap();
     let es_value: gtk::Label = builder.get_object("es_value").unwrap();
@@ -49,7 +48,6 @@ fn update_registers(app: &debugger::Debugger, builder: &gtk::Builder) {
     es_value.set_text(&app.cpu.r16[ES].as_hex_string());
     fs_value.set_text(&app.cpu.r16[FS].as_hex_string());
 
-
     let gs_value: gtk::Label = builder.get_object("gs_value").unwrap();
     let ss_value: gtk::Label = builder.get_object("ss_value").unwrap();
     let ip_value: gtk::Label = builder.get_object("ip_value").unwrap();
@@ -58,6 +56,25 @@ fn update_registers(app: &debugger::Debugger, builder: &gtk::Builder) {
     ss_value.set_text(&app.cpu.r16[SS].as_hex_string());
     let ip = format!("{:04X}", &app.cpu.ip);
     ip_value.set_text(&ip);
+
+    // flags
+    let c_flag: gtk::CheckButton = builder.get_object("c_flag").unwrap();
+    let z_flag: gtk::CheckButton = builder.get_object("z_flag").unwrap();
+    let s_flag: gtk::CheckButton = builder.get_object("s_flag").unwrap();
+    let o_flag: gtk::CheckButton = builder.get_object("o_flag").unwrap();
+    let a_flag: gtk::CheckButton = builder.get_object("a_flag").unwrap();
+    let p_flag: gtk::CheckButton = builder.get_object("p_flag").unwrap();
+    let d_flag: gtk::CheckButton = builder.get_object("d_flag").unwrap();
+    let i_flag: gtk::CheckButton = builder.get_object("i_flag").unwrap();
+
+    c_flag.set_active(app.cpu.flags.carry);
+    z_flag.set_active(app.cpu.flags.zero);
+    s_flag.set_active(app.cpu.flags.sign);
+    o_flag.set_active(app.cpu.flags.overflow);
+    a_flag.set_active(app.cpu.flags.auxiliary_carry);
+    p_flag.set_active(app.cpu.flags.parity);
+    d_flag.set_active(app.cpu.flags.direction);
+    i_flag.set_active(app.cpu.flags.interrupt);
 }
 
 pub fn main() {
