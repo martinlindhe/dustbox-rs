@@ -109,16 +109,10 @@ pub fn main() {
     // update regs
     update_registers(&app.lock().unwrap(), &builder);
 
-    //let reg_text = app.lock().unwrap().cpu.print_registers();
-    //let regs = Label::new(reg_text.as_ref());
-    //let regs_copy = regs.clone();
-    // XXX regs_copy.lock().unwrap().position(WIDTH as i32 - 300, 300).text(reg_text);
-
     {
         let app = app.clone();
         let builder = builder.clone();
         let disasm_text = disasm_text.clone();
-        //let regs_step_copy = regs.clone();
         //let canvas_step_copy = canvas.clone();
 
         button_step_over.connect_clicked(move |_| {
@@ -161,7 +155,6 @@ pub fn main() {
         let app = app.clone();
         let builder = builder.clone();
         let disasm_text = disasm_text.clone();
-        //let regs_step3_copy = regs.clone();
         //let canvas_step3_copy = canvas.clone();
 
         button_run.connect_clicked(move |_| {
