@@ -75,6 +75,8 @@ fn update_registers(app: &debugger::Debugger, builder: &gtk::Builder) {
     p_flag.set_active(app.cpu.flags.parity);
     d_flag.set_active(app.cpu.flags.direction);
     i_flag.set_active(app.cpu.flags.interrupt);
+
+    // i_flag.set_color("x");  XXX change color for changed values
 }
 
 pub fn main() {
@@ -90,8 +92,30 @@ pub fn main() {
 
     let disasm_text: gtk::TextView = builder.get_object("disasm_text").unwrap();
 
+    // menu items
+    let file_quit: gtk::MenuItem = builder.get_object("file_quit").unwrap();
+    let help_about: gtk::MenuItem = builder.get_object("help_about").unwrap();
+
     window.set_title("x86emu");
 
+    file_quit.connect_activate(move |_| {
+        gtk::main_quit();
+    });
+
+    {
+        let window = window.clone();
+        help_about.connect_activate(move |_| {
+            let p = gtk::AboutDialog::new();
+            p.set_authors(&["Martin Lindhe"]);
+            p.set_website_label(Some("My website"));
+            p.set_website(Some("http://example.com"));
+            p.set_comments(Some("A x86 debugger / emulator"));
+            p.set_copyright(Some("Under MIT license"));
+            p.set_transient_for(Some(&window));
+            p.run();
+            p.destroy();
+        });
+    }
 
     let app = Arc::new(Mutex::new(debugger::Debugger::new()));
 
