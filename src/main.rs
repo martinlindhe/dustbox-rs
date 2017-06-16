@@ -21,13 +21,19 @@ mod instruction;
 mod memory;
 mod segment;
 mod gpu;
-mod renderer;
+mod gui;
 mod int10;
 mod int16;
 mod int21;
 
+use std::sync::{Arc, Mutex};
+
 fn main() {
     colog::init();
 
-    renderer::main();
+    let app = Arc::new(Mutex::new(debugger::Debugger::new()));
+
+    let mut gui = gui::GUI::new(&app);
+
+    gui.main(&app);
 }

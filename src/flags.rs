@@ -1,6 +1,7 @@
 // TODO later: look into bitflags! macro
 
 // https://en.wikipedia.org/wiki/FLAGS_register
+#[derive(Copy, Clone)]
 pub struct Flags {
     pub carry: bool, // 0: carry flag
     reserved1: bool, // 1: Reserved, always 1 in EFLAGS
