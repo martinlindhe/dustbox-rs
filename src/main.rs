@@ -22,7 +22,7 @@ mod instruction;
 mod memory;
 mod segment;
 mod gpu;
-mod gui;
+mod interface;
 mod int10;
 mod int16;
 mod int21;
@@ -34,6 +34,6 @@ fn main() {
 
     let app = Arc::new(Mutex::new(debugger::Debugger::new()));
 
-    let mut gui = gui::GUI::new(app);
+    let mut gui = interface::Interface::new(app);
     gui.main();
 }

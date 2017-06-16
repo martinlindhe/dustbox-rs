@@ -582,12 +582,19 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTextView" id="disasm_text">
-                    <property name="width_request">4</property>
-                    <property name="height_request">9</property>
+                  <object class="GtkScrolledWindow">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                    <property name="monospace">True</property>
+                    <property name="shadow_type">in</property>
+                    <child>
+                      <object class="GtkTextView" id="disasm_text">
+                        <property name="width_request">4</property>
+                        <property name="height_request">9</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="monospace">True</property>
+                      </object>
+                    </child>
                   </object>
                   <packing>
                     <property name="expand">True</property>
@@ -697,6 +704,9 @@
             <property name="fill">True</property>
             <property name="position">3</property>
           </packing>
+        </child>
+        <child>
+          <placeholder/>
         </child>
       </object>
     </child>
