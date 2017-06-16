@@ -23,39 +23,39 @@ fn update_registers(app: &debugger::Debugger, builder: &gtk::Builder) {
     let cx_value: gtk::Label = builder.get_object("cx_value").unwrap();
     let dx_value: gtk::Label = builder.get_object("dx_value").unwrap();
 
-    ax_value.set_text(&app.cpu.r16[AX].as_hex_string());
-    bx_value.set_text(&app.cpu.r16[BX].as_hex_string());
-    cx_value.set_text(&app.cpu.r16[CX].as_hex_string());
-    dx_value.set_text(&app.cpu.r16[DX].as_hex_string());
+    ax_value.set_markup(&app.cpu.r16[AX].as_hex_string());
+    bx_value.set_markup(&app.cpu.r16[BX].as_hex_string());
+    cx_value.set_markup(&app.cpu.r16[CX].as_hex_string());
+    dx_value.set_markup(&app.cpu.r16[DX].as_hex_string());
 
     let si_value: gtk::Label = builder.get_object("si_value").unwrap();
     let di_value: gtk::Label = builder.get_object("di_value").unwrap();
     let bp_value: gtk::Label = builder.get_object("bp_value").unwrap();
     let sp_value: gtk::Label = builder.get_object("sp_value").unwrap();
 
-    si_value.set_text(&app.cpu.r16[SI].as_hex_string());
-    di_value.set_text(&app.cpu.r16[DI].as_hex_string());
-    bp_value.set_text(&app.cpu.r16[BP].as_hex_string());
-    sp_value.set_text(&app.cpu.r16[SP].as_hex_string());
+    si_value.set_markup(&app.cpu.r16[SI].as_hex_string());
+    di_value.set_markup(&app.cpu.r16[DI].as_hex_string());
+    bp_value.set_markup(&app.cpu.r16[BP].as_hex_string());
+    sp_value.set_markup(&app.cpu.r16[SP].as_hex_string());
 
     let ds_value: gtk::Label = builder.get_object("ds_value").unwrap();
     let cs_value: gtk::Label = builder.get_object("cs_value").unwrap();
     let es_value: gtk::Label = builder.get_object("es_value").unwrap();
     let fs_value: gtk::Label = builder.get_object("fs_value").unwrap();
 
-    ds_value.set_text(&app.cpu.r16[DS].as_hex_string());
-    cs_value.set_text(&app.cpu.r16[CS].as_hex_string());
-    es_value.set_text(&app.cpu.r16[ES].as_hex_string());
-    fs_value.set_text(&app.cpu.r16[FS].as_hex_string());
+    ds_value.set_markup(&app.cpu.r16[DS].as_hex_string());
+    cs_value.set_markup(&app.cpu.r16[CS].as_hex_string());
+    es_value.set_markup(&app.cpu.r16[ES].as_hex_string());
+    fs_value.set_markup(&app.cpu.r16[FS].as_hex_string());
 
     let gs_value: gtk::Label = builder.get_object("gs_value").unwrap();
     let ss_value: gtk::Label = builder.get_object("ss_value").unwrap();
     let ip_value: gtk::Label = builder.get_object("ip_value").unwrap();
 
-    gs_value.set_text(&app.cpu.r16[GS].as_hex_string());
-    ss_value.set_text(&app.cpu.r16[SS].as_hex_string());
-    let ip = format!("{:04X}", &app.cpu.ip);
-    ip_value.set_text(&ip);
+    gs_value.set_markup(&app.cpu.r16[GS].as_hex_string());
+    ss_value.set_markup(&app.cpu.r16[SS].as_hex_string());
+    let ip = format!("<span font_desc=\"mono\">{:04X}</span>", &app.cpu.ip);
+    ip_value.set_markup(&ip);
 
     // flags
     let c_flag: gtk::CheckButton = builder.get_object("c_flag").unwrap();
@@ -106,6 +106,8 @@ pub fn main() {
         let window = window.clone();
         help_about.connect_activate(move |_| {
             let p = gtk::AboutDialog::new();
+            p.set_program_name("x86emu");
+            p.set_version("0.1.0");
             p.set_authors(&["Martin Lindhe"]);
             p.set_website_label(Some("My website"));
             p.set_website(Some("http://example.com"));

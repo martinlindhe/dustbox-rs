@@ -18,7 +18,7 @@ impl Register16 {
     }
 
     pub fn as_hex_string(&self) -> String {
-        format!("{:04X}", self.val)
+        format!("<span font_desc=\"mono\">{:04X}</span>", self.val)
     }
 }
 
