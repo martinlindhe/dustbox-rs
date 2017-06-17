@@ -29,7 +29,7 @@ struct PrevRegs {
 pub struct Interface {
     app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>,
     builder: std::sync::Arc<std::sync::Mutex<gtk::Builder>>,
-    prevRegs: PrevRegs,
+    prev_regs: PrevRegs,
     pixbuf: gdk_pixbuf::Pixbuf,
 }
 
@@ -47,7 +47,7 @@ impl Interface {
         Self {
             app: app,
             builder: Arc::new(Mutex::new(gtk::Builder::new_from_string(include_str!("interface.glade")))),
-            prevRegs: PrevRegs{
+            prev_regs: PrevRegs{
                 ip: ip,
                 r16: r16,
                 sreg16: sreg16,
