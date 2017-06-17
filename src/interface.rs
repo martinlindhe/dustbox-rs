@@ -113,14 +113,21 @@ impl Interface {
         let text = self.app.lock().unwrap().disasm_n_instructions_to_text(20);
         disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
 
-        self.update_registers();
+        let app = self.app.clone();
+        let builder = self.builder.clone();
+        update_registers(app, builder);
 
         {
             let app = self.app.clone();
+            let builder = self.builder.clone();
             let disasm_text = disasm_text.clone();
             //let canvas = canvas.clone();
 
             button_step_into.connect_clicked(move |_| {
+                let app2 = app.clone();
+                let builder = builder.clone();
+                update_registers(app2, builder);
+
                 let mut shared = app.lock().unwrap();
 
                 shared.cpu.fatal_error = false;
@@ -129,17 +136,20 @@ impl Interface {
                 // update disasm
                 let text = shared.disasm_n_instructions_to_text(20);
                 disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
-
-                //self.update_registers(); // XXX some lifetime error.-.. ?!?!!
             });
         }
 
         {
             let app = self.app.clone();
+            let builder = self.builder.clone();
             let disasm_text = disasm_text.clone();
             //let canvas = canvas.clone();
 
             button_step_over.connect_clicked(move |_| {
+                let app2 = app.clone();
+                let builder = builder.clone();
+                update_registers(app2, builder);
+
                 let mut app = app.lock().unwrap();
 
                 app.cpu.fatal_error = false;
@@ -148,17 +158,20 @@ impl Interface {
                 // update disasm
                 let text = app.disasm_n_instructions_to_text(20);
                 disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
-
-                //self.update_registers();
             });
         }
 
         {
             let app = self.app.clone();
+            let builder = self.builder.clone();
             let disasm_text = disasm_text.clone();
             //let canvas = canvas.clone();
 
             button_run.connect_clicked(move |_| {
+                let app2 = app.clone();
+                let builder = builder.clone();
+                update_registers(app2, builder);
+
                 let mut shared = app.lock().unwrap();
 
                 shared.cpu.fatal_error = false;
@@ -169,9 +182,6 @@ impl Interface {
                 // update disasm
                 let text = shared.disasm_n_instructions_to_text(20);
                 disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
-
-                // update regs
-                //self.update_registers(&builder);
             });
         }
 
@@ -184,74 +194,73 @@ impl Interface {
 
         gtk::main();
     }
-
-    fn update_registers(&mut self) {
-
-        let app = self.app.lock().unwrap();
-        let builder = self.builder.lock().unwrap();
-
-        let ax_value: gtk::Label = builder.get_object("ax_value").unwrap();
-        let bx_value: gtk::Label = builder.get_object("bx_value").unwrap();
-        let cx_value: gtk::Label = builder.get_object("cx_value").unwrap();
-        let dx_value: gtk::Label = builder.get_object("dx_value").unwrap();
-
-        ax_value.set_markup(&app.cpu.r16[AX].as_hex_string());
-        bx_value.set_markup(&app.cpu.r16[BX].as_hex_string());
-        cx_value.set_markup(&app.cpu.r16[CX].as_hex_string());
-        dx_value.set_markup(&app.cpu.r16[DX].as_hex_string());
-
-        let si_value: gtk::Label = builder.get_object("si_value").unwrap();
-        let di_value: gtk::Label = builder.get_object("di_value").unwrap();
-        let bp_value: gtk::Label = builder.get_object("bp_value").unwrap();
-        let sp_value: gtk::Label = builder.get_object("sp_value").unwrap();
-
-        si_value.set_markup(&app.cpu.r16[SI].as_hex_string());
-        di_value.set_markup(&app.cpu.r16[DI].as_hex_string());
-        bp_value.set_markup(&app.cpu.r16[BP].as_hex_string());
-        sp_value.set_markup(&app.cpu.r16[SP].as_hex_string());
-
-        let ds_value: gtk::Label = builder.get_object("ds_value").unwrap();
-        let cs_value: gtk::Label = builder.get_object("cs_value").unwrap();
-        let es_value: gtk::Label = builder.get_object("es_value").unwrap();
-        let fs_value: gtk::Label = builder.get_object("fs_value").unwrap();
-
-        ds_value.set_markup(&app.cpu.r16[DS].as_hex_string());
-        cs_value.set_markup(&app.cpu.r16[CS].as_hex_string());
-        es_value.set_markup(&app.cpu.r16[ES].as_hex_string());
-        fs_value.set_markup(&app.cpu.r16[FS].as_hex_string());
-
-        let gs_value: gtk::Label = builder.get_object("gs_value").unwrap();
-        let ss_value: gtk::Label = builder.get_object("ss_value").unwrap();
-        let ip_value: gtk::Label = builder.get_object("ip_value").unwrap();
-
-        gs_value.set_markup(&app.cpu.r16[GS].as_hex_string());
-        ss_value.set_markup(&app.cpu.r16[SS].as_hex_string());
-        // XXX change color for changed values
-        let ip = format!("<span color=\"#cf8c0b\" font_desc=\"mono\">{:04X}</span>", &app.cpu.ip);
-        ip_value.set_markup(&ip);
-
-        // flags
-        let c_flag: gtk::CheckButton = builder.get_object("c_flag").unwrap();
-        let z_flag: gtk::CheckButton = builder.get_object("z_flag").unwrap();
-        let s_flag: gtk::CheckButton = builder.get_object("s_flag").unwrap();
-        let o_flag: gtk::CheckButton = builder.get_object("o_flag").unwrap();
-        let a_flag: gtk::CheckButton = builder.get_object("a_flag").unwrap();
-        let p_flag: gtk::CheckButton = builder.get_object("p_flag").unwrap();
-        let d_flag: gtk::CheckButton = builder.get_object("d_flag").unwrap();
-        let i_flag: gtk::CheckButton = builder.get_object("i_flag").unwrap();
-
-        c_flag.set_active(app.cpu.flags.carry);
-        z_flag.set_active(app.cpu.flags.zero);
-        s_flag.set_active(app.cpu.flags.sign);
-        o_flag.set_active(app.cpu.flags.overflow);
-        a_flag.set_active(app.cpu.flags.auxiliary_carry);
-        p_flag.set_active(app.cpu.flags.parity);
-        d_flag.set_active(app.cpu.flags.direction);
-        i_flag.set_active(app.cpu.flags.interrupt);
-    }
 }
 
 
+fn update_registers(app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>, builder: std::sync::Arc<std::sync::Mutex<gtk::Builder>>) {
+
+    let app = app.lock().unwrap();
+    let builder = builder.lock().unwrap();
+
+    let ax_value: gtk::Label = builder.get_object("ax_value").unwrap();
+    let bx_value: gtk::Label = builder.get_object("bx_value").unwrap();
+    let cx_value: gtk::Label = builder.get_object("cx_value").unwrap();
+    let dx_value: gtk::Label = builder.get_object("dx_value").unwrap();
+
+    ax_value.set_markup(&app.cpu.r16[AX].as_hex_string());
+    bx_value.set_markup(&app.cpu.r16[BX].as_hex_string());
+    cx_value.set_markup(&app.cpu.r16[CX].as_hex_string());
+    dx_value.set_markup(&app.cpu.r16[DX].as_hex_string());
+
+    let si_value: gtk::Label = builder.get_object("si_value").unwrap();
+    let di_value: gtk::Label = builder.get_object("di_value").unwrap();
+    let bp_value: gtk::Label = builder.get_object("bp_value").unwrap();
+    let sp_value: gtk::Label = builder.get_object("sp_value").unwrap();
+
+    si_value.set_markup(&app.cpu.r16[SI].as_hex_string());
+    di_value.set_markup(&app.cpu.r16[DI].as_hex_string());
+    bp_value.set_markup(&app.cpu.r16[BP].as_hex_string());
+    sp_value.set_markup(&app.cpu.r16[SP].as_hex_string());
+
+    let ds_value: gtk::Label = builder.get_object("ds_value").unwrap();
+    let cs_value: gtk::Label = builder.get_object("cs_value").unwrap();
+    let es_value: gtk::Label = builder.get_object("es_value").unwrap();
+    let fs_value: gtk::Label = builder.get_object("fs_value").unwrap();
+
+    ds_value.set_markup(&app.cpu.r16[DS].as_hex_string());
+    cs_value.set_markup(&app.cpu.r16[CS].as_hex_string());
+    es_value.set_markup(&app.cpu.r16[ES].as_hex_string());
+    fs_value.set_markup(&app.cpu.r16[FS].as_hex_string());
+
+    let gs_value: gtk::Label = builder.get_object("gs_value").unwrap();
+    let ss_value: gtk::Label = builder.get_object("ss_value").unwrap();
+    let ip_value: gtk::Label = builder.get_object("ip_value").unwrap();
+
+    gs_value.set_markup(&app.cpu.r16[GS].as_hex_string());
+    ss_value.set_markup(&app.cpu.r16[SS].as_hex_string());
+    // XXX change color for changed values
+    let ip = format!("<span color=\"#cf8c0b\" font_desc=\"mono\">{:04X}</span>", &app.cpu.ip);
+    ip_value.set_markup(&ip);
+
+    // flags
+    let c_flag: gtk::CheckButton = builder.get_object("c_flag").unwrap();
+    let z_flag: gtk::CheckButton = builder.get_object("z_flag").unwrap();
+    let s_flag: gtk::CheckButton = builder.get_object("s_flag").unwrap();
+    let o_flag: gtk::CheckButton = builder.get_object("o_flag").unwrap();
+    let a_flag: gtk::CheckButton = builder.get_object("a_flag").unwrap();
+    let p_flag: gtk::CheckButton = builder.get_object("p_flag").unwrap();
+    let d_flag: gtk::CheckButton = builder.get_object("d_flag").unwrap();
+    let i_flag: gtk::CheckButton = builder.get_object("i_flag").unwrap();
+
+    c_flag.set_active(app.cpu.flags.carry);
+    z_flag.set_active(app.cpu.flags.zero);
+    s_flag.set_active(app.cpu.flags.sign);
+    o_flag.set_active(app.cpu.flags.overflow);
+    a_flag.set_active(app.cpu.flags.auxiliary_carry);
+    p_flag.set_active(app.cpu.flags.parity);
+    d_flag.set_active(app.cpu.flags.direction);
+    i_flag.set_active(app.cpu.flags.interrupt);
+}
 
 /*
 fn render_canvas(canvas: &std::sync::Arc<gtk::Image>, cpu: &CPU) {
