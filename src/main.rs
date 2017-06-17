@@ -12,6 +12,7 @@ extern crate image;
 extern crate gtk;
 extern crate gdk;
 extern crate gdk_pixbuf;
+extern crate cairo;
 
 mod debugger;
 mod tools;
@@ -37,3 +38,4 @@ fn main() {
     let mut gui = interface::Interface::new(app);
     gui.main();
 }
+

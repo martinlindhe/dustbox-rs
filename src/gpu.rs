@@ -1,12 +1,19 @@
+use std::cell::RefCell;
+
+use gdk::prelude::*;
+use cairo;
+use gdk_pixbuf;
+
 #[derive(Clone)]
 pub struct GPU {
-    pub scanline: u32,
-    pub width: u32,
-    pub height: u32,
+    pub scanline: i32,
+    pub width: i32,
+    pub height: i32,
     pub palette: Vec<DACPalette>,
     pub dac_color: usize, // for out 03c9, 0 = red, 1 = green, 2 = blue
     pub dac_index: u8, // for out 03c9
     pub dac_current_palette: Vec<u8>, // for out 03c9
+    pixbuf: RefCell<gdk_pixbuf::Pixbuf>,
 }
 
 #[derive(Clone)]
@@ -19,6 +26,8 @@ pub struct DACPalette {
 impl GPU {
     pub fn new() -> Self {
         let (width, height) = (320, 200);
+        let colorspace = 0; // XXX: gdk_pixbuf_sys::GDK_COLORSPACE_RGB = 0
+
         GPU {
             scanline: 0,
             width: width,
@@ -27,6 +36,9 @@ impl GPU {
             dac_color: 0,
             dac_index: 0,
             dac_current_palette: vec![0u8; 3],
+            pixbuf: RefCell::new(unsafe {
+                gdk_pixbuf::Pixbuf::new(colorspace, false, 8, width, height)
+            }.unwrap()),
         }
     }
     pub fn progress_scanline(&mut self) {
@@ -36,24 +48,24 @@ impl GPU {
             self.scanline = 0;
         }
     }
-/*
-    pub fn render_frame(&mut self) -> Arc<Image> {
 
-        let canvas = Image::from_color(320, 200, Color::rgb(0, 0, 0));
-        /*
-            let height = dbg.cpu.gpu.height;
-            let width = dbg.cpu.gpu.width;
+    // render current video to canvas `c`
+    pub fn draw_canvas(&self, c: &cairo::Context, memory: &Vec<u8>) {
 
-            for y in 0..height {
-                for x in 0..width {
-                    let offset = 0xA0000 + ((y * width) + x) as usize;
-                    let byte = dbg.cpu.memory.memory[offset];
-                    let pal = &dbg.cpu.gpu.palette[byte as usize];
-                    image.pixel(x as i32, y as i32, Color::rgb(pal.r, pal.g, pal.b));
-                }
+        println!("draw canvas");
+
+        let buf = self.pixbuf.borrow();
+
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let offset = 0xA0000 + ((y * self.width) + x) as usize;
+                let byte = memory[offset];
+                let pal = &self.palette[byte as usize];
+                buf.put_pixel(x as i32, y as i32, pal.r, pal.g, pal.b, 255);
             }
-        */
-        canvas
+        }
+
+        c.set_source_pixbuf(&buf, self.width as f64, self.height as f64);
     }
-*/
 }
+

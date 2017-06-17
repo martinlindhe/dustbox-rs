@@ -22,19 +22,18 @@ use register::{AX, BX, CX, DX, SI, DI,BP, SP, DS, CS, ES, FS, GS, SS};
 pub struct Interface {
     app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>,
     builder: std::sync::Arc<std::sync::Mutex<gtk::Builder>>,
-    pixbuf: gdk_pixbuf::Pixbuf,
+    pub canvas: RefCell<gtk::DrawingArea>,
 }
 
-impl Interface {
+impl Interface { // XXX rename to DebugWindow
     pub fn new(app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>) -> Self {
 
         gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));
 
-        let colorspace = 0; // XXX: gdk_pixbuf_sys::GDK_COLORSPACE_RGB = 0
         Self {
             app: app,
             builder: Arc::new(Mutex::new(gtk::Builder::new_from_string(include_str!("interface.glade")))),
-            pixbuf: unsafe { gdk_pixbuf::Pixbuf::new(colorspace, false, 8, 320, 240).unwrap() },
+            canvas: RefCell::new(gtk::DrawingArea::new()),
         }
     }
 
@@ -50,11 +49,14 @@ impl Interface {
         let disasm_text: gtk::TextView = self.builder.lock().unwrap().get_object("disasm_text").unwrap();
         // disasm_text.width = 400; // XXX set fixed width of disasm box, so it wont resize ...
 
-        let image_video: gtk::Image = self.builder.lock().unwrap().get_object("image_video").unwrap();
-        
+        //let image_video: gtk::Image = self.builder.lock().unwrap().get_object("image_video").unwrap();
         // XXX map the pixbuf into image_video
         // image_video = gtk::Image::new_from_pixbuf(&self.pixbuf);
-        
+
+        let canvas = gtk::DrawingArea::new();
+        canvas.set_size_request(320, 240);
+        canvas.set_visible(true);
+
 
         // menu items
         let file_quit: gtk::MenuItem = self.builder.lock().unwrap().get_object("file_quit").unwrap();
@@ -97,6 +99,16 @@ impl Interface {
         let app = self.app.clone();
         let builder = self.builder.clone();
         update_registers(app, builder);
+
+        {
+            // update screen
+            let app = self.app.clone();
+            let canvas = self.canvas.borrow();
+            canvas.connect_draw(move |widget, context| {
+                app.lock().unwrap().cpu.gpu.draw_canvas(context, &app.lock().unwrap().cpu.memory.memory);
+                Inhibit(true)
+            });
+        }
 
         {
             let app = self.app.clone();

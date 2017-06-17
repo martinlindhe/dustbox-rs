@@ -12,6 +12,7 @@ rand = "0.3"
 image = "0.12"
 gdk = "0.5"
 gdk-pixbuf = "0.1"
+cairo-rs = "0.1"
 
 [dependencies.gtk]
 version = "0.1"
