@@ -19,17 +19,9 @@ use flags;
 use cpu::{CPU};
 use register::{AX, BX, CX, DX, SI, DI,BP, SP, DS, CS, ES, FS, GS, SS};
 
-struct PrevRegs {
-    pub ip: u16,
-    pub r16: [register::Register16; 8], // general purpose registers
-    pub sreg16: [u16; 6], // segment registers
-    pub flags: flags::Flags,
-}
-
 pub struct Interface {
     app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>,
     builder: std::sync::Arc<std::sync::Mutex<gtk::Builder>>,
-    prev_regs: PrevRegs,
     pixbuf: gdk_pixbuf::Pixbuf,
 }
 
@@ -38,21 +30,10 @@ impl Interface {
 
         gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));
 
-        let ip = app.lock().unwrap().cpu.ip;
-        let r16 = app.lock().unwrap().cpu.r16;
-        let sreg16 = app.lock().unwrap().cpu.sreg16;
-        let flags = app.lock().unwrap().cpu.flags;
-
         let colorspace = 0; // XXX: gdk_pixbuf_sys::GDK_COLORSPACE_RGB = 0
         Self {
             app: app,
             builder: Arc::new(Mutex::new(gtk::Builder::new_from_string(include_str!("interface.glade")))),
-            prev_regs: PrevRegs{
-                ip: ip,
-                r16: r16,
-                sreg16: sreg16,
-                flags: flags,
-            },
             pixbuf: unsafe { gdk_pixbuf::Pixbuf::new(colorspace, false, 8, 320, 240).unwrap() },
         }
     }
@@ -196,10 +177,17 @@ impl Interface {
     }
 }
 
+fn u16_as_register_str(v: u16, prev: u16) -> String {
+    if v == prev {
+        format!("<span font_desc=\"mono\">{:04X}</span>", v)
+    } else {
+        format!("<span color=\"#cf8c0b\" font_desc=\"mono\">{:04X}</span>", v)
+    }
+}
 
 fn update_registers(app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>, builder: std::sync::Arc<std::sync::Mutex<gtk::Builder>>) {
 
-    let app = app.lock().unwrap();
+    let mut app = app.lock().unwrap();
     let builder = builder.lock().unwrap();
 
     let ax_value: gtk::Label = builder.get_object("ax_value").unwrap();
@@ -207,40 +195,38 @@ fn update_registers(app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>, b
     let cx_value: gtk::Label = builder.get_object("cx_value").unwrap();
     let dx_value: gtk::Label = builder.get_object("dx_value").unwrap();
 
-    ax_value.set_markup(&app.cpu.r16[AX].as_hex_string());
-    bx_value.set_markup(&app.cpu.r16[BX].as_hex_string());
-    cx_value.set_markup(&app.cpu.r16[CX].as_hex_string());
-    dx_value.set_markup(&app.cpu.r16[DX].as_hex_string());
+    ax_value.set_markup(&u16_as_register_str(app.cpu.r16[AX].val, app.prev_regs.r16[AX].val));
+    bx_value.set_markup(&u16_as_register_str(app.cpu.r16[BX].val, app.prev_regs.r16[BX].val));
+    cx_value.set_markup(&u16_as_register_str(app.cpu.r16[CX].val, app.prev_regs.r16[CX].val));
+    dx_value.set_markup(&u16_as_register_str(app.cpu.r16[DX].val, app.prev_regs.r16[DX].val));
 
     let si_value: gtk::Label = builder.get_object("si_value").unwrap();
     let di_value: gtk::Label = builder.get_object("di_value").unwrap();
     let bp_value: gtk::Label = builder.get_object("bp_value").unwrap();
     let sp_value: gtk::Label = builder.get_object("sp_value").unwrap();
 
-    si_value.set_markup(&app.cpu.r16[SI].as_hex_string());
-    di_value.set_markup(&app.cpu.r16[DI].as_hex_string());
-    bp_value.set_markup(&app.cpu.r16[BP].as_hex_string());
-    sp_value.set_markup(&app.cpu.r16[SP].as_hex_string());
+    si_value.set_markup(&u16_as_register_str(app.cpu.r16[SI].val, app.prev_regs.r16[SI].val));
+    di_value.set_markup(&u16_as_register_str(app.cpu.r16[DI].val, app.prev_regs.r16[DI].val));
+    bp_value.set_markup(&u16_as_register_str(app.cpu.r16[BP].val, app.prev_regs.r16[BP].val));
+    sp_value.set_markup(&u16_as_register_str(app.cpu.r16[SP].val, app.prev_regs.r16[SP].val));
 
     let ds_value: gtk::Label = builder.get_object("ds_value").unwrap();
     let cs_value: gtk::Label = builder.get_object("cs_value").unwrap();
     let es_value: gtk::Label = builder.get_object("es_value").unwrap();
     let fs_value: gtk::Label = builder.get_object("fs_value").unwrap();
 
-    ds_value.set_markup(&app.cpu.r16[DS].as_hex_string());
-    cs_value.set_markup(&app.cpu.r16[CS].as_hex_string());
-    es_value.set_markup(&app.cpu.r16[ES].as_hex_string());
-    fs_value.set_markup(&app.cpu.r16[FS].as_hex_string());
+    ds_value.set_markup(&u16_as_register_str(app.cpu.r16[DS].val, app.prev_regs.r16[DS].val));
+    cs_value.set_markup(&u16_as_register_str(app.cpu.r16[CS].val, app.prev_regs.r16[CS].val));
+    es_value.set_markup(&u16_as_register_str(app.cpu.r16[ES].val, app.prev_regs.r16[ES].val));
+    fs_value.set_markup(&u16_as_register_str(app.cpu.r16[FS].val, app.prev_regs.r16[FS].val));
 
     let gs_value: gtk::Label = builder.get_object("gs_value").unwrap();
     let ss_value: gtk::Label = builder.get_object("ss_value").unwrap();
     let ip_value: gtk::Label = builder.get_object("ip_value").unwrap();
 
-    gs_value.set_markup(&app.cpu.r16[GS].as_hex_string());
-    ss_value.set_markup(&app.cpu.r16[SS].as_hex_string());
-    // XXX change color for changed values
-    let ip = format!("<span color=\"#cf8c0b\" font_desc=\"mono\">{:04X}</span>", &app.cpu.ip);
-    ip_value.set_markup(&ip);
+    gs_value.set_markup(&u16_as_register_str(app.cpu.r16[GS].val, app.prev_regs.r16[GS].val));
+    ss_value.set_markup(&u16_as_register_str(app.cpu.r16[SS].val, app.prev_regs.r16[SS].val));
+    ip_value.set_markup(&u16_as_register_str(app.cpu.ip, app.prev_regs.ip));
 
     // flags
     let c_flag: gtk::CheckButton = builder.get_object("c_flag").unwrap();
@@ -260,6 +246,12 @@ fn update_registers(app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>, b
     p_flag.set_active(app.cpu.flags.parity);
     d_flag.set_active(app.cpu.flags.direction);
     i_flag.set_active(app.cpu.flags.interrupt);
+
+    // save previous regs for next update
+    app.prev_regs.ip = app.cpu.ip;
+    app.prev_regs.r16 = app.cpu.r16;
+    app.prev_regs.sreg16 = app.cpu.sreg16;
+    app.prev_regs.flags = app.cpu.flags;
 }
 
 /*

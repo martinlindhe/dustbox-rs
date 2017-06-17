@@ -1,17 +1,36 @@
 use std::time::Instant;
 
 use cpu::CPU;
+use register;
 use register::CS;
+use flags;
 use tools;
 use instruction::{InstructionInfo};
 
+pub struct PrevRegs {
+    pub ip: u16,
+    pub r16: [register::Register16; 8], // general purpose registers
+    pub sreg16: [u16; 6],               // segment registers
+    pub flags: flags::Flags,
+}
+
 pub struct Debugger {
     pub cpu: CPU,
+    pub prev_regs: PrevRegs,
 }
 
 impl Debugger {
     pub fn new() -> Self {
-        let mut dbg = Debugger { cpu: CPU::new() };
+        let cpu = CPU::new();
+        let mut dbg = Debugger {
+            cpu: cpu.clone(),
+            prev_regs: PrevRegs{
+                ip: cpu.ip,
+                r16: cpu.r16,
+                sreg16: cpu.sreg16,
+                flags: cpu.flags,
+            },
+        };
         // XXX for quick testing while building the ui
         // let name = "../dos-software-decoding/samples/bar/bar.com";
         let name = "../dos-software-decoding/demo-256/beziesux/beziesux.com";

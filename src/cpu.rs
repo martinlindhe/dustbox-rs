@@ -15,6 +15,7 @@ use int21;
 use gpu::GPU;
 use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
 
+#[derive(Clone)]
 pub struct CPU {
     pub ip: u16,
     pub instruction_count: usize,

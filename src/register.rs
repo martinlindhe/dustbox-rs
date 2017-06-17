@@ -16,10 +16,6 @@ impl Register16 {
     pub fn hi_u8(&mut self) -> u8 {
         (self.val >> 8) as u8
     }
-
-    pub fn as_hex_string(&self) -> String {
-        format!("<span font_desc=\"mono\">{:04X}</span>", self.val)
-    }
 }
 
 // r8 (4 low of r16)
