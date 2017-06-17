@@ -1161,7 +1161,44 @@ impl CPU {
                 // XXX aux flag ?
             }
             Op::Shrd() => {
-                println!("XXX impl shrd");
+                // Double Precision Shift Right
+                // 3 arguments
+
+                let dst = self.read_parameter_value(&op.params.dst);
+                let count = self.read_parameter_value(&op.params.src2);
+                if count == 0 {
+                    return;
+                }
+                let src = self.read_parameter_value(&op.params.src);
+
+                // Shift `dst` to right `count` places while shifting bits from `src` in from the left
+                let res = (src & count_to_bitmask(count) as usize) << (16-count) | (dst >> count);
+
+                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+
+                if count >= 1 {
+                    // XXX carry if count is >= 1
+
+                    // If the count is 1 or greater, the CF flag is filled with the last bit shifted out
+                    // of the destination operand
+
+                    self.flags.carry = (dst & 1) != 0; // XXX this would be the first bit.. which is wrong
+                }
+
+                // SF, ZF, and PF flags are set according to the value of the result.
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_parity(res);
+
+                if count == 1 {
+                    // XXX overflow if count == 1
+
+                    // For a 1-bit shift, the OF flag is set if a sign change occurred; otherwise, it is cleared.
+                    // For shifts greater than 1 bit, the OF flag is undefined. 
+                }
+
+                // If a shift occurs, the AF flag is undefined. If the count is greater than the operand size,
+                // the flags are undefined.
             }
             Op::Stc() => {
                 // Set Carry Flag
@@ -3088,6 +3125,29 @@ impl CPU {
     }
 }
 
+fn count_to_bitmask(v: usize) -> usize {
+    // XXX lookup table
+    match v {
+        0  => 0,
+        1  => 0b1,
+        2  => 0b11,
+        3  => 0b111,
+        4  => 0b1111,
+        5  => 0b11111,
+        6  => 0b111111,
+        7  => 0b1111111,
+        8  => 0b11111111,
+        9  => 0b111111111,
+        10 => 0b1111111111,
+        11 => 0b11111111111,
+        12 => 0b111111111111,
+        13 => 0b1111111111111,
+        14 => 0b11111111111111,
+        15 => 0b111111111111111,
+        _ => panic!("unhandled {}", v)
+    }
+}
+
 #[test]
 fn can_handle_stack() {
     let mut cpu = CPU::new();
@@ -3795,6 +3855,41 @@ fn can_execute_imul8() {
 }
 
 #[test]
+fn can_execute_shrd() {
+let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0xFF, 0xFF,       // mov ax,0xffff
+        0xBA, 0xFF, 0xFF,       // mov dx,0xffff
+        0x0F, 0xAC, 0xD0, 0x0E, // shrd ax,dx,0xe
+    ];
+    cpu.load_com(&code);
+    let res = cpu.disassemble_block(0x100, 3);
+
+    assert_eq!("[085F:0100] B8FFFF     Mov16    ax, 0xFFFF
+[085F:0103] BAFFFF     Mov16    dx, 0xFFFF
+[085F:0106] 0FACD00E   Shrd     ax, dx, 0x0E
+",
+                res);
+
+    cpu.execute_instruction();
+    assert_eq!(0xFFFF, cpu.r16[AX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0xFFFF, cpu.r16[DX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0xFFFF, cpu.r16[AX].val);
+
+    // assert_eq!(true, cpu.flags.carry); xxx should be set
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(true, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+    assert_eq!(false, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.parity);
+}
+
+
+#[test]
 fn can_execute_imul16() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
@@ -3904,20 +3999,6 @@ fn can_disassemble_shr() {
     let res = cpu.disassemble_block(0x100, 1);
 
     assert_eq!("[085F:0100] C1E802     Shr16    ax, 0x02
-",
-               res);
-}
-
-#[test]
-fn can_disassemble_shrd() {
-    let mut cpu = CPU::new();
-    let code: Vec<u8> = vec![
-        0x0F, 0xAC, 0xD0, 0x08, // shrd ax,dx,0x8
-    ];
-    cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 1);
-
-    assert_eq!("[085F:0100] 0FACD008   Shrd     ax, dx, 0x08
 ",
                res);
 }

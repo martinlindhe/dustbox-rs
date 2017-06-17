@@ -235,6 +235,8 @@ fn update_registers(app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>, b
     ip_value.set_markup(&u16_as_register_str(app.cpu.ip, app.prev_regs.ip));
 
     // flags
+
+    // XXX: color changes for flag changes too
     let c_flag: gtk::CheckButton = builder.get_object("c_flag").unwrap();
     let z_flag: gtk::CheckButton = builder.get_object("z_flag").unwrap();
     let s_flag: gtk::CheckButton = builder.get_object("s_flag").unwrap();
