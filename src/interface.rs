@@ -105,18 +105,20 @@ impl Interface {
             //let canvas = canvas.clone();
 
             button_step_into.connect_clicked(move |_| {
+                {
+                    let mut shared = app.lock().unwrap();
+
+                    shared.cpu.fatal_error = false;
+                    shared.step_into();
+
+                    // update disasm
+                    let text = shared.disasm_n_instructions_to_text(20);
+                    disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
+                }
+
                 let app2 = app.clone();
                 let builder = builder.clone();
                 update_registers(app2, builder);
-
-                let mut shared = app.lock().unwrap();
-
-                shared.cpu.fatal_error = false;
-                shared.step_into();
-
-                // update disasm
-                let text = shared.disasm_n_instructions_to_text(20);
-                disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
             });
         }
 
@@ -127,18 +129,20 @@ impl Interface {
             //let canvas = canvas.clone();
 
             button_step_over.connect_clicked(move |_| {
+                {
+                    let mut app = app.lock().unwrap();
+
+                    app.cpu.fatal_error = false;
+                    app.step_over();
+
+                    // update disasm
+                    let text = app.disasm_n_instructions_to_text(20);
+                    disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
+                }
+
                 let app2 = app.clone();
                 let builder = builder.clone();
                 update_registers(app2, builder);
-
-                let mut app = app.lock().unwrap();
-
-                app.cpu.fatal_error = false;
-                app.step_over();
-
-                // update disasm
-                let text = app.disasm_n_instructions_to_text(20);
-                disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
             });
         }
 
@@ -149,20 +153,22 @@ impl Interface {
             //let canvas = canvas.clone();
 
             button_run.connect_clicked(move |_| {
+                {
+                    let mut shared = app.lock().unwrap();
+
+                    shared.cpu.fatal_error = false;
+
+                    // run until bp is reached or 1M instructions was executed
+                    shared.step_into_n_instructions(1_000_000);
+
+                    // update disasm
+                    let text = shared.disasm_n_instructions_to_text(20);
+                    disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
+                }
+
                 let app2 = app.clone();
                 let builder = builder.clone();
                 update_registers(app2, builder);
-
-                let mut shared = app.lock().unwrap();
-
-                shared.cpu.fatal_error = false;
-
-                // run until bp is reached or 1M instructions was executed
-                shared.step_into_n_instructions(1_000_000);
-
-                // update disasm
-                let text = shared.disasm_n_instructions_to_text(20);
-                disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
             });
         }
 
@@ -215,17 +221,17 @@ fn update_registers(app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>, b
     let es_value: gtk::Label = builder.get_object("es_value").unwrap();
     let fs_value: gtk::Label = builder.get_object("fs_value").unwrap();
 
-    ds_value.set_markup(&u16_as_register_str(app.cpu.r16[DS].val, app.prev_regs.r16[DS].val));
-    cs_value.set_markup(&u16_as_register_str(app.cpu.r16[CS].val, app.prev_regs.r16[CS].val));
-    es_value.set_markup(&u16_as_register_str(app.cpu.r16[ES].val, app.prev_regs.r16[ES].val));
-    fs_value.set_markup(&u16_as_register_str(app.cpu.r16[FS].val, app.prev_regs.r16[FS].val));
+    ds_value.set_markup(&u16_as_register_str(app.cpu.sreg16[DS], app.prev_regs.sreg16[DS]));
+    cs_value.set_markup(&u16_as_register_str(app.cpu.sreg16[CS], app.prev_regs.sreg16[CS]));
+    es_value.set_markup(&u16_as_register_str(app.cpu.sreg16[ES], app.prev_regs.sreg16[ES]));
+    fs_value.set_markup(&u16_as_register_str(app.cpu.sreg16[FS], app.prev_regs.sreg16[FS]));
 
     let gs_value: gtk::Label = builder.get_object("gs_value").unwrap();
     let ss_value: gtk::Label = builder.get_object("ss_value").unwrap();
     let ip_value: gtk::Label = builder.get_object("ip_value").unwrap();
 
-    gs_value.set_markup(&u16_as_register_str(app.cpu.r16[GS].val, app.prev_regs.r16[GS].val));
-    ss_value.set_markup(&u16_as_register_str(app.cpu.r16[SS].val, app.prev_regs.r16[SS].val));
+    gs_value.set_markup(&u16_as_register_str(app.cpu.sreg16[GS], app.prev_regs.sreg16[GS]));
+    ss_value.set_markup(&u16_as_register_str(app.cpu.sreg16[SS], app.prev_regs.sreg16[SS]));
     ip_value.set_markup(&u16_as_register_str(app.cpu.ip, app.prev_regs.ip));
 
     // flags
