@@ -49,14 +49,12 @@ impl Interface { // XXX rename to DebugWindow
         let disasm_text: gtk::TextView = self.builder.lock().unwrap().get_object("disasm_text").unwrap();
         // disasm_text.width = 400; // XXX set fixed width of disasm box, so it wont resize ...
 
-        //let image_video: gtk::Image = self.builder.lock().unwrap().get_object("image_video").unwrap();
-        // XXX map the pixbuf into image_video
-        // image_video = gtk::Image::new_from_pixbuf(&self.pixbuf);
-
-        let canvas = gtk::DrawingArea::new();
-        canvas.set_size_request(320, 240);
-        canvas.set_visible(true);
-
+        println!("xxx start");
+        // add video box canvas
+        let video_box: gtk::Box = self.builder.lock().unwrap().get_object("video_box").unwrap();
+        video_box.add(&(*self.canvas.borrow()));
+        video_box.set_child_packing(&(*self.canvas.borrow()), true, true, 0, gtk::PackType::End);
+        println!("xxx doen");
 
         // menu items
         let file_quit: gtk::MenuItem = self.builder.lock().unwrap().get_object("file_quit").unwrap();
@@ -85,13 +83,6 @@ impl Interface { // XXX rename to DebugWindow
             });
         }
 
-    /*
-        let canvas = Arc::new(Mutex::new(Image::from_color(320, 200, Color::rgb(0, 0, 0)))); // XXX can the canvas live in the GPU struct?
-        let canvas_copy = canvas.clone();
-        canvas_copy.lock().unwrap().position(WIDTH as i32 - 340, 10);
-        window.add(&canvas_copy.lock().unwrap());
-    */
-
         // update disasm
         let text = self.app.lock().unwrap().disasm_n_instructions_to_text(20);
         disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
@@ -104,7 +95,7 @@ impl Interface { // XXX rename to DebugWindow
             // update screen
             let app = self.app.clone();
             let canvas = self.canvas.borrow();
-            canvas.connect_draw(move |widget, context| {
+            canvas.connect_draw(move |_, context| {
                 app.lock().unwrap().cpu.gpu.draw_canvas(context, &app.lock().unwrap().cpu.memory.memory);
                 Inhibit(true)
             });
