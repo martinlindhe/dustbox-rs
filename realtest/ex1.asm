@@ -1,7 +1,9 @@
 ; for testing instruction decoding
 
-org  0x100        ; .com files always start 256 bytes into the segment
+ BITS 64
+  ;GLOBAL _start
+  ;SECTION .text
 
-    mov ax, 0x1313
+    mov rax, 0x1313131344
     ret
 

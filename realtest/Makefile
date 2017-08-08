@@ -1,8 +1,12 @@
-.PHONY: test ex1 x64
+.PHONY: test ex1 cc
 
 ex1:
-	nasm -f bin -o ex1.com ex1.asm && ndisasm -o 0x100 ex1.com
+	nasm -f elf64 -o ex1 ex1.asm && gobjdump -d ./ex1
 
 test:
-	gcc test.c -Wall -g -o test
+	gcc test.c -g -o test
 	./test
+
+cc:
+	gcc cc.c -o cc
+	gobjdump -d ./cc
