@@ -1,4 +1,5 @@
 // execute a instruction, record resulting register values
+// tested on macOS, Apple LLVM version 8.1.0 (clang-802.0.41)
 
 #include <sys/mman.h>
 #include <string.h>
@@ -23,29 +24,34 @@ char code[] = {
 };
 
 int main(int argc, char **argv) {
-    void *buf;
-
     // copy code to executable buffer
-    buf = mmap(0, sizeof(code), PROT_READ|PROT_WRITE|PROT_EXEC,
+    void *buf = mmap(0, sizeof(code), PROT_READ|PROT_WRITE|PROT_EXEC,
               MAP_PRIVATE|MAP_ANON, -1, 0);
     memcpy(buf, code, sizeof(code));
-
-    // run code
-    ((void (*) (void))buf)();
 
     uint32_t eax, ebx, ecx, edx;
     uint64_t flags;
 
-    asm("mov %%eax,%0" : "=r"(eax));
-    asm("mov %%ebx,%0" : "=r"(ebx));
-    asm("mov %%ecx,%0" : "=r"(ecx));
-    asm("mov %%edx,%0" : "=r"(edx));
+    // clear registers and flags
+    asm("movl $0, %eax");
+    asm("movl $0, %ebx");
+    asm("movl $0, %ecx");
+    asm("movl $0, %edx");
+    //asm("pushq $0");
+    //asm("popfq"); // XXX flags returned as 0000202 so seems to fail???
 
-    asm("pushfq \n" // push flags (32 bits)
-        "pop %%rax\n"
-        "mov %%rax, %0\n"
-        :"=r"(flags));
+    // run code
+//    ((void (*) (void))buf)();
 
-    printf("eax %08x  ebx %08x  ecx %08x  edx %08x\n", eax, ebx, ecx, edx);
-    printf("flag %08llx\n", flags);
+    // read registers and flag
+    asm("movl %%eax, %0" : "=r"(eax));
+    asm("movl %%ebx, %0" : "=r"(ebx));
+    asm("movl %%ecx, %0" : "=r"(ecx));
+    asm("movl %%edx, %0" : "=r"(edx));
+    asm("pushfq"); // push flags (32 bits)
+    asm("pop %rax");
+    asm("movq %%rax, %0" : "=r"(flags));  // XXX bug?.. generates "mov rax,rcx"
+
+    //printf("eax %08x  ebx %08x  ecx %08x  edx %08x\n", eax, ebx, ecx, edx);
+    //printf("flag %08llx\n", flags);
 }
