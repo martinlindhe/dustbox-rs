@@ -9,13 +9,13 @@ colog = "0.1"
 log = "0.3"
 time = "0.1"
 rand = "0.3"
-image = "0.12"
-gdk = "0.5"
-gdk-pixbuf = "0.1"
-cairo-rs = "0.1"
+image = "0.16"
+gdk = "0.6"
+gdk-pixbuf = "0.2"
+cairo-rs = "0.2"
 
 [dependencies.gtk]
-version = "0.1"
+version = "0.2"
 features = ["v3_10"]
 
 
