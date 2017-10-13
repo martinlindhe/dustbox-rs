@@ -50,7 +50,7 @@ impl GPU {
     }
 
     // render current video to canvas `c`
-    pub fn draw_canvas(&self, c: &cairo::Context, memory: &Vec<u8>) {
+    pub fn draw_canvas(&self, c: &cairo::Context, memory: &[u8]) {
 
         println!("draw canvas");
 
@@ -58,14 +58,14 @@ impl GPU {
 
         for y in 0..self.height {
             for x in 0..self.width {
-                let offset = 0xA0000 + ((y * self.width) + x) as usize;
+                let offset = 0xA_0000 + ((y * self.width) + x) as usize;
                 let byte = memory[offset];
                 let pal = &self.palette[byte as usize];
                 buf.put_pixel(x as i32, y as i32, pal.r, pal.g, pal.b, 255);
             }
         }
 
-        c.set_source_pixbuf(&buf, self.width as f64, self.height as f64);
+        c.set_source_pixbuf(&buf, f64::from(self.width), f64::from(self.height));
     }
 }
 

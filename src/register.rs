@@ -5,10 +5,10 @@ pub struct Register16 {
 
 impl Register16 {
     pub fn set_hi(&mut self, val: u8) {
-        self.val = (self.val & 0xFF) + ((val as u16) << 8);
+        self.val = (self.val & 0xFF) + (u16::from(val) << 8);
     }
     pub fn set_lo(&mut self, val: u8) {
-        self.val = (self.val & 0xFF00) + val as u16;
+        self.val = (self.val & 0xFF00) + u16::from(val);
     }
     pub fn lo_u8(&mut self) -> u8 {
         (self.val & 0xFF) as u8

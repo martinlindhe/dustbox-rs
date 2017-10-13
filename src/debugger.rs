@@ -80,7 +80,7 @@ impl Debugger {
             done += 1;
         }
         let elapsed = start.elapsed();
-        let ms = (elapsed.as_secs() * 1_000) + (elapsed.subsec_nanos() / 1_000_000) as u64;
+        let ms = (elapsed.as_secs() * 1_000) + u64::from(elapsed.subsec_nanos() / 1_000_000);
         println!("Executed total {} instructions ({} now) in {} ms", self.cpu.instruction_count, done, ms);
     }
 

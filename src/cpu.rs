@@ -73,7 +73,7 @@ impl CPU {
     pub fn load_bios(&mut self, data: &[u8]) {
         self.sreg16[CS] = 0xF000;
         self.ip = 0x0000;
-        let min = 0xF0000;
+        let min = 0xF_0000;
         let max = min + data.len();
         println!("loading bios to {:06X}..{:06X}", min, max);
         self.rom_base = min;
@@ -689,9 +689,9 @@ impl CPU {
                 // Move with Zero-Extend
                 // two arguments (dst=reg)
                 let src = self.read_parameter_value(&op.params.src) as u8;
-                let mut data = src as u16;
+                let mut data = u16::from(src);
                 if src & 0x80 != 0 {
-                    data = 0xFF00 + data;
+                    data += 0xFF00;
                 }
                 self.write_parameter_u16(op.segment, &op.params.dst, data);
             }
@@ -2754,7 +2754,7 @@ impl CPU {
     fn read_u16(&mut self) -> u16 {
         let lo = self.read_u8();
         let hi = self.read_u8();
-        (hi as u16) << 8 | lo as u16
+        u16::from(hi) << 8 | u16::from(lo)
     }
 
     fn read_s8(&mut self) -> i8 {
@@ -2767,7 +2767,7 @@ impl CPU {
 
     fn read_rel8(&mut self) -> u16 {
         let val = self.read_u8() as i8;
-        (self.ip as i16 + (val as i16)) as u16
+        (self.ip as i16 + i16::from(val)) as u16
     }
 
     fn read_rel16(&mut self) -> u16 {
@@ -2783,7 +2783,7 @@ impl CPU {
     fn peek_u16_at(&mut self, pos: usize) -> u16 {
         let lo = self.peek_u8_at(pos);
         let hi = self.peek_u8_at(pos + 1);
-        (hi as u16) << 8 | lo as u16
+        u16::from(hi) << 8 | u16::from(lo)
     }
 
     fn write_u16(&mut self, offset: usize, data: u16) {
@@ -2990,22 +2990,18 @@ impl CPU {
 
     pub fn is_ip_at_breakpoint(&mut self) -> bool {
         let offset = self.get_offset();
-        return self.is_offset_at_breakpoint(offset);
+        self.is_offset_at_breakpoint(offset)
     }
 
     pub fn is_offset_at_breakpoint(&mut self, offset: usize) -> bool {
-        let mut list_iter = self.breakpoints.iter();
-        if let Some(_) = list_iter.find(|&&x| x == offset) {
-            return true;
-        }
-        return false;
+        self.breakpoints.iter().any(|&x| x == offset)
     }
 
     // output byte to I/O port
     fn out_u8(&mut self, p: &Parameter, data: u8) {
         let dst = match *p {
             Parameter::Reg16(r) => self.r16[r].val,
-            Parameter::Imm8(imm) => imm as u16,
+            Parameter::Imm8(imm) => u16::from(imm),
             _ => {
                 println!("out_u8 unhandled type {:?}", p);
                 0
@@ -3132,17 +3128,17 @@ fn count_to_bitmask(v: usize) -> usize {
         2  => 0b11,
         3  => 0b111,
         4  => 0b1111,
-        5  => 0b11111,
-        6  => 0b111111,
-        7  => 0b1111111,
-        8  => 0b11111111,
-        9  => 0b111111111,
-        10 => 0b1111111111,
-        11 => 0b11111111111,
-        12 => 0b111111111111,
-        13 => 0b1111111111111,
-        14 => 0b11111111111111,
-        15 => 0b111111111111111,
+        5  => 0b1_1111,
+        6  => 0b11_1111,
+        7  => 0b111_1111,
+        8  => 0b1111_1111,
+        9  => 0b1_1111_1111,
+        10 => 0b11_1111_1111,
+        11 => 0b111_1111_1111,
+        12 => 0b1111_1111_1111,
+        13 => 0b1_1111_1111_1111,
+        14 => 0b11_1111_1111_1111,
+        15 => 0b111_1111_1111_1111,
         _ => panic!("unhandled {}", v)
     }
 }

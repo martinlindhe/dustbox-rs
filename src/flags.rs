@@ -22,15 +22,15 @@ pub struct Flags {
 }
 
 // XXX make use of flag mask
-const FLAG_CF: u16 = 0x00000001;
-const FLAG_PF: u16 = 0x00000004;
-const FLAG_AF: u16 = 0x00000010;
-const FLAG_ZF: u16 = 0x00000040;
-const FLAG_SF: u16 = 0x00000080;
-const FLAG_OF: u16 = 0x00000800;
-const FLAG_TF: u16 = 0x00000100;
-const FLAG_IF: u16 = 0x00000200;
-const FLAG_DF: u16 = 0x00000400;
+const FLAG_CF: u16 = 0x0000_0001;
+const FLAG_PF: u16 = 0x0000_0004;
+const FLAG_AF: u16 = 0x0000_0010;
+const FLAG_ZF: u16 = 0x0000_0040;
+const FLAG_SF: u16 = 0x0000_0080;
+const FLAG_OF: u16 = 0x0000_0800;
+const FLAG_TF: u16 = 0x0000_0100;
+const FLAG_IF: u16 = 0x0000_0200;
+const FLAG_DF: u16 = 0x0000_0400;
 
 static PARITY_LOOKUP: [u16; 256] = [
     FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
@@ -90,10 +90,10 @@ impl Flags {
     }
     pub fn set_zero_u8(&mut self, v: usize) {
         // Zero flag — Set if the result is zero; cleared otherwise.
-        self.zero = (v & 0xFF) == 0;
+        self.zero = v.trailing_zeros() >= 8;
     }
     pub fn set_zero_u16(&mut self, v: usize) {
-        self.zero = (v & 0xFFFF) == 0;
+        self.zero = v.trailing_zeros() >= 16;
     }
     pub fn set_auxiliary(&mut self, res: usize, v1: usize, v2: usize) {
         // Set if an arithmetic operation generates a carry or a borrow out
@@ -124,7 +124,7 @@ impl Flags {
         self.carry = res & 0x100 != 0;
     }
     pub fn set_carry_u16(&mut self, res: usize) {
-        self.carry = res & 0x10000 != 0;
+        self.carry = res & 0x1_0000 != 0;
     }
     pub fn set_u16(&mut self, val: u16) {
         println!("XXX impl flags.set_u16 = {:04X}", val);

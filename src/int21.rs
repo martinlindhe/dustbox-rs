@@ -67,7 +67,7 @@ pub fn handle(cpu: &mut CPU) {
             // by 1. On some systems, DL may always return 00h
 
             let now = time::now();
-            let centi_sec = now.tm_nsec / 10000000; // nanosecond to 1/100 sec
+            let centi_sec = now.tm_nsec / 1000_0000; // nanosecond to 1/100 sec
 
             // Return:
             cpu.r16[CX].set_hi(now.tm_hour as u8); // CH = hour

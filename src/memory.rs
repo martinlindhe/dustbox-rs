@@ -5,6 +5,6 @@ pub struct Memory {
 
 impl Memory {
     pub fn new() -> Self {
-        Memory { memory: vec![0u8; 0x10000 * 64] }
+        Memory { memory: vec![0u8; 0x1_0000 * 64] }
     }
 }

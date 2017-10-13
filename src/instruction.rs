@@ -53,7 +53,7 @@ pub struct ParameterPair {
 impl ParameterPair {
     // returns the number of parameters
     pub fn count(&self) -> usize {
-        return match self.dst {
+        match self.dst {
             Parameter::None() => 0,
             _ => {
                 match self.src {
