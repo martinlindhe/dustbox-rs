@@ -49,12 +49,9 @@ impl Interface { // XXX rename to DebugWindow
         let disasm_text: gtk::TextView = self.builder.lock().unwrap().get_object("disasm_text").unwrap();
         // disasm_text.width = 400; // XXX set fixed width of disasm box, so it wont resize ...
 
-        println!("xxx start");
-        // add video box canvas
-        let video_box: gtk::Box = self.builder.lock().unwrap().get_object("video_box").unwrap();
-        video_box.add(&(*self.canvas.borrow()));
-        video_box.set_child_packing(&(*self.canvas.borrow()), true, true, 0, gtk::PackType::End);
-        println!("xxx doen");
+        let canvas = gtk::DrawingArea::new();
+        canvas.set_size_request(320, 240);
+        canvas.set_visible(true);
 
         // menu items
         let file_quit: gtk::MenuItem = self.builder.lock().unwrap().get_object("file_quit").unwrap();
