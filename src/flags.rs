@@ -54,14 +54,14 @@ static PARITY_LOOKUP: [u16; 256] = [
 impl Flags {
     pub fn new() -> Self {
         Flags {
-            carry: false,
+            carry: false, // bit 0
             reserved1: false,
             parity: false,
             reserved3: false,
             auxiliary_carry: false,
             reserved5: false,
             zero: false,
-            sign: false,
+            sign: false, // bit 7
             trap: false,
             interrupt: false,
             direction: false,
@@ -69,7 +69,7 @@ impl Flags {
             iopl12: false,
             iopl13: false,
             nested_task: false,
-            reserved15: false,
+            reserved15: false, // bit 15
         }
     }
     pub fn set_sign_u8(&mut self, v: usize) {
@@ -127,7 +127,22 @@ impl Flags {
         self.carry = res & 0x1_0000 != 0;
     }
     pub fn set_u16(&mut self, val: u16) {
-        println!("XXX impl flags.set_u16 = {:04X}", val);
+        self.carry           = val & 0x1 != 0;
+        self.reserved1       = val & 0x2 != 0;
+        self.parity          = val & 0x4 != 0;
+        self.reserved3       = val & 0x8 != 0;
+        self.auxiliary_carry = val & 0x10 != 0;
+        self.reserved5       = val & 0x20 != 0;
+        self.zero            = val & 0x40 != 0;
+        self.sign            = val & 0x80 != 0;
+        self.trap            = val & 0x100 != 0;
+        self.interrupt       = val & 0x200 != 0;
+        self.direction       = val & 0x400 != 0;
+        self.overflow        = val & 0x800 != 0;
+        self.iopl12          = val & 0x1000 != 0;
+        self.iopl13          = val & 0x2000 != 0;
+        self.nested_task     = val & 0x4000 != 0;
+        self.reserved15      = val & 0x8000 != 0;
     }
 
     pub fn carry_numeric(&self) -> String {
