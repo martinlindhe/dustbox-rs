@@ -57,8 +57,8 @@ start:
 
     ; ------------------
     ; run a instruction
-    mov ah, 0x12
-    rcl ah, 0x4
+    mov ax, 0x1234
+    shr ax, 0x4
 
 
     ; save reg states after instruction executes

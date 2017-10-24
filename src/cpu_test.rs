@@ -712,7 +712,22 @@ fn can_execute_shl8() {
    assert_eq!(0x34, cpu.r16[AX].hi_u8());
 
     cpu.execute_instruction();
-    assert_eq!(0x40, cpu.r16[AX].hi_u8()); // XXX
+    assert_eq!(0x40, cpu.r16[AX].hi_u8());
+    // XXX flags
+}
+
+#[test]
+fn can_execute_shl16() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x34, 0x12, // mov ax,0x1234
+        0xC1, 0xE0, 0x04, // shl ax,byte 0x4
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x2340, cpu.r16[AX].val);
     // XXX flags
 }
 
@@ -729,6 +744,21 @@ fn can_execute_shr8() {
     cpu.execute_instruction();
     cpu.execute_instruction();
     assert_eq!(0x03, cpu.r16[AX].hi_u8());
+    // XXX flags
+}
+
+#[test]
+fn can_execute_shr16() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x34, 0x12, // mov ax,0x1234
+        0xC1, 0xE8, 0x04, // shr ax,byte 0x4
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x0123, cpu.r16[AX].val);
     // XXX flags
 }
 
