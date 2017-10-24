@@ -47,7 +47,7 @@ impl CPU {
         // http://www.delorie.com/djgpp/doc/rbinter/id/51/29.html
 
         // offset of last word available in first 64k segment
-        cpu.r16[SP].val = 0xFFFE;
+        cpu.r16[SP].val = 0xFFFD;
 
         cpu
     }
@@ -861,7 +861,6 @@ impl CPU {
             Op::Pushf() => {
                 // push FLAGS register onto stack
                 let data = self.flags.u16();
-                println!("XXX push flags: {:04X}", data);
                 self.push16(data);
             }
             Op::Rcl8() => {

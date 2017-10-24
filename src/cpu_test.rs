@@ -19,11 +19,11 @@ fn can_handle_stack() {
     cpu.execute_instruction(); // mov
     cpu.execute_instruction(); // mov
 
-    assert_eq!(0xFFFE, cpu.r16[SP].val);
+    assert_eq!(0xFFFD, cpu.r16[SP].val);
     cpu.execute_instruction(); // push
-    assert_eq!(0xFFFC, cpu.r16[SP].val);
+    assert_eq!(0xFFFB, cpu.r16[SP].val);
     cpu.execute_instruction(); // pop
-    assert_eq!(0xFFFE, cpu.r16[SP].val);
+    assert_eq!(0xFFFD, cpu.r16[SP].val);
 
     assert_eq!(0x107, cpu.ip);
     assert_eq!(0x8888, cpu.r16[AX].val);
