@@ -884,7 +884,22 @@ impl CPU {
             }
             Op::Rcl16() => {
                 // two arguments
-                println!("XXX impl rcl16");
+                // rotate 9 bits (CF, `src`) times
+                let mut res = self.read_parameter_value(&op.params.dst);
+                let mut count = self.read_parameter_value(&op.params.src);
+
+                while count > 0 {
+                    let c = if self.flags.carry {
+                        1
+                    } else {
+                        0
+                    };
+                    res = (res << 1) | c;
+	                self.flags.set_carry_u16(res);
+                    count -= 1;
+                }
+
+                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Rcr8() => {
                 // two arguments
@@ -1106,7 +1121,23 @@ impl CPU {
                 println!("XXX impl sahf");
             }
             Op::Sar8() => {
-                println!("XXX impl sar8");
+                let dst = self.read_parameter_value(&op.params.dst);
+                let count = self.read_parameter_value(&op.params.src);
+
+                let res = dst >> count;
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
+
+                // The CF flag contains the value of the last bit shifted out of the destination operand.
+                // The OF flag is affected only for 1-bit shifts; otherwise, it is undefined.
+                // The SF, ZF, and PF flags are set according to the result.
+                // If the count is 0, the flags are not affected. For a non-zero count, the AF flag is undefined.
+                self.flags.carry = (dst & 1) != 0;
+                if count == 1 {
+                    self.flags.overflow = false;
+                }
+                self.flags.set_sign_u8(res);
+                self.flags.set_zero_u8(res);
+                self.flags.set_parity(res);
             }
             Op::Sar16() => {
                 // Signed divide* r/m8 by 2, imm8 times.

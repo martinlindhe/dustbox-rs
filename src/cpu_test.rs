@@ -611,25 +611,6 @@ fn can_execute_movzx() {
     assert_eq!(0xFFFF, cpu.r16[BX].val);
 }
 
-
-#[test]
-fn can_execute_rol16() {
-    let mut cpu = CPU::new();
-    let code: Vec<u8> = vec![
-        0xB8, 0x34, 0x12, // mov ax,0x1234
-        0xC1, 0xC0, 0x04, // rol ax,byte 0x4
-    ];
-    cpu.load_com(&code);
-
-    cpu.execute_instruction();
-    assert_eq!(0x1234, cpu.r16[AX].val);
-
-    cpu.execute_instruction();
-    assert_eq!(0x2341,  cpu.r16[AX].val);
-
-    // XXX flag  0803 ... without run, flag 0002
-}
-
 #[test]
 fn can_execute_rol8() {
     let mut cpu = CPU::new();
@@ -667,6 +648,24 @@ fn can_execute_rcl8() {
 }
 
 #[test]
+fn can_execute_rcl16() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x34, 0x12, // mov ax,0x1234
+        0xC1, 0xD0, 0x04, // rcl ax,byte 0x4
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    assert_eq!(0x1234, cpu.r16[AX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x2340,  cpu.r16[AX].val);
+
+    // XXX flags
+}
+
+#[test]
 fn can_execute_rcr8() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
@@ -682,7 +681,6 @@ fn can_execute_rcr8() {
     assert_eq!(0x41,  cpu.r16[AX].hi_u8());
     // XXX flags
 }
-
 
 #[test]
 fn can_execute_rcr16() {
@@ -722,33 +720,35 @@ fn can_execute_shl8() {
 fn can_execute_shr8() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
-        0xB6,0xF0, // mov dh,0xf0
-        0xB1,0x05, // mov cl,0x5
-        0xD2,0xEE, // shr dh,cl
+        0xB4, 0x34,       // mov ah,0x34
+        0xC0, 0xEC, 0x04, // shr ah,byte 0x4
     ];
 
     cpu.load_com(&code);
 
-    let res = cpu.disassemble_block(0x100, 3);
-
-    assert_eq!("[085F:0100] B6F0       Mov8     dh, 0xF0
-[085F:0102] B105       Mov8     cl, 0x05
-[085F:0104] D2EE       Shr8     dh, cl
-",
-               res);
-
     cpu.execute_instruction();
-    assert_eq!(0xF0, cpu.r16[DX].hi_u8());
-
     cpu.execute_instruction();
-    assert_eq!(0x05, cpu.r16[CX].lo_u8());
-
-    cpu.execute_instruction();
-    assert_eq!(0x07, cpu.r16[DX].hi_u8()); // == 7.5
+    assert_eq!(0x03, cpu.r16[AX].hi_u8());
+    // XXX flags
 }
 
 #[test]
-fn can_execute_sar() {
+fn can_execute_sar8() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB4, 0x34,       // mov ah,0x34
+        0xC0, 0xFC, 0x04, // sar ah,byte 0x4
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x03,  cpu.r16[AX].hi_u8());
+    // XXX flags
+}
+
+#[test]
+fn can_execute_sar16() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB8, 0xF5, 0x05, // mov ax,0x5f5
@@ -765,7 +765,6 @@ fn can_execute_sar() {
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(false, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
-    // assert_eq!(true, cpu.flags.auxiliary_carry); // is true in dosbox, undefined in intel docs for non-zero count
     assert_eq!(false, cpu.flags.parity);
 }
 
