@@ -523,35 +523,6 @@ fn can_execute_div16() {
 }
 
 #[test]
-fn can_execute_shr() {
-    let mut cpu = CPU::new();
-    let code: Vec<u8> = vec![
-        0xB6,0xF0, // mov dh,0xf0
-        0xB1,0x05, // mov cl,0x5
-        0xD2,0xEE, // shr dh,cl
-    ];
-
-    cpu.load_com(&code);
-
-    let res = cpu.disassemble_block(0x100, 3);
-
-    assert_eq!("[085F:0100] B6F0       Mov8     dh, 0xF0
-[085F:0102] B105       Mov8     cl, 0x05
-[085F:0104] D2EE       Shr8     dh, cl
-",
-               res);
-
-    cpu.execute_instruction();
-    assert_eq!(0xF0, cpu.r16[DX].hi_u8());
-
-    cpu.execute_instruction();
-    assert_eq!(0x05, cpu.r16[CX].lo_u8());
-
-    cpu.execute_instruction();
-    assert_eq!(0x07, cpu.r16[DX].hi_u8()); // == 7.5
-}
-
-#[test]
 fn can_execute_dec() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
@@ -601,7 +572,6 @@ fn can_execute_neg() {
 
 #[test]
 fn can_execute_jmp_far() {
-
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xEA, 0x00, 0x06, 0x00, 0x00, // jmp word 0x0:0x600
@@ -641,28 +611,10 @@ fn can_execute_movzx() {
     assert_eq!(0xFFFF, cpu.r16[BX].val);
 }
 
-#[test]
-fn can_execute_rcr() {
-let mut cpu = CPU::new();
-    let code: Vec<u8> = vec![
-        0xB1, 0x3E, // mov cl,0x3e     ; 0x3e     = 0b00111110
-        0xD0, 0xD9, // rcr cl,1        ; cl = 0x1f, 0b00011111
-    ];
-    cpu.load_com(&code);
-
-    cpu.execute_instruction();
-    assert_eq!(0x3E, cpu.r16[CX].lo_u8());
-
-    cpu.execute_instruction();
-    assert_eq!(0x1F,  cpu.r16[CX].lo_u8());
-    assert_eq!(false, cpu.flags.carry);
-    assert_eq!(false, cpu.flags.overflow); // XXX unsure
-}
-
 
 #[test]
 fn can_execute_rol16() {
-let mut cpu = CPU::new();
+    let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB8, 0x34, 0x12, // mov ax,0x1234
         0xC1, 0xC0, 0x04, // rol ax,byte 0x4
@@ -680,7 +632,7 @@ let mut cpu = CPU::new();
 
 #[test]
 fn can_execute_rol8() {
-let mut cpu = CPU::new();
+    let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB4, 0x12,       // mov ah,0x12
         0xC0, 0xC4, 0x04, // rol ah,byte 0x4
@@ -698,7 +650,7 @@ let mut cpu = CPU::new();
 
 #[test]
 fn can_execute_rcl8() {
-let mut cpu = CPU::new();
+    let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB4, 0x12,       // mov ah,0x12
         0xC0, 0xD4, 0x04, // rcl ah,byte 0x4
@@ -709,14 +661,95 @@ let mut cpu = CPU::new();
     assert_eq!(0x12, cpu.r16[AX].hi_u8());
 
     cpu.execute_instruction();
-    assert_eq!(0x20,  cpu.r16[AX].hi_u8()); // XXX
+    assert_eq!(0x20,  cpu.r16[AX].hi_u8());
 
     // XXX flags
 }
 
 #[test]
+fn can_execute_rcr8() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB4, 0x12,       // mov ah,0x12
+        0xC0, 0xDC, 0x04, // rcr ah,byte 0x4
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    assert_eq!(0x12, cpu.r16[AX].hi_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x41,  cpu.r16[AX].hi_u8());
+    // XXX flags
+}
+
+
+#[test]
+fn can_execute_rcr16() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x34, 0x12, // mov ax,0x1234
+        0xC1, 0xD8, 0x04, // rcr ax,byte 0x4
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    assert_eq!(0x1234, cpu.r16[AX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x8123, cpu.r16[AX].val);
+    // XXX flags
+}
+
+#[test]
+fn can_execute_shl8() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB4, 0x34,       // mov ah,0x34
+        0xC0, 0xE4, 0x04, // shl ah,byte 0x4
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+   assert_eq!(0x34, cpu.r16[AX].hi_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x40, cpu.r16[AX].hi_u8()); // XXX
+    // XXX flags
+}
+
+#[test]
+fn can_execute_shr8() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB6,0xF0, // mov dh,0xf0
+        0xB1,0x05, // mov cl,0x5
+        0xD2,0xEE, // shr dh,cl
+    ];
+
+    cpu.load_com(&code);
+
+    let res = cpu.disassemble_block(0x100, 3);
+
+    assert_eq!("[085F:0100] B6F0       Mov8     dh, 0xF0
+[085F:0102] B105       Mov8     cl, 0x05
+[085F:0104] D2EE       Shr8     dh, cl
+",
+               res);
+
+    cpu.execute_instruction();
+    assert_eq!(0xF0, cpu.r16[DX].hi_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x05, cpu.r16[CX].lo_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x07, cpu.r16[DX].hi_u8()); // == 7.5
+}
+
+#[test]
 fn can_execute_sar() {
-let mut cpu = CPU::new();
+    let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB8, 0xF5, 0x05, // mov ax,0x5f5
         0xC1, 0xF8, 0x09, // sar ax,byte 0x9
@@ -896,20 +929,6 @@ fn can_disassemble_arithmetic() {
 [085F:0105] 81C7C000   Add16    di, 0x00C0
 [085F:0109] 83C73A     Add16    di, byte +0x3A
 [085F:010C] 83C7C6     Add16    di, byte -0x3A
-",
-               res);
-}
-
-#[test]
-fn can_disassemble_shr() {
-    let mut cpu = CPU::new();
-    let code: Vec<u8> = vec![
-        0xC1, 0xE8, 0x02, // shr ax,byte 0x2
-    ];
-    cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 1);
-
-    assert_eq!("[085F:0100] C1E802     Shr16    ax, 0x02
 ",
                res);
 }

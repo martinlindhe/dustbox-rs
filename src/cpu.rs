@@ -889,36 +889,45 @@ impl CPU {
             Op::Rcr8() => {
                 // two arguments
                 // rotate 9 bits right `src` times
+                let mut res = self.read_parameter_value(&op.params.dst);
+                let mut count = self.read_parameter_value(&op.params.src);
 
-                // The RCR instruction shifts the CF flag into the most-significant
-                // bit and shifts the least-significant bit into the CF flag.
-                // The OF flag is affected only for single-bit rotates; it is undefined
-                // for multi-bit rotates. The SF, ZF, AF, and PF flags are not affected.
-                let dst = self.read_parameter_value(&op.params.dst);
-                let count = self.read_parameter_value(&op.params.src);
-
-                // shift least-significant bit into the CF flag.
-                let new_carry = (dst & 1) != 0;
-                let msb = if self.flags.carry {
-                    0x80
-                } else {
-                    0
-                };
-                let res = msb | (dst >> count);
-                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
-                self.flags.carry = new_carry;
-                if count  == 1 {
-                    println!("XXX rcr8 OF flag");
-                    // IF (COUNT & COUNTMASK) = 1
-                    // THEN OF ← MSB(DEST) XOR CF;
-                    // ELSE OF is undefined;
-                    // FI
+                while count > 0 {
+                    let c = if self.flags.carry {
+                        0x100
+                    } else {
+                        0
+                    };
+                    res |= c;
+	                self.flags.carry = res & 1 != 0;
+                    res >>= 1;
+                    count -= 1;
                 }
+
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Rcr16() => {
-                println!("XXX impl rcr16");
+                // two arguments
+                // rotate 9 bits right `src` times
+                let mut res = self.read_parameter_value(&op.params.dst);
+                let mut count = self.read_parameter_value(&op.params.src);
+
+                while count > 0 {
+                    let c = if self.flags.carry {
+                        0x10000
+                    } else {
+                        0
+                    };
+                    res |= c;
+	                self.flags.carry = res & 1 != 0;
+                    res >>= 1;
+                    count -= 1;
+                }
+
+                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::RepMovsb() => {
+                // rep movs byte
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
                 let mut src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
                 let mut dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
@@ -940,6 +949,7 @@ impl CPU {
                 }
             }
             Op::RepMovsw() => {
+                // rep movs word
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
                 let mut src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
                 let mut dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
@@ -962,9 +972,11 @@ impl CPU {
                 }
             }
             Op::RepOutsb() => {
+                // rep outs byte
                 println!("XXX impl rep outsb");
             }
             Op::RepStosb() => {
+                // rep stos byte
                 // Fill (E)CX bytes at ES:[(E)DI] with AL.
 
                 let data = self.r16[AX].lo_u8(); // = AL
@@ -993,8 +1005,8 @@ impl CPU {
                 }
             }
             Op::RepStosw() => {
+                // rep stos word
                 // Fill (E)CX words at ES:[(E)DI] with AX.
-                // println!("XXX impl rep stos word");
 
                 let data = self.r16[AX].val; // = AX
 
@@ -2166,10 +2178,7 @@ impl CPU {
                     4 => Op::Shl8(),
                     5 => Op::Shr8(),
                     7 => Op::Sar8(),
-                    _ => {
-                        println!("XXX 0xC0 unhandled reg = {}", x.reg);
-                        Op::Unknown()
-                    }
+                    _ => Op::Unknown(),
                 };
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8());
@@ -2185,10 +2194,7 @@ impl CPU {
                     4 => Op::Shl16(),
                     5 => Op::Shr16(),
                     7 => Op::Sar16(),
-                    _ => {
-                        println!("XXX 0xC1 unhandled reg = {}", x.reg);
-                        Op::Unknown()
-                    }
+                    _ => Op::Unknown(),
                 };
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8());
@@ -2250,10 +2256,7 @@ impl CPU {
                     4 => Op::Shl8(),
                     5 => Op::Shr8(),
                     7 => Op::Sar8(),
-                    _ => {
-                        println!("XXX 0xD0 unhandled reg = {}", x.reg);
-                        Op::Unknown()
-                    }
+                    _ => Op::Unknown(),
                 };
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm8(1);
@@ -2269,10 +2272,7 @@ impl CPU {
                     4 => Op::Shl16(),
                     5 => Op::Shr16(),
                     7 => Op::Sar16(),
-                    _ => {
-                        println!("XXX 0xD1 unhandled reg = {}", x.reg);
-                        Op::Unknown()
-                    }
+                    _ => Op::Unknown(),
                 };
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm16(1);
@@ -2288,10 +2288,7 @@ impl CPU {
                     4 => Op::Shl8(),
                     5 => Op::Shr8(),
                     7 => Op::Sar8(),
-                    _ => {
-                        println!("XXX 0xD2 unhandled reg = {}", x.reg);
-                        Op::Unknown()
-                    }
+                    _ => Op::Unknown(),
                 };
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Reg8(CL);
@@ -2307,10 +2304,7 @@ impl CPU {
                     4 => Op::Shl16(),
                     5 => Op::Shr16(),
                     7 => Op::Sar16(),
-                    _ => {
-                        println!("XXX 0xD3 unhandled reg = {}", x.reg);
-                        Op::Unknown()
-                    }
+                    _ => Op::Unknown(),
                 };
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Reg8(CL);
@@ -2394,23 +2388,18 @@ impl CPU {
                 match b {
                     0x6E => {
                         // XXXX intel dec-2016 manual says "REP OUTS DX, r/m8" which seems wrong?
-                        // rep outs byte
                         op.command = Op::RepOutsb();
                     }
                     0xA4 => {
-                        // rep movs byte
                         op.command = Op::RepMovsb();
                     }
                     0xA5 => {
-                        // rep movs word
                         op.command = Op::RepMovsw();
                     }
                     0xAA => {
-                        // rep stos byte
                         op.command = Op::RepStosb();
                     }
                     0xAB => {
-                        // rep stos word
                         op.command = Op::RepStosw();
                     }
                     _ => {
