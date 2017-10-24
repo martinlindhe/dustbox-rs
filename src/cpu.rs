@@ -865,8 +865,22 @@ impl CPU {
             }
             Op::Rcl8() => {
                 // two arguments
-                // rotate 9 bits `src` times
-                println!("XXX impl rcl8");
+                // rotate 9 bits (CF, `src`) times
+                let mut res = self.read_parameter_value(&op.params.dst);
+                let mut count = self.read_parameter_value(&op.params.src);
+
+                while count > 0 {
+                    let c = if self.flags.carry {
+                        1
+                    } else {
+                        0
+                    };
+                    res = (res << 1) | c;
+	                self.flags.set_carry_u8(res);
+                    count -= 1;
+                }
+
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Rcl16() => {
                 // two arguments

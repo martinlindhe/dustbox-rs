@@ -697,6 +697,24 @@ let mut cpu = CPU::new();
 }
 
 #[test]
+fn can_execute_rcl8() {
+let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB4, 0x12,       // mov ah,0x12
+        0xC0, 0xD4, 0x04, // rcl ah,byte 0x4
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    assert_eq!(0x12, cpu.r16[AX].hi_u8());
+
+    cpu.execute_instruction();
+    assert_eq!(0x20,  cpu.r16[AX].hi_u8()); // XXX
+
+    // XXX flags
+}
+
+#[test]
 fn can_execute_sar() {
 let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
