@@ -1021,14 +1021,28 @@ impl CPU {
                 self.ip = self.pop16();
             }
             Op::Rol8() => {
+                // Rotate 8 bits of 'dst' for 'src' times.
                 // two arguments
-                println!("XXX impl rol8");
+                let mut res = self.read_parameter_value(&op.params.dst);
+                let mut count = self.read_parameter_value(&op.params.src);
+
+                while count > 0 {
+                    let val = res & 0x80 != 0;
+	                self.flags.carry = val;
+                    res = (res & 0xFF) << 1;
+                    if val {
+	                    res |= 1;
+                    }
+                    count -= 1;
+                }
+
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
+
                 // XXX flags
             }
             Op::Rol16() => {
                 // Rotate 16 bits of 'dst' for 'src' times.
                 // two arguments
-
                 let mut res = self.read_parameter_value(&op.params.dst);
                 let mut count = self.read_parameter_value(&op.params.src);
 
@@ -2131,20 +2145,10 @@ impl CPU {
                 // r8, byte imm8
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
-                    /*
-                    0 => {
-                        op.Cmd = "rol"
-                    }
-                    1 => {
-                        op.Cmd = "ror"
-                    }
-                    2 => {
-                        op.Cmd = "rcl"
-                    }
-                    3 => {
-                        op.Cmd = "rcr"
-                    }
-                    */
+                    0 => Op::Rol8(),
+                    1 => Op::Ror8(),
+                    2 => Op::Rcl8(),
+                    3 => Op::Rcr8(),
                     4 => Op::Shl8(),
                     5 => Op::Shr8(),
                     7 => Op::Sar8(),
@@ -2163,11 +2167,7 @@ impl CPU {
                     0 => Op::Rol16(),
                     1 => Op::Ror16(),
                     2 => Op::Rcl16(),
-                    /*
-                    3 => {
-                        op.Cmd = "rcr"
-                    }
-                    */
+                    3 => Op::Rcr16(),
                     4 => Op::Shl16(),
                     5 => Op::Shr16(),
                     7 => Op::Sar16(),
@@ -2229,7 +2229,7 @@ impl CPU {
                 // bit shift byte by 1
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
-                    // 0 => Op::Rol8(),
+                    0 => Op::Rol8(),
                     1 => Op::Ror8(),
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
@@ -2267,13 +2267,13 @@ impl CPU {
                 // bit shift byte by CL
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
-                    // 0 => Op::Rol8(),
-                    //1 => Op::Ror8(),
-                    //2 => Op::Rcl8(),
-                    //3 => Op::Rcr8(),
+                    0 => Op::Rol8(),
+                    1 => Op::Ror8(),
+                    2 => Op::Rcl8(),
+                    3 => Op::Rcr8(),
                     4 => Op::Shl8(),
                     5 => Op::Shr8(),
-                    // 7 => Op::Sar8(),
+                    7 => Op::Sar8(),
                     _ => {
                         println!("XXX 0xD2 unhandled reg = {}", x.reg);
                         Op::Unknown()
@@ -2288,11 +2288,11 @@ impl CPU {
                 op.command = match x.reg {
                     0 => Op::Rol16(),
                     1 => Op::Ror16(),
-                    //2 => Op::Rcl16(),
-                    //3 => Op::Rcr16(),
+                    2 => Op::Rcl16(),
+                    3 => Op::Rcr16(),
                     4 => Op::Shl16(),
                     5 => Op::Shr16(),
-                    //7 => Op::Sar16(),
+                    7 => Op::Sar16(),
                     _ => {
                         println!("XXX 0xD3 unhandled reg = {}", x.reg);
                         Op::Unknown()

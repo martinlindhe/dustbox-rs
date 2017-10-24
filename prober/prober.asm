@@ -57,15 +57,9 @@ start:
 
     ; ------------------
     ; run a instruction
-    mov ax, 0x1234
-    rol ax, 4          ; XXX result: ax = 2341,  flag  0803 ... without run, flag 0002
-    ; ------------------
+    mov ah, 0x12
+    rcl ah, 4
 
-    ; used to test it working
-    ; mov ax, 0x1111
-    ; mov bx, 0x2222
-    ; mov cx, 0x3333
-    ; mov dx, 0x4444
 
     ; save reg states after instruction executes
     mov [_ax], ax
