@@ -259,6 +259,7 @@ pub enum Op {
     RepneScasb(),
     Retf(),
     Retn(),
+    Rol8(),
     Rol16(),
     Ror8(),
     Ror16(),

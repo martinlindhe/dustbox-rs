@@ -661,6 +661,25 @@ let mut cpu = CPU::new();
 
 
 #[test]
+fn can_execute_rol() {
+let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x34, 0x12, // mov ax,0x1234
+        0xC1, 0xC0, 0x04, // rol ax,byte 0x4
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    assert_eq!(0x1234, cpu.r16[AX].val);
+
+    cpu.execute_instruction();
+    assert_eq!(0x2341,  cpu.r16[AX].val);
+
+    // XXX flag  0803 ... without run, flag 0002
+}
+
+
+#[test]
 fn can_execute_sar() {
 let mut cpu = CPU::new();
     let code: Vec<u8> = vec![

@@ -33,7 +33,8 @@ impl Debugger {
         };
         // XXX for quick testing while building the ui
         // let name = "../dos-software-decoding/samples/bar/bar.com";
-        let name = "../dos-software-decoding/demo-256/beziesux/beziesux.com";
+        //let name = "../dos-software-decoding/demo-256/beziesux/beziesux.com";
+        let name = "prober/prober.com";
         dbg.load_binary(name);
         //dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x0108)); 
         //dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x017D));

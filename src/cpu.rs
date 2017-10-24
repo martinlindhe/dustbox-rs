@@ -1021,10 +1021,36 @@ impl CPU {
                 // no arguments
                 self.ip = self.pop16();
             }
-            Op::Rol16() => {
+            Op::Rol8() => {
                 // two arguments
-                println!("XXX impl rol16");
+                println!("XXX impl rol8");
                 // XXX flags
+            }
+            Op::Rol16() => {
+                // Rotate 16 bits of 'dst' for 'src' times.
+                // two arguments
+
+                let mut res = self.read_parameter_value(&op.params.dst);
+                let mut count = self.read_parameter_value(&op.params.src);
+
+                while count > 0 {
+                    let val = res & 0x8000 != 0;
+	                self.flags.carry = val;
+                    res = res << 1;
+                    if val {
+	                    res |= 1;
+                    }
+                    count -= 1;
+                }
+
+                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+
+                // XXX flags:
+                // If the masked count is 0, the flags are not affected.
+                // If the masked count is 1, then the OF flag is affected,
+                // otherwise (masked count is greater than 1) the OF flag is undefined.
+                // The CF flag is affected when the masked count is non- zero. The SF, ZF,
+                // AF, and PF flags are always unaffected.
             }
             Op::Ror8() => {
                 // two arguments
@@ -2135,11 +2161,7 @@ impl CPU {
                 // r16, byte imm8
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
-                    /*
-                    0 => {
-                        op.Cmd = "rol"
-                    }
-                    */
+                    0 => Op::Rol16(),
                     1 => Op::Ror16(),
                     2 => Op::Rcl16(),
                     /*
@@ -2540,7 +2562,7 @@ impl CPU {
                 }
             }
             _ => {
-                println!("cpu: unknown op {:02X} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
+                println!("disasm: unknown op {:02X} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
                          b,
                          self.sreg16[CS],
                          self.ip - 1,
