@@ -576,7 +576,20 @@ fn can_execute_les() {
     cpu.load_com(&code);
     cpu.execute_instruction();
     assert_eq!(0x06C4, cpu.r16[AX].val);
-    assert_eq!(0x0100, cpu.sreg16[ES]); // XXX
+    assert_eq!(0x0100, cpu.sreg16[ES]);
+}
+
+#[test]
+fn can_execute_cwd() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x00, 0xFE, // mov ax,0xfe00
+        0x99,             // cwd
+    ];
+    cpu.load_com(&code);
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0xFFFF, cpu.r16[DX].val);
 }
 
 #[test]

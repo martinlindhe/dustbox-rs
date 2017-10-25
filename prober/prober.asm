@@ -14,7 +14,8 @@ start:
 
     ; ------------------
     ; run a instruction
-   self: les ax, [self]
+    mov ax, 0xfe00
+    cwd
 
     ; save reg states after instruction executes
     mov [_ax], ax
@@ -52,7 +53,7 @@ test_instr:
     ; TEST1: "idiv r8"
     mov ax, 0x30
     mov bl, 2
-    idiv bl   ; ax = 0x0018 in dosbox, XXX test on real hw
+    idiv bl   ; verified XXX was on XP, use win98se on real hw (might be hard with lacking drivers)
     cmp ax, 0x0018
     je t2
     mov dx, test1fail
@@ -63,7 +64,7 @@ t2:
     mov dx, 0x0
     mov ax, 0x8000
     mov bx, 4
-    idiv bx   ; ax = 0x2000, dx = 0 in dosbox
+    idiv bx   ; verified XXX was on XP
     cmp ax, 0x2000
     je t3
     cmp dx, 0

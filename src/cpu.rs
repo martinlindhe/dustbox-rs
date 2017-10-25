@@ -420,7 +420,11 @@ impl CPU {
             Op::Cwd() => {
                 // Convert Word to Doubleword
                 // DX:AX ← sign-extend of AX.
-                println!("XXX impl cwd");
+                self.r16[DX].val = if self.r16[AX].val & 0x8000 != 0 {
+                    0xFFFF
+                } else {
+                    0
+                };
             }
             Op::Daa() => {
                 // Decimal Adjust AL after Addition
