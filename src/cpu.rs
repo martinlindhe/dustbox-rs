@@ -1100,7 +1100,7 @@ impl CPU {
                 self.ip = self.pop16();
             }
             Op::Rol8() => {
-                // Rotate 8 bits of 'dst' for 'src' times.
+                // Rotate 8 bits of 'dst' left for 'src' times.
                 // two arguments
                 let mut res = self.read_parameter_value(&op.params.dst);
                 let mut count = self.read_parameter_value(&op.params.src);
@@ -1120,7 +1120,7 @@ impl CPU {
                 // XXX flags
             }
             Op::Rol16() => {
-                // Rotate 16 bits of 'dst' for 'src' times.
+                // Rotate 16 bits of 'dst' left for 'src' times.
                 // two arguments
                 let mut res = self.read_parameter_value(&op.params.dst);
                 let mut count = self.read_parameter_value(&op.params.src);
@@ -1128,7 +1128,7 @@ impl CPU {
                 while count > 0 {
                     let val = res & 0x8000 != 0;
 	                self.flags.carry = val;
-                    res = res << 1;
+                    res <<= 1;
                     if val {
 	                    res |= 1;
                     }
@@ -1146,12 +1146,40 @@ impl CPU {
             }
             Op::Ror8() => {
                 // two arguments
-                println!("XXX impl ror8");
+                // Rotate 8 bits of 'dst' right for 'src' times.
+                let mut res = self.read_parameter_value(&op.params.dst);
+                let mut count = self.read_parameter_value(&op.params.src);
+
+                while count > 0 {
+	                self.flags.carry = res & 0x1 != 0;
+                    res >>= 1;
+                    if self.flags.carry {
+	                    res |= 0x80;
+                    }
+                    count -= 1;
+                }
+
+                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
                 // XXX flags
             }
             Op::Ror16() => {
+                // Rotate 16 bits of 'dst' right for 'src' times.
                 // two arguments
-                println!("XXX impl ror16");
+                let mut res = self.read_parameter_value(&op.params.dst);
+                let mut count = self.read_parameter_value(&op.params.src);
+
+                while count > 0 {
+                    let val = res & 0x1 != 0;
+	                self.flags.carry = val;
+                    res >>= 1;
+                     if self.flags.carry {
+	                    res |= 0x8000;
+                    }
+                    count -= 1;
+                }
+
+                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+
                 // XXX flags
             }
             Op::Sahf() => {

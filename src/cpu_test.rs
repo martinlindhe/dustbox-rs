@@ -717,6 +717,54 @@ fn can_execute_rol8() {
 }
 
 #[test]
+fn can_execute_rol16() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x34, 0x12, // mov ax,0x1234
+        0xC1, 0xC0, 0x03, // rol ax,byte 0x3
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x91A0,  cpu.r16[AX].val);
+
+    // XXX flags
+}
+
+#[test]
+fn can_execute_ror8() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB4, 0x37,       // mov ah,0x37
+        0xC0, 0xCC, 0x03, // ror ah,byte 0x3
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0xE6,  cpu.r16[AX].hi_u8());
+
+    // XXX flags
+}
+
+#[test]
+fn can_execute_ror16() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x56, 0x34, // mov ax,0x3456
+        0xC1, 0xC8, 0x03, // ror ax,byte 0x3
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0xC68A,  cpu.r16[AX].val);
+
+    // XXX flags
+}
+
+#[test]
 fn can_execute_rcl8() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
