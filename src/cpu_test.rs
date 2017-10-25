@@ -549,7 +549,41 @@ fn can_execute_aas() {
 
     cpu.execute_instruction();
     cpu.execute_instruction();
-    assert_eq!(0x03, cpu.r16[AX].lo_u8());
+    assert_eq!(0x0003, cpu.r16[AX].val);
+}
+
+#[test]
+fn can_execute_daa() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB0, 0x79, // mov al,0x79
+        0xB3, 0x35, // mov bl,0x35
+        0x27,      // daa
+    ];
+
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x0079, cpu.r16[AX].val); // XXX, intel manual wants it to be 0x0014
+}
+
+#[test]
+fn can_execute_das() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB0, 0x35, // mov al,0x35
+        0xB3, 0x47, // mov bl,0x47
+        0x2F,       // das
+    ];
+
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x0035, cpu.r16[AX].val); // XXX, intel manual wants it to be 0x0088
 }
 
 #[test]

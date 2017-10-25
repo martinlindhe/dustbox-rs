@@ -72,6 +72,12 @@ impl Flags {
             reserved15: false, // bit 15
         }
     }
+    // sets sign, zero, parity flags according to `b`
+    pub fn set_szp(&mut self, b: bool) {
+        self.sign = b;
+        self.zero = b;
+        self.parity = b;
+    }
     pub fn set_sign_u8(&mut self, v: usize) {
         // Set equal to the most-significant bit of the result,
         // which is the sign bit of a signed integer.
@@ -144,7 +150,6 @@ impl Flags {
         self.nested_task     = val & 0x4000 != 0;
         self.reserved15      = val & 0x8000 != 0;
     }
-
     pub fn carry_numeric(&self) -> String {
         format!("{}", if self.carry {
             1
@@ -169,31 +174,28 @@ impl Flags {
             0
         })
     }
-
-       pub fn auxiliary_numeric(&self) -> String {
+    pub fn auxiliary_numeric(&self) -> String {
         format!("{}", if self.auxiliary_carry {
             1
         } else {
             0
         })
     }
-
-
-     pub fn parity_numeric(&self) -> String {
+    pub fn parity_numeric(&self) -> String {
         format!("{}", if self.parity {
             1
         } else {
             0
         })
     }
-       pub fn direction_numeric(&self) -> String {
+    pub fn direction_numeric(&self) -> String {
         format!("{}", if self.direction {
             1
         } else {
             0
         })
     }
-         pub fn interrupt_numeric(&self) -> String {
+    pub fn interrupt_numeric(&self) -> String {
         format!("{}", if self.interrupt {
             1
         } else {

@@ -214,12 +214,32 @@ impl CPU {
         self.r16[AX].set_lo(al & 0x0F);
     }
 
+    // used by daa, das
+    fn adj4(&mut self, param1: i8, param2: i8) {
+        let old_al = self.r16[AX].lo_u8();
+        let old_cf = self.flags.carry;
+        self.flags.carry = false;
+
+        if (old_al & 0x0F) > 9 || self.flags.auxiliary_carry {
+            let tmp = old_al as u16 + param1 as u16;
+            self.r16[AX].set_lo(tmp as u8);
+            self.flags.carry = tmp & 0x100 != 0;
+            self.flags.auxiliary_carry = true;
+        } else {
+            self.flags.auxiliary_carry = false;
+        }
+
+        if old_al > 0x99 || old_cf {
+            self.r16[AX].set_lo((old_al as u16 + param2 as u16) as u8);
+            self.flags.carry = true;
+        }
+    }
+
     fn execute(&mut self, op: &Instruction) {
         self.instruction_count += 1;
         match op.command {
             Op::Aaa() => {
                 // ASCII Adjust After Addition
-                println!("XXX impl aaa");
                 let v = if self.r16[AX].lo_u8() > 0xf9 {
                     2
                  } else {
@@ -229,7 +249,6 @@ impl CPU {
             }
             Op::Aas() => {
                 // ASCII Adjust AL After Subtraction
-                println!("XXX impl aas");
                 let v = if self.r16[AX].lo_u8() < 6 {
                     -2
                 } else {
@@ -405,13 +424,11 @@ impl CPU {
             }
             Op::Daa() => {
                 // Decimal Adjust AL after Addition
-                println!("XXX impl daa");
-                // XXX there is examples in manual that can be made into tests
+                self.adj4(6, 0x60);
             }
             Op::Das() => {
                 // Decimal Adjust AL after Subtraction
-                println!("XXX impl das");
-                // XXX there is examples in manual that can be made into tests
+                self.adj4(-6, -0x60);
             }
             Op::Dec8() => {
                 // single parameter (dst)
@@ -991,15 +1008,9 @@ impl CPU {
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
                 let mut src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
                 let mut dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
-                let count = self.r16[CX].val as usize;
-                println!("rep movsb   src = {:04X}, dst = {:04X}, count = {:04X}",
-                         src,
-                         dst,
-                         count);
                 loop {
                     let b = self.peek_u8_at(src);
                     src += 1;
-                    // println!("rep movsb   write {:02X} to {:04X}", b, dst);
                     self.write_u8(dst, b);
                     dst += 1;
                     self.r16[CX].val -= 1;
@@ -1013,17 +1024,11 @@ impl CPU {
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
                 let mut src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
                 let mut dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
-                println!("rep movsw   src = {:04X}, dst = {:04X}, count = {:04X}",
-                         src,
-                         dst,
-                         self.r16[CX].val);
                 loop {
                     let b = self.peek_u16_at(src);
                     src += 1;
-                    // println!("rep movsb   write {:02X} to {:04X}", b, dst);
                     self.write_u16(dst, b);
                     dst += 1;
-
                     let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
                     self.r16[CX].val = res;
                     if res == 0 {
@@ -1038,16 +1043,8 @@ impl CPU {
             Op::RepStosb() => {
                 // rep stos byte
                 // Fill (E)CX bytes at ES:[(E)DI] with AL.
-
                 let data = self.r16[AX].lo_u8(); // = AL
 
-                /*
-                println!("rep stosb   dst = {:04X}:{:04X}, count = {:04X}, data = {:02X}",
-                         self.sreg16[ES] as usize,
-                         self.r16[DI].val as usize,
-                         self.r16[CX].val,
-                         data);
-                */
                 loop {
                     let dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
                     self.write_u8(dst, data);
@@ -1067,14 +1064,7 @@ impl CPU {
             Op::RepStosw() => {
                 // rep stos word
                 // Fill (E)CX words at ES:[(E)DI] with AX.
-
-                let data = self.r16[AX].val; // = AX
-
-                println!("rep stosw   dst = {:04X}:{:04X}, count = {:04X}, data = {:04X}",
-                         self.sreg16[ES] as usize,
-                         self.r16[DI].val as usize,
-                         self.r16[CX].val,
-                         data);
+                let data = self.r16[AX].val;
 
                 loop {
                     let dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
