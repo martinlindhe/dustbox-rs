@@ -197,12 +197,45 @@ impl CPU {
         }
     }
 
+    // used by aaa, aas
+    fn adjb(&mut self, param1: i8, param2: i8) {
+        if self.flags.auxiliary_carry || (self.r16[AX].lo_u8() & 0xf) > 9 {
+            let al = self.r16[AX].lo_u8();
+            let ah = self.r16[AX].hi_u8();
+            self.r16[AX].set_lo((al as u16 + param1 as u16) as u8);
+            self.r16[AX].set_hi((ah as u16 + param2 as u16) as u8);
+            self.flags.auxiliary_carry = true;
+            self.flags.carry = true;
+        } else {
+            self.flags.auxiliary_carry = false;
+            self.flags.carry = false;
+        }
+        let al = self.r16[AX].lo_u8();
+        self.r16[AX].set_lo(al & 0x0F);
+    }
+
     fn execute(&mut self, op: &Instruction) {
         self.instruction_count += 1;
         match op.command {
+            Op::Aaa() => {
+                // ASCII Adjust After Addition
+                println!("XXX impl aaa");
+                let v = if self.r16[AX].lo_u8() > 0xf9 {
+                    2
+                 } else {
+                     1
+                 };
+                self.adjb(6, v);
+            }
             Op::Aas() => {
                 // ASCII Adjust AL After Subtraction
                 println!("XXX impl aas");
+                let v = if self.r16[AX].lo_u8() < 6 {
+                    -2
+                } else {
+                    -1
+                };
+                self.adjb(-6, v);
             }
             Op::Adc8() => {
                 // two parameters (dst=reg)

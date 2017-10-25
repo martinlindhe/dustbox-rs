@@ -523,6 +523,36 @@ fn can_execute_div16() {
 }
 
 #[test]
+fn can_execute_aaa() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB0, 0x7E, // mov al,0x7e
+        0x37,       // aaa
+    ];
+
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x0104, cpu.r16[AX].val);
+}
+
+#[test]
+fn can_execute_aas() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB0, 0x13, // mov al,0x13
+        0x3F,       // aas
+    ];
+
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x03, cpu.r16[AX].lo_u8());
+}
+
+#[test]
 fn can_execute_dec() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![

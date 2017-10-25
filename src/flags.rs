@@ -7,7 +7,7 @@ pub struct Flags {
     reserved1: bool, // 1: Reserved, always 1 in EFLAGS
     pub parity: bool, // 2: parity flag
     reserved3: bool,
-    pub auxiliary_carry: bool, // 4: auxiliary carry flag
+    pub auxiliary_carry: bool, // 4: auxiliary carry flag (AF)
     reserved5: bool,
     pub zero: bool, // 6: zero flag
     pub sign: bool, // 7: sign flag
