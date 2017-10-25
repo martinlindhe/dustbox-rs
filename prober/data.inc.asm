@@ -15,6 +15,11 @@
     gsIs     db 'gs = $'
     flagsIs  db 'flg= $'
     test1fail db 'test1 FAIL',0xD,0xA,'$'
+    test2fail db 'test2 FAIL',0xD,0xA,'$'
+    test3fail db 'test3 FAIL',0xD,0xA,'$'
+    test4fail db 'test4 FAIL',0xD,0xA,'$'
+    test5fail db 'test5 FAIL',0xD,0xA,'$'
+    test6fail db 'test6 FAIL',0xD,0xA,'$'
     hexTable db '0123456789ABCDEF', 0
     hexTemp  db '0000',0xD,0xA,'$' ; buffer for ASCII string
     _ax dw 0

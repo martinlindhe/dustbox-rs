@@ -14,10 +14,10 @@ start:
 
     ; ------------------
     ; run a instruction
-    mov ax, 0x30
-    mov bl, 2
-    idiv bl   ; 0x30 / 2 = 0x15 .... ax = 0x0018 in dosbox
-
+    mov dx, 0x0
+    mov ax, 0x8000
+    mov bx, 4
+    idiv bx   ; ax, dx = 0x2000 .. dx = 0 in dosbox
 
     ; save reg states after instruction executes
     mov [_ax], ax
@@ -52,6 +52,7 @@ start:
 
 ; tests instructions for correct emulation
 test_instr:
+    ; TEST1: "idiv r8"
     mov ax, 0x30
     mov bl, 2
     idiv bl   ; ax = 0x0018 in dosbox, XXX test on real hw
@@ -61,6 +62,20 @@ test_instr:
     call print_dollar_dx
 
 t2:
+    ; TEST2: "idiv r16"
+    mov dx, 0x0
+    mov ax, 0x8000
+    mov bx, 4
+    idiv bx   ; ax, dx = 0x2000 .. dx = 0 in dosbox
+    cmp ax, 0x2000
+    je t3
+    cmp dx, 0
+    je t3
+    mov dx, test2fail
+    call print_dollar_dx
+
+
+t3:
     ret
 %include "regs.inc.asm"
 %include "print.inc.asm"

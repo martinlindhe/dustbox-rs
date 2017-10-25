@@ -4,7 +4,7 @@ test:
 bench:
 	cargo bench
 
-run-debug:
+run:
 	cargo run
 
 run-release:

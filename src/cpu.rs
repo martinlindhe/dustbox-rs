@@ -243,8 +243,8 @@ impl CPU {
                 let v = if self.r16[AX].lo_u8() > 0xf9 {
                     2
                  } else {
-                     1
-                 };
+                    1
+                };
                 self.adjb(6, v);
             }
             Op::Aas() => {
@@ -489,8 +489,29 @@ impl CPU {
             Op::Hlt() => {
                 println!("XXX impl hlt");
             }
+            Op::Idiv8() => {
+                let mut dst = self.r16[AX].val as usize; // AX
+                let src = self.read_parameter_value(&op.params.dst);
+                dst = (Wrapping(dst) / Wrapping(src)).0;
+                let rem = (Wrapping(dst) % Wrapping(src)).0;
+                if dst > 0xFF {
+                    println!("XXX idiv8 INTERRUPT0 (div by 0)");
+                } else {
+                    self.r16[AX].set_lo((dst & 0xFF) as u8);
+                    self.r16[AX].set_hi((rem & 0xFF) as u8);
+                }
+            }
             Op::Idiv16() => {
-                println!("XXX impl idiv16: {}", op);
+                let mut dst = ((self.r16[DX].val as usize) << 16) + self.r16[AX].val as usize; // DX:AX
+                let src = self.read_parameter_value(&op.params.dst);
+                dst = (Wrapping(dst) / Wrapping(src)).0;
+                let rem = (Wrapping(dst) % Wrapping(src)).0;
+                if dst > 0xFFFF {
+                    println!("XXX idiv16 INTERRUPT0 (div by 0)");
+                } else {
+                    self.r16[AX].val = (dst & 0xFFFF) as u16;
+                    self.r16[DX].val = (rem & 0xFFFF) as u16;
+                }
             }
             Op::Imul8() => {
                 // NOTE: only 1-parameter imul8 instruction exists
@@ -2620,7 +2641,7 @@ impl CPU {
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 match x.reg {
-                    0 => {
+                    0 | 1 => {
                         // test r/m8, imm8
                         op.command = Op::Test8();
                         op.params.src = Parameter::Imm8(self.read_u8());
@@ -2659,7 +2680,7 @@ impl CPU {
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 match x.reg {
-                    0 => {
+                    0 | 1 => {
                         // test r/m16, imm16
                         op.command = Op::Test16();
                         op.params.src = Parameter::Imm16(self.read_u16());
