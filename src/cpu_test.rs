@@ -587,6 +587,29 @@ fn can_execute_das() {
 }
 
 #[test]
+fn can_execute_sahf() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0x6A, 0x00, // push byte +0x0
+        0x9D,       // popf
+        0xB4, 0xFF, // mov ah,0xff
+        0x9E,       // sahf
+    ];
+
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.zero);
+    assert_eq!(true, cpu.flags.sign);
+}
+
+#[test]
 fn can_execute_dec() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![

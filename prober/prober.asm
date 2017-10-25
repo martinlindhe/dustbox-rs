@@ -57,9 +57,8 @@ start:
 
     ; ------------------
     ; run a instruction
-    mov al, 0x35
-    mov bl, 0x47
-    das ; // al = 88
+    mov ah, 0xff
+    sahf
 
     ; save reg states after instruction executes
     mov [_ax], ax

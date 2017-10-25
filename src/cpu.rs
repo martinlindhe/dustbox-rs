@@ -695,6 +695,9 @@ impl CPU {
                 let src = self.read_parameter_address(&op.params.src) as u16;
                 self.write_parameter_u16(op.segment, &op.params.dst, src);
             }
+            Op::Lds() => {
+                println!("XXX imp lds");
+            }
             Op::Les() => {
                 println!("XXX imp les");
             }
@@ -1153,7 +1156,15 @@ impl CPU {
             }
             Op::Sahf() => {
                 // Store AH into Flags
-                println!("XXX impl sahf");
+
+                // Loads the SF, ZF, AF, PF, and CF flags of the EFLAGS register with values
+                // from the corresponding bits in the AH register (bits 7, 6, 4, 2, and 0, respectively).
+                let ah = self.r16[AX].hi_u8();
+                self.flags.carry = ah & 0x1 != 0; // bit 0
+                self.flags.parity = ah & 0x4 != 0; // bit 2
+                self.flags.auxiliary_carry = ah & 0x10 != 0; // bit 4
+                self.flags.zero = ah & 0x40 != 0; // bit 6
+                self.flags.sign = ah & 0x80 != 0; // bit 7
             }
             Op::Sar8() => {
                 let dst = self.read_parameter_value(&op.params.dst);
