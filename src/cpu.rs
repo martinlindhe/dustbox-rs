@@ -520,7 +520,7 @@ impl CPU {
                 let tmp = (self.r16[AX].lo_u8() as i8) as isize * dst as isize;
                 self.r16[AX].val = tmp as u16;
 
-                println!("XXX imul8 impl carry & overflow flag");
+                // XXX flags
                 if self.r16[DX].val != 0 {
                     self.flags.carry = true;
                     self.flags.overflow = true;
@@ -543,7 +543,7 @@ impl CPU {
                     println!("XXX impl imul16 with multiple parameters: {}", op);
                 }
 
-                println!("XXX imul16 impl carry & overflow flag");
+                // XXX flags
                 if self.r16[DX].val != 0 {
                     self.flags.carry = true;
                     self.flags.overflow = true;
@@ -717,10 +717,19 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, src);
             }
             Op::Lds() => {
-                println!("XXX imp lds");
+                // Load DS:r16 with far pointer from memory.
+                let seg = self.read_parameter_address(&op.params.src) as u16;
+                let val = self.read_parameter_value(&op.params.src) as u16;
+                self.sreg16[DS] = seg;
+                self.write_parameter_u16(op.segment, &op.params.dst, val);
             }
             Op::Les() => {
-                println!("XXX imp les");
+                // les ax, [0x104]
+                // Load ES:r16 with far pointer from memory.
+                let seg = self.read_parameter_address(&op.params.src) as u16;
+                let val = self.read_parameter_value(&op.params.src) as u16;
+                self.sreg16[ES] = seg;
+                self.write_parameter_u16(op.segment, &op.params.dst, val);
             }
             Op::Lodsb() => {
                 // no arguments
@@ -782,7 +791,7 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, data);
             }
             Op::Mul8() => {
-                // dst = AX
+                // Unsigned multiply (AX ← AL ∗ r/m8).
                 let src = self.r16[AX].lo_u8() as usize; // AL
                 let dst = self.read_parameter_value(&op.params.dst);
                 let res = (Wrapping(dst) * Wrapping(src)).0;
@@ -790,9 +799,23 @@ impl CPU {
                 // The OF and CF flags are set to 0 if the upper half of the
                 // result is 0; otherwise, they are set to 1.
                 // The SF, ZF, AF, and PF flags are undefined.
-                println!("XXX mul8 flags");
+                // XXX flags
 
                 self.r16[AX].val = (res & 0xFFFF) as u16;
+            }
+            Op::Mul16() => {
+                // Unsigned multiply (DX:AX ← AX ∗ r/m16).
+                let src = self.r16[AX].val as usize; // AX
+                let dst = self.read_parameter_value(&op.params.dst);
+                let res = (Wrapping(dst) * Wrapping(src)).0;
+
+                self.r16[AX].val = (res & 0xFFFF) as u16;
+                self.r16[DX].val = (res >> 16) as u16;
+
+                let dx_true = self.r16[DX].val != 0;
+                self.flags.carry = dx_true;
+                self.flags.overflow = dx_true;
+                self.flags.zero = (self.r16[AX].val != 0) | (self.r16[DX].val != 0); // XXX ZF is undefined in later docs
             }
             Op::Neg8() => {
                 // one argument
@@ -2695,7 +2718,7 @@ impl CPU {
                     }
                     4 => {
                         // mul r/m16
-                        op.command = Op::Mul8(); // XXX mul16!?
+                        op.command = Op::Mul16();
                     }
                     5 => {
                         // imul r/m16
@@ -3044,7 +3067,7 @@ impl CPU {
         self.write_u8(offset + 1, hi);
     }
 
-    // returns the offset part, excluding segment. used by LEA
+    // returns the address of pointer, used by LEA, LDS, LES
     fn read_parameter_address(&mut self, p: &Parameter) -> usize {
         match *p {
             Parameter::Ptr16AmodeS8(_, r, imm) => (Wrapping(self.amode16(r) as usize) + Wrapping(imm as usize)).0,

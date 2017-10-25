@@ -243,6 +243,7 @@ pub enum Op {
     Movsw(),
     Movzx16(),
     Mul8(),
+    Mul16(),
     Neg8(),
     Neg16(),
     Nop(),

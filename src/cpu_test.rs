@@ -428,7 +428,7 @@ fn can_execute_and() {
 }
 
 #[test]
-fn can_execute_mul() {
+fn can_execute_mul8() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xB0, 0x40, // mov al,0x40
@@ -438,22 +438,29 @@ fn can_execute_mul() {
 
     cpu.load_com(&code);
 
-    let res = cpu.disassemble_block(0x100, 3);
-
-    assert_eq!("[085F:0100] B040       Mov8     al, 0x40
-[085F:0102] B310       Mov8     bl, 0x10
-[085F:0104] F6E3       Mul8     bl
-",
-               res);
-
     cpu.execute_instruction();
-    assert_eq!(0x40, cpu.r16[AX].lo_u8());
-
     cpu.execute_instruction();
-    assert_eq!(0x10, cpu.r16[BX].lo_u8());
-
     cpu.execute_instruction();
     assert_eq!(0x400, cpu.r16[AX].val);
+    // XXX flags
+}
+
+#[test]
+fn can_execute_mul16() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x00, 0x80, // mov ax,0x8000
+        0xBB, 0x04, 0x00, // mov bx,0x4
+        0xF7, 0xE3,       // mul bx
+    ];
+
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x0002, cpu.r16[DX].val);
+    assert_eq!(0x0000, cpu.r16[AX].val);
     // XXX flags
 }
 
@@ -558,6 +565,18 @@ fn can_execute_idiv16() {
     cpu.execute_instruction();
     assert_eq!(0x2000, cpu.r16[AX].val); // quotient
     assert_eq!(0x0000, cpu.r16[DX].val); // remainder
+}
+
+#[test]
+fn can_execute_les() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xC4, 0x06, 0x00, 0x01, // les ax,[0x100]
+    ];
+    cpu.load_com(&code);
+    cpu.execute_instruction();
+    assert_eq!(0x06C4, cpu.r16[AX].val);
+    assert_eq!(0x0100, cpu.sreg16[ES]); // XXX
 }
 
 #[test]
