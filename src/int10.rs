@@ -85,7 +85,7 @@ pub fn handle(cpu: &mut CPU) {
         }
         0x06 => {
             // VIDEO - SCROLL UP WINDOW
-
+            //
             // AL = number of lines by which to scroll up (00h = clear entire window)
             // BH = attribute used to write blank lines at bottom of window
             // CH,CL = row,column of window's upper left corner
@@ -223,6 +223,21 @@ pub fn handle(cpu: &mut CPU) {
                     println!("int10 error: unknown AH 10, AL={:02X}", cpu.r16[AX].lo_u8());
                 }
             }
+        }
+        0x13 => {
+            // VIDEO - WRITE STRING (AT and later,EGA)
+            //
+            // AH = 13h
+            // AL = write mode:
+            //      bit 0: Update cursor after writing
+            //      bit 1: String contains alternating characters and attributes
+            //      bits 2-7: Reserved (0).
+            // BH = page number.
+            // BL = attribute if string contains only characters.
+            // CX = number of characters in string.
+            // DH,DL = row,column at which to start writing.
+            // ES:BP -> string to write
+            println!("XXX int10: VIDEO - WRITE STRING unhandled");
         }
         _ => {
             println!("int10 error: unknown AH={:02X}, AX={:04X}",

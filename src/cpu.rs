@@ -945,7 +945,7 @@ impl CPU {
             }
             Op::Outsb() => {
                 // no arguments
-                println!("XXX impl outs byte");
+                self.outsb();
             }
             Op::Outsw() => {
                 // no arguments
@@ -1121,18 +1121,8 @@ impl CPU {
             Op::RepOutsb() => {
                 // rep outs byte
                 // Output (E)CX bytes from DS:[(E)SI] to port DX.
-                let port = self.r16[DX].val; // = DX
-
                 loop {
-                    let src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
-                    let val = self.peek_u8_at(src);
-                    self.out_u8(port, val);
-
-                    self.r16[SI].val = if !self.flags.direction {
-                        (Wrapping(self.r16[SI].val) + Wrapping(1)).0
-                    } else {
-                        (Wrapping(self.r16[SI].val) - Wrapping(1)).0
-                    };
+                    self.outsb();
 
                     let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
                     self.r16[CX].val = res;
@@ -3321,6 +3311,20 @@ impl CPU {
 
     pub fn is_offset_at_breakpoint(&mut self, offset: usize) -> bool {
         self.breakpoints.iter().any(|&x| x == offset)
+    }
+
+    // used for OUTSB instruction
+    fn outsb(&mut self) {
+        let src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
+        let val = self.peek_u8_at(src);
+        let port = self.r16[DX].val;
+        self.out_u8(port, val);
+
+        self.r16[SI].val = if !self.flags.direction {
+            (Wrapping(self.r16[SI].val) + Wrapping(1)).0
+        } else {
+            (Wrapping(self.r16[SI].val) - Wrapping(1)).0
+        };
     }
 
     // output byte `data` to I/O port

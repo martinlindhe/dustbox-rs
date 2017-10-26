@@ -40,7 +40,21 @@ fn demo_256_244b() {
 
     cpu.execute_n_instructions(1000);
     cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_244b_1k.png");
+    // XXX cpu.test_expect_memory_md5(x)
 
     cpu.execute_n_instructions(49000);
     cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_244b_50k.png");
+}
+
+#[test]
+fn demo_256_beziesux() {
+    // STATUS: pixels are rendered, but the effect is not proper, compare screenshots with real run (26 oct, 2017)
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/beziesux/beziesux.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(500_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_beziesux_500k.png");
 }
