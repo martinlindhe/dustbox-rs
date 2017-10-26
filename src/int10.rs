@@ -213,9 +213,9 @@ pub fn handle(cpu: &mut CPU) {
 
                         // XXX each value is 6 bits (0-63), scale it to 8 bits
 
-                        cpu.gpu.palette[i].r = ((r << 2) & 0xFF) as u8;
-                        cpu.gpu.palette[i].g = ((g << 2) & 0xFF) as u8;
-                        cpu.gpu.palette[i].b = ((b << 2) & 0xFF) as u8;
+                        cpu.gpu.pal[i].r = ((r << 2) & 0xFF) as u8;
+                        cpu.gpu.pal[i].g = ((g << 2) & 0xFF) as u8;
+                        cpu.gpu.pal[i].b = ((b << 2) & 0xFF) as u8;
                         offset += 3;
                     }
                 }

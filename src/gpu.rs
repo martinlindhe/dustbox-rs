@@ -10,10 +10,10 @@ pub struct GPU {
     pub scanline: i32,
     pub width: i32,
     pub height: i32,
-    pub palette: Vec<DACPalette>, // the palette in use
+    pub pal: Vec<DACPalette>, // the palette in use
     pub dac_color: usize, // for out 03c9, 0 = red, 1 = green, 2 = blue
     pub dac_index: u8, // for out 03c9
-    pub dac_current_palette: Vec<u8>, // for out 03c9
+    pub dac_current_pal: Vec<u8>, // for out 03c9
     pixbuf: RefCell<gdk_pixbuf::Pixbuf>,
 }
 
@@ -33,10 +33,10 @@ impl GPU {
             scanline: 0,
             width: width,
             height: height,
-            palette: vec![DACPalette { r: 0, g: 0, b: 0 }; 256],
+            pal: vec![DACPalette { r: 0, g: 0, b: 0 }; 256],
             dac_color: 0,
             dac_index: 0,
-            dac_current_palette: vec![0u8; 3],
+            dac_current_pal: vec![0u8; 3],
             pixbuf: RefCell::new(unsafe {
                 gdk_pixbuf::Pixbuf::new(colorspace, false, 8, width, height)
             }.unwrap()),
@@ -61,7 +61,7 @@ impl GPU {
             for x in 0..self.width {
                 let offset = 0xA_0000 + ((y * self.width) + x) as usize;
                 let byte = memory[offset];
-                let pal = &self.palette[byte as usize];
+                let pal = &self.pal[byte as usize];
                 buf.put_pixel(x as i32, y as i32, pal.r, pal.g, pal.b, 255);
             }
         }
@@ -80,7 +80,7 @@ impl GPU {
             for x in 0..self.width {
                 let offset = 0xA_0000 + ((y * self.width) + x) as usize;
                 let byte = memory[offset];
-                let pal = &self.palette[byte as usize];
+                let pal = &self.pal[byte as usize];
                 canvas.set_pixel(x, y, Color::rgba(pal.r, pal.g, pal.b, 255)).unwrap();
             }
         }

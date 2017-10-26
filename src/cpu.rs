@@ -3340,23 +3340,23 @@ impl CPU {
                 // The internal DAC index is incremented each 3rd access.
                 if self.gpu.dac_color > 2 {
                     let i = self.gpu.dac_index as usize;
-                    self.gpu.palette[i].r = self.gpu.dac_current_palette[0];
-                    self.gpu.palette[i].g = self.gpu.dac_current_palette[1];
-                    self.gpu.palette[i].b = self.gpu.dac_current_palette[2];
+                    self.gpu.pal[i].r = self.gpu.dac_current_pal[0];
+                    self.gpu.pal[i].g = self.gpu.dac_current_pal[1];
+                    self.gpu.pal[i].b = self.gpu.dac_current_pal[2];
 
                     if self.gpu.dac_index == 0 {
                         println!("DAC palette {} = {}, {}, {}",
                                 self.gpu.dac_index,
-                                self.gpu.palette[i].r,
-                                self.gpu.palette[i].g,
-                                self.gpu.palette[i].b);
+                                self.gpu.pal[i].r,
+                                self.gpu.pal[i].g,
+                                self.gpu.pal[i].b);
                     }
 
                     self.gpu.dac_color = 0;
                     self.gpu.dac_index = (Wrapping(self.gpu.dac_index) + Wrapping(1)).0;
                 }
                 // map 6-bit color into 8 bits
-                self.gpu.dac_current_palette[self.gpu.dac_color] = data << 2;
+                self.gpu.dac_current_pal[self.gpu.dac_color] = data << 2;
                 self.gpu.dac_color += 1;
             }
             _ => {

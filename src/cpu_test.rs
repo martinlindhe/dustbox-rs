@@ -323,9 +323,9 @@ fn can_execute_rep_outsb() {
     ];
     cpu.load_com(&code);
 
-    assert_eq!(0, cpu.gpu.palette[1].r);
-    assert_eq!(0, cpu.gpu.palette[1].g);
-    assert_eq!(0, cpu.gpu.palette[1].b);
+    assert_eq!(0, cpu.gpu.pal[1].r);
+    assert_eq!(0, cpu.gpu.pal[1].g);
+    assert_eq!(0, cpu.gpu.pal[1].b);
 
     cpu.execute_instruction();
     cpu.execute_instruction();
@@ -334,9 +334,9 @@ fn can_execute_rep_outsb() {
     assert_eq!(0x0, cpu.r16[CX].val);
 
     // we verify by checking for change in pal[1], indicating > 1 successful "rep outsb" operation
-    assert_eq!(0xE8, cpu.gpu.palette[1].r);
-    assert_eq!(0x24, cpu.gpu.palette[1].g);
-    assert_eq!(0x0C, cpu.gpu.palette[1].b);
+    assert_eq!(0xE8, cpu.gpu.pal[1].r);
+    assert_eq!(0x24, cpu.gpu.pal[1].g);
+    assert_eq!(0x0C, cpu.gpu.pal[1].b);
 }
 
 #[test]
