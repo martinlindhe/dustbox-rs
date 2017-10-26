@@ -282,7 +282,7 @@ fn can_execute_xchg() {
 }
 
 #[test]
-fn can_execute_rep() {
+fn can_execute_rep_movsb() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         // copy first 5 bytes into 0x200
@@ -310,6 +310,33 @@ fn can_execute_rep() {
     for i in min..max {
         assert_eq!(cpu.memory.memory[i], cpu.memory.memory[i + 0x100]);
     }
+}
+
+#[test]
+fn can_execute_rep_outsb() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xBE, 0x00, 0x01, // mov si,0x100
+        0xBA, 0xC9, 0x03, // mov dx,0x3c9
+        0xB9, 0x20, 0x00, // mov cx,0x20
+        0xF3, 0x6E,       // rep outsb
+    ];
+    cpu.load_com(&code);
+
+    assert_eq!(0, cpu.gpu.palette[1].r);
+    assert_eq!(0, cpu.gpu.palette[1].g);
+    assert_eq!(0, cpu.gpu.palette[1].b);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // rep outsb
+    assert_eq!(0x0, cpu.r16[CX].val);
+
+    // we verify by checking for change in pal[1], indicating > 1 successful "rep outsb" operation
+    assert_eq!(0xE8, cpu.gpu.palette[1].r);
+    assert_eq!(0x24, cpu.gpu.palette[1].g);
+    assert_eq!(0x0C, cpu.gpu.palette[1].b);
 }
 
 #[test]

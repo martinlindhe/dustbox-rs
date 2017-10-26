@@ -936,8 +936,9 @@ impl CPU {
             }
             Op::Out8() => {
                 // two arguments (dst=DX or imm8)
+                let dst = self.read_parameter_value(&op.params.dst) as u16;
                 let data = self.read_parameter_value(&op.params.src) as u8;
-                self.out_u8(&op.params.dst, data);
+                self.out_u8(dst, data);
             }
             Op::Out16() => {
                 println!("XXX impl out16");
@@ -1119,7 +1120,26 @@ impl CPU {
             }
             Op::RepOutsb() => {
                 // rep outs byte
-                println!("XXX impl rep outsb");
+                // Output (E)CX bytes from DS:[(E)SI] to port DX.
+                let port = self.r16[DX].val; // = DX
+
+                loop {
+                    let src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
+                    let val = self.peek_u8_at(src);
+                    self.out_u8(port, val);
+
+                    self.r16[SI].val = if !self.flags.direction {
+                        (Wrapping(self.r16[SI].val) + Wrapping(1)).0
+                    } else {
+                        (Wrapping(self.r16[SI].val) - Wrapping(1)).0
+                    };
+
+                    let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                    self.r16[CX].val = res;
+                    if res == 0 {
+                        break;
+                    }
+                }
             }
             Op::RepStosb() => {
                 // rep stos byte
@@ -2667,7 +2687,6 @@ impl CPU {
                 let b = self.read_u8();
                 match b {
                     0x6E => {
-                        // XXXX intel dec-2016 manual says "REP OUTS DX, r/m8" which seems wrong?
                         op.command = Op::RepOutsb();
                     }
                     0xA4 => {
@@ -3304,17 +3323,8 @@ impl CPU {
         self.breakpoints.iter().any(|&x| x == offset)
     }
 
-    // output byte to I/O port
-    fn out_u8(&mut self, p: &Parameter, data: u8) {
-        let dst = match *p {
-            Parameter::Reg16(r) => self.r16[r].val,
-            Parameter::Imm8(imm) => u16::from(imm),
-            _ => {
-                println!("out_u8 unhandled type {:?}", p);
-                0
-            }
-        };
-
+    // output byte `data` to I/O port
+    fn out_u8(&mut self, dst: u16, data: u8) {
         match dst {
             0x03C8 => {
                 // (VGA,MCGA) PEL address register

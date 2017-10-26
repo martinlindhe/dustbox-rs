@@ -14,8 +14,11 @@ start:
 
     ; ------------------
     ; run a instruction
-    mov ax, 0xfe00
-    cwd
+    mov si, 0x100
+    mov dx, 0x3c9
+    mov cx, 0x20
+    rep outsb  ; output CX bytes from DS:SI to port DX
+
 
     ; save reg states after instruction executes
     mov [_ax], ax

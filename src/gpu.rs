@@ -10,7 +10,7 @@ pub struct GPU {
     pub scanline: i32,
     pub width: i32,
     pub height: i32,
-    pub palette: Vec<DACPalette>,
+    pub palette: Vec<DACPalette>, // the palette in use
     pub dac_color: usize, // for out 03c9, 0 = red, 1 = green, 2 = blue
     pub dac_index: u8, // for out 03c9
     pub dac_current_palette: Vec<u8>, // for out 03c9

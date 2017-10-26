@@ -32,7 +32,7 @@ fn demo_256_165plasm() {
 }
 */
 
-
+/*
 #[test]
 fn demo_256_244b() {
     let mut cpu = CPU::new();
@@ -44,3 +44,4 @@ fn demo_256_244b() {
     // XXX compare render vs existing image on disk
     raster::save(&img, "tests/render/demo/256_244b.png");
 }
+*/
