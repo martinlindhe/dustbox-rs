@@ -1,7 +1,7 @@
 [package]
 name = "x86emu"
 version = "0.1.0"
-authors = ["name"]
+authors = ["Martin Lindhe"]
 
 [dependencies]
 difference = "1.0"

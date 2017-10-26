@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use gdk::prelude::*;
 use gdk_pixbuf;
 use cairo;
-use raster::{Color, Image};
+use raster;
 
 #[derive(Clone)]
 pub struct GPU {
@@ -69,17 +69,34 @@ impl GPU {
         c.set_source_pixbuf(&buf, f64::from(self.width), f64::from(self.height));
     }
 
-    pub fn draw_image(&self, memory: &[u8]) -> Image {
-        let mut canvas = Image::blank(self.width, self.height);
+    pub fn draw_image(&self, memory: &[u8]) -> raster::Image {
+        let mut canvas = raster::Image::blank(self.width, self.height);
         for y in 0..self.height {
             for x in 0..self.width {
                 let offset = 0xA_0000 + ((y * self.width) + x) as usize;
                 let byte = memory[offset];
                 let pal = &self.pal[byte as usize];
-                canvas.set_pixel(x, y, Color::rgba(pal.r, pal.g, pal.b, 255)).unwrap();
+                canvas.set_pixel(x, y, raster::Color::rgba(pal.r, pal.g, pal.b, 255)).unwrap();
             }
         }
         canvas
+    }
+
+    // used by gpu tests
+    pub fn test_render_frame(&self, memory: &[u8], pngfile: &str) {
+        let img = self.draw_image(memory);
+        match raster::open(pngfile) {
+            Ok(v) => {
+                assert_eq!(true, raster::compare::equal(&v, &img).unwrap());
+            },
+            Err(_) => {
+                println!("Writing initial gpu test result to {}", pngfile);
+                match raster::save(&img, pngfile) {
+                    Err(why) => println!("save err: {:?}", why),
+                    _ => {},
+                }
+            }
+        };
     }
 }
 

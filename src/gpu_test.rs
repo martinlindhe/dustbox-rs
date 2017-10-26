@@ -1,7 +1,6 @@
 // mentally close to cpu.rs, this is a collection of graphic tests using classic 256 / 512 byte demos
 
 // TODO: copy all demo binaries that tests rely on to this repo
-use raster;
 
 use cpu::CPU;
 //use instruction::seg_offs_as_flat;
@@ -40,16 +39,8 @@ fn demo_256_244b() {
     cpu.load_com(&code);
 
     cpu.execute_n_instructions(1000);
-    match raster::save(&cpu.gpu.draw_image(&cpu.memory.memory), "tests/render/demo/256_244b_1k.png") {
-        Err(why) => println!("save err: {:?}", why),
-        _ => {},
-    }
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_244b_1k.png");
 
     cpu.execute_n_instructions(49000);
-    match raster::save(&cpu.gpu.draw_image(&cpu.memory.memory), "tests/render/demo/256_244b_50k.png") {
-        Err(why) => println!("save err: {:?}", why),
-        _ => {},
-    }
-
-    // XXX compare render vs existing image on disk
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_244b_50k.png");
 }
