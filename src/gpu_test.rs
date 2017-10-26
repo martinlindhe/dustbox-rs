@@ -86,7 +86,7 @@ fn demo_256_blah() {
 
 #[test]
 fn demo_256_bob() {
-    // STATUS: black screen, crash after 50k instr or so (executing 00:s)
+    // STATUS: black screen
     let mut cpu = CPU::new();
     let code = tools::read_binary("../dos-software-decoding/demo-256/bob/bob.com");
     cpu.load_com(&code);
@@ -95,4 +95,30 @@ fn demo_256_bob() {
 
     cpu.execute_n_instructions(30_000);
     cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_bob_30k.png");
+}
+
+#[test]
+fn demo_256_bumpgeci() {
+    // STATUS: black screen
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/bumpgeci/bumpgeci.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(70_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_bumpgeci_70k.png");
+}
+
+#[test]
+fn demo_256_chaos() {
+    // STATUS: black screen, needs font data accessible, i think
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/chaos/chaos.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(50_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_chaos_50k.png");
 }

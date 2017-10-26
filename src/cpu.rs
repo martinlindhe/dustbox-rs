@@ -940,13 +940,16 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Out8() => {
-                // two arguments (dst=DX or imm8)
-                let dst = self.read_parameter_value(&op.params.dst) as u16;
-                let data = self.read_parameter_value(&op.params.src) as u8;
-                self.out_u8(dst, data);
+                // two arguments
+                let addr = self.read_parameter_value(&op.params.dst) as u16;
+                let val = self.read_parameter_value(&op.params.src) as u8;
+                self.out_u8(addr, val);
             }
             Op::Out16() => {
-                println!("XXX impl out16");
+                // two arguments
+                let addr = self.read_parameter_value(&op.params.dst) as u16;
+                let val = self.read_parameter_value(&op.params.src) as u16;
+                self.out_u16(addr, val);
             }
             Op::Outsb() => {
                 // no arguments
@@ -954,7 +957,7 @@ impl CPU {
             }
             Op::Outsw() => {
                 // no arguments
-                println!("XXX impl outs word");
+                println!("XXX impl outs word: {}", op);
             }
             Op::Pop16() => {
                 // one arguments (dst)
@@ -3370,6 +3373,50 @@ impl CPU {
             }
             _ => {
                 println!("XXX unhandled out_u8 to {:04X}, data {:02X}", dst, data);
+            }
+        }
+    }
+
+    // output word `data` to I/O port
+    fn out_u16(&mut self, dst: u16, data: u16) {
+        match dst {
+            0x03C4 => {
+                // XXX
+                /*
+                03C4  -W  EGA	TS index register
+                        bit7-3 : reserved (VGA only)
+                        bit2-0 : current TS index
+                03C4  RW  VGA	sequencer register index (see #P0670)
+                */
+            }
+            /*
+            0x03C5 => {
+                03C5  -W  EGA	TS data register
+                03C5  RW  VGA	sequencer register data
+            }
+            PORT 03D4-03D5 - COLOR VIDEO - CRT CONTROL REGISTERS
+            */
+            0x03D4 => {
+                // 03D4  rW  CRT (6845) register index   (CGA/MCGA/color EGA/color VGA)
+                // selects which register (0-11h) is to be accessed through 03D5
+                // this port is r/w on some VGA, e.g. ET4000
+                //        bit 7-6 =0: (VGA) reserved
+                //        bit 5   =0: (VGA) reserved for testage
+                //        bit 4-0   : selects which register is to be accessed through 03D5
+            }  
+            /*
+                03D5  -W  CRT (6845) data register   (CGA/MCGA/color EGA/color VGA) (see #P0708)
+                    selected by PORT 03D4h. registers 0C-0F may be read
+                    (see also PORT 03B5h)
+                    MCGA, native EGA and VGA use very different defaults from those
+                    mentioned for the other adapters; for additional notes and
+                    registers 00h-0Fh and EGA/VGA registers 10h-18h and ET4000
+                    registers 32h-37h see PORT 03B5h (see #P0654)
+                    registers 10h-11h on CGA, EGA, VGA and 12h-14h on EGA, VGA are
+                    conflictive with MCGA (see #P0710)
+            */
+             _ => {
+                println!("XXX unhandled out_u16 to {:04X}, data {:02X}", dst, data);
             }
         }
     }
