@@ -122,3 +122,163 @@ fn demo_256_chaos() {
     cpu.execute_n_instructions(50_000);
     cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_chaos_50k.png");
 }
+
+/*
+#[test]
+fn demo_256_conf() {
+    // STATUS: waits for ENTER press
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/conf/conf.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    // XXX FIXME: inject enter key press to progress demo
+
+    cpu.execute_n_instructions(20_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_conf_20k.png");
+}
+*/
+
+#[test]
+fn demo_256_ectotrax() {
+    // STATUS: black screen, needs font data accessible, i think
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/ectotrax/ectotrax.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(50_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_ectotrax_50k.png");
+}
+
+#[test]
+fn demo_256_enchante() {
+    // STATUS: black screen
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/enchante/enchante.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(50_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_enchante_50k.png");
+}
+
+#[test]
+fn demo_256_fire() {
+    // STATUS: black screen
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/fire/fire.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(50_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fire_50k.png");
+}
+
+#[test]
+fn demo_256_fire2() {
+    // STATUS: black screen, needs font data
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/fire2/fire2.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(50_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fire2_50k.png");
+}
+
+#[test]
+fn demo_256_fire3d() {
+    // STATUS: black screen
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/fire3d/fire3d.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(50_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fire3d_50k.png");
+}
+
+#[test]
+fn demo_256_fire17() {
+    // STATUS: black screen
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/fire17/fire17.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(50_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fire17_50k.png");
+}
+
+#[test]
+fn demo_256_flame2() {
+    // STATUS: black screen
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/flame2/flame2.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(50_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_flame2_50k.png");
+}
+
+#[test]
+fn demo_256_fracscrl() {
+    // STATUS: red screen
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/fracscrl/fracscrl.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(50_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fracscrl_50k.png");
+}
+
+#[test]
+fn demo_256_fractal() {
+    // STATUS: black screen
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/fractal/fractal.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(50_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fractal_50k.png");
+}
+
+#[test]
+fn demo_256_fridge() {
+    // STATUS: black screen, needs font data
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/fridge/fridge.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(50_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fridge_50k.png");
+}
+
+#[test]
+fn demo_256_gr17() {
+    // STATUS: black screen
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/gr17/gr17.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(50_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_gr17_50k.png");
+}
