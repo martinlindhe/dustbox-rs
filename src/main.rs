@@ -8,11 +8,11 @@ extern crate colog;
 // #[macro_use] extern crate difference;
 extern crate time;
 extern crate test;
-extern crate image;
 extern crate gtk;
 extern crate gdk;
 extern crate gdk_pixbuf;
 extern crate cairo;
+extern crate raster;
 
 mod debugger;
 mod tools;

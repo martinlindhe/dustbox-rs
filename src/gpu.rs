@@ -1,8 +1,9 @@
 use std::cell::RefCell;
 
 use gdk::prelude::*;
-use cairo;
 use gdk_pixbuf;
+use cairo;
+use raster::{Color, Image};
 
 #[derive(Clone)]
 pub struct GPU {
@@ -66,6 +67,24 @@ impl GPU {
         }
 
         c.set_source_pixbuf(&buf, f64::from(self.width), f64::from(self.height));
+    }
+
+    pub fn draw_image(&self, memory: &[u8]) -> Image {
+
+        println!("draw image");
+
+        // XXX create & return a new image
+        let mut canvas = Image::blank(self.width, self.height);
+
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let offset = 0xA_0000 + ((y * self.width) + x) as usize;
+                let byte = memory[offset];
+                let pal = &self.palette[byte as usize];
+                canvas.set_pixel(x, y, Color::rgba(pal.r, pal.g, pal.b, 255)).unwrap();
+            }
+        }
+        canvas
     }
 }
 

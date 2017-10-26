@@ -86,7 +86,7 @@ impl Interface { // XXX rename to DebugWindow
 
         let app = Arc::clone(&self.app);
         let builder = Arc::clone(&self.builder);
-        update_registers(app, builder);
+        update_registers(&app, &builder);
 
         {
             // update screen
@@ -118,7 +118,7 @@ impl Interface { // XXX rename to DebugWindow
 
                 let app2 = Arc::clone(&app);
                 let builder = Arc::clone(&builder);
-                update_registers(app2, builder);
+                update_registers(&app2, &builder);
             });
         }
 
@@ -142,7 +142,7 @@ impl Interface { // XXX rename to DebugWindow
 
                 let app2 = Arc::clone(&app);
                 let builder = Arc::clone(&builder);
-                update_registers(app2, builder);
+                update_registers(&app2, &builder);
             });
         }
 
@@ -168,7 +168,7 @@ impl Interface { // XXX rename to DebugWindow
 
                 let app2 = Arc::clone(&app);
                 let builder = Arc::clone(&builder);
-                update_registers(app2, builder);
+                update_registers(&app2, &builder);
             });
         }
 
@@ -191,7 +191,7 @@ fn u16_as_register_str(v: u16, prev: u16) -> String {
     }
 }
 
-fn update_registers(app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>, builder: std::sync::Arc<std::sync::Mutex<gtk::Builder>>) {
+fn update_registers(app: &std::sync::Arc<std::sync::Mutex<debugger::Debugger>>, builder: &std::sync::Arc<std::sync::Mutex<gtk::Builder>>) {
 
     let mut app = app.lock().unwrap();
     let builder = builder.lock().unwrap();
