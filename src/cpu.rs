@@ -109,11 +109,12 @@ impl CPU {
     pub fn print_registers(&mut self) -> String {
         let mut res = String::new();
 
-        res += format!("AX:{:04X}  SI:{:04X}  DS:{:04X}  IP:{:04X}\n",
+        res += format!("AX:{:04X}  SI:{:04X}  DS:{:04X}  IP:{:04X}  cnt:{}\n",
                        self.r16[AX].val,
                        self.r16[SI].val,
                        self.sreg16[DS],
-                       self.ip)
+                       self.ip,
+                       self.instruction_count)
                 .as_ref();
         res += format!("BX:{:04X}  DI:{:04X}  CS:{:04X}  fl:{:04X}\n",
                        self.r16[BX].val,
@@ -161,6 +162,25 @@ impl CPU {
         // XXX need instruction timing to do this properly
         if self.instruction_count % 100 == 0 {
             self.gpu.progress_scanline();
+        }
+    }
+
+    fn execute_n_instructions(&mut self, n: usize) {
+        for _ in 0..n {
+            let op = self.disasm_instruction();
+            println!("{}", op.pretty_string());
+            println!("{}", self.print_registers());
+            self.execute_instruction();
+            if self.fatal_error {
+                return;
+            }
+            if self.is_ip_at_breakpoint() {
+                self.fatal_error = true;
+                println!("Breakpoint, ip = {:04X}:{:04X}",
+                    self.sreg16[CS],
+                    self.ip);
+                return;
+            }
         }
     }
 
@@ -351,7 +371,20 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Arpl() => {
+                // Adjust RPL Field of Segment Selector
                 println!("XXX impl arpl");
+                /*
+                // NOTE: RPL is the low two bits of the address
+                let src = self.read_parameter_value(&op.params.src);
+                let mut dst = self.read_parameter_value(&op.params.dst);
+                if dst & 3 < src & 3 {
+                    self.flags.zero = true;
+                    dst = (dst & 0xFFFC) + (src & 3);
+                    self.write_parameter_u16(op.segment, &op.params.dst, (dst & 0xFFFF) as u16);
+                } else {
+                    self.flags.zero = false;
+                }
+                */
             }
             Op::CallNear() => {
                 // call near rel
@@ -387,7 +420,6 @@ impl CPU {
             Op::Cmp8() => {
                 // two parameters
                 // Modify status flags in the same manner as the SUB instruction
-
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
                 let res = (Wrapping(dst) - Wrapping(src)).0;
@@ -401,10 +433,8 @@ impl CPU {
                 self.flags.set_parity(res);
             }
             Op::Cmp16() => {
-                // XXX identical to Op::Sub16() except we dont use the result
                 // two parameters
                 // Modify status flags in the same manner as the SUB instruction
-
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
                 let res = (Wrapping(dst) - Wrapping(src)).0;
@@ -3424,3 +3454,8 @@ fn count_to_bitmask(v: usize) -> usize {
 #[cfg(test)]
 #[path = "./cpu_test.rs"]
 mod cpu_test;
+
+
+#[cfg(test)]
+#[path = "./gfx_test.rs"]
+mod gfx_test;
