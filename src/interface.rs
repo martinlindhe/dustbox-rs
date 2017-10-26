@@ -84,13 +84,13 @@ impl Interface { // XXX rename to DebugWindow
         let text = self.app.lock().unwrap().disasm_n_instructions_to_text(20);
         disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
 
-        let app = self.app.clone();
-        let builder = self.builder.clone();
+        let app = Arc::clone(&self.app);
+        let builder = Arc::clone(&self.builder);
         update_registers(app, builder);
 
         {
             // update screen
-            let app = self.app.clone();
+            let app = Arc::clone(&self.app);
             let canvas = self.canvas.borrow();
             canvas.connect_draw(move |_, context| {
                 app.lock().unwrap().cpu.gpu.draw_canvas(context, &app.lock().unwrap().cpu.memory.memory);
@@ -99,8 +99,8 @@ impl Interface { // XXX rename to DebugWindow
         }
 
         {
-            let app = self.app.clone();
-            let builder = self.builder.clone();
+            let app = Arc::clone(&self.app);
+            let builder = Arc::clone(&self.builder);
             let disasm_text = disasm_text.clone();
             //let canvas = canvas.clone();
 
@@ -116,15 +116,15 @@ impl Interface { // XXX rename to DebugWindow
                     disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
                 }
 
-                let app2 = app.clone();
-                let builder = builder.clone();
+                let app2 = Arc::clone(&app);
+                let builder = Arc::clone(&builder);
                 update_registers(app2, builder);
             });
         }
 
         {
-            let app = self.app.clone();
-            let builder = self.builder.clone();
+            let app = Arc::clone(&self.app);
+            let builder = Arc::clone(&self.builder);
             let disasm_text = disasm_text.clone();
             //let canvas = canvas.clone();
 
@@ -140,15 +140,15 @@ impl Interface { // XXX rename to DebugWindow
                     disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
                 }
 
-                let app2 = app.clone();
-                let builder = builder.clone();
+                let app2 = Arc::clone(&app);
+                let builder = Arc::clone(&builder);
                 update_registers(app2, builder);
             });
         }
 
         {
-            let app = self.app.clone();
-            let builder = self.builder.clone();
+            let app = Arc::clone(&self.app);
+            let builder = Arc::clone(&self.builder);
             let disasm_text = disasm_text.clone();
             //let canvas = canvas.clone();
 
@@ -166,8 +166,8 @@ impl Interface { // XXX rename to DebugWindow
                     disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
                 }
 
-                let app2 = app.clone();
-                let builder = builder.clone();
+                let app2 = Arc::clone(&app);
+                let builder = Arc::clone(&builder);
                 update_registers(app2, builder);
             });
         }

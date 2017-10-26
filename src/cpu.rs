@@ -222,8 +222,8 @@ impl CPU {
         if self.flags.auxiliary_carry || (self.r16[AX].lo_u8() & 0xf) > 9 {
             let al = self.r16[AX].lo_u8();
             let ah = self.r16[AX].hi_u8();
-            self.r16[AX].set_lo((al as u16 + param1 as u16) as u8);
-            self.r16[AX].set_hi((ah as u16 + param2 as u16) as u8);
+            self.r16[AX].set_lo((u16::from(al) + param1 as u16) as u8);
+            self.r16[AX].set_hi((u16::from(ah) + param2 as u16) as u8);
             self.flags.auxiliary_carry = true;
             self.flags.carry = true;
         } else {
@@ -241,7 +241,7 @@ impl CPU {
         self.flags.carry = false;
 
         if (old_al & 0x0F) > 9 || self.flags.auxiliary_carry {
-            let tmp = old_al as u16 + param1 as u16;
+            let tmp = u16::from(old_al) + param1 as u16;
             self.r16[AX].set_lo(tmp as u8);
             self.flags.carry = tmp & 0x100 != 0;
             self.flags.auxiliary_carry = true;
@@ -250,7 +250,7 @@ impl CPU {
         }
 
         if old_al > 0x99 || old_cf {
-            self.r16[AX].set_lo((old_al as u16 + param2 as u16) as u8);
+            self.r16[AX].set_lo((u16::from(old_al) + param2 as u16) as u8);
             self.flags.carry = true;
         }
     }
@@ -1072,7 +1072,7 @@ impl CPU {
 
                 while count > 0 {
                     let c = if self.flags.carry {
-                        0x10000
+                        0x1_0000
                     } else {
                         0
                     };
