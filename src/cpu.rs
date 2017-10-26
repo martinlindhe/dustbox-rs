@@ -566,15 +566,20 @@ impl CPU {
             Op::Imul16() => {
                 if op.params.count() == 1 {
                     // IMUL r/m16               : DX:AX ← AX ∗ r/m word.
-                    let dst = self.read_parameter_value(&op.params.dst) as i16;
-                    let tmp = (self.r16[AX].val as i16) as isize * dst as isize;
+                    let a = self.read_parameter_value(&op.params.dst) as i16;
+                    let tmp = (self.r16[AX].val as i16) as isize * a as isize;
                     self.r16[AX].val = tmp as u16;
                     self.r16[DX].val = (tmp >> 16) as u16;
-                } else {
-                    // IMUL r16, r/m16          : word register ← word register ∗ r/m16.
+                } else if op.params.count() == 3 {
                     // IMUL r16, r/m16, imm8    : word register ← r/m16 ∗ sign-extended immediate byte.
                     // IMUL r16, r/m16, imm16   : word register ← r/m16 ∗ immediate word.
-                    println!("XXX impl imul16 with multiple parameters: {}", op);
+                    let a = self.read_parameter_value(&op.params.src);
+                    let b = self.read_parameter_value(&op.params.src2);
+                    let tmp = b as isize * a as isize;
+                    self.write_parameter_u16(op.segment, &op.params.dst, (tmp & 0xFFFF) as u16);
+                } else {
+                    // IMUL r16, r/m16          : word register ← word register ∗ r/m16.
+                    println!("XXX impl imul16 with {} parameters: {}", op.params.count(), op);
                 }
 
                 // XXX flags

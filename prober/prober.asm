@@ -14,10 +14,8 @@ start:
 
     ; ------------------
     ; run a instruction
-    mov si, 0x100
-    mov dx, 0x3c9
-    mov cx, 0x20
-    rep outsb  ; output CX bytes from DS:SI to port DX
+    mov di, 0x8fff
+    imul di,di,word 0x140 ; // di = fec0 in dosbox
 
 
     ; save reg states after instruction executes

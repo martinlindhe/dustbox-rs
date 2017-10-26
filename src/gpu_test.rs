@@ -33,7 +33,7 @@ fn demo_256_165plasm() {
 
 #[test]
 fn demo_256_244b() {
-    // STATUS: pixels are rendered, but the effect is not proper, compare screenshots with real run (25 oct, 2017)
+    // STATUS: pixels are rendered, but the effect is not right (25 oct, 2017)
     let mut cpu = CPU::new();
     let code = tools::read_binary("../dos-software-decoding/demo-256/244b/244b.com");
     cpu.load_com(&code);
@@ -47,8 +47,20 @@ fn demo_256_244b() {
 }
 
 #[test]
+fn demo_256_alpc() {
+    // STATUS: pixels are rendered, but the effect is not right (25 oct, 2017)
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/alpc/alpc.com");
+    cpu.load_com(&code);
+
+    cpu.execute_n_instructions(50_000);
+    // XXX cpu.test_expect_memory_md5(x)
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_alpc_50k.png");
+}
+
+#[test]
 fn demo_256_beziesux() {
-    // STATUS: pixels are rendered, but the effect is not proper, compare screenshots with real run (26 oct, 2017)
+    // STATUS: pixels are rendered, but the effect is not right (26 oct, 2017)
     let mut cpu = CPU::new();
     let code = tools::read_binary("../dos-software-decoding/demo-256/beziesux/beziesux.com");
     cpu.load_com(&code);
@@ -57,4 +69,30 @@ fn demo_256_beziesux() {
 
     cpu.execute_n_instructions(500_000);
     cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_beziesux_500k.png");
+}
+
+#[test]
+fn demo_256_blah() {
+    // STATUS: black screen, crash after 50k instr or so (executing 00:s)
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/blah/blah.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(30_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_blah_30k.png");
+}
+
+#[test]
+fn demo_256_bob() {
+    // STATUS: black screen, crash after 50k instr or so (executing 00:s)
+    let mut cpu = CPU::new();
+    let code = tools::read_binary("../dos-software-decoding/demo-256/bob/bob.com");
+    cpu.load_com(&code);
+
+    // XXX cpu.test_expect_memory_md5(x)
+
+    cpu.execute_n_instructions(30_000);
+    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_bob_30k.png");
 }

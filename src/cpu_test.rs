@@ -1060,6 +1060,20 @@ fn can_execute_imul8() {
 }
 
 #[test]
+fn can_execute_imul16_3_args() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xBF, 0xFF, 0x8F,       // mov di,0x8fff
+        0x69, 0xFF, 0x40, 0x01, // imul di,di,word 0x140
+    ];
+    cpu.load_com(&code);
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0xFEC0, cpu.r16[DI].val);
+    // XXX Carry & overflow is true in dosbox
+}
+
+#[test]
 fn can_execute_shrd() {
 let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
@@ -1095,7 +1109,7 @@ let mut cpu = CPU::new();
 
 
 #[test]
-fn can_execute_imul16() {
+fn can_execute_imul16_1_arg() {
     let mut cpu = CPU::new();
     let code: Vec<u8> = vec![
         0xBB, 0x8F, 0x79, // mov bx,0x798f
