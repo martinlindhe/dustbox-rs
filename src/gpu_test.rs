@@ -32,16 +32,24 @@ fn demo_256_165plasm() {
 }
 */
 
-/*
 #[test]
 fn demo_256_244b() {
+    // STATUS: pixels are rendered, but the effect is not proper, compare screenshots with real run (25 oct, 2017)
     let mut cpu = CPU::new();
     let code = tools::read_binary("../dos-software-decoding/demo-256/244b/244b.com");
     cpu.load_com(&code);
-    cpu.execute_n_instructions(1000);
 
-    let img = cpu.gpu.draw_image(&cpu.memory.memory);
+    cpu.execute_n_instructions(1000);
+    match raster::save(&cpu.gpu.draw_image(&cpu.memory.memory), "tests/render/demo/256_244b_1k.png") {
+        Err(why) => println!("save err: {:?}", why),
+        _ => {},
+    }
+
+    cpu.execute_n_instructions(49000);
+    match raster::save(&cpu.gpu.draw_image(&cpu.memory.memory), "tests/render/demo/256_244b_50k.png") {
+        Err(why) => println!("save err: {:?}", why),
+        _ => {},
+    }
+
     // XXX compare render vs existing image on disk
-    raster::save(&img, "tests/render/demo/256_244b.png");
 }
-*/

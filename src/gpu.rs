@@ -70,12 +70,7 @@ impl GPU {
     }
 
     pub fn draw_image(&self, memory: &[u8]) -> Image {
-
-        println!("draw image");
-
-        // XXX create & return a new image
         let mut canvas = Image::blank(self.width, self.height);
-
         for y in 0..self.height {
             for x in 0..self.width {
                 let offset = 0xA_0000 + ((y * self.width) + x) as usize;
@@ -88,3 +83,6 @@ impl GPU {
     }
 }
 
+#[cfg(test)]
+#[path = "./gpu_test.rs"]
+mod gpu_test;

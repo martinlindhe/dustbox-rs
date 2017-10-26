@@ -165,11 +165,11 @@ impl CPU {
         }
     }
 
-    fn execute_n_instructions(&mut self, n: usize) {
+    pub fn execute_n_instructions(&mut self, n: usize) {
         for _ in 0..n {
-            let op = self.disasm_instruction();
-            println!("{}", op.pretty_string());
-            println!("{}", self.print_registers());
+            //let op = self.disasm_instruction();
+            //println!("{}", op.pretty_string());
+            //println!("{}", self.print_registers());
             self.execute_instruction();
             if self.fatal_error {
                 return;
@@ -3460,12 +3460,6 @@ fn count_to_bitmask(v: usize) -> usize {
     }
 }
 
-
 #[cfg(test)]
 #[path = "./cpu_test.rs"]
 mod cpu_test;
-
-
-#[cfg(test)]
-#[path = "./gfx_test.rs"]
-mod gfx_test;
