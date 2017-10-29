@@ -2,283 +2,93 @@
 
 // TODO: copy all demo binaries that tests rely on to this repo
 
+use std::path::Path;
+use std::ffi::OsStr;
+use std::ffi::OsString;
+
 use cpu::CPU;
-//use instruction::seg_offs_as_flat;
-//use register::{AX, CS};
 use tools;
 
-/*
 #[test]
-fn demo_256_165plasm() {
-    // STATUS: demo corrupts program code
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/165plasm/debug/165plasd.com");
-    cpu.load_com(&code);
+fn demo_256() {
+    let mut test_bins = vec![
+        // "../dos-software-decoding/demo-256/165plasm/debug/165plasd.com", // XXX hits corrupted op: "unknown op C8 at 085F:0164 (008754 flat), 1318 instructions executed"
+        "../dos-software-decoding/demo-256/244b/244b.com",         // some gfx
+        "../dos-software-decoding/demo-256/alpc/alpc.com",         // some gfx
+        "../dos-software-decoding/demo-256/beziesux/beziesux.com", // some gfx
+        // "../dos-software-decoding/demo-256/blah/blah.com",      // black screen, crash after 50k instr or so (executing 00:s), ip wrap
+        "../dos-software-decoding/demo-256/bob/bob.com",           // black screen
+        "../dos-software-decoding/demo-256/bumpgeci/bumpgeci.com", // black screen
+        "../dos-software-decoding/demo-256/chaos/chaos.com",       // black screen, needs font data
+        //"../dos-software-decoding/demo-256/conf/conf.com",       // waits for ENTER press, FIXME: inject enter key press to progress demo
+        "../dos-software-decoding/demo-256/ectotrax/ectotrax.com", // black screen, needs font data
+        "../dos-software-decoding/demo-256/enchante/enchante.com", // black screen
+        "../dos-software-decoding/demo-256/fire/fire.com",         // black screen
+        "../dos-software-decoding/demo-256/fire2/fire2.com",       // black screen, needs font data
+        "../dos-software-decoding/demo-256/fire3d/fire3d.com",     // black screen
+        "../dos-software-decoding/demo-256/fire17/fire17.com",     // black screen
+        "../dos-software-decoding/demo-256/flame2/flame2.com",     // black screen
+        "../dos-software-decoding/demo-256/fracscrl/fracscrl.com", // red screen
+        "../dos-software-decoding/demo-256/fractal/fractal.com",   // black screen
+        "../dos-software-decoding/demo-256/fridge/fridge.com",     // black screen, needs font data
+        "../dos-software-decoding/demo-256/gr17/gr17.com",         // black screen
+        "../dos-software-decoding/demo-256/hungecek/hungecek.com", // black screen
+        "../dos-software-decoding/demo-256/julia/julia.com",       // some gfx
+        "../dos-software-decoding/demo-256/lameland/lameland.com", // black screen
+        "../dos-software-decoding/demo-256/lava/lava.com",         // black screen
+        "../dos-software-decoding/demo-256/leaf/leaf.com",         // yellow screen
+        "../dos-software-decoding/demo-256/lets256/lets256.com",   // black screen
+        "../dos-software-decoding/demo-256/luminous/luminous.com", // black screen
+        "../dos-software-decoding/demo-256/lumps/lumps.com",       // black screen
+        "../dos-software-decoding/demo-256/mbl/mbl.com",           // black screen
+        // "../dos-software-decoding/demo-256/miracle/miracle.com", // crash: ip corrupted
+        "../dos-software-decoding/demo-256/nicefire/nicefire.com", // black screen
+        "../dos-software-decoding/demo-256/optimize/optimize.com", // some gfx
+        "../dos-software-decoding/demo-256/pack/pack.com",         // black screen
+        "../dos-software-decoding/demo-256/phong/phong.com",       // black screen
+        "../dos-software-decoding/demo-256/pikku/pikku.com",       // black screen
+        "../dos-software-decoding/demo-256/pixelize/pixelize.com", // some gfx
+        "../dos-software-decoding/demo-256/plasma/plasma.com",     // black screen
+        "../dos-software-decoding/demo-256/plasmalr/plasmalr.com", // black screen
+        "../dos-software-decoding/demo-256/plasmexp/plasmexp.com", // some gfx - looks good ?
+        "../dos-software-decoding/demo-256/platinum/platinum.com", // black screen
+        "../dos-software-decoding/demo-256/proto256/proto256.com", // black screen
+        "../dos-software-decoding/demo-256/riddle/riddle.com",     // black screen
+        "../dos-software-decoding/demo-256/ripped/ripped.com",     // black screen
+        "../dos-software-decoding/demo-256/saverave/saverave.com", // black screen
+        // "../dos-software-decoding/demo-256/sierpins/sierpins.com", // crash, ip wrap
+        "../dos-software-decoding/demo-256/snow/snow.com",         // black screen
+        // "../dos-software-decoding/demo-256/specifi/specifi.com", // crash, ip wrap
+        "../dos-software-decoding/demo-256/spline/spline.com",     // black screen
+        "../dos-software-decoding/demo-256/sqwerz3/sqwerz3.com",   // some gfx
+        "../dos-software-decoding/demo-256/static/static.com",     // black screen
+        "../dos-software-decoding/demo-256/twisted/twisted.com",   // black screen
+        "../dos-software-decoding/demo-256/water/water.com",       // black screen
+        // "../dos-software-decoding/demo-256/wd95/wd95.com",      // crash, ip wrap
+        "../dos-software-decoding/demo-256/wetwet/wetwet.com",     // black screen
+        "../dos-software-decoding/demo-256/x/x.com",               // black screen
+        "../dos-software-decoding/demo-256/xwater/xwater.com",     // black screen
+        "../dos-software-decoding/demo-256/zork/zork.com",         // black screen
+        
+    ];
 
-    // debug: run until ip = 0133
-    let cs = cpu.sreg16[CS];
-    cpu.add_breakpoint(seg_offs_as_flat(cs, 0x0133));
-    cpu.execute_n_instructions(1000);
-    println!("{}", ".");
-    println!("{}", ".");
-    println!("{}", ".");
-    cpu.clear_breakpoints();
+    while let Some(bin) = test_bins.pop() {
+        println!("demo_256: {}", bin);
 
-    cpu.execute_n_instructions(400); // XXX hits corrupted op: "unknown op C8 at 085F:0164 (008754 flat), 1318 instructions executed"
+        let mut cpu = CPU::new();
+        let code = tools::read_binary(bin);
+        cpu.load_com(&code);
 
-// XXX write gfx frame as png
-    //assert_eq!(0xFFFD, cpu.r16[AX].val);
-}
-*/
+        cpu.execute_n_instructions(100_000);
+        let path = Path::new(bin);
 
-#[test]
-fn demo_256_244b() {
-    // STATUS: pixels are rendered, but the effect is not right (25 oct, 2017)
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/244b/244b.com");
-    cpu.load_com(&code);
+        let stem = path.file_stem().unwrap_or(OsStr::new(""));
+        let mut filename = OsString::new();
+        filename.push("tests/render/demo/256_");
+        filename.push(stem.to_os_string());
+        filename.push("_100k.png");
 
-    cpu.execute_n_instructions(1000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_244b_1k.png");
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(49000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_244b_50k.png");
-}
-
-#[test]
-fn demo_256_alpc() {
-    // STATUS: pixels are rendered, but the effect is not right (25 oct, 2017)
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/alpc/alpc.com");
-    cpu.load_com(&code);
-
-    cpu.execute_n_instructions(50_000);
-    // XXX cpu.test_expect_memory_md5(x)
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_alpc_50k.png");
-}
-
-#[test]
-fn demo_256_beziesux() {
-    // STATUS: pixels are rendered, but the effect is not right (26 oct, 2017)
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/beziesux/beziesux.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(500_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_beziesux_500k.png");
-}
-
-#[test]
-fn demo_256_blah() {
-    // STATUS: black screen, crash after 50k instr or so (executing 00:s)
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/blah/blah.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(30_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_blah_30k.png");
-}
-
-#[test]
-fn demo_256_bob() {
-    // STATUS: black screen
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/bob/bob.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(30_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_bob_30k.png");
-}
-
-#[test]
-fn demo_256_bumpgeci() {
-    // STATUS: black screen
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/bumpgeci/bumpgeci.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(70_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_bumpgeci_70k.png");
-}
-
-#[test]
-fn demo_256_chaos() {
-    // STATUS: black screen, needs font data accessible, i think
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/chaos/chaos.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(50_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_chaos_50k.png");
-}
-
-/*
-#[test]
-fn demo_256_conf() {
-    // STATUS: waits for ENTER press
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/conf/conf.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    // XXX FIXME: inject enter key press to progress demo
-
-    cpu.execute_n_instructions(20_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_conf_20k.png");
-}
-*/
-
-#[test]
-fn demo_256_ectotrax() {
-    // STATUS: black screen, needs font data accessible, i think
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/ectotrax/ectotrax.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(50_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_ectotrax_50k.png");
-}
-
-#[test]
-fn demo_256_enchante() {
-    // STATUS: black screen
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/enchante/enchante.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(50_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_enchante_50k.png");
-}
-
-#[test]
-fn demo_256_fire() {
-    // STATUS: black screen
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/fire/fire.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(50_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fire_50k.png");
-}
-
-#[test]
-fn demo_256_fire2() {
-    // STATUS: black screen, needs font data
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/fire2/fire2.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(50_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fire2_50k.png");
-}
-
-#[test]
-fn demo_256_fire3d() {
-    // STATUS: black screen
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/fire3d/fire3d.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(50_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fire3d_50k.png");
-}
-
-#[test]
-fn demo_256_fire17() {
-    // STATUS: black screen
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/fire17/fire17.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(50_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fire17_50k.png");
-}
-
-#[test]
-fn demo_256_flame2() {
-    // STATUS: black screen
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/flame2/flame2.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(50_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_flame2_50k.png");
-}
-
-#[test]
-fn demo_256_fracscrl() {
-    // STATUS: red screen
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/fracscrl/fracscrl.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(50_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fracscrl_50k.png");
-}
-
-#[test]
-fn demo_256_fractal() {
-    // STATUS: black screen
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/fractal/fractal.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(50_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fractal_50k.png");
-}
-
-#[test]
-fn demo_256_fridge() {
-    // STATUS: black screen, needs font data
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/fridge/fridge.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(50_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_fridge_50k.png");
-}
-
-#[test]
-fn demo_256_gr17() {
-    // STATUS: black screen
-    let mut cpu = CPU::new();
-    let code = tools::read_binary("../dos-software-decoding/demo-256/gr17/gr17.com");
-    cpu.load_com(&code);
-
-    // XXX cpu.test_expect_memory_md5(x)
-
-    cpu.execute_n_instructions(50_000);
-    cpu.gpu.test_render_frame(&cpu.memory.memory, "tests/render/demo/256_gr17_50k.png");
+        cpu.gpu.test_render_frame(&cpu.memory.memory, filename.to_str().unwrap());
+        // XXX cpu.test_expect_memory_md5(x)
+    }
 }
