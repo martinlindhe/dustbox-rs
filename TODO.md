@@ -2,7 +2,7 @@
 
 
 0. visual diff output test:
-    run all dos-software-decoding samples 1million instructions each,
+    run all dos-software-decoding samples 1 million instructions each,
     screengrab and save to file
 
     visual diff images between runs

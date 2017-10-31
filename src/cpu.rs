@@ -43,7 +43,7 @@ impl CPU {
             fatal_error: false,
         };
 
-        // intializes the cpu as if to run .com programs, info from
+        // initializes the cpu as if to run .com programs, info from
         // http://www.delorie.com/djgpp/doc/rbinter/id/51/29.html
 
         // offset of last word available in first 64k segment
@@ -2008,7 +2008,7 @@ impl CPU {
                 // gs segment prefix
                 op = self.decode_instruction(Segment::GS());
             }
-            // 0x66 & 0x67 = opereand size override
+            // 0x66 & 0x67 = operand size override
             0x68 => {
                 // push imm16
                 op.command = Op::Push16();
@@ -3394,13 +3394,13 @@ impl CPU {
                 // (VGA,MCGA) PEL address register
                 // Sets DAC in write mode and assign start of color register
                 // index (0..255) for following write accesses to 3C9h.
-                // Next access to 03C8h will stop pending mode immediatly.
+                // Next access to 03C8h will stop pending mode immediately.
                 self.gpu.dac_index = data;
                 // println!("dac index = {}", data);
             }
             0x03C9 => {
                 // (VGA,MCGA) PEL data register
-                // Three consequtive writes in the order: red, green, blue.
+                // Three consecutive writes in the order: red, green, blue.
                 // The internal DAC index is incremented each 3rd access.
                 if self.gpu.dac_color > 2 {
                     let i = self.gpu.dac_index as usize;
