@@ -372,7 +372,7 @@ impl CPU {
             }
             Op::Arpl() => {
                 // Adjust RPL Field of Segment Selector
-                println!("XXX impl arpl");
+                println!("XXX impl arpl: {}", op);
                 /*
                 // NOTE: RPL is the low two bits of the address
                 let src = self.read_parameter_value(&op.params.src);
@@ -521,7 +521,7 @@ impl CPU {
                 self.r16[DX].val = (rem & 0xFFFF) as u16;
             }
             Op::Hlt() => {
-                println!("XXX impl hlt");
+                println!("XXX impl hlt: {}", op);
             }
             Op::Idiv8() => {
                 let mut dst = self.r16[AX].val as usize; // AX
@@ -627,7 +627,7 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Insb() => {
-                println!("XXX impl insb");
+                println!("XXX impl insb: {}", op);
             }
             Op::Int() => {
                 let int = self.read_parameter_value(&op.params.dst);
@@ -803,6 +803,24 @@ impl CPU {
                 }
                 // No flags affected.
             }
+            Op::Loope() => {
+                let dst = self.read_parameter_value(&op.params.dst) as u16;
+                let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                self.r16[CX].val = res;
+                if res != 0 && self.flags.zero {
+                    self.ip = dst;
+                }
+                // No flags affected.
+            }
+            Op::Loopne() => {
+                let dst = self.read_parameter_value(&op.params.dst) as u16;
+                let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                self.r16[CX].val = res;
+                if res != 0 && !self.flags.zero {
+                    self.ip = dst;
+                }
+                // No flags affected.
+            } 
             Op::Mov8() => {
                 // two arguments (dst=reg)
                 let data = self.read_parameter_value(&op.params.src) as u8;
@@ -814,10 +832,10 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, data);
             }
             Op::Movsb() => {
-                println!("XXX impl movsb");
+                println!("XXX impl movsb: {}", op);
             }
             Op::Movsw() => {
-                println!("XXX impl movsw");
+                println!("XXX impl movsw: {}", op);
             }
             Op::Movzx16() => {
                 // Move with Zero-Extend
@@ -1184,7 +1202,7 @@ impl CPU {
             }
             Op::RepneScasb() => {
                 // Find AL, starting at ES:[(E)DI].
-                println!("XXX impl repne scas byte");
+                println!("XXX impl repne scas byte: {}", op);
             }
             Op::Retf() => {
                 //no arguments
@@ -1569,6 +1587,9 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, dst as u16);
                 self.write_parameter_u16(op.segment, &op.params.src, src as u16);
             }
+            Op::Xlatb() => {
+                println!("XXX impl xlatb: {}", op);
+            }
             Op::Xor8() => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.params.src);
@@ -1751,7 +1772,12 @@ impl CPU {
                         op.params = self.r16_rm8(op.segment);
                     }
                     _ => {
-                        println!("op 0F error: unknown {:02X}", b);
+                        println!("op 0F, unknown {:02X}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
+                            b,
+                            self.sreg16[CS],
+                            self.ip - 1,
+                            self.get_offset() - 1,
+                            self.instruction_count);
                     }
                 }
             }
@@ -2269,7 +2295,12 @@ impl CPU {
                         op.command = Op::Pop16();
                     }
                     _ => {
-                        println!("op 8F unknown reg = {}", x.reg);
+                        println!("op 8F unknown reg = {}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
+                            x.reg,
+                            self.sreg16[CS],
+                            self.ip - 1,
+                            self.get_offset() - 1,
+                            self.instruction_count);
                     }
                 }
             }
@@ -2440,7 +2471,12 @@ impl CPU {
                         op.command = Op::Mov8();
                     }
                     _ => {
-                        println!("op C6 unknown reg = {}", x.reg);
+                        println!("op C6 unknown reg = {} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
+                            x.reg,
+                            self.sreg16[CS],
+                            self.ip - 1,
+                            self.get_offset() - 1,
+                            self.instruction_count);
                     }
                 }
             }
@@ -2454,7 +2490,12 @@ impl CPU {
                         op.command = Op::Mov16();
                     }
                     _ => {
-                        println!("op C7 unknown reg = {}", x.reg);
+                        println!("op C7 unknown reg = {} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
+                            x.reg,
+                            self.sreg16[CS],
+                            self.ip - 1,
+                            self.get_offset() - 1,
+                            self.instruction_count);
                     }
                 }
             }
@@ -2827,7 +2868,12 @@ impl CPU {
                         op.command = Op::Dec8();
                     }
                     _ => {
-                        println!("op FE error: unknown reg {}", x.reg);
+                        println!("op FE, unknown reg {}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
+                            x.reg,
+                            self.sreg16[CS],
+                            self.ip - 1,
+                            self.get_offset() - 1,
+                            self.instruction_count);
                     }
                 }
             }
@@ -2859,7 +2905,12 @@ impl CPU {
                         op.command = Op::Push16();
                     }
                     _ => {
-                        println!("op FF error: unknown reg {}", x.reg);
+                        println!("op FF, unknown reg {}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
+                            x.reg,
+                            self.sreg16[CS],
+                            self.ip - 1,
+                            self.get_offset() - 1,
+                            self.instruction_count);
                     }
                 }
             }
@@ -3121,6 +3172,7 @@ impl CPU {
     // returns the address of pointer, used by LEA, LDS, LES
     fn read_parameter_address(&mut self, p: &Parameter) -> usize {
         match *p {
+            Parameter::Ptr16Amode(_, r) => self.amode16(r) as usize,
             Parameter::Ptr16AmodeS8(_, r, imm) => (Wrapping(self.amode16(r) as usize) + Wrapping(imm as usize)).0,
             Parameter::Ptr16(_, imm) => imm as usize,
             _ => {

@@ -18,7 +18,6 @@ fn demo_256() {
         "../dos-software-decoding/demo-256/beziesux/beziesux.com", // some gfx
         // "../dos-software-decoding/demo-256/blah/blah.com",      // black screen, crash after 50k instr or so (executing 00:s), ip wrap
         "../dos-software-decoding/demo-256/bob/bob.com",           // black screen
-        "../dos-software-decoding/demo-256/bumpgeci/bumpgeci.com", // black screen
         "../dos-software-decoding/demo-256/chaos/chaos.com",       // black screen, needs font data
         //"../dos-software-decoding/demo-256/conf/conf.com",       // waits for ENTER press, FIXME: inject enter key press to progress demo
         "../dos-software-decoding/demo-256/ectotrax/ectotrax.com", // black screen, needs font data
@@ -26,18 +25,18 @@ fn demo_256() {
         "../dos-software-decoding/demo-256/fire/fire.com",         // black screen
         "../dos-software-decoding/demo-256/fire2/fire2.com",       // black screen, needs font data
         "../dos-software-decoding/demo-256/fire3d/fire3d.com",     // black screen
-        "../dos-software-decoding/demo-256/fire17/fire17.com",     // black screen
+        "../dos-software-decoding/demo-256/fire17/fire17.com",     // black screen, crash because corrupted code: unknown op 1D at 085F:02A9 (008899 flat), 12799 instructions executed
         "../dos-software-decoding/demo-256/flame2/flame2.com",     // black screen
         "../dos-software-decoding/demo-256/fracscrl/fracscrl.com", // red screen
-        "../dos-software-decoding/demo-256/fractal/fractal.com",   // black screen
+        "../dos-software-decoding/demo-256/fractal/fractal.com",   // black screen, crash because corrupted code: unknown op 19 at 085F:012F (00871F flat), 9979 instructions executed
         "../dos-software-decoding/demo-256/fridge/fridge.com",     // black screen, needs font data
         "../dos-software-decoding/demo-256/gr17/gr17.com",         // black screen
         "../dos-software-decoding/demo-256/hungecek/hungecek.com", // black screen
         "../dos-software-decoding/demo-256/julia/julia.com",       // some gfx
-        "../dos-software-decoding/demo-256/lameland/lameland.com", // black screen
-        "../dos-software-decoding/demo-256/lava/lava.com",         // black screen
+        // "../dos-software-decoding/demo-256/lameland/lameland.com", // black screen, NOTE: ascii gfx
+        "../dos-software-decoding/demo-256/lava/lava.com",         // black screen, ip gets incorrect: op 8F unknown reg = 1: at 085F:015B
         "../dos-software-decoding/demo-256/leaf/leaf.com",         // yellow screen
-        "../dos-software-decoding/demo-256/lets256/lets256.com",   // black screen
+        // "../dos-software-decoding/demo-256/lets256/lets256.com",   // black screen, WinXP: show text, then exits
         "../dos-software-decoding/demo-256/luminous/luminous.com", // black screen
         "../dos-software-decoding/demo-256/lumps/lumps.com",       // black screen
         "../dos-software-decoding/demo-256/mbl/mbl.com",           // black screen
@@ -62,11 +61,11 @@ fn demo_256() {
         "../dos-software-decoding/demo-256/spline/spline.com",     // black screen
         "../dos-software-decoding/demo-256/sqwerz3/sqwerz3.com",   // some gfx
         "../dos-software-decoding/demo-256/static/static.com",     // black screen
-        "../dos-software-decoding/demo-256/twisted/twisted.com",   // black screen
+        "../dos-software-decoding/demo-256/twisted/twisted.com",   // black screen, ip & code gets corrupted: op C6 unknown reg = 2 at 085F:0120 (008710 flat), 15830 instructions executed
         "../dos-software-decoding/demo-256/water/water.com",       // black screen
         // "../dos-software-decoding/demo-256/wd95/wd95.com",      // crash, ip wrap
         "../dos-software-decoding/demo-256/wetwet/wetwet.com",     // black screen
-        "../dos-software-decoding/demo-256/x/x.com",               // black screen
+        "../dos-software-decoding/demo-256/x/x.com",               // black screen, ip gets corrupted: disasm: unknown op C2 at 085F:0165
         "../dos-software-decoding/demo-256/xwater/xwater.com",     // black screen
         "../dos-software-decoding/demo-256/zork/zork.com",         // black screen
         
