@@ -1074,6 +1074,20 @@ fn can_execute_imul16_3_args() {
 }
 
 #[test]
+fn can_execute_movsx() {
+ let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB7, 0xFF,       // mov bh,0xff
+        0x0F, 0xBE, 0xC7, // movsx ax,bh
+    ];
+    cpu.load_com(&code);
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0xFFFF, cpu.r16[AX].val);
+}
+
+
+#[test]
 fn can_execute_shrd() {
 let mut cpu = CPU::new();
     let code: Vec<u8> = vec![

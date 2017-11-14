@@ -87,6 +87,7 @@ impl GPU {
         let img = self.draw_image(memory);
         match raster::open(pngfile) {
             Ok(v) => {
+                // alert if output has changed. NOTE: output change is not nessecary a bug
                 assert_eq!(true, raster::compare::equal(&v, &img).unwrap());
             },
             Err(_) => {

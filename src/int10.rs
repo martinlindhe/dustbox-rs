@@ -224,6 +224,33 @@ pub fn handle(cpu: &mut CPU) {
                 }
             }
         }
+        0x11 => {
+            match cpu.r16[AX].lo_u8() {
+                0x30 => {
+                    // VIDEO - GET FONT INFORMATION (EGA, MCGA, VGA)
+                    // in:
+                    // BH = pointer specifier
+                    //    00h INT 1Fh pointer
+                    //    01h INT 43h pointer
+                    //    02h ROM 8x14 character font pointer
+                    //    03h ROM 8x8 double dot font pointer
+                    //    04h ROM 8x8 double dot font (high 128 characters)
+                    //    05h ROM alpha alternate (9 by 14) pointer (EGA,VGA)
+                    //    06h ROM 8x16 font (MCGA, VGA)
+                    //    07h ROM alternate 9x16 font (VGA only) (see #00021)
+                    //    11h (UltraVision v2+) 8x20 font (VGA) or 8x19 font (autosync EGA)
+                    //    12h (UltraVision v2+) 8x10 font (VGA) or 8x11 font (autosync EGA)
+                    // return:
+                    // ES:BP = specified pointer
+                    // CX    = bytes/character of on-screen font (not the requested font!)
+                    // DL    = highest character row on screen
+                    println!("stub int10 - VIDEO - GET FONT INFORMATION (EGA, MCGA, VGA)");
+                }
+                _ => {
+                    println!("int10 error: unknown AH 11, AL={:02X}", cpu.r16[AX].lo_u8());
+                }
+            }
+        }
         0x13 => {
             // VIDEO - WRITE STRING (AT and later,EGA)
             //

@@ -12,11 +12,11 @@ use tools;
 #[test]
 fn demo_256() {
     let mut test_bins = vec![
-        // "../dos-software-decoding/demo-256/165plasm/debug/165plasd.com", // XXX hits corrupted op: "unknown op C8 at 085F:0164 (008754 flat), 1318 instructions executed"
+        "../dos-software-decoding/demo-256/165plasm/debug/165plasd.com", // black screen, unknown op C9 at 085F:016C (00875C flat), 1328 instructions executed
         "../dos-software-decoding/demo-256/244b/244b.com",         // some gfx
         "../dos-software-decoding/demo-256/alpc/alpc.com",         // some gfx
         "../dos-software-decoding/demo-256/beziesux/beziesux.com", // some gfx
-        // "../dos-software-decoding/demo-256/blah/blah.com",      // black screen, crash after 50k instr or so (executing 00:s), ip wrap
+        //"../dos-software-decoding/demo-256/blah/blah.com",       // black screen, crash after 50k instr or so (executing 00:s), ip wrap
         "../dos-software-decoding/demo-256/bob/bob.com",           // black screen
         "../dos-software-decoding/demo-256/chaos/chaos.com",       // black screen, needs font data
         //"../dos-software-decoding/demo-256/conf/conf.com",       // waits for ENTER press, FIXME: inject enter key press to progress demo
@@ -68,7 +68,6 @@ fn demo_256() {
         "../dos-software-decoding/demo-256/x/x.com",               // black screen, ip gets corrupted: disasm: unknown op C2 at 085F:0165
         "../dos-software-decoding/demo-256/xwater/xwater.com",     // black screen
         "../dos-software-decoding/demo-256/zork/zork.com",         // black screen
-        
     ];
 
     while let Some(bin) = test_bins.pop() {

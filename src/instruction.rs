@@ -241,6 +241,7 @@ pub enum Op {
     Mov16(),
     Movsb(),
     Movsw(),
+    Movsx16(),
     Movzx16(),
     Mul8(),
     Mul16(),

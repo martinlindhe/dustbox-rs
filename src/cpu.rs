@@ -837,8 +837,24 @@ impl CPU {
             Op::Movsw() => {
                 println!("XXX impl movsw: {}", op);
             }
+            Op::Movsx16() => {
+                // 80386+
+                // Move with Sign-Extension
+                // moves a signed value into a register and sign-extends it with 1.
+                // two arguments (dst=reg)
+                let src = self.read_parameter_value(&op.params.src) as u8;
+
+                let mut data = u16::from(src);
+                // XXX should not work identical as Movzx16
+                if src & 0x80 != 0 {
+                    data += 0xFF00;
+                }
+                self.write_parameter_u16(op.segment, &op.params.dst, data);
+            }
             Op::Movzx16() => {
+                // 80386+
                 // Move with Zero-Extend
+                // moves an unsigned value into a register and zero-extends it with zero.
                 // two arguments (dst=reg)
                 let src = self.read_parameter_value(&op.params.src) as u8;
                 let mut data = u16::from(src);
@@ -1588,7 +1604,7 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.src, src as u16);
             }
             Op::Xlatb() => {
-                println!("XXX impl xlatb: {}", op);
+                // println!("XXX impl xlatb: {}", op);
             }
             Op::Xor8() => {
                 // two parameters (dst=reg)
@@ -1769,6 +1785,11 @@ impl CPU {
                     0xB6 => {
                         // movzx r16, r/m8
                         op.command = Op::Movzx16();
+                        op.params = self.r16_rm8(op.segment);
+                    }
+                    0xBE => {
+                        // movsx r16, r/m8
+                        op.command = Op::Movsx16();
                         op.params = self.r16_rm8(op.segment);
                     }
                     _ => {
@@ -2867,6 +2888,13 @@ impl CPU {
                     1 => {
                         op.command = Op::Dec8();
                     }
+                    2 => {
+                        // NOTE: this is a old encoding
+                        // example user:
+                        // https://www.pouet.net/prod.php?which=65203
+                        // 00000140  FEC5              inc ch
+                        op.command = Op::Inc8();
+                    }
                     _ => {
                         println!("op FE, unknown reg {}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
                             x.reg,
@@ -3161,8 +3189,24 @@ impl CPU {
         u16::from(hi) << 8 | u16::from(lo)
     }
 
+    fn write_u8(&mut self, offset: usize, data: u8) {
+        // println!("write_u8 [{:06X}] = {:02X}", offset, data);
+
+        // break if we hit a breakpoint
+        if self.is_offset_at_breakpoint(offset) {
+            self.fatal_error = true;
+            warn!("Breakpoint (memory write to {:06X} = {:02X}), ip = {:04X}:{:04X}", 
+                offset,
+                data,
+                self.sreg16[CS],
+                self.ip);
+        }
+
+        self.memory.memory[offset] = data;
+    }
+
     fn write_u16(&mut self, offset: usize, data: u16) {
-        // println!("write_u16 [{:04X}] = {:04X}", offset, data);
+        // println!("write_u16 [{:06X}] = {:04X}", offset, data);
         let hi = (data >> 8) as u8;
         let lo = (data & 0xff) as u8;
         self.write_u8(offset, lo);
@@ -3202,7 +3246,8 @@ impl CPU {
                 self.peek_u8_at(offset) as usize
             }
             Parameter::Ptr8AmodeS8(seg, r, imm) => {
-                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
+                // let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
+                let offset = (Wrapping(seg_offs_as_flat(self.segment(seg), self.amode16(r))) + Wrapping(imm as usize)).0;
                 self.peek_u8_at(offset) as usize
             }
             Parameter::Ptr8AmodeS16(seg, r, imm) => {
@@ -3308,22 +3353,6 @@ impl CPU {
                          self.get_offset());
             }
         }
-    }
-
-    fn write_u8(&mut self, offset: usize, data: u8) {
-        // println!("debug: write_u8 to {:06X} = {:02X}", offset, data);
-
-        // break if we hit a breakpoint
-        if self.is_offset_at_breakpoint(offset) {
-            self.fatal_error = true;
-            warn!("Breakpoint (memory write to {:06X} = {:02X}), ip = {:04X}:{:04X}", 
-                offset,
-                data,
-                self.sreg16[CS],
-                self.ip);
-        }
-
-        self.memory.memory[offset] = data;
     }
 
     // used by disassembler
@@ -3476,6 +3505,17 @@ impl CPU {
     // read byte from I/O port
     fn in_port(&mut self, port: u16) -> u8 {
         match port {
+            0x0040 => {
+                // Programmable Interval Timer
+                // http://wiki.osdev.org/Programmable_Interval_Timer
+
+                0 // XXX
+            },
+            0x0060 => {
+                // "8042" PS/2 Controller (keyboard & mice)
+                // http://wiki.osdev.org/%228042%22_PS/2_Controller
+                0 // XXX
+            },
             0x03DA => {
                 // R-  CGA status register
                 // color EGA/VGA: input status 1 register

@@ -14,8 +14,8 @@ start:
 
     ; ------------------
     ; run a instruction
-    mov di, 0x8fff
-    imul di,di,word 0x140 ; // di = fec0 in dosbox
+    mov bh, 0xff
+    movsx ax, bh
 
 
     ; save reg states after instruction executes
