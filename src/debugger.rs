@@ -5,7 +5,7 @@ use register;
 use register::CS;
 use flags;
 use tools;
-use instruction::{InstructionInfo, seg_offs_as_flat};
+use instruction::{seg_offs_as_flat, InstructionInfo};
 
 pub struct PrevRegs {
     pub ip: u16,
@@ -24,7 +24,7 @@ impl Debugger {
         let cpu = CPU::new();
         let mut dbg = Debugger {
             cpu: cpu.clone(),
-            prev_regs: PrevRegs{
+            prev_regs: PrevRegs {
                 ip: cpu.ip,
                 r16: cpu.r16,
                 sreg16: cpu.sreg16,
@@ -36,9 +36,9 @@ impl Debugger {
         //let name = "../dos-software-decoding/demo-256/beziesux/beziesux.com";
         //let name = "prober/prober.com";
         //let name = "../dos-software-decoding/demo-256/165plasm/debug/165plasd.com";
-        let name = "../dos-software-decoding/demo-256/fractal/fractal.com";
+        let name = "../dos-software-decoding/demo-256/fractal/debug/fractad.com";
         dbg.load_binary(name);
-        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x0131));
+        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x0150));
         //dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x017D));
         dbg
     }
@@ -54,7 +54,7 @@ impl Debugger {
     }
     */
 
-    pub fn step_into(&mut self)  {
+    pub fn step_into(&mut self) {
         self.cpu.execute_instruction();
 
         if self.cpu.fatal_error {
@@ -64,9 +64,11 @@ impl Debugger {
 
         if self.cpu.is_ip_at_breakpoint() {
             self.cpu.fatal_error = true;
-            warn!("Breakpoint reached (step-into), ip = {:04X}:{:04X}",
+            warn!(
+                "Breakpoint reached (step-into), ip = {:04X}:{:04X}",
                 self.cpu.sreg16[CS],
-                self.cpu.ip);
+                self.cpu.ip
+            );
             return;
         }
     }
@@ -84,7 +86,12 @@ impl Debugger {
         }
         let elapsed = start.elapsed();
         let ms = (elapsed.as_secs() * 1_000) + u64::from(elapsed.subsec_nanos() / 1_000_000);
-        println!("Executed total {} instructions ({} now) in {} ms", self.cpu.instruction_count, done, ms);
+        println!(
+            "Executed total {} instructions ({} now) in {} ms",
+            self.cpu.instruction_count,
+            done,
+            ms
+        );
     }
 
     pub fn step_over(&mut self) {
@@ -111,9 +118,11 @@ impl Debugger {
                 break;
             }
         }
-        println!("Step-over to {:04X} done, executed {} instructions",
-                 dst_ip,
-                 cnt);
+        println!(
+            "Step-over to {:04X} done, executed {} instructions",
+            dst_ip,
+            cnt
+        );
     }
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
@@ -250,23 +259,14 @@ impl Debugger {
     fn show_flat_address(&mut self) {
         let offset = self.cpu.get_offset();
         let rom_offset = offset - self.cpu.get_rom_base() + 0x100;
-        info!("{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
-              self.cpu.sreg16[CS],
-              self.cpu.ip,
-              offset,
-              rom_offset);
+        info!(
+            "{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
+            self.cpu.sreg16[CS],
+            self.cpu.ip,
+            offset,
+            rom_offset
+        );
     }
-
-    /*
-    fn execute_n_instructions(&mut self, n: usize) {
-        info!("Executing {} instructions", n);
-        for _ in 0..n {
-            let op = self.cpu.disasm_instruction();
-            info!("{}", op.pretty_string());
-            self.cpu.execute_instruction();
-        }
-    }
-    */
 
     fn run_until_breakpoint(&mut self) {
         warn!("Executing until we hit a breakpoint");
@@ -279,21 +279,11 @@ impl Debugger {
             }
             if self.cpu.is_ip_at_breakpoint() {
                 self.cpu.fatal_error = true;
-                 warn!("Breakpoint reached");
+                warn!("Breakpoint reached");
                 break;
             }
         }
     }
-
-    /*
-    fn read_line(&mut self) -> Vec<String> {
-        let mut line = String::new();
-        self.stdin.lock().read_line(&mut line).unwrap();
-        line.split(' ')
-            .map(|s| s.trim_right().to_string())
-            .collect()
-    }
-    */
 }
 
 fn parse_number_string(s: &str) -> usize {
@@ -305,4 +295,3 @@ fn parse_number_string(s: &str) -> usize {
         s.parse::<usize>().unwrap()
     }
 }
-

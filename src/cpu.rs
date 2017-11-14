@@ -2882,18 +2882,14 @@ impl CPU {
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 match x.reg {
-                    0 => {
+                    0 | 2 => {
+                        // NOTE: 2 is a old encoding, example user:
+                        // https://www.pouet.net/prod.php?which=65203
+                        // 00000140  FEC5              inc ch
                         op.command = Op::Inc8();
                     }
                     1 => {
                         op.command = Op::Dec8();
-                    }
-                    2 => {
-                        // NOTE: this is a old encoding
-                        // example user:
-                        // https://www.pouet.net/prod.php?which=65203
-                        // 00000140  FEC5              inc ch
-                        op.command = Op::Inc8();
                     }
                     _ => {
                         println!("op FE, unknown reg {}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
@@ -3190,7 +3186,7 @@ impl CPU {
     }
 
     fn write_u8(&mut self, offset: usize, data: u8) {
-        // println!("write_u8 [{:06X}] = {:02X}", offset, data);
+        println!("write_u8 [{:06X}] = {:02X}", offset, data);
 
         // break if we hit a breakpoint
         if self.is_offset_at_breakpoint(offset) {
@@ -3566,6 +3562,11 @@ impl CPU {
         // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
         // http://wiki.osdev.org/Interrupt_Vector_Table
         match int {
+            0x03 => {
+                // dosbox debugger interrupt
+                println!("INT 3 - debugger interrupt");
+                self.fatal_error = true; // XXX just to stop debugger.run() function
+            }
             0x10 => int10::handle(self),
             0x16 => int16::handle(self),
             0x20 => {

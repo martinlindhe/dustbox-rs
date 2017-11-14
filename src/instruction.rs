@@ -5,7 +5,14 @@ use segment::Segment;
 
 // translates a segment:offset address into a flat address
 pub fn seg_offs_as_flat(segment: u16, offset: u16) -> usize {
-    (segment as usize * 16) + offset as usize
+    let res = (segment as usize * 16) + offset as usize;
+    println!(
+        "seg_offs_as_flat: {:04X}:{:04X} -> {:06X}",
+        segment,
+        offset,
+        res
+    );
+    res
 }
 
 #[derive(Debug)]
@@ -23,20 +30,18 @@ impl fmt::Display for Instruction {
                 let cmd = right_pad(&format!("{:?}", self.command), 9);
 
                 match self.params.src2 {
-                    Parameter::None() => {
-                        match self.params.src {
-                            Parameter::None() => write!(f, "{}{}", cmd, self.params.dst),
-                            _ => write!(f, "{}{}, {}", cmd, self.params.dst, self.params.src),
-                        }
-                    }
-                    _ => {
-                        write!(f,
-                               "{}{}, {}, {}",
-                               cmd,
-                               self.params.dst,
-                               self.params.src,
-                               self.params.src2)
-                    }
+                    Parameter::None() => match self.params.src {
+                        Parameter::None() => write!(f, "{}{}", cmd, self.params.dst),
+                        _ => write!(f, "{}{}, {}", cmd, self.params.dst, self.params.src),
+                    },
+                    _ => write!(
+                        f,
+                        "{}{}, {}, {}",
+                        cmd,
+                        self.params.dst,
+                        self.params.src,
+                        self.params.src2
+                    ),
                 }
             }
         }
@@ -55,17 +60,13 @@ impl ParameterPair {
     pub fn count(&self) -> usize {
         match self.dst {
             Parameter::None() => 0,
-            _ => {
-                match self.src {
-                    Parameter::None() => 1,
-                    _ => {
-                        match self.src2 {
-                            Parameter::None() => 2,
-                            _ => 3,
-                        }
-                    }
-                }
-            }
+            _ => match self.src {
+                Parameter::None() => 1,
+                _ => match self.src2 {
+                    Parameter::None() => 2,
+                    _ => 3,
+                },
+            },
         }
     }
 }
@@ -74,19 +75,19 @@ impl ParameterPair {
 pub enum Parameter {
     Imm8(u8),
     Imm16(u16),
-    ImmS8(i8), // byte +0x3f
-    Ptr8(Segment, u16), // byte [u16]
-    Ptr16(Segment, u16), // word [u16]
-    Ptr16Imm(u16, u16), // jmp far u16:u16
-    Ptr8Amode(Segment, usize), // byte [amode], like "byte [bp+si]"
-    Ptr8AmodeS8(Segment, usize, i8), // byte [amode+s8], like "byte [bp-0x20]"
-    Ptr8AmodeS16(Segment, usize, i16), // byte [amode+s16], like "byte [bp-0x2020]"
-    Ptr16Amode(Segment, usize), // word [amode], like "word [bx]"
-    Ptr16AmodeS8(Segment, usize, i8), // word [amode+s8], like "word [bp-0x20]"
+    ImmS8(i8),                          // byte +0x3f
+    Ptr8(Segment, u16),                 // byte [u16]
+    Ptr16(Segment, u16),                // word [u16]
+    Ptr16Imm(u16, u16),                 // jmp far u16:u16
+    Ptr8Amode(Segment, usize),          // byte [amode], like "byte [bp+si]"
+    Ptr8AmodeS8(Segment, usize, i8),    // byte [amode+s8], like "byte [bp-0x20]"
+    Ptr8AmodeS16(Segment, usize, i16),  // byte [amode+s16], like "byte [bp-0x2020]"
+    Ptr16Amode(Segment, usize),         // word [amode], like "word [bx]"
+    Ptr16AmodeS8(Segment, usize, i8),   // word [amode+s8], like "word [bp-0x20]"
     Ptr16AmodeS16(Segment, usize, i16), // word [amode+s16], like "word [bp-0x2020]"
-    Reg8(usize), // index into the low 4 of CPU.r16
-    Reg16(usize), // index into CPU.r16
-    SReg16(usize), // index into cpu.sreg16
+    Reg8(usize),                        // index into the low 4 of CPU.r16
+    Reg16(usize),                       // index into CPU.r16
+    SReg16(usize),                      // index into cpu.sreg16
     None(),
 }
 
@@ -95,69 +96,69 @@ impl fmt::Display for Parameter {
         match *self {
             Parameter::Imm8(imm) => write!(f, "0x{:02X}", imm),
             Parameter::Imm16(imm) => write!(f, "0x{:04X}", imm),
-            Parameter::ImmS8(imm) => {
-                write!(f,
-                       "byte {}0x{:02X}",
-                       if imm < 0 { "-" } else { "+" },
-                       if imm < 0 {
-                           (Wrapping(0) - Wrapping(imm)).0
-                       } else {
-                           imm
-                       })
-            }
+            Parameter::ImmS8(imm) => write!(
+                f,
+                "byte {}0x{:02X}",
+                if imm < 0 { "-" } else { "+" },
+                if imm < 0 {
+                    (Wrapping(0) - Wrapping(imm)).0
+                } else {
+                    imm
+                }
+            ),
             Parameter::Ptr8(seg, v) => write!(f, "byte [{}0x{:04X}]", seg, v),
             Parameter::Ptr16(seg, v) => write!(f, "word [{}0x{:04X}]", seg, v),
             Parameter::Ptr16Imm(ip, seg) => write!(f, "{:04X}:{:04X}", seg, ip),
             Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}{}]", seg, amode(v as u8)),
-            Parameter::Ptr8AmodeS8(seg, v, imm) => {
-                write!(f,
-                       "byte [{}{}{}0x{:02X}]",
-                       seg,
-                       amode(v as u8),
-                       if imm < 0 { "-" } else { "+" },
-                       if imm < 0 {
-                           (Wrapping(0) - Wrapping(imm)).0
-                       } else {
-                           imm
-                       })
-            }
-            Parameter::Ptr8AmodeS16(seg, v, imm) => {
-                write!(f,
-                       "byte [{}{}{}0x{:04X}]",
-                       seg,
-                       amode(v as u8),
-                       if imm < 0 { "-" } else { "+" },
-                       if imm < 0 {
-                           (Wrapping(0) - Wrapping(imm)).0
-                       } else {
-                           imm
-                       })
-            }
+            Parameter::Ptr8AmodeS8(seg, v, imm) => write!(
+                f,
+                "byte [{}{}{}0x{:02X}]",
+                seg,
+                amode(v as u8),
+                if imm < 0 { "-" } else { "+" },
+                if imm < 0 {
+                    (Wrapping(0) - Wrapping(imm)).0
+                } else {
+                    imm
+                }
+            ),
+            Parameter::Ptr8AmodeS16(seg, v, imm) => write!(
+                f,
+                "byte [{}{}{}0x{:04X}]",
+                seg,
+                amode(v as u8),
+                if imm < 0 { "-" } else { "+" },
+                if imm < 0 {
+                    (Wrapping(0) - Wrapping(imm)).0
+                } else {
+                    imm
+                }
+            ),
             Parameter::Ptr16Amode(seg, v) => write!(f, "word [{}{}]", seg, amode(v as u8)),
-            Parameter::Ptr16AmodeS8(seg, v, imm) => {
-                write!(f,
-                       "word [{}{}{}0x{:02X}]",
-                       seg,
-                       amode(v as u8),
-                       if imm < 0 { "-" } else { "+" },
-                       if imm < 0 {
-                           (Wrapping(0) - Wrapping(imm)).0
-                       } else {
-                           imm
-                       })
-            }
-            Parameter::Ptr16AmodeS16(seg, v, imm) => {
-                write!(f,
-                       "word [{}{}{}0x{:04X}]",
-                       seg,
-                       amode(v as u8),
-                       if imm < 0 { "-" } else { "+" },
-                       if imm < 0 {
-                           (Wrapping(0) - Wrapping(imm)).0
-                       } else {
-                           imm
-                       })
-            }
+            Parameter::Ptr16AmodeS8(seg, v, imm) => write!(
+                f,
+                "word [{}{}{}0x{:02X}]",
+                seg,
+                amode(v as u8),
+                if imm < 0 { "-" } else { "+" },
+                if imm < 0 {
+                    (Wrapping(0) - Wrapping(imm)).0
+                } else {
+                    imm
+                }
+            ),
+            Parameter::Ptr16AmodeS16(seg, v, imm) => write!(
+                f,
+                "word [{}{}{}0x{:04X}]",
+                seg,
+                amode(v as u8),
+                if imm < 0 { "-" } else { "+" },
+                if imm < 0 {
+                    (Wrapping(0) - Wrapping(imm)).0
+                } else {
+                    imm
+                }
+            ),
             Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
             Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
             Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
@@ -321,11 +322,13 @@ pub struct InstructionInfo {
 impl InstructionInfo {
     pub fn pretty_string(&self) -> String {
         let hex = self.to_hex_string(&self.bytes);
-        format!("[{:04X}:{:04X}] {} {}",
-                self.segment,
-                self.offset,
-                right_pad(&hex, 10),
-                self.text)
+        format!(
+            "[{:04X}:{:04X}] {} {}",
+            self.segment,
+            self.offset,
+            right_pad(&hex, 10),
+            self.text
+        )
     }
     fn to_hex_string(&self, bytes: &[u8]) -> String {
         let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();

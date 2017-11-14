@@ -16,3 +16,6 @@ lint:
 
 typos:
 	speller . > spell
+
+bindiff:
+	vbindiff ~/dosbox-x/MEMDUMP.BIN emu_mem.bin

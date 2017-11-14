@@ -12,7 +12,7 @@ pub fn read_binary(path: &str) -> Vec<u8> {
         Err(why) => {
             // XXX return error to caller.. how?!11 so they can call .except() ..=?!?1
             println!("Could not open {}: {}", path, why);
-            exit(1);
+            exit(1)
         }
     };
 
@@ -20,7 +20,7 @@ pub fn read_binary(path: &str) -> Vec<u8> {
         Ok(x) => x,
         Err(why) => {
             println!("could not read contents of {}: {}", path, why);
-            exit(1);
+            exit(1)
         }
     };
 

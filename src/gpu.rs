@@ -10,9 +10,9 @@ pub struct GPU {
     pub scanline: i32,
     pub width: i32,
     pub height: i32,
-    pub pal: Vec<DACPalette>, // the palette in use
-    pub dac_color: usize, // for out 03c9, 0 = red, 1 = green, 2 = blue
-    pub dac_index: u8, // for out 03c9
+    pub pal: Vec<DACPalette>,     // the palette in use
+    pub dac_color: usize,         // for out 03c9, 0 = red, 1 = green, 2 = blue
+    pub dac_index: u8,            // for out 03c9
     pub dac_current_pal: Vec<u8>, // for out 03c9
     pixbuf: RefCell<gdk_pixbuf::Pixbuf>,
 }
@@ -37,9 +37,9 @@ impl GPU {
             dac_color: 0,
             dac_index: 0,
             dac_current_pal: vec![0u8; 3],
-            pixbuf: RefCell::new(unsafe {
-                gdk_pixbuf::Pixbuf::new(colorspace, false, 8, width, height)
-            }.unwrap()),
+            pixbuf: RefCell::new(
+                unsafe { gdk_pixbuf::Pixbuf::new(colorspace, false, 8, width, height) }.unwrap(),
+            ),
         }
     }
     pub fn progress_scanline(&mut self) {
@@ -52,7 +52,6 @@ impl GPU {
 
     // render current video to canvas `c`
     pub fn draw_canvas(&self, c: &cairo::Context, memory: &[u8]) {
-
         println!("draw canvas");
 
         let buf = self.pixbuf.borrow();
@@ -76,7 +75,9 @@ impl GPU {
                 let offset = 0xA_0000 + ((y * self.width) + x) as usize;
                 let byte = memory[offset];
                 let pal = &self.pal[byte as usize];
-                canvas.set_pixel(x, y, raster::Color::rgba(pal.r, pal.g, pal.b, 255)).unwrap();
+                canvas
+                    .set_pixel(x, y, raster::Color::rgba(pal.r, pal.g, pal.b, 255))
+                    .unwrap();
             }
         }
         canvas
@@ -89,12 +90,11 @@ impl GPU {
             Ok(v) => {
                 // alert if output has changed. NOTE: output change is not nessecary a bug
                 assert_eq!(true, raster::compare::equal(&v, &img).unwrap());
-            },
+            }
             Err(_) => {
                 println!("Writing initial gpu test result to {}", pngfile);
-                match raster::save(&img, pngfile) {
-                    Err(why) => println!("save err: {:?}", why),
-                    _ => {},
+                if let Err(why) = raster::save(&img, pngfile) {
+                    println!("save err: {:?}", why);
                 }
             }
         };

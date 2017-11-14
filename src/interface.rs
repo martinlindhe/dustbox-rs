@@ -4,10 +4,11 @@ use std;
 use std::sync::{Arc, Mutex};
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::io::prelude::*;
 
 use gtk;
 use gtk::prelude::*;
-use gtk::{Button, Label, Image, Window, WindowType};
+use gtk::{Button, Image, Label, Window, WindowType};
 
 use gdk::RGBA;
 use gdk_pixbuf;
@@ -16,8 +17,9 @@ use memory::Memory;
 use debugger;
 use register;
 use flags;
-use cpu::{CPU};
-use register::{AX, BX, CX, DX, SI, DI,BP, SP, DS, CS, ES, FS, GS, SS};
+use cpu::CPU;
+use register::{AX, BP, BX, CS, CX, DI, DS, DX, ES, FS, GS, SI, SP, SS};
+use instruction::seg_offs_as_flat;
 
 pub struct Interface {
     app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>,
@@ -25,28 +27,54 @@ pub struct Interface {
     pub canvas: RefCell<gtk::DrawingArea>,
 }
 
-impl Interface { // XXX rename to DebugWindow
+impl Interface {
+    // XXX rename to DebugWindow
     pub fn new(app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>) -> Self {
-
         gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));
 
         Self {
             app: app,
-            builder: Arc::new(Mutex::new(gtk::Builder::new_from_string(include_str!("interface.glade")))),
+            builder: Arc::new(Mutex::new(gtk::Builder::new_from_string(
+                include_str!("interface.glade"),
+            ))),
             canvas: RefCell::new(gtk::DrawingArea::new()),
         }
     }
 
     // start the gtk-rs main loop
     pub fn main(&mut self) {
+        let window: gtk::Window = self.builder
+            .lock()
+            .unwrap()
+            .get_object("main_window")
+            .unwrap();
 
-        let window: gtk::Window = self.builder.lock().unwrap().get_object("main_window").unwrap();
+        let button_step_into: gtk::Button = self.builder
+            .lock()
+            .unwrap()
+            .get_object("button_step_into")
+            .unwrap();
+        let button_step_over: gtk::Button = self.builder
+            .lock()
+            .unwrap()
+            .get_object("button_step_over")
+            .unwrap();
+        let button_run: gtk::Button = self.builder
+            .lock()
+            .unwrap()
+            .get_object("button_run")
+            .unwrap();
+        let button_dump_memory: gtk::Button = self.builder
+            .lock()
+            .unwrap()
+            .get_object("button_dump_memory")
+            .unwrap();
 
-        let button_step_into: gtk::Button = self.builder.lock().unwrap().get_object("button_step_into").unwrap();
-        let button_step_over: gtk::Button = self.builder.lock().unwrap().get_object("button_step_over").unwrap();
-        let button_run: gtk::Button = self.builder.lock().unwrap().get_object("button_run").unwrap();
-
-        let disasm_text: gtk::TextView = self.builder.lock().unwrap().get_object("disasm_text").unwrap();
+        let disasm_text: gtk::TextView = self.builder
+            .lock()
+            .unwrap()
+            .get_object("disasm_text")
+            .unwrap();
         // disasm_text.width = 400; // XXX set fixed width of disasm box, so it wont resize ...
 
         let canvas = gtk::DrawingArea::new();
@@ -54,8 +82,16 @@ impl Interface { // XXX rename to DebugWindow
         canvas.set_visible(true);
 
         // menu items
-        let file_quit: gtk::MenuItem = self.builder.lock().unwrap().get_object("file_quit").unwrap();
-        let help_about: gtk::MenuItem = self.builder.lock().unwrap().get_object("help_about").unwrap();
+        let file_quit: gtk::MenuItem = self.builder
+            .lock()
+            .unwrap()
+            .get_object("file_quit")
+            .unwrap();
+        let help_about: gtk::MenuItem = self.builder
+            .lock()
+            .unwrap()
+            .get_object("help_about")
+            .unwrap();
 
         window.set_title("x86emu");
 
@@ -72,7 +108,7 @@ impl Interface { // XXX rename to DebugWindow
                 p.set_authors(&["Martin Lindhe"]);
                 p.set_website_label(Some("My website"));
                 p.set_website(Some("http://example.com"));
-                p.set_comments(Some("A x86 debugger / emulator"));
+                p.set_comments(Some("A MS-DOS debugger / emulator"));
                 p.set_copyright(Some("Under MIT license"));
                 p.set_transient_for(Some(&window));
                 p.run();
@@ -82,7 +118,9 @@ impl Interface { // XXX rename to DebugWindow
 
         // update disasm
         let text = self.app.lock().unwrap().disasm_n_instructions_to_text(20);
-        disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
+        disasm_text
+            .get_buffer()
+            .map(|buffer| buffer.set_text(text.as_str()));
 
         let app = Arc::clone(&self.app);
         let builder = Arc::clone(&self.builder);
@@ -93,7 +131,11 @@ impl Interface { // XXX rename to DebugWindow
             let app = Arc::clone(&self.app);
             let canvas = self.canvas.borrow();
             canvas.connect_draw(move |_, context| {
-                app.lock().unwrap().cpu.gpu.draw_canvas(context, &app.lock().unwrap().cpu.memory.memory);
+                app.lock()
+                    .unwrap()
+                    .cpu
+                    .gpu
+                    .draw_canvas(context, &app.lock().unwrap().cpu.memory.memory);
                 Inhibit(true)
             });
         }
@@ -113,7 +155,9 @@ impl Interface { // XXX rename to DebugWindow
 
                     // update disasm
                     let text = shared.disasm_n_instructions_to_text(20);
-                    disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
+                    disasm_text
+                        .get_buffer()
+                        .map(|buffer| buffer.set_text(text.as_str()));
                 }
 
                 let app2 = Arc::clone(&app);
@@ -137,7 +181,9 @@ impl Interface { // XXX rename to DebugWindow
 
                     // update disasm
                     let text = app.disasm_n_instructions_to_text(20);
-                    disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
+                    disasm_text
+                        .get_buffer()
+                        .map(|buffer| buffer.set_text(text.as_str()));
                 }
 
                 let app2 = Arc::clone(&app);
@@ -163,12 +209,48 @@ impl Interface { // XXX rename to DebugWindow
 
                     // update disasm
                     let text = shared.disasm_n_instructions_to_text(20);
-                    disasm_text.get_buffer().map(|buffer| buffer.set_text(text.as_str()));
+                    disasm_text
+                        .get_buffer()
+                        .map(|buffer| buffer.set_text(text.as_str()));
                 }
 
                 let app2 = Arc::clone(&app);
                 let builder = Arc::clone(&builder);
                 update_registers(&app2, &builder);
+            });
+        }
+
+
+        {
+            let app = Arc::clone(&self.app);
+            // let builder = Arc::clone(&self.builder);
+            // let disasm_text = disasm_text.clone();
+            //let canvas = canvas.clone();
+
+            button_dump_memory.connect_clicked(move |_| {
+                {
+                    let shared = app.lock().unwrap();
+
+                    // XXX
+                    println!("XXX dumping memory !!!");
+
+                    use std::path::Path;
+                    use std::fs::File;
+
+                    let path = Path::new("emu_mem.bin");
+
+                    let mut file = match File::create(&path) {
+                        Err(why) => panic!("couldn't create {:?}: {}", path, why),
+                        Ok(file) => file,
+                    };
+
+                    let base = seg_offs_as_flat(0x085F, 0x0000);
+                    let len = 0xFFFF;
+                    match file.write(&shared.cpu.memory.memory[base..base + len]) {
+                        Err(why) => panic!("couldn't write to {:?}: {}", path, why),
+                        Ok(_) => println!("successfully wrote to {:?}", path),
+                    }
+                }
             });
         }
 
@@ -187,12 +269,17 @@ fn u16_as_register_str(v: u16, prev: u16) -> String {
     if v == prev {
         format!("<span font_desc=\"mono\">{:04X}</span>", v)
     } else {
-        format!("<span color=\"#cf8c0b\" font_desc=\"mono\">{:04X}</span>", v)
+        format!(
+            "<span color=\"#cf8c0b\" font_desc=\"mono\">{:04X}</span>",
+            v
+        )
     }
 }
 
-fn update_registers(app: &std::sync::Arc<std::sync::Mutex<debugger::Debugger>>, builder: &std::sync::Arc<std::sync::Mutex<gtk::Builder>>) {
-
+fn update_registers(
+    app: &std::sync::Arc<std::sync::Mutex<debugger::Debugger>>,
+    builder: &std::sync::Arc<std::sync::Mutex<gtk::Builder>>,
+) {
     let mut app = app.lock().unwrap();
     let builder = builder.lock().unwrap();
 
@@ -201,37 +288,79 @@ fn update_registers(app: &std::sync::Arc<std::sync::Mutex<debugger::Debugger>>, 
     let cx_value: gtk::Label = builder.get_object("cx_value").unwrap();
     let dx_value: gtk::Label = builder.get_object("dx_value").unwrap();
 
-    ax_value.set_markup(&u16_as_register_str(app.cpu.r16[AX].val, app.prev_regs.r16[AX].val));
-    bx_value.set_markup(&u16_as_register_str(app.cpu.r16[BX].val, app.prev_regs.r16[BX].val));
-    cx_value.set_markup(&u16_as_register_str(app.cpu.r16[CX].val, app.prev_regs.r16[CX].val));
-    dx_value.set_markup(&u16_as_register_str(app.cpu.r16[DX].val, app.prev_regs.r16[DX].val));
+    ax_value.set_markup(&u16_as_register_str(
+        app.cpu.r16[AX].val,
+        app.prev_regs.r16[AX].val,
+    ));
+    bx_value.set_markup(&u16_as_register_str(
+        app.cpu.r16[BX].val,
+        app.prev_regs.r16[BX].val,
+    ));
+    cx_value.set_markup(&u16_as_register_str(
+        app.cpu.r16[CX].val,
+        app.prev_regs.r16[CX].val,
+    ));
+    dx_value.set_markup(&u16_as_register_str(
+        app.cpu.r16[DX].val,
+        app.prev_regs.r16[DX].val,
+    ));
 
     let si_value: gtk::Label = builder.get_object("si_value").unwrap();
     let di_value: gtk::Label = builder.get_object("di_value").unwrap();
     let bp_value: gtk::Label = builder.get_object("bp_value").unwrap();
     let sp_value: gtk::Label = builder.get_object("sp_value").unwrap();
 
-    si_value.set_markup(&u16_as_register_str(app.cpu.r16[SI].val, app.prev_regs.r16[SI].val));
-    di_value.set_markup(&u16_as_register_str(app.cpu.r16[DI].val, app.prev_regs.r16[DI].val));
-    bp_value.set_markup(&u16_as_register_str(app.cpu.r16[BP].val, app.prev_regs.r16[BP].val));
-    sp_value.set_markup(&u16_as_register_str(app.cpu.r16[SP].val, app.prev_regs.r16[SP].val));
+    si_value.set_markup(&u16_as_register_str(
+        app.cpu.r16[SI].val,
+        app.prev_regs.r16[SI].val,
+    ));
+    di_value.set_markup(&u16_as_register_str(
+        app.cpu.r16[DI].val,
+        app.prev_regs.r16[DI].val,
+    ));
+    bp_value.set_markup(&u16_as_register_str(
+        app.cpu.r16[BP].val,
+        app.prev_regs.r16[BP].val,
+    ));
+    sp_value.set_markup(&u16_as_register_str(
+        app.cpu.r16[SP].val,
+        app.prev_regs.r16[SP].val,
+    ));
 
     let ds_value: gtk::Label = builder.get_object("ds_value").unwrap();
     let cs_value: gtk::Label = builder.get_object("cs_value").unwrap();
     let es_value: gtk::Label = builder.get_object("es_value").unwrap();
     let fs_value: gtk::Label = builder.get_object("fs_value").unwrap();
 
-    ds_value.set_markup(&u16_as_register_str(app.cpu.sreg16[DS], app.prev_regs.sreg16[DS]));
-    cs_value.set_markup(&u16_as_register_str(app.cpu.sreg16[CS], app.prev_regs.sreg16[CS]));
-    es_value.set_markup(&u16_as_register_str(app.cpu.sreg16[ES], app.prev_regs.sreg16[ES]));
-    fs_value.set_markup(&u16_as_register_str(app.cpu.sreg16[FS], app.prev_regs.sreg16[FS]));
+    ds_value.set_markup(&u16_as_register_str(
+        app.cpu.sreg16[DS],
+        app.prev_regs.sreg16[DS],
+    ));
+    cs_value.set_markup(&u16_as_register_str(
+        app.cpu.sreg16[CS],
+        app.prev_regs.sreg16[CS],
+    ));
+    es_value.set_markup(&u16_as_register_str(
+        app.cpu.sreg16[ES],
+        app.prev_regs.sreg16[ES],
+    ));
+    fs_value.set_markup(&u16_as_register_str(
+        app.cpu.sreg16[FS],
+        app.prev_regs.sreg16[FS],
+    ));
 
     let gs_value: gtk::Label = builder.get_object("gs_value").unwrap();
     let ss_value: gtk::Label = builder.get_object("ss_value").unwrap();
     let ip_value: gtk::Label = builder.get_object("ip_value").unwrap();
 
-    gs_value.set_markup(&u16_as_register_str(app.cpu.sreg16[GS], app.prev_regs.sreg16[GS]));
-    ss_value.set_markup(&u16_as_register_str(app.cpu.sreg16[SS], app.prev_regs.sreg16[SS]));
+    gs_value.set_markup(&u16_as_register_str(
+        app.cpu.sreg16[GS],
+        app.prev_regs.sreg16[GS],
+    ));
+    ss_value.set_markup(&u16_as_register_str(
+        app.cpu.sreg16[SS],
+        app.prev_regs.sreg16[SS],
+    ));
     ip_value.set_markup(&u16_as_register_str(app.cpu.ip, app.prev_regs.ip));
 
     // flags
@@ -286,4 +415,3 @@ fn render_canvas(canvas: &std::sync::Arc<gtk::Image>, cpu: &CPU) {
     }
 }
 */
-
