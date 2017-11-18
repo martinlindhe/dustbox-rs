@@ -98,6 +98,11 @@ impl CPU {
         // println!("loading rom to {:06X}..{:06X}", min, max);
         self.rom_base = min;
 
+        // init CS with a "INT 0x20" at cs:0000, like DOS
+        let cs = self.sreg16[CS];
+        self.write_u8(seg_offs_as_flat(cs, 0), 0xCD);
+        self.write_u8(seg_offs_as_flat(cs, 1), 0x20);
+
         self.memory.memory[min..max].copy_from_slice(data);
     }
 
@@ -149,7 +154,10 @@ impl CPU {
     }
 
     pub fn execute_instruction(&mut self) {
+        let cs = self.sreg16[CS];
+        let ip = self.ip;
         let op = self.decode_instruction(Segment::CS());
+        println!("[{:04X}:{:04X}] <exec> {}", cs, ip, op);
         match op.command {
             Op::Unknown() => {
                 self.fatal_error = true;
@@ -191,7 +199,7 @@ impl CPU {
 
         for _ in 0..count {
             let op = self.disasm_instruction();
-            res.push_str(&op.pretty_string());
+            res.push_str(&op.to_string());
             res.push_str("\n");
             self.ip += op.length as u16;
         }
@@ -832,10 +840,10 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, data);
             }
             Op::Movsb() => {
-                println!("XXX impl movsb: {}", op);
+                self.movsb();
             }
             Op::Movsw() => {
-                println!("XXX impl movsw: {}", op);
+                self.movsw();
             }
             Op::Movsx16() => {
                 // 80386+
@@ -1130,13 +1138,8 @@ impl CPU {
             Op::RepMovsb() => {
                 // rep movs byte
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
-                let mut src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
-                let mut dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
                 loop {
-                    let b = self.peek_u8_at(src);
-                    src += 1;
-                    self.write_u8(dst, b);
-                    dst += 1;
+                    self.movsb();
                     self.r16[CX].val -= 1;
                     if self.r16[CX].val == 0 {
                         break;
@@ -1146,16 +1149,10 @@ impl CPU {
             Op::RepMovsw() => {
                 // rep movs word
                 // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
-                let mut src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
-                let mut dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
                 loop {
-                    let b = self.peek_u16_at(src);
-                    src += 1;
-                    self.write_u16(dst, b);
-                    dst += 1;
-                    let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
-                    self.r16[CX].val = res;
-                    if res == 0 {
+                    self.movsw();
+                    self.r16[CX].val -= 1;
+                    if self.r16[CX].val == 0 {
                         break;
                     }
                 }
@@ -1165,10 +1162,8 @@ impl CPU {
                 // Output (E)CX bytes from DS:[(E)SI] to port DX.
                 loop {
                     self.outsb();
-
-                    let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
-                    self.r16[CX].val = res;
-                    if res == 0 {
+                    self.r16[CX].val -= 1;
+                    if self.r16[CX].val == 0 {
                         break;
                     }
                 }
@@ -1176,20 +1171,10 @@ impl CPU {
             Op::RepStosb() => {
                 // rep stos byte
                 // Fill (E)CX bytes at ES:[(E)DI] with AL.
-                let data = self.r16[AX].lo_u8(); // = AL
-
                 loop {
-                    let dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
-                    self.write_u8(dst, data);
-                    self.r16[DI].val = if !self.flags.direction {
-                        (Wrapping(self.r16[DI].val) + Wrapping(1)).0
-                    } else {
-                        (Wrapping(self.r16[DI].val) - Wrapping(1)).0
-                    };
-
-                    let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
-                    self.r16[CX].val = res;
-                    if res == 0 {
+                    self.stosb();
+                    self.r16[CX].val -= 1;
+                    if self.r16[CX].val == 0 {
                         break;
                     }
                 }
@@ -1197,21 +1182,10 @@ impl CPU {
             Op::RepStosw() => {
                 // rep stos word
                 // Fill (E)CX words at ES:[(E)DI] with AX.
-                let data = self.r16[AX].val;
-
                 loop {
-                    let dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
-                    self.write_u16(dst, data);
-
-                    self.r16[DI].val = if !self.flags.direction {
-                        (Wrapping(self.r16[DI].val) + Wrapping(2)).0
-                    } else {
-                        (Wrapping(self.r16[DI].val) - Wrapping(2)).0
-                    };
-
-                    let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
-                    self.r16[CX].val = res;
-                    if res == 0 {
+                    self.stosw();
+                    self.r16[CX].val -= 1;
+                    if self.r16[CX].val == 0 {
                         break;
                     }
                 }
@@ -1514,26 +1488,12 @@ impl CPU {
             Op::Stosb() => {
                 // no parameters
                 // store AL at ES:(E)DI
-                let offset = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
-                let data = self.r16[AX].lo_u8(); // = AL
-                self.write_u8(offset, data);
-                self.r16[DI].val = if !self.flags.direction {
-                    (Wrapping(self.r16[DI].val) + Wrapping(1)).0
-                } else {
-                    (Wrapping(self.r16[DI].val) - Wrapping(1)).0
-                };
+                self.stosb();
             }
             Op::Stosw() => {
                 // no parameters
                 // store AX at address ES:(E)DI
-                let offset = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
-                let data = self.r16[AX].val;
-                self.write_u16(offset, data);
-                self.r16[DI].val = if !self.flags.direction {
-                    (Wrapping(self.r16[DI].val) + Wrapping(2)).0
-                } else {
-                    (Wrapping(self.r16[DI].val) - Wrapping(2)).0
-                };
+                self.stosw();
             }
             Op::Sub8() => {
                 // two parameters (dst=reg)
@@ -3186,7 +3146,7 @@ impl CPU {
     }
 
     fn write_u8(&mut self, offset: usize, data: u8) {
-        println!("write_u8 [{:06X}] = {:02X}", offset, data);
+        // println!("write_u8 [{:06X}] = {:02X}", offset, data);
 
         // break if we hit a breakpoint
         if self.is_offset_at_breakpoint(offset) {
@@ -3412,6 +3372,64 @@ impl CPU {
         };
     }
 
+    fn movsb(&mut self) {
+        let src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
+        let dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
+        let b = self.peek_u8_at(src);
+        self.r16[SI].val = if !self.flags.direction {
+            (Wrapping(self.r16[SI].val) + Wrapping(1)).0
+        } else {
+            (Wrapping(self.r16[SI].val) - Wrapping(1)).0
+        };
+        self.write_u8(dst, b);
+        self.r16[DI].val = if !self.flags.direction {
+            (Wrapping(self.r16[DI].val) + Wrapping(1)).0
+        } else {
+            (Wrapping(self.r16[DI].val) - Wrapping(1)).0
+        };
+    }
+
+    // used for MOVSW
+    fn movsw(&mut self) {
+        let src = seg_offs_as_flat(self.sreg16[DS], self.r16[SI].val);
+        let dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
+        let b = self.peek_u16_at(src);
+        self.r16[SI].val = if !self.flags.direction {
+            (Wrapping(self.r16[SI].val) + Wrapping(2)).0
+        } else {
+            (Wrapping(self.r16[SI].val) - Wrapping(2)).0
+        };
+        self.write_u16(dst, b);
+        self.r16[DI].val = if !self.flags.direction {
+            (Wrapping(self.r16[DI].val) + Wrapping(2)).0
+        } else {
+            (Wrapping(self.r16[DI].val) - Wrapping(2)).0
+        };
+    }
+
+    fn stosb(&mut self) {
+        let data = self.r16[AX].lo_u8(); // = AL
+        let dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
+        self.write_u8(dst, data);
+        self.r16[DI].val = if !self.flags.direction {
+            (Wrapping(self.r16[DI].val) + Wrapping(1)).0
+        } else {
+            (Wrapping(self.r16[DI].val) - Wrapping(1)).0
+        };
+    }
+
+    fn stosw(&mut self) {
+        let data = self.r16[AX].val;
+        let dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
+        self.write_u16(dst, data);
+
+        self.r16[DI].val = if !self.flags.direction {
+            (Wrapping(self.r16[DI].val) + Wrapping(2)).0
+        } else {
+            (Wrapping(self.r16[DI].val) - Wrapping(2)).0
+        };
+    }
+
     // output byte `data` to I/O port
     fn out_u8(&mut self, dst: u16, data: u8) {
         match dst {
@@ -3560,12 +3578,13 @@ impl CPU {
 
     fn int(&mut self, int: u8) {
         // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
-        // http://wiki.osdev.org/Interrupt_Vector_Table
+        // http://wiki.osdev.org/Interrupt_Vector_Table   XXX or is those just for real-mode interrupts?
         match int {
             0x03 => {
-                // dosbox debugger interrupt
-                println!("INT 3 - debugger interrupt");
-                self.fatal_error = true; // XXX just to stop debugger.run() function
+                // debugger interrupt
+                // http://www.ctyme.com/intr/int-03.htm
+                println!("INT 3 - debugger interrupt. AX={:04X}", self.r16[AX].val);
+                self.fatal_error = true; // stops running debugger
             }
             0x10 => int10::handle(self),
             0x16 => int16::handle(self),
@@ -3573,7 +3592,7 @@ impl CPU {
                 // DOS 1+ - TERMINATE PROGRAM
                 // NOTE: Windows overloads INT 20
                 println!("INT 20 - Terminating program");
-                self.fatal_error = true; // XXX just to stop debugger.run() function
+                self.fatal_error = true; // stops running debugger
             }
             0x21 => int21::handle(self),
             _ => {
@@ -3587,7 +3606,6 @@ impl CPU {
 }
 
 fn count_to_bitmask(v: usize) -> usize {
-    // XXX lookup table
     match v {
         0  => 0,
         1  => 0b1,

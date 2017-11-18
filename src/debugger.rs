@@ -32,13 +32,14 @@ impl Debugger {
             },
         };
         // XXX for quick testing while building the ui
-        // let name = "../dos-software-decoding/samples/bar/bar.com";
-        //let name = "../dos-software-decoding/demo-256/beziesux/beziesux.com";
         //let name = "prober/prober.com";
+        //let name = "../dos-software-decoding/samples/bar/bar.com";
+        //let name = "../dos-software-decoding/demo-256/beziesux/beziesux.com";
         //let name = "../dos-software-decoding/demo-256/165plasm/debug/165plasd.com";
-        let name = "../dos-software-decoding/demo-256/fractal/debug/fractad.com";
+        //let name = "../dos-software-decoding/demo-256/fractal/debug/fractad.com";
+        let name = "../dos-software-decoding/demo-256/x/x.com";
         dbg.load_binary(name);
-        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x0150));
+        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x01D3));
         //dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x017D));
         dbg
     }
@@ -128,8 +129,7 @@ impl Debugger {
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
         let mut rows: Vec<String> = Vec::new();
         for op in self.disasm_n_instructions(n) {
-            let s = op.pretty_string();
-            rows.push(s);
+            rows.push(op.to_string());
         }
         rows.join("\n")
     }

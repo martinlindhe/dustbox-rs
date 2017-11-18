@@ -7,8 +7,16 @@ clear_regs:
     mov bp, 0
     mov si, 0
     mov di, 0
-    push word 0
+    push ax
     popf            ; clear flags
+    ret
+
+clear_mem:
+    ; clears memory CS:0400 ... FFFF
+    mov di, 0x0400
+    mov cx, 0x8000
+    mov al, 0xff
+    rep stosb
     ret
 
 print_regs:

@@ -11,11 +11,16 @@ section .text
     ; program code
 start:
     call clear_regs
+    call clear_mem
 
+    int 3
     ; ------------------
     ; run a instruction
-    mov bh, 0xff
-    movsx ax, bh
+    ; XXX
+    mov si, 0x0100
+    mov di, 0x0800
+    mov cx, 0x100
+    rep movsw
 
 
     ; save reg states after instruction executes

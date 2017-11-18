@@ -6,12 +6,14 @@ use segment::Segment;
 // translates a segment:offset address into a flat address
 pub fn seg_offs_as_flat(segment: u16, offset: u16) -> usize {
     let res = (segment as usize * 16) + offset as usize;
+    /*
     println!(
         "seg_offs_as_flat: {:04X}:{:04X} -> {:06X}",
         segment,
         offset,
         res
     );
+    */
     res
 }
 
@@ -319,17 +321,21 @@ pub struct InstructionInfo {
     pub instruction: Instruction,
 }
 
-impl InstructionInfo {
-    pub fn pretty_string(&self) -> String {
+impl fmt::Display for InstructionInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let hex = self.to_hex_string(&self.bytes);
-        format!(
+        write!(
+            f,
             "[{:04X}:{:04X}] {} {}",
             self.segment,
             self.offset,
-            right_pad(&hex, 10),
+            right_pad(&hex, 16),
             self.text
         )
     }
+}
+
+impl InstructionInfo {
     fn to_hex_string(&self, bytes: &[u8]) -> String {
         let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
         strs.join("")

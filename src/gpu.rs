@@ -89,7 +89,12 @@ impl GPU {
         match raster::open(pngfile) {
             Ok(v) => {
                 // alert if output has changed. NOTE: output change is not nessecary a bug
-                assert_eq!(true, raster::compare::equal(&v, &img).unwrap());
+                if !raster::compare::equal(&v, &img).unwrap() {
+                    println!("WARNING: Writing changed gpu test result to {}", pngfile);
+                    if let Err(why) = raster::save(&img, pngfile) {
+                        println!("save err: {:?}", why);
+                    }
+                }
             }
             Err(_) => {
                 println!("Writing initial gpu test result to {}", pngfile);
