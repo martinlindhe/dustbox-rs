@@ -157,7 +157,7 @@ impl CPU {
         let cs = self.sreg16[CS];
         let ip = self.ip;
         let op = self.decode_instruction(Segment::CS());
-        println!("[{:04X}:{:04X}] <exec> {}", cs, ip, op);
+        // println!("[{:04X}:{:04X}] <exec> {}", cs, ip, op);
         match op.command {
             Op::Unknown() => {
                 self.fatal_error = true;
@@ -1989,7 +1989,8 @@ impl CPU {
                 // gs segment prefix
                 op = self.decode_instruction(Segment::GS());
             }
-            // 0x66 & 0x67 = operand size override
+            // 0x66 = 80386+ Operand-size override prefix
+            // 0x67 = 80386+ Address-size override prefix
             0x68 => {
                 // push imm16
                 op.command = Op::Push16();

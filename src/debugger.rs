@@ -32,12 +32,12 @@ impl Debugger {
             },
         };
         // XXX for quick testing while building the ui
-        //let name = "prober/prober.com";
+        let name = "prober/prober.com";
         //let name = "../dos-software-decoding/samples/bar/bar.com";
         //let name = "../dos-software-decoding/demo-256/beziesux/beziesux.com";
         //let name = "../dos-software-decoding/demo-256/165plasm/debug/165plasd.com";
         //let name = "../dos-software-decoding/demo-256/fractal/debug/fractad.com";
-        let name = "../dos-software-decoding/demo-256/x/x.com";
+        //let name = "../dos-software-decoding/demo-256/x/x.com";
         dbg.load_binary(name);
         dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x01D3));
         //dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x017D));

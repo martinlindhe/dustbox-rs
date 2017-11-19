@@ -17,11 +17,11 @@ start:
     ; ------------------
     ; run a instruction
     ; XXX
-    mov si, 0x0100
-    mov di, 0x0800
-    mov cx, 0x100
-    rep movsw
 
+    mov si,0x100
+    mov di,0x400
+    mov cx,0x10
+    lodsb
 
     ; save reg states after instruction executes
     mov [_ax], ax
