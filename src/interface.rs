@@ -122,9 +122,12 @@ impl Interface {
             .get_buffer()
             .map(|buffer| buffer.set_text(text.as_str()));
 
-        let app = Arc::clone(&self.app);
-        let builder = Arc::clone(&self.builder);
-        update_registers(&app, &builder);
+        {
+            let app = Arc::clone(&self.app);
+            let mut app = app.lock().unwrap();
+            let builder = Arc::clone(&self.builder);
+            update_registers(&mut app, &builder);
+        }
 
         {
             // update screen
@@ -146,22 +149,19 @@ impl Interface {
             let disasm_text = disasm_text.clone();
 
             button_step_into.connect_clicked(move |_| {
-                {
-                    let mut shared = app.lock().unwrap();
+                let mut app = app.lock().unwrap();
 
-                    shared.cpu.fatal_error = false;
-                    shared.exec_command("step into 1");
+                app.cpu.fatal_error = false;
+                app.exec_command("step into 1");
 
-                    // update disasm
-                    let text = shared.disasm_n_instructions_to_text(20);
-                    disasm_text
-                        .get_buffer()
-                        .map(|buffer| buffer.set_text(text.as_str()));
-                }
+                // update disasm
+                let text = app.disasm_n_instructions_to_text(20);
+                disasm_text
+                    .get_buffer()
+                    .map(|buffer| buffer.set_text(text.as_str()));
 
-                let app2 = Arc::clone(&app);
                 let builder = Arc::clone(&builder);
-                update_registers(&app2, &builder);
+                update_registers(&mut app, &builder);
             });
         }
 
@@ -171,22 +171,19 @@ impl Interface {
             let disasm_text = disasm_text.clone();
 
             button_step_over.connect_clicked(move |_| {
-                {
-                    let mut app = app.lock().unwrap();
+                let mut app = app.lock().unwrap();
 
-                    app.cpu.fatal_error = false;
-                    app.exec_command("step over 1");
+                app.cpu.fatal_error = false;
+                app.exec_command("step over 1");
 
-                    // update disasm
-                    let text = app.disasm_n_instructions_to_text(20);
-                    disasm_text
-                        .get_buffer()
-                        .map(|buffer| buffer.set_text(text.as_str()));
-                }
+                // update disasm
+                let text = app.disasm_n_instructions_to_text(20);
+                disasm_text
+                    .get_buffer()
+                    .map(|buffer| buffer.set_text(text.as_str()));
 
-                let app2 = Arc::clone(&app);
                 let builder = Arc::clone(&builder);
-                update_registers(&app2, &builder);
+                update_registers(&mut app, &builder);
             });
         }
 
@@ -196,23 +193,21 @@ impl Interface {
             let disasm_text = disasm_text.clone();
 
             button_run.connect_clicked(move |_| {
-                {
-                    let mut app = app.lock().unwrap();
+                let mut app = app.lock().unwrap();
 
-                    app.cpu.fatal_error = false;
+                app.cpu.fatal_error = false;
 
-                    // run until bp is reached or 1M instructions was executed
-                    app.exec_command("step into 1_000_000");
+                // run until bp is reached or 1M instructions was executed
+                app.exec_command("step into 1_000_000");
 
-                    // update disasm
-                    let text = app.disasm_n_instructions_to_text(20);
-                    disasm_text
-                        .get_buffer()
-                        .map(|buffer| buffer.set_text(text.as_str()));
-                }
-                let app2 = Arc::clone(&app);
+                // update disasm
+                let text = app.disasm_n_instructions_to_text(20);
+                disasm_text
+                    .get_buffer()
+                    .map(|buffer| buffer.set_text(text.as_str()));
+
                 let builder = Arc::clone(&builder);
-                update_registers(&app2, &builder);
+                update_registers(&mut app, &builder);
             });
         }
 
@@ -247,10 +242,9 @@ fn u16_as_register_str(v: u16, prev: u16) -> String {
 }
 
 fn update_registers(
-    app: &std::sync::Arc<std::sync::Mutex<debugger::Debugger>>,
+    app: &mut debugger::Debugger,
     builder: &std::sync::Arc<std::sync::Mutex<gtk::Builder>>,
 ) {
-    let mut app = app.lock().unwrap();
     let builder = builder.lock().unwrap();
 
     let ax_value: gtk::Label = builder.get_object("ax_value").unwrap();
