@@ -1,9 +1,7 @@
-# XXX
+# x86emu TODO
 
-1. just cpu emulation,
-    run actual ms-dos in the emu to register interrupt handlers etc...
+dbg:
+	parse text commands
+	rework buttons to send text
 
-later:
-    high-level emu of ms-dos maybe , so we dont need to boot it.
-    or pack with freedos/2dos or similar ?
-
+	text mode debugger, 2 bins

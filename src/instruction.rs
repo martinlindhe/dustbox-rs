@@ -5,16 +5,15 @@ use segment::Segment;
 
 // translates a segment:offset address into a flat address
 pub fn seg_offs_as_flat(segment: u16, offset: u16) -> usize {
-    let res = (segment as usize * 16) + offset as usize;
     /*
     println!(
         "seg_offs_as_flat: {:04X}:{:04X} -> {:06X}",
         segment,
         offset,
-        res
+        (segment as usize * 16) + offset as usize
     );
     */
-    res
+    (segment as usize * 16) + offset as usize
 }
 
 #[derive(Debug)]

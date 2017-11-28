@@ -161,15 +161,14 @@ impl Debugger {
         };
 
         let base = seg_offs_as_flat(segment, offset);
-        match file.write(&self.cpu.memory.memory[base..base + len]) {
-            Err(why) => panic!("couldn't write to {:?}: {}", path, why),
-            Ok(_) => {},
+        if let Err(why) = file.write(&self.cpu.memory.memory[base..base + len]) {
+            panic!("couldn't write to {:?}: {}", path, why);
         }
     }
     
     pub fn exec_command(&mut self, cmd: &str) {
 
-        let parts: Vec<String> = cmd.split(" ").map(|s| s.to_string()).collect();
+        let parts: Vec<String> = cmd.split(' ').map(|s| s.to_string()).collect();
 
          match parts[0].as_ref() {
             "step" => {
@@ -268,7 +267,7 @@ impl Debugger {
                     for i in offset..(offset + length) {
                         print!("{:02X} ", self.cpu.memory.memory[i]);
                     }
-                    println!("");
+                    println!();
                 }
             }
             "r" | "run" => {
