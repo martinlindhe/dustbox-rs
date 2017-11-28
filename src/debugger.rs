@@ -168,8 +168,6 @@ impl Debugger {
     }
     
     pub fn exec_command(&mut self, cmd: &str) {
-        // XXX                     // shared.step_into();   "step into 1
-        //                                      //shared.step_into_n_instructions(1_000_000);
 
         let parts: Vec<String> = cmd.split(" ").map(|s| s.to_string()).collect();
 
@@ -193,6 +191,10 @@ impl Debugger {
                     }
                 }
             }
+             "reset" => {
+                println!("Resetting CPU");
+                self.cpu.reset();
+            }
             "exit" | "quit" | "q" => {
                 use std::process::exit;
 
@@ -200,66 +202,11 @@ impl Debugger {
                       self.cpu.instruction_count);
                 exit(0);
             }
-            "" => {}
-            _ => {
-                println!("Unknown command: {}", cmd);
-            }
-        }
-    }
-
-    /*
-    fn prompt(&mut self) {
-        print!("{:04X}:{:04X}> ", self.cpu.sreg16[CS], self.cpu.ip);
-        let _ = self.stdout.flush();
-
-        let parts = self.read_line();
-
-        match parts[0].as_ref() {
-            "load" => {
-                if parts.len() < 2 {
-                    error!("Filename not provided.");
-                } else {
-                    self.load_binary(parts[1..].join(" ").as_ref());
-                }
-            }
-            "flat" => {
-                self.show_flat_address();
-            }
-            "reset" => {
-                info!("Resetting CPU");
-                self.cpu.reset();
-            }
-            "r" | "reg" | "regs" => {
-                self.cpu.print_registers();
-            }
-            "d" | "disasm" => {
-                let op = self.cpu.disasm_instruction();
-                info!("{:?}", op);
-                info!("{}", op.pretty_string());
-            }
             "v" => {
                 info!("Executed {} instructions", self.cpu.instruction_count);
             }
-            "e" => {
-                let n = if parts.len() < 2 {
-                    1
-                } else {
-                    parts[1].parse::<usize>().unwrap()
-                };
-                self.execute_n_instructions(n);
-            }
-            "dump" => {
-                // XXX dump memory at <offset> <length>
-                if parts.len() < 3 {
-                    error!("Syntax error: <offset> <length>");
-                } else {
-                    let offset = parse_number_string(&parts[1]);
-                    let length = parse_number_string(&parts[2]);
-                    for i in offset..(offset + length) {
-                        print!("{:02X} ", self.cpu.memory.memory[i]);
-                    }
-                    println!("");
-                }
+            "reg" | "regs" | "registers" => {
+                self.cpu.print_registers();
             }
             "bp" | "breakpoint" => {
                 // breakpoints - all values are flat offsets
@@ -296,9 +243,52 @@ impl Debugger {
                     }
                 }
             }
-            "run" => {
-                self.run();
+            "flat" => {
+                self.show_flat_address();
             }
+            "d" | "disasm" => {
+                let op = self.cpu.disasm_instruction();
+                info!("{:?}", op);
+                info!("{}", op);
+            }
+            "load" => {
+                if parts.len() < 2 {
+                    error!("Filename not provided.");
+                } else {
+                    self.load_binary(parts[1..].join(" ").as_ref());
+                }
+            }
+            "dump" => {
+                // XXX dump memory at <offset> <length>
+                if parts.len() < 3 {
+                    error!("Syntax error: <offset> <length>");
+                } else {
+                    let offset = parse_number_string(&parts[1]);
+                    let length = parse_number_string(&parts[2]);
+                    for i in offset..(offset + length) {
+                        print!("{:02X} ", self.cpu.memory.memory[i]);
+                    }
+                    println!("");
+                }
+            }
+            "r" | "run" => {
+                self.run_until_breakpoint();
+            }
+            "" => {}
+            _ => {
+                println!("Unknown command: {}", cmd);
+            }
+        }
+    }
+
+    /*
+    fn prompt(&mut self) {
+        print!("{:04X}:{:04X}> ", self.cpu.sreg16[CS], self.cpu.ip);
+        let _ = self.stdout.flush();
+
+        let parts = self.read_line();
+
+        match parts[0].as_ref() {
         }
     }
     */
