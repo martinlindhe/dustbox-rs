@@ -3315,7 +3315,7 @@ impl CPU {
     // used by disassembler
     pub fn read_u8_slice(&mut self, offset: usize, length: usize) -> Vec<u8> {
         let mut res = vec![0u8; length];
-        res[(offset - offset)..(offset + length - offset)].clone_from_slice(&self.memory.memory[offset..offset + length]);
+        res[0..length].clone_from_slice(&self.memory.memory[offset..offset + length]);
         res
     }
 
