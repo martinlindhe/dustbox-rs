@@ -144,14 +144,13 @@ impl Interface {
             let app = Arc::clone(&self.app);
             let builder = Arc::clone(&self.builder);
             let disasm_text = disasm_text.clone();
-            //let canvas = canvas.clone();
 
             button_step_into.connect_clicked(move |_| {
                 {
                     let mut shared = app.lock().unwrap();
 
                     shared.cpu.fatal_error = false;
-                    shared.step_into();
+                    shared.exec_command("step into 1");
 
                     // update disasm
                     let text = shared.disasm_n_instructions_to_text(20);
@@ -170,14 +169,13 @@ impl Interface {
             let app = Arc::clone(&self.app);
             let builder = Arc::clone(&self.builder);
             let disasm_text = disasm_text.clone();
-            //let canvas = canvas.clone();
 
             button_step_over.connect_clicked(move |_| {
                 {
                     let mut app = app.lock().unwrap();
 
                     app.cpu.fatal_error = false;
-                    app.step_over();
+                    app.exec_command("step over 1");
 
                     // update disasm
                     let text = app.disasm_n_instructions_to_text(20);
@@ -196,61 +194,33 @@ impl Interface {
             let app = Arc::clone(&self.app);
             let builder = Arc::clone(&self.builder);
             let disasm_text = disasm_text.clone();
-            //let canvas = canvas.clone();
 
             button_run.connect_clicked(move |_| {
                 {
-                    let mut shared = app.lock().unwrap();
+                    let mut app = app.lock().unwrap();
 
-                    shared.cpu.fatal_error = false;
+                    app.cpu.fatal_error = false;
 
                     // run until bp is reached or 1M instructions was executed
-                    shared.step_into_n_instructions(1_000_000);
+                    app.exec_command("step into 1_000_000");
 
                     // update disasm
-                    let text = shared.disasm_n_instructions_to_text(20);
+                    let text = app.disasm_n_instructions_to_text(20);
                     disasm_text
                         .get_buffer()
                         .map(|buffer| buffer.set_text(text.as_str()));
                 }
-
                 let app2 = Arc::clone(&app);
                 let builder = Arc::clone(&builder);
                 update_registers(&app2, &builder);
             });
         }
 
-
         {
             let app = Arc::clone(&self.app);
-            // let builder = Arc::clone(&self.builder);
-            // let disasm_text = disasm_text.clone();
-            //let canvas = canvas.clone();
-
             button_dump_memory.connect_clicked(move |_| {
-                {
-                    let shared = app.lock().unwrap();
-
-                    // XXX
-                    println!("XXX dumping memory !!!");
-
-                    use std::path::Path;
-                    use std::fs::File;
-
-                    let path = Path::new("emu_mem.bin");
-
-                    let mut file = match File::create(&path) {
-                        Err(why) => panic!("couldn't create {:?}: {}", path, why),
-                        Ok(file) => file,
-                    };
-
-                    let base = seg_offs_as_flat(0x085F, 0x0000);
-                    let len = 0xFFFF;
-                    match file.write(&shared.cpu.memory.memory[base..base + len]) {
-                        Err(why) => panic!("couldn't write to {:?}: {}", path, why),
-                        Ok(_) => println!("successfully wrote to {:?}", path),
-                    }
-                }
+                let app = app.lock().unwrap();
+                app.dump_memory("emu_mem.bin", 0x085F, 0x0000, 0xFFFF);
             });
         }
 

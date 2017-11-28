@@ -55,7 +55,7 @@ impl Debugger {
     }
     */
 
-    pub fn step_into(&mut self) {
+    fn step_into(&mut self) {
         self.cpu.execute_instruction();
 
         if self.cpu.fatal_error {
@@ -74,7 +74,7 @@ impl Debugger {
         }
     }
 
-    pub fn step_into_n_instructions(&mut self, cnt: usize) {
+    fn step_into_n_instructions(&mut self, cnt: usize) {
         // measure time
         let start = Instant::now();
         let mut done = 0;
@@ -144,6 +144,67 @@ impl Debugger {
         }
         self.cpu.ip = org_ip;
         res
+    }
+
+    pub fn dump_memory(&self, filename: &str, segment: u16, offset: u16, len: usize) {
+        use std::path::Path;
+        use std::fs::File;
+        use std::io::Write;
+
+        println!("Writing memory dump {:04X}:{:04X}, len {:04X} to {}", segment, offset, len, filename);
+
+        let path = Path::new(filename);
+
+        let mut file = match File::create(&path) {
+            Err(why) => panic!("couldn't create {:?}: {}", path, why),
+            Ok(file) => file,
+        };
+
+        let base = seg_offs_as_flat(segment, offset);
+        match file.write(&self.cpu.memory.memory[base..base + len]) {
+            Err(why) => panic!("couldn't write to {:?}: {}", path, why),
+            Ok(_) => {},
+        }
+    }
+    
+    pub fn exec_command(&mut self, cmd: &str) {
+        // XXX                     // shared.step_into();   "step into 1
+        //                                      //shared.step_into_n_instructions(1_000_000);
+
+        let parts: Vec<String> = cmd.split(" ").map(|s| s.to_string()).collect();
+
+         match parts[0].as_ref() {
+            "step" => {
+                match parts[1].as_ref() {
+                    "into" => {
+                        let cnt = if parts.len() > 2 {
+                            parse_number_string(&parts[2])
+                        } else {
+                            1
+                        };
+                        self.step_into_n_instructions(cnt);
+                    },
+                    "over" => {
+                        // TODO: parse arg 3 (count)
+                        self.step_over();
+                    }
+                     _ => {
+                        println!("Unknown STEP sub-command: {}", cmd);
+                    }
+                }
+            }
+            "exit" | "quit" | "q" => {
+                use std::process::exit;
+
+                info!("Exiting ... {} instructions was executed",
+                      self.cpu.instruction_count);
+                exit(0);
+            }
+            "" => {}
+            _ => {
+                println!("Unknown command: {}", cmd);
+            }
+        }
     }
 
     /*
@@ -238,15 +299,6 @@ impl Debugger {
             "run" => {
                 self.run();
             }
-            "exit" | "quit" | "q" => {
-                info!("Exiting ... {} instructions was executed",
-                      self.cpu.instruction_count);
-                exit(0);
-            }
-            "" => {}
-            _ => {
-                println!("Unknown command: {}", parts[0]);
-            }
         }
     }
     */
@@ -288,10 +340,12 @@ impl Debugger {
 
 fn parse_number_string(s: &str) -> usize {
     // XXX return Option, none = failed to parse
-    if s[0..2] == *"0x" {
-        usize::from_str_radix(&s[2..], 16).unwrap()
+    let x = &s.replace("_", "");
+
+    if x.len() >= 2 && &x[0..2] == "0x" {
+        usize::from_str_radix(&x[2..], 16).unwrap()
     } else {
         // decimal
-        s.parse::<usize>().unwrap()
+        x.parse::<usize>().unwrap()
     }
 }
