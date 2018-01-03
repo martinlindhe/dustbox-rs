@@ -6,9 +6,9 @@ authors = ["Martin Lindhe"]
 [dependencies]
 difference = "1.0"
 colog = "0.1"
-log = "0.3"
+log = "0.4"
 time = "0.1"
-rand = "0.3"
+rand = "0.4"
 gdk = "0.7"
 gdk-pixbuf = "0.3"
 cairo-rs = "0.3"
@@ -17,8 +17,6 @@ raster = "0.2"
 [dependencies.gtk]
 version = "0.3"
 features = ["v3_10"]
-
-
 
 [profile.release]
 debug = true
