@@ -3348,12 +3348,12 @@ impl CPU {
         }
     }
 
-    pub fn is_ip_at_breakpoint(&mut self) -> bool {
+    pub fn is_ip_at_breakpoint(&self) -> bool {
         let offset = self.get_offset();
         self.is_offset_at_breakpoint(offset)
     }
 
-    pub fn is_offset_at_breakpoint(&mut self, offset: usize) -> bool {
+    pub fn is_offset_at_breakpoint(&self, offset: usize) -> bool {
         self.breakpoints.iter().any(|&x| x == offset)
     }
 
