@@ -18,6 +18,11 @@ Any help and contributions are much welcome!
 - Dynamic recompilation?
 
 
+## Tests
+
+The test framework requires https://github.com/martinlindhe/dos-software-decoding to be checked out in the parent directory.
+
+
 ## License
 
 Under [MIT](LICENSE)
