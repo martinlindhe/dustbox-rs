@@ -14,6 +14,8 @@ Any help and contributions are much welcome!
 ## Roadmap
 
 - Finish 16-bit cpu core
+- Get all the demos in https://github.com/martinlindhe/dos-software-decoding/tree/master/demo-256 running correctly
+- Text mode debugger (separate binary)
 - Implement 32-bit instructions
 - Dynamic recompilation?
 
