@@ -32,7 +32,7 @@ impl Debugger {
             },
         };
         // XXX for quick testing while building the ui
-        let name = "prober/prober.com";
+        let name = "utils/prober/prober.com";
         //let name = "../dos-software-decoding/samples/bar/bar.com";
         //let name = "../dos-software-decoding/demo-256/beziesux/beziesux.com";
         //let name = "../dos-software-decoding/demo-256/165plasm/debug/165plasd.com";
