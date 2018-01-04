@@ -1,28 +1,17 @@
 use std::fs::File;
 use std::io::Read;
-use std::process::exit;
+use std::io::Error;
 
-pub fn read_binary(path: &str) -> Vec<u8> {
+pub fn read_binary(path: &str) -> Result<Vec<u8>, Error> {
     let mut buffer: Vec<u8> = Vec::new();
-
-    info!("Reading rom from {}", path);
 
     let mut f = match File::open(path) {
         Ok(x) => x,
-        Err(why) => {
-            // XXX return error to caller.. how?!11 so they can call .except() ..=?!?1
-            println!("Could not open {}: {}", path, why);
-            exit(1)
-        }
+        Err(why) => return Err(why),
     };
 
     match f.read_to_end(&mut buffer) {
-        Ok(x) => x,
-        Err(why) => {
-            println!("could not read contents of {}: {}", path, why);
-            exit(1)
-        }
-    };
-
-    buffer
+        Ok(_) => Ok(buffer),
+        Err(why) => Err(why),
+    }
 }

@@ -276,8 +276,11 @@ impl Debugger {
     }
 
     pub fn load_binary(&mut self, name: &str) {
-        let data = tools::read_binary(name);
-        self.cpu.load_com(&data);
+        info!("Reading rom from {}", name);
+        match tools::read_binary(name) {
+            Ok(data) => self.cpu.load_com(&data),
+            Err(what) => println!("error {}", what),
+        };
     }
 
     fn show_flat_address(&mut self) {
