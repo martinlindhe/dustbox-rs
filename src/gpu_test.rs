@@ -6,6 +6,8 @@ use std::path::Path;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 
+use tera::Context;
+
 use cpu::CPU;
 use tools;
 
@@ -69,6 +71,8 @@ fn demo_256() {
         "../dos-software-decoding/demo-256/zork/zork.com",         // black screen
     ];
 
+    let mut out_images = vec![];
+
     while let Some(bin) = test_bins.pop() {
         println!("demo_256: {}", bin);
 
@@ -86,6 +90,26 @@ fn demo_256() {
         filename.push("_100k.png");
 
         cpu.gpu.test_render_frame(&cpu.memory.memory, filename.to_str().unwrap());
+        out_images.push(filename.into_string().unwrap());
         // XXX cpu.test_expect_memory_md5(x)
+    }
+
+    let mut tera = compile_templates!("src/templates/**/*");
+
+    // disable autoescaping completely
+    tera.autoescape_on(vec![]);
+
+    let mut context = Context::new();
+    out_images.sort();
+    context.add("out_images", &out_images);
+    // add stuff to context
+    match tera.render("demo256.html", &context) {
+        Ok(res) => {
+            use std::fs::File;
+            use std::io::Write;
+            let mut f = File::create("demo256.html").expect("Unable to create file");
+            f.write_all(res.as_bytes()).expect("Unable to write data");
+        }
+        Err(why) => println!("ERROR = {}", why),
     }
 }

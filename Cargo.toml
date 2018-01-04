@@ -4,7 +4,6 @@ version = "0.1.0"
 authors = ["Martin Lindhe"]
 
 [dependencies]
-difference = "1.0"
 colog = "0.1"
 log = "0.4"
 time = "0.1"
@@ -13,6 +12,7 @@ gdk = "0.7"
 gdk-pixbuf = "0.3"
 cairo-rs = "0.3"
 raster = "0.2"
+tera = "0.10"
 
 [dependencies.gtk]
 version = "0.3"

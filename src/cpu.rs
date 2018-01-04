@@ -154,10 +154,12 @@ impl CPU {
     }
 
     pub fn execute_instruction(&mut self) {
+        let op = self.decode_instruction(Segment::CS());
+        /*
         let cs = self.sreg16[CS];
         let ip = self.ip;
-        let op = self.decode_instruction(Segment::CS());
-        // println!("[{:04X}:{:04X}] <exec> {}", cs, ip, op);
+        println!("[{:04X}:{:04X}] <exec> {}", cs, ip, op);
+        */
         match op.command {
             Op::Unknown() => {
                 self.fatal_error = true;

@@ -2,10 +2,9 @@
 
 #![allow(dead_code)]
 
-#[macro_use]
-extern crate log;
+#[macro_use] extern crate log;
+
 extern crate colog;
-// #[macro_use] extern crate difference;
 extern crate time;
 extern crate test;
 extern crate gtk;
@@ -13,6 +12,7 @@ extern crate gdk;
 extern crate gdk_pixbuf;
 extern crate cairo;
 extern crate raster;
+#[macro_use] extern crate tera;
 
 mod debugger;
 mod tools;
