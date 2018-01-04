@@ -18,6 +18,7 @@ Any help and contributions are much welcome!
 - Text mode debugger (separate binary)
 - Implement 32-bit instructions
 - Dynamic recompilation?
+- Bundle as a .app on macOS (should fix 'main window opens in the background', as described in https://stackoverflow.com/a/44220855)
 
 
 ## Tests

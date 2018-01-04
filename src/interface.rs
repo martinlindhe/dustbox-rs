@@ -9,6 +9,7 @@ use std::io::prelude::*;
 use gtk;
 use gtk::prelude::*;
 use gtk::{Button, Image, Label, Window, WindowType};
+use gdk::enums::key;
 
 use gdk::RGBA;
 use gdk_pixbuf;
@@ -76,6 +77,13 @@ impl Interface {
             .get_object("disasm_text")
             .unwrap();
         // disasm_text.width = 400; // XXX set fixed width of disasm box, so it wont resize ...
+
+        let input_command: gtk::Entry = self.builder
+            .lock()
+            .unwrap()
+            .get_object("input_command")
+            .unwrap();
+        input_command.set_placeholder_text("Enter command (or type help)");
 
         let canvas = gtk::DrawingArea::new();
         canvas.set_size_request(320, 240);
@@ -216,6 +224,37 @@ impl Interface {
             button_dump_memory.connect_clicked(move |_| {
                 let app = app.lock().unwrap();
                 app.dump_memory("emu_mem.bin", 0x085F, 0x0000, 0xFFFF);
+            });
+        }
+
+        {
+            let app = Arc::clone(&self.app);
+            let builder = Arc::clone(&self.builder);
+            let disasm_text = disasm_text.clone();
+
+            window.connect_key_press_event(move |_, key| {
+                match key.get_keyval() as u32 {
+                    key::Escape => gtk::main_quit(),
+                    key::Return => {
+                        let search_word = input_command.get_text().unwrap();
+                        println!("> {}", search_word);
+                        let mut app = app.lock().unwrap();
+                        app.exec_command(&search_word);
+                        input_command.set_text("");
+                        // XXX redraw all
+
+                        // update disasm
+                        let text = app.disasm_n_instructions_to_text(20);
+                        disasm_text
+                            .get_buffer()
+                            .map(|buffer| buffer.set_text(text.as_str()));
+
+                        let builder = Arc::clone(&builder);
+                        update_registers(&mut app, &builder);
+                    },
+                    _ => ()
+                }
+                Inhibit(false)
             });
         }
 

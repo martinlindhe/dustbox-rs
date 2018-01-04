@@ -22,7 +22,7 @@ pub struct Debugger {
 impl Debugger {
     pub fn new() -> Self {
         let cpu = CPU::new();
-        let mut dbg = Debugger {
+        Debugger {
             cpu: cpu.clone(),
             prev_regs: PrevRegs {
                 ip: cpu.ip,
@@ -30,36 +30,13 @@ impl Debugger {
                 sreg16: cpu.sreg16,
                 flags: cpu.flags,
             },
-        };
-        // XXX for quick testing while building the ui
-        let name = "utils/prober/prober.com";
-        //let name = "../dos-software-decoding/samples/bar/bar.com";
-        //let name = "../dos-software-decoding/demo-256/beziesux/beziesux.com";
-        //let name = "../dos-software-decoding/demo-256/165plasm/debug/165plasd.com";
-        //let name = "../dos-software-decoding/demo-256/fractal/debug/fractad.com";
-        //let name = "../dos-software-decoding/demo-256/x/x.com";
-        dbg.load_binary(name);
-        dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x01D3));
-        //dbg.cpu.add_breakpoint(seg_offs_as_flat(0x085F, 0x017D));
-        dbg
-    }
-
-    /*
-    pub fn start(&mut self) {
-        //let bios = tools::read_binary("../dos-software-decoding/ibm-pc/ibm5550/ipl5550.rom");
-        //self.cpu.load_bios(&bios);
-
-        loop {
-            self.prompt();
         }
     }
-    */
 
     fn step_into(&mut self) {
         self.cpu.execute_instruction();
 
         if self.cpu.fatal_error {
-            // println!("XXX fatal error, not executing more");
             return;
         }
 
@@ -97,7 +74,6 @@ impl Debugger {
 
     pub fn step_over(&mut self) {
         if self.cpu.fatal_error {
-            // println!("XXX fatal error, not executing more");
             return;
         }
         let op = self.cpu.disasm_instruction();
@@ -156,13 +132,13 @@ impl Debugger {
         let path = Path::new(filename);
 
         let mut file = match File::create(&path) {
-            Err(why) => panic!("couldn't create {:?}: {}", path, why),
+            Err(why) => panic!("Failed to create {:?}: {}", path, why),
             Ok(file) => file,
         };
 
         let base = seg_offs_as_flat(segment, offset);
         if let Err(why) = file.write(&self.cpu.memory.memory[base..base + len]) {
-            panic!("couldn't write to {:?}: {}", path, why);
+            panic!("Failed to write to {:?}: {}", path, why);
         }
     }
     
@@ -171,6 +147,22 @@ impl Debugger {
         let parts: Vec<String> = cmd.split(' ').map(|s| s.to_string()).collect();
 
          match parts[0].as_ref() {
+            "help" => {
+                println!("load <file>      - load a binary (.com) file");
+                println!("r                - run until breakpoint");
+                println!("step into <n>    - steps into n instructions");
+                println!("step over        - steps over the next instruction");
+                println!("reset            - resets the cpu");
+                println!("v                - show number of instructions executed");
+                println!("r                - show register values");
+                println!("bp add <n>       - add a breakpoint at offset n");
+                println!("bp list          - show breakpoints");
+                println!("bp clear         - clear breakpoints");
+                println!("flat             - show current address as flat value");
+                println!("d                - disasm instruction");
+                println!("dump <off> <len> - dumps len bytes of memory at given offset");
+                println!("exit             - exit");
+            }
             "step" => {
                 match parts[1].as_ref() {
                     "into" => {
@@ -190,7 +182,7 @@ impl Debugger {
                     }
                 }
             }
-             "reset" => {
+            "reset" => {
                 println!("Resetting CPU");
                 self.cpu.reset();
             }
@@ -209,7 +201,6 @@ impl Debugger {
             }
             "bp" | "breakpoint" => {
                 // breakpoints - all values are flat offsets
-                // XXX: "bp remove 0x123"
                 // XXX allow to enter bp in format "segment:offset"
                 if parts.len() < 2 {
                     error!("breakpoint: not enough arguments");
@@ -226,12 +217,16 @@ impl Debugger {
                             self.cpu.add_breakpoint(bp);
                             info!("Breakpoint added: {:04X}", bp);
                         }
+                        "del" | "delete" | "remove" => {
+                            // TODO: "bp remove 0x123"
+                            info!("TODO: remove breakpoint");
+                        }
                         "clear" => {
                             self.cpu.clear_breakpoints();
                         }
                         "list" => {
                             let list = self.cpu.get_breakpoints(); // .sort();
-                            // XXXX sort list
+                            // XXX sort list
 
                             let strs: Vec<String> =
                                 list.iter().map(|b| format!("{:04X}", b)).collect();
@@ -258,7 +253,7 @@ impl Debugger {
                 }
             }
             "dump" => {
-                // XXX dump memory at <offset> <length>
+                // dump memory at <offset> <length>
                 if parts.len() < 3 {
                     error!("Syntax error: <offset> <length>");
                 } else {
@@ -279,18 +274,6 @@ impl Debugger {
             }
         }
     }
-
-    /*
-    fn prompt(&mut self) {
-        print!("{:04X}:{:04X}> ", self.cpu.sreg16[CS], self.cpu.ip);
-        let _ = self.stdout.flush();
-
-        let parts = self.read_line();
-
-        match parts[0].as_ref() {
-        }
-    }
-    */
 
     pub fn load_binary(&mut self, name: &str) {
         let data = tools::read_binary(name);
