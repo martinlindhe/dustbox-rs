@@ -278,7 +278,10 @@ impl Debugger {
     pub fn load_binary(&mut self, name: &str) {
         info!("Reading rom from {}", name);
         match tools::read_binary(name) {
-            Ok(data) => self.cpu.load_com(&data),
+            Ok(data) => {
+                self.cpu.reset();
+                self.cpu.load_com(&data);
+            }
             Err(what) => println!("error {}", what),
         };
     }
