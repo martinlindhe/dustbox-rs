@@ -3180,6 +3180,7 @@ impl CPU {
         match *p {
             Parameter::Ptr16Amode(_, r) => self.amode16(r) as usize,
             Parameter::Ptr16AmodeS8(_, r, imm) => (Wrapping(self.amode16(r) as usize) + Wrapping(imm as usize)).0,
+            Parameter::Ptr16AmodeS16(_, r, imm) => (Wrapping(self.amode16(r) as usize) + Wrapping(imm as usize)).0,
             Parameter::Ptr16(_, imm) => imm as usize,
             _ => {
                 println!("read_parameter_address error: unhandled parameter: {:?} at {:06X}",
