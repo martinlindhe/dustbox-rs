@@ -14,7 +14,7 @@ use tools;
 #[test]
 fn demo_256() {
     let mut test_bins = vec![
-        "../dos-software-decoding/demo-256/165plasm/debug/165plasd.com", // black screen, unknown op C9 at 085F:016C (00875C flat), 1328 instructions executed
+        "../dos-software-decoding/demo-256/165plasm/165plasm.com", // black screen, unknown op C9 at 085F:016C (00875C flat), 1328 instructions executed
         "../dos-software-decoding/demo-256/244b/244b.com",         // some gfx
         "../dos-software-decoding/demo-256/alpc/alpc.com",         // some gfx
         "../dos-software-decoding/demo-256/beziesux/beziesux.com", // some gfx
