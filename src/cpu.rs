@@ -3326,9 +3326,9 @@ impl CPU {
 
     fn segment(&self, seg: Segment) -> u16 {
         match seg {
-            Segment::CS() |
+            Segment::DS() |
             Segment::Default() => self.sreg16[DS],
-            Segment::DS() => self.sreg16[DS],
+            Segment::CS() => self.sreg16[CS],
             Segment::ES() => self.sreg16[ES],
             Segment::FS() => self.sreg16[FS],
             Segment::GS() => self.sreg16[GS],
