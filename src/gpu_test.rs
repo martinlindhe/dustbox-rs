@@ -77,7 +77,7 @@ fn demo_256() {
         println!("demo_256: {}", bin);
 
         let mut cpu = CPU::new();
-        let code = tools::read_binary(bin);
+        let code = tools::read_binary(bin).unwrap();
         cpu.load_com(&code);
 
         cpu.execute_n_instructions(100_000);
