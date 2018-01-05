@@ -28,6 +28,7 @@ mod interface;
 mod int10;
 mod int16;
 mod int21;
+mod int33;
 
 use std::sync::{Arc, Mutex};
 

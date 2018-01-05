@@ -11,6 +11,7 @@ use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, Mo
 use int10;
 use int16;
 use int21;
+use int33;
 use gpu::GPU;
 use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
 
@@ -3619,6 +3620,7 @@ impl CPU {
                 self.fatal_error = true; // stops running debugger
             }
             0x21 => int21::handle(self),
+            0x33 => int33::handle(self),
             _ => {
                 println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}",
                          int,
