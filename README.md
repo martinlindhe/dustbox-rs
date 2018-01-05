@@ -15,7 +15,18 @@ Any help and contributions are much welcome!
 
 ## Tests
 
-The test framework requires https://github.com/martinlindhe/dos-software-decoding to be checked out in the parent directory.
+Run the basic tests with
+
+```
+cargo test
+```
+
+There is additional tests that are expensive, they also generate the tests/render/demo images.
+
+In order to run the expensive tests you need to check out the dos-software-decoding repo in the parent directory and pass the `--ignored` flag to cargo:
+
+    cd .. && git clone https://github.com/martinlindhe/dos-software-decoding && cd -
+    cargo test -- --ignored
 
 
 ## License

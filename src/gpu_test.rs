@@ -11,7 +11,7 @@ use tera::Context;
 use cpu::CPU;
 use tools;
 
-#[test]
+#[test] #[ignore] // it is too expensive
 fn demo_256() {
     let mut test_bins = vec![
         "../dos-software-decoding/demo-256/165plasm/165plasm.com", // black screen, unknown op C9 at 085F:016C (00875C flat), 1328 instructions executed
