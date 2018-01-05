@@ -22,7 +22,16 @@ pub fn handle(cpu: &mut CPU) {
 
             println!("XXX impl KEYBOARD - CHECK FOR KEYSTROKE");
             cpu.flags.zero = true;
-
+        }
+        0x11 => {
+            // KEYBOARD - CHECK FOR ENHANCED KEYSTROKE (enh kbd support only)
+            // Return:
+            // ZF set if no keystroke available
+            // ZF clear if keystroke available
+            // AH = BIOS scan code
+            // AL = ASCII character
+            println!("XXX impl KEYBOARD - CHECK FOR ENHANCED KEYSTROKE");
+            cpu.flags.zero = true;
         }
         _ => {
             println!("int16 error: unknown AH={:02X}, AX={:04X}",
