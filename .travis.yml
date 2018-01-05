@@ -18,7 +18,7 @@ matrix:
       rust: nightly
 
 install:
-  - if [ $TRAVIS_OS_NAME = linux ]; then sudo apt-get install libgtk-3-dev; else brew install gtk; fi
+  - if [ $TRAVIS_OS_NAME = linux ]; then sudo apt-get install libgtk-3-dev; else brew install gtk gdk; fi
   - cd .. && git clone https://github.com/martinlindhe/dos-software-decoding && cd -
 
 cache: cargo
