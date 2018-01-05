@@ -13,16 +13,6 @@ If you are looking for a more complete dos emulator, I suggest you check out [do
 Any help and contributions are much welcome!
 
 
-## Roadmap
-
-- Finish 16-bit cpu core
-- Get all the demos in https://github.com/martinlindhe/dos-software-decoding/tree/master/demo-256 running correctly
-- Text mode debugger (separate binary)
-- Implement 32-bit instructions
-- Dynamic recompilation?
-- Bundle as a .app on macOS (should fix 'main window opens in the background', as described in https://stackoverflow.com/a/44220855)
-
-
 ## Tests
 
 The test framework requires https://github.com/martinlindhe/dos-software-decoding to be checked out in the parent directory.
