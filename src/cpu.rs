@@ -54,6 +54,9 @@ impl CPU {
         // offset of last word available in first 64k segment
         cpu.r16[SP].val = 0xFFFD;
 
+        // apparently DOS initializes the CX register to 0xFF
+        cpu.r16[CX].val = 0xFF;
+
         cpu
     }
 
