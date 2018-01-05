@@ -65,9 +65,8 @@ impl CPU {
     }
 
     pub fn reset(&mut self) {
-        self.ip = 0;
-        self.instruction_count = 0;
-        // XXX clear memory
+        let cpu = CPU::new();
+        *self = cpu;
     }
 
     pub fn load_bios(&mut self, data: &[u8]) {
