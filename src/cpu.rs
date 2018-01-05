@@ -157,7 +157,7 @@ impl CPU {
     }
 
     pub fn execute_instruction(&mut self) {
-        let op = self.decode_instruction(Segment::CS());
+        let op = self.decode_instruction(Segment::DS());
         /*
         let cs = self.sreg16[CS];
         let ip = self.ip;
@@ -3327,7 +3327,7 @@ impl CPU {
     fn segment(&self, seg: Segment) -> u16 {
         match seg {
             Segment::CS() |
-            Segment::Default() => self.sreg16[CS],
+            Segment::Default() => self.sreg16[DS],
             Segment::DS() => self.sreg16[DS],
             Segment::ES() => self.sreg16[ES],
             Segment::FS() => self.sreg16[FS],
