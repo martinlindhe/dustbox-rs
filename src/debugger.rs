@@ -17,6 +17,7 @@ pub struct PrevRegs {
 pub struct Debugger {
     pub cpu: CPU,
     pub prev_regs: PrevRegs,
+    last_program: Option<String>,
 }
 
 impl Debugger {
@@ -30,6 +31,7 @@ impl Debugger {
                 sreg16: cpu.sreg16,
                 flags: cpu.flags,
             },
+            last_program: Option::None
         }
     }
 
@@ -149,6 +151,7 @@ impl Debugger {
          match parts[0].as_ref() {
             "help" => {
                 println!("load <file>      - load a binary (.com) file");
+                println!("load             - load previous binary (.com) file");
                 println!("r                - run until breakpoint");
                 println!("step into <n>    - steps into n instructions");
                 println!("step over        - steps over the next instruction");
@@ -247,9 +250,14 @@ impl Debugger {
             }
             "load" => {
                 if parts.len() < 2 {
-                    error!("Filename not provided.");
+                    match self.last_program.clone() {
+                        None        => error!("Filename not provided."),
+                        Some(path)  => self.load_binary(&path),
+                    }
                 } else {
-                    self.load_binary(parts[1..].join(" ").as_ref());
+                    let path = parts[1..].join(" ");
+                    self.load_binary(&path);
+                    self.last_program = Option::Some(path);
                 }
             }
             "dump" => {
