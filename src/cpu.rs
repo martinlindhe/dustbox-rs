@@ -14,6 +14,10 @@ use int21;
 use gpu::GPU;
 use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
 
+#[cfg(test)]
+#[path = "./cpu_test.rs"]
+mod cpu_test;
+
 #[derive(Clone)]
 pub struct CPU {
     pub ip: u16,
@@ -3626,7 +3630,3 @@ fn count_to_bitmask(v: usize) -> usize {
         _ => panic!("unhandled {}", v)
     }
 }
-
-#[cfg(test)]
-#[path = "./cpu_test.rs"]
-mod cpu_test;

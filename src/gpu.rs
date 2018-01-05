@@ -5,6 +5,10 @@ use gdk_pixbuf;
 use cairo;
 use raster;
 
+#[cfg(test)]
+#[path = "./gpu_test.rs"]
+mod gpu_test;
+
 #[derive(Clone)]
 pub struct GPU {
     pub scanline: i32,
@@ -105,7 +109,3 @@ impl GPU {
         };
     }
 }
-
-#[cfg(test)]
-#[path = "./gpu_test.rs"]
-mod gpu_test;

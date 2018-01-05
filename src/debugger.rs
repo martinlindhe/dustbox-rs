@@ -1,4 +1,5 @@
 use std::time::Instant;
+use std::num::ParseIntError;
 
 use cpu::CPU;
 use register;
@@ -6,6 +7,10 @@ use register::CS;
 use flags;
 use tools;
 use instruction::{seg_offs_as_flat, InstructionInfo};
+
+#[cfg(test)]
+#[path = "./debugger_test.rs"]
+mod debugger_test;
 
 pub struct PrevRegs {
     pub ip: u16,
@@ -169,10 +174,15 @@ impl Debugger {
             "step" => {
                 match parts[1].as_ref() {
                     "into" => {
-                        let cnt = if parts.len() > 2 {
-                            parse_number_string(&parts[2])
-                        } else {
-                            1
+                        let mut cnt = 1;
+                        if parts.len() > 2 {
+                            match parse_number_string(&parts[2]) {
+                                Ok(n) => cnt = n,
+                                Err(e) => {
+                                    println!("parse error: {}", e);
+                                    return;
+                                }
+                            }
                         };
                         self.step_into_n_instructions(cnt);
                     },
@@ -216,9 +226,16 @@ impl Debugger {
                             info!("  bp list          list all breakpoints");
                         }
                         "add" | "set" => {
-                            let bp = parse_number_string(&parts[2]);
-                            self.cpu.add_breakpoint(bp);
-                            info!("Breakpoint added: {:04X}", bp);
+                            match parse_number_string(&parts[2]) {
+                                Ok(bp) => {
+                                    self.cpu.add_breakpoint(bp);
+                                    info!("Breakpoint added: {:04X}", bp);
+                                }
+                                Err(e) => {
+                                    println!("parse error: {}", e);
+                                    return;
+                                }
+                            }
                         }
                         "del" | "delete" | "remove" => {
                             // TODO: "bp remove 0x123"
@@ -262,16 +279,29 @@ impl Debugger {
             }
             "dump" => {
                 // dump memory at <offset> <length>
-                if parts.len() < 3 {
-                    error!("Syntax error: <offset> <length>");
-                } else {
-                    let offset = parse_number_string(&parts[1]);
-                    let length = parse_number_string(&parts[2]);
-                    for i in offset..(offset + length) {
-                        print!("{:02X} ", self.cpu.memory.memory[i]);
+                let mut offset: usize = 0;
+                let mut length: usize = 0xFFFF;
+                if parts.len() >= 3 {
+                    match parse_number_string(&parts[1]) {
+                        Ok(n) => offset = n,
+                        Err(e) => {
+                            println!("parse error: {}", e);
+                            return;
+                        }
                     }
-                    println!();
+                    match parse_number_string(&parts[2]) {
+                        Ok(n) => length = n,
+                        Err(e) => {
+                            println!("parse error: {}", e);
+                            return;
+                        }
+                    }
                 }
+                // TODO: write to file instead
+                for i in offset..(offset + length) {
+                    print!("{:02X} ", self.cpu.memory.memory[i]);
+                }
+                println!();
             }
             "r" | "run" => {
                 self.run_until_breakpoint();
@@ -324,14 +354,14 @@ impl Debugger {
     }
 }
 
-fn parse_number_string(s: &str) -> usize {
-    // XXX return Option, none = failed to parse
+// parses string to a integer. unprefixed values assume base 10, and "0x" prefix indicates base 16.
+fn parse_number_string(s: &str) -> Result<usize, ParseIntError> {
     let x = &s.replace("_", "");
-
     if x.len() >= 2 && &x[0..2] == "0x" {
-        usize::from_str_radix(&x[2..], 16).unwrap()
+        // hex
+        usize::from_str_radix(&x[2..], 16)
     } else {
         // decimal
-        x.parse::<usize>().unwrap()
+        x.parse::<usize>()
     }
 }
