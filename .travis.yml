@@ -1,4 +1,5 @@
 language: rust
+sudo: required
 
 env:
   global:
@@ -19,9 +20,8 @@ matrix:
       os: osx
       rust: nightly
 
-before_install:
-  - set -e
-  - rustup self update
+install:
+  - if [ $TRAVIS_OS_NAME = linux ]; then sudo apt-get install libgtk-3-dev; else brew install gtk; fi
 
 cache: cargo
 before_cache:

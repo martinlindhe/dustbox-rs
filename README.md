@@ -1,5 +1,7 @@
 # About
 
+[![Build Status](https://travis-ci.org/martinlindhe/dustbox-rs.svg?branch=master)](https://travis-ci.org/martinlindhe/dustbox-rs)
+
 a x86 16-bit emulator with the goal of running old MS-DOS games.
 
 This is a project I use to learn rust and improve my understanding of low level stuff.
