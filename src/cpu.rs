@@ -1362,6 +1362,9 @@ impl CPU {
 
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
+            Op::Setc() => {
+                println!("XXX impl setc: {}", op);
+            }
             Op::Shl8() => {
                 // Multiply `dst` by 2, `src` times.
                 // two arguments    (alias: sal)
@@ -1715,6 +1718,12 @@ impl CPU {
                         // jnz rel16
                         op.command = Op::Jnz();
                         op.params.dst = Parameter::Imm16(self.read_rel16());
+                    }
+                    0x92 => {
+                        // setc r/m8
+                        let x = self.read_mod_reg_rm();
+                        op.command = Op::Setc();
+                        op.params.dst = self.rm8(op.segment, x.rm, x.md);
                     }
                     0xA0 => {
                         // push fs

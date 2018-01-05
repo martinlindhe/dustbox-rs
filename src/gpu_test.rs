@@ -50,7 +50,6 @@ fn demo_256() {
         "../dos-software-decoding/demo-256/proto256/proto256.com",
         "../dos-software-decoding/demo-256/riddle/riddle.com",
         "../dos-software-decoding/demo-256/saverave/saverave.com",
-        "../dos-software-decoding/demo-256/sierpins/sierpins.com",
         "../dos-software-decoding/demo-256/snow/snow.com",
         "../dos-software-decoding/demo-256/specifi/specifi.com",
         "../dos-software-decoding/demo-256/spline/spline.com",

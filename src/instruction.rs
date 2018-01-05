@@ -288,6 +288,7 @@ pub enum Op {
     Sbb16(),
     Scasb(),
     Scasw(),
+    Setc(),
     Shl8(),
     Shl16(),
     Shr8(),
