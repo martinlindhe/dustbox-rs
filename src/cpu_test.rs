@@ -1086,6 +1086,29 @@ fn can_execute_movsx() {
     assert_eq!(0xFFFF, cpu.r16[AX].val);
 }
 
+#[test]
+fn can_execute_mov_addressing() {
+    // NOTE: this test demonstrates a emulation bug described in https://github.com/martinlindhe/dustbox-rs/issues/9#issuecomment-355609424
+    // BUG: "mov [bx+si],dx" writes to the CS segment instead of DS
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xBB, 0x10, 0x00, // mov bx,0x10
+        0xBE, 0x01, 0x00, // mov si,0x1
+        0xBA, 0x99, 0x99, // mov dx,0x9999
+        0x89, 0x10,       // mov [bx+si],dx
+    ];
+    cpu.load_com(&code);
+    cpu.sreg16[DS] = 0x8000;
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+
+    let cs = cpu.sreg16[CS];
+    let ds = cpu.sreg16[DS];
+    assert_eq!(0x0000, cpu.peek_u16_at(seg_offs_as_flat(cs, 0x10 + 0x1)));
+    assert_eq!(0x9999, cpu.peek_u16_at(seg_offs_as_flat(ds, 0x10 + 0x1)));
+}
 
 #[test]
 fn can_execute_shrd() {
