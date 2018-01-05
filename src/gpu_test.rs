@@ -87,7 +87,7 @@ fn demo_256() {
         let mut filename = OsString::new();
         filename.push("tests/render/demo/256_");
         filename.push(stem.to_os_string());
-        filename.push("_100k.png");
+        filename.push(".png");
 
         cpu.gpu.test_render_frame(&cpu.memory.memory, filename.to_str().unwrap());
         out_images.push(filename.into_string().unwrap());

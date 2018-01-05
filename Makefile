@@ -1,6 +1,9 @@
 test:
 	cargo test -- --color always --nocapture
 
+expensive-test:
+	cargo test -- --color always --nocapture --ignored
+
 bench:
 	cargo bench
 
