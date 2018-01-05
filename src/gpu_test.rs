@@ -18,7 +18,7 @@ fn demo_256() {
         "../dos-software-decoding/demo-256/244b/244b.com",         // some gfx
         "../dos-software-decoding/demo-256/alpc/alpc.com",         // some gfx
         "../dos-software-decoding/demo-256/beziesux/beziesux.com", // some gfx
-        // "../dos-software-decoding/demo-256/blah/blah.com",       // black screen, crash after 50k instr or so (executing 00:s), ip wrap
+        "../dos-software-decoding/demo-256/blah/blah.com",       // black screen, crash after 50k instr or so (executing 00:s), ip wrap
         "../dos-software-decoding/demo-256/bob/bob.com",           // black screen
         "../dos-software-decoding/demo-256/chaos/chaos.com",       // black screen, needs font data
         "../dos-software-decoding/demo-256/conf/conf.com",       // waits for ENTER press, FIXME: inject enter key press to progress demo
