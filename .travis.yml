@@ -1,0 +1,29 @@
+language: rust
+
+env:
+  global:
+  - CRATE_NAME=dustbox
+
+matrix:
+  fast_finish: true
+  include:
+    # Linux
+    - env: TARGET=x86_64-unknown-linux-gnu
+      rust: 1.23.0
+
+    - env: TARGET=x86_64-unknown-linux-gnu
+      rust: nightly
+
+    # OSX
+    - env: TARGET=x86_64-apple-darwin
+      os: osx
+      rust: nightly
+
+before_install:
+  - set -e
+  - rustup self update
+
+cache: cargo
+before_cache:
+  # Travis can't cache files that are not readable by "others"
+  - chmod -R a+r $HOME/.cargo
