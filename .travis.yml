@@ -13,12 +13,12 @@ matrix:
       rust: nightly
 
     # OSX
-    - env: TARGET=x86_64-apple-darwin
-      os: osx
-      rust: nightly
+    #- env: TARGET=x86_64-apple-darwin
+    #  os: osx
+    #  rust: nightly
 
 install:
-  - if [ $TRAVIS_OS_NAME = linux ]; then sudo apt-get install libgtk-3-dev; else brew install gtk gdk; fi
+  - if [ $TRAVIS_OS_NAME = linux ]; then sudo apt-get install libgtk-3-dev; else brew install gtk gdk-pixbuf; fi
   - cd .. && git clone https://github.com/martinlindhe/dos-software-decoding && cd -
 
 cache: cargo
