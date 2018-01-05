@@ -80,7 +80,7 @@ fn demo_256() {
         let code = tools::read_binary(bin).unwrap();
         cpu.load_com(&code);
 
-        cpu.execute_n_instructions(100_000);
+        cpu.execute_n_instructions(5_000_000);
         let path = Path::new(bin);
 
         let stem = path.file_stem().unwrap_or(OsStr::new(""));
