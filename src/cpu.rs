@@ -1303,6 +1303,13 @@ impl CPU {
                 self.flags.zero = ah & 0x40 != 0; // bit 6
                 self.flags.sign = ah & 0x80 != 0; // bit 7
             }
+            Op::Salc() => {
+                // "setalc" is not documented in intel docs,
+                // but mentioned in http://ref.x86asm.net/coder32.html#gen_note_u_SALC_D6
+                // used in dos-software-decoding/demo-256/luminous/luminous.com
+
+                println!("XXX imp salc: {}", op);
+            }
             Op::Sar8() => {
                 let dst = self.read_parameter_value(&op.params.dst);
                 let count = self.read_parameter_value(&op.params.src);
@@ -2584,7 +2591,11 @@ impl CPU {
                 op.command = Op::Aad();
                 op.params.dst = Parameter::Imm8(self.read_u8());
             }
-            // 0xD6 unassigned in intel docs, salc in XXXXX
+            0xD6 => {
+                // NOTE: 0xD6 unassigned in intel docs, but mapped to salc (aka 'setalc') in
+                // http://ref.x86asm.net/coder32.html#gen_note_u_SALC_D6
+                op.command = Op::Salc();
+            }
             0xD7 => {
                 op.command = Op::Xlatb();
             }

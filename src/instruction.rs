@@ -282,6 +282,7 @@ pub enum Op {
     Ror8(),
     Ror16(),
     Sahf(),
+    Salc(),
     Sar8(),
     Sar16(),
     Sbb8(),
