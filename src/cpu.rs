@@ -3208,12 +3208,11 @@ impl CPU {
                 self.peek_u8_at(offset) as usize
             }
             Parameter::Ptr8AmodeS8(seg, r, imm) => {
-                // let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
                 let offset = (Wrapping(seg_offs_as_flat(self.segment(seg), self.amode16(r))) + Wrapping(imm as usize)).0;
                 self.peek_u8_at(offset) as usize
             }
             Parameter::Ptr8AmodeS16(seg, r, imm) => {
-                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r)) + imm as usize;
+                let offset = (Wrapping(seg_offs_as_flat(self.segment(seg), self.amode16(r))) + Wrapping(imm as usize)).0;
                 self.peek_u8_at(offset) as usize
             }
             Parameter::Ptr16Amode(seg, r) => {

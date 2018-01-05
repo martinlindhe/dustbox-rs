@@ -1087,7 +1087,7 @@ fn can_execute_movsx() {
 }
 
 #[test]
-fn can_execute_mov_addressing() {
+fn can_execute_mov_ds_addressing() {
     // NOTE: this test demonstrates a emulation bug described in https://github.com/martinlindhe/dustbox-rs/issues/9#issuecomment-355609424
     // BUG: "mov [bx+si],dx" writes to the CS segment instead of DS
     let mut cpu = CPU::new();
