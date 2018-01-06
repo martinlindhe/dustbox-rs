@@ -1783,6 +1783,11 @@ impl CPU {
                     }
                 }
             }
+            0x10 => {
+                // adc r/m8, r8
+                op.command = Op::Adc8();
+                op.params = self.rm8_r8(op.segment);
+            }
             0x13 => {
                 // adc r16, r/m16
                 op.command = Op::Adc16();
