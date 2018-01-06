@@ -103,11 +103,6 @@ impl CPU {
         // println!("loading rom to {:06X}..{:06X}", min, max);
         self.rom_base = min;
 
-        // init CS with a "INT 0x20" at cs:0000, like DOS
-        // let cs = self.sreg16[CS];
-        // self.write_u8(seg_offs_as_flat(cs, 0), 0xCD);
-        // self.write_u8(seg_offs_as_flat(cs, 1), 0x20);
-
         self.memory.memory[min..max].copy_from_slice(data);
     }
 
