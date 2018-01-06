@@ -47,27 +47,27 @@ impl GPU {
         }
     }
 
-    // render current video to canvas `c`
+    // render video frame to canvas `c`
     pub fn draw_canvas(&self, c: &cairo::Context, memory: &[u8]) {
-        let colorspace = 0; // XXX: gdk_pixbuf_sys::GDK_COLORSPACE_RGB = 0
-
-        // XXX FIXME +1 hack because of off-by-1 bug accessing the pixbuf
-        let buf = unsafe { gdk_pixbuf::Pixbuf::new(colorspace, false, 8, self.width, self.height + 1) }.unwrap();
-        // println!("draw_canvas: buf w {}, h {}. video w {}, h {}", buf.get_width(), buf.get_height(), self.width, self.height);
-
+        let mut buf = vec![0u8; (self.width * self.height * 3) as usize];
         for y in 0..self.height {
             for x in 0..self.width {
                 let offset = 0xA_0000 + ((y * self.width) + x) as usize;
                 let byte = memory[offset];
                 let pal = &self.pal[byte as usize];
-                buf.put_pixel(x, y, pal.r, pal.g, pal.b, 255);
+                let i = ((y * self.width + x) * 3) as usize;
+                buf[i] = pal.r;
+                buf[i+1] = pal.g;
+                buf[i+2] = pal.b;
             }
         }
 
-        c.set_source_pixbuf(&buf, 0., 0.);
+        let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(buf, 0, false, 8, self.width, self.height, self.width * 3);
+        c.set_source_pixbuf(&pixbuf, 0., 0.);
         c.paint();
     }
 
+    // render video frame as a raster::Image, used for saving video frame to disk
     pub fn draw_image(&self, memory: &[u8]) -> raster::Image {
         let mut canvas = raster::Image::blank(self.width, self.height);
         for y in 0..self.height {
