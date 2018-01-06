@@ -1311,7 +1311,7 @@ impl CPU {
                 let dst = self.read_parameter_value(&op.params.dst);
                 let count = self.read_parameter_value(&op.params.src);
 
-                let res = dst >> count;
+                let res = dst.rotate_right(count as u32);
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
 
                 // The CF flag contains the value of the last bit shifted out of the destination operand.
@@ -1333,7 +1333,7 @@ impl CPU {
                 let dst = self.read_parameter_value(&op.params.dst);
                 let count = self.read_parameter_value(&op.params.src);
 
-                let res = dst >> count;
+                let res = dst.rotate_right(count as u32);
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
 
                 // The CF flag contains the value of the last bit shifted out of the destination operand.
@@ -1374,7 +1374,7 @@ impl CPU {
                 // two arguments    (alias: sal)
                 let dst = self.read_parameter_value(&op.params.dst);
                 let count = self.read_parameter_value(&op.params.src);
-                let res = dst << count;
+                let res = dst.rotate_left(count as u32);
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
 
                 self.flags.carry = (dst & 0x80) != 0;
@@ -1391,7 +1391,7 @@ impl CPU {
                 // two arguments    (alias: sal)
                 let dst = self.read_parameter_value(&op.params.dst);
                 let count = self.read_parameter_value(&op.params.src);
-                let res = dst << count;
+                let res = dst.rotate_left(count as u32);
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
 
                 self.flags.carry = (dst & 0x8000) != 0;
@@ -1409,7 +1409,7 @@ impl CPU {
                 let dst = self.read_parameter_value(&op.params.dst);
                 let count = self.read_parameter_value(&op.params.src);
 
-                let res = dst >> count;
+                let res = dst.rotate_right(count as u32);
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
 
                 self.flags.carry = (dst & 1) != 0;
@@ -1426,7 +1426,7 @@ impl CPU {
                 let dst = self.read_parameter_value(&op.params.dst);
                 let count = self.read_parameter_value(&op.params.src);
 
-                let res = dst >> count;
+                let res = dst.rotate_right(count as u32);
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
 
                 // The CF flag contains the value of the last bit shifted out of the destination
@@ -3580,17 +3580,15 @@ impl CPU {
                 //    (C&T Wingine) display enabled (retrace/DE selected by XR14)
                 let mut flags = 0;
 
-                // HACK: fake bit 0:
+                // HACK: fake bit 0 and 3 (retrace in progress)
                 if self.gpu.scanline == 0 {
-                    flags |= 1; // set bit 0
+                    flags |= 0b0000_0001; // set bit 0
+                    //flags |= 0b0000_1000; // set bit 3
                 } else {
-                    flags &= !(1 << 1); // clear bit 0
+                    flags &= 0b1111_1110; // clear bit 0
+                    //flags &= 0b1111_0111; // clear bit 3
                 }
-                /*
-                println!("XXX read io port CGA status register at {:06X} = {:02X}",
-                         self.get_offset(),
-                         flags);
-                */
+
                 flags
             }
             _ => {
