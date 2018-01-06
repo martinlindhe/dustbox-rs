@@ -118,8 +118,24 @@ pub fn handle(cpu: &mut CPU) {
             // in graphics modes if it is greater than the number of positions
             // remaining in the current row. With PhysTechSoft's PTS ROM-DOS
             // the BH, BL, and CX values are ignored on entry.
-
-            println!("XXX write character at pos: char={}, page={}, attrib={}, count={}",
+            println!("XXX impl VIDEO - WRITE CHARACTER AND ATTRIBUTE AT CURSOR POSITION. char={}, page={}, attrib={}, count={}",
+                     cpu.r16[AX].lo_u8() as char,
+                     cpu.r16[BX].hi_u8(),
+                     cpu.r16[BX].lo_u8(),
+                     cpu.r16[CX].val);
+        }
+        0x0A => {
+            // VIDEO - WRITE CHARACTER ONLY AT CURSOR POSITION
+            //
+            // AL = character to display
+            // BH = page number (00h to number of pages - 1) (see #00010)
+            //      background color in 256-color graphics modes (ET4000)
+            // BL = attribute (PCjr, Tandy 1000 only) or color (graphics mode)
+            //      if bit 7 set in <256-color graphics mode, character is XOR'ed
+            //      onto screen
+            // CX = number of times to write character
+            // Return: Nothing
+             println!("XXX impl VIDEO - WRITE CHARACTER ONLY AT CURSOR POSITION. char={}, page={}, attrib={}, count={}",
                      cpu.r16[AX].lo_u8() as char,
                      cpu.r16[BX].hi_u8(),
                      cpu.r16[BX].lo_u8(),
