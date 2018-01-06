@@ -31,7 +31,7 @@ pub struct CPU {
     pub gpu: GPU,
     rom_base: usize,
     pub fatal_error: bool, // for debugging: signals to debugger we hit an error
-    pub deterministic: bool, // for tests: disables nondeterministic behaviour
+    pub deterministic: bool, // for testing: toggles non-deterministic behaviour
 }
 
 impl CPU {
