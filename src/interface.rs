@@ -76,7 +76,7 @@ impl Interface {
             .get_object("canvas")
             .unwrap();
         {
-            let app = self.app.clone();
+            let app = Rc::clone(&self.app);
             canvas.connect_draw(move |_, ctx| {
                 let app = app.borrow();
                 app.cpu.gpu.draw_canvas(ctx, &app.cpu.memory.memory);
@@ -118,8 +118,8 @@ impl Interface {
 
         {
             // update disasm
-            let app = self.app.clone();
-            let builder = self.builder.clone();
+            let app = Rc::clone(&self.app);
+            let builder = Rc::clone(&self.builder);
             let text = app.borrow_mut().disasm_n_instructions_to_text(20);
             disasm_text
                 .get_buffer()
@@ -132,8 +132,8 @@ impl Interface {
         }
 
         {
-            let app = self.app.clone();
-            let builder = self.builder.clone();
+            let app = Rc::clone(&self.app);
+            let builder = Rc::clone(&self.builder);
             let disasm_text = disasm_text.clone();
 
             button_step_into.connect_clicked(move |_| {
@@ -153,8 +153,8 @@ impl Interface {
         }
 
         {
-            let app = self.app.clone();
-            let builder = self.builder.clone();
+            let app = Rc::clone(&self.app);
+            let builder = Rc::clone(&self.builder);
             let disasm_text = disasm_text.clone();
 
             button_step_over.connect_clicked(move |_| {
@@ -174,8 +174,8 @@ impl Interface {
         }
 
         {
-            let app = self.app.clone();
-            let builder = self.builder.clone();
+            let app = Rc::clone(&self.app);
+            let builder = Rc::clone(&self.builder);
             let disasm_text = disasm_text.clone();
 
             button_run.connect_clicked(move |_| {
@@ -197,7 +197,7 @@ impl Interface {
         }
 
         {
-            let app = self.app.clone();
+            let app = Rc::clone(&self.app);
             button_dump_memory.connect_clicked(move |_| {
                 let app = app.borrow();
                 app.dump_memory("emu_mem.bin", 0x085F, 0x0000, 0xFFFF);
@@ -205,8 +205,8 @@ impl Interface {
         }
 
         {
-            let app = self.app.clone();
-            let builder = self.builder.clone();
+            let app = Rc::clone(&self.app);
+            let builder = Rc::clone(&self.builder);
             let disasm_text = disasm_text.clone();
 
             window.connect_key_press_event(move |_, key| {
