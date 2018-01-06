@@ -4,7 +4,6 @@ version = "0.1.0"
 authors = ["Martin Lindhe"]
 
 [dependencies]
-colog = "0.1"
 log = "0.4"
 time = "0.1"
 rand = "0.4"

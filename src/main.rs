@@ -5,7 +5,6 @@
 
 #[macro_use] extern crate log;
 
-extern crate colog;
 extern crate time;
 extern crate test;
 extern crate gtk;
@@ -34,8 +33,6 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 fn main() {
-    colog::init();
-
     let app = Rc::new(RefCell::new(debugger::Debugger::new()));
 
     let mut gui = interface::Interface::new(app);
