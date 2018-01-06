@@ -30,12 +30,13 @@ mod int16;
 mod int21;
 mod int33;
 
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
+use std::cell::RefCell;
 
 fn main() {
     colog::init();
 
-    let app = Arc::new(Mutex::new(debugger::Debugger::new()));
+    let app = Rc::new(RefCell::new(debugger::Debugger::new()));
 
     let mut gui = interface::Interface::new(app);
     gui.main();

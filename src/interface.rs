@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
 use std;
-use std::sync::{Arc, Mutex};
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::io::prelude::*;
@@ -23,81 +22,82 @@ use register::{AX, BP, BX, CS, CX, DI, DS, DX, ES, FS, GS, SI, SP, SS};
 use instruction::seg_offs_as_flat;
 
 pub struct Interface {
-    app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>,
-    builder: std::sync::Arc<std::sync::Mutex<gtk::Builder>>,
-    pub canvas: RefCell<gtk::DrawingArea>,
+    app: Rc<RefCell<debugger::Debugger>>,
+    builder: Rc<RefCell<gtk::Builder>>,
 }
 
 impl Interface {
     // XXX rename to DebugWindow
-    pub fn new(app: std::sync::Arc<std::sync::Mutex<debugger::Debugger>>) -> Self {
+    pub fn new(app: Rc<RefCell<debugger::Debugger>>) -> Self {
         gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));
 
         Self {
             app: app,
-            builder: Arc::new(Mutex::new(gtk::Builder::new_from_string(
+            builder: Rc::new(RefCell::new(gtk::Builder::new_from_string(
                 include_str!("interface.glade"),
             ))),
-            canvas: RefCell::new(gtk::DrawingArea::new()),
         }
     }
 
     // start the gtk-rs main loop
     pub fn main(&mut self) {
         let window: gtk::Window = self.builder
-            .lock()
-            .unwrap()
+            .borrow()
             .get_object("main_window")
             .unwrap();
-
         let button_step_into: gtk::Button = self.builder
-            .lock()
-            .unwrap()
+            .borrow()
             .get_object("button_step_into")
             .unwrap();
         let button_step_over: gtk::Button = self.builder
-            .lock()
-            .unwrap()
+            .borrow()
             .get_object("button_step_over")
             .unwrap();
         let button_run: gtk::Button = self.builder
-            .lock()
-            .unwrap()
+            .borrow()
             .get_object("button_run")
             .unwrap();
         let button_dump_memory: gtk::Button = self.builder
-            .lock()
-            .unwrap()
+            .borrow()
             .get_object("button_dump_memory")
             .unwrap();
-
         let disasm_text: gtk::TextView = self.builder
-            .lock()
-            .unwrap()
+            .borrow()
             .get_object("disasm_text")
             .unwrap();
-        // disasm_text.width = 400; // XXX set fixed width of disasm box, so it wont resize ...
-
         let input_command: gtk::Entry = self.builder
-            .lock()
-            .unwrap()
+            .borrow()
             .get_object("input_command")
             .unwrap();
         input_command.set_placeholder_text("Enter command (or type help)");
 
-        let canvas = gtk::DrawingArea::new();
-        canvas.set_size_request(320, 240);
-        canvas.set_visible(true);
+        /*
+        let canvas: gtk::DrawingArea = self.builder
+            .borrow()
+            .get_object("canvas")
+            .unwrap();
+        {
+            let app = self.app.clone();
+            canvas.connect_draw(move |_, ctx| {
+                //ctx.move_to(10., 10.);
+                //ctx.show_text("Hello");
+                println!("canvas drawed");
+
+                let app = app.borrow();
+                app.cpu.gpu.draw_canvas(&ctx, &app.cpu.memory.memory);
+
+                Inhibit(true)
+            });
+        }
+        */
 
         // menu items
         let file_quit: gtk::MenuItem = self.builder
-            .lock()
-            .unwrap()
+            .borrow()
             .get_object("file_quit")
             .unwrap();
         let help_about: gtk::MenuItem = self.builder
-            .lock()
-            .unwrap()
+            .borrow()
             .get_object("help_about")
             .unwrap();
 
@@ -123,40 +123,28 @@ impl Interface {
             });
         }
 
-        // update disasm
-        let text = self.app.lock().unwrap().disasm_n_instructions_to_text(20);
-        disasm_text
-            .get_buffer()
-            .map(|buffer| buffer.set_text(text.as_str()));
-
         {
-            let app = Arc::clone(&self.app);
-            let mut app = app.lock().unwrap();
-            let builder = Arc::clone(&self.builder);
-            update_registers(&mut app, &builder);
+            // update disasm
+            let app = self.app.clone();
+            let builder = self.builder.clone();
+            let text = app.borrow_mut().disasm_n_instructions_to_text(20);
+            disasm_text
+                .get_buffer()
+                .map(|buffer| buffer.set_text(text.as_str()));
+
+            {
+                let mut app = app.borrow_mut();
+                update_registers(&mut app, &builder);
+            }
         }
 
         {
-            // update screen
-            let app = Arc::clone(&self.app);
-            let canvas = self.canvas.borrow();
-            canvas.connect_draw(move |_, context| {
-                app.lock()
-                    .unwrap()
-                    .cpu
-                    .gpu
-                    .draw_canvas(context, &app.lock().unwrap().cpu.memory.memory);
-                Inhibit(true)
-            });
-        }
-
-        {
-            let app = Arc::clone(&self.app);
-            let builder = Arc::clone(&self.builder);
+            let app = self.app.clone();
+            let builder = self.builder.clone();
             let disasm_text = disasm_text.clone();
 
             button_step_into.connect_clicked(move |_| {
-                let mut app = app.lock().unwrap();
+                let mut app = app.borrow_mut();
 
                 app.cpu.fatal_error = false;
                 app.exec_command("step into 1");
@@ -167,18 +155,17 @@ impl Interface {
                     .get_buffer()
                     .map(|buffer| buffer.set_text(text.as_str()));
 
-                let builder = Arc::clone(&builder);
                 update_registers(&mut app, &builder);
             });
         }
 
         {
-            let app = Arc::clone(&self.app);
-            let builder = Arc::clone(&self.builder);
+            let app = self.app.clone();
+            let builder = self.builder.clone();
             let disasm_text = disasm_text.clone();
 
             button_step_over.connect_clicked(move |_| {
-                let mut app = app.lock().unwrap();
+                let mut app = app.borrow_mut();
 
                 app.cpu.fatal_error = false;
                 app.exec_command("step over 1");
@@ -189,18 +176,17 @@ impl Interface {
                     .get_buffer()
                     .map(|buffer| buffer.set_text(text.as_str()));
 
-                let builder = Arc::clone(&builder);
                 update_registers(&mut app, &builder);
             });
         }
 
         {
-            let app = Arc::clone(&self.app);
-            let builder = Arc::clone(&self.builder);
+            let app = self.app.clone();
+            let builder = self.builder.clone();
             let disasm_text = disasm_text.clone();
 
             button_run.connect_clicked(move |_| {
-                let mut app = app.lock().unwrap();
+                let mut app = app.borrow_mut();
 
                 app.cpu.fatal_error = false;
 
@@ -213,34 +199,33 @@ impl Interface {
                     .get_buffer()
                     .map(|buffer| buffer.set_text(text.as_str()));
 
-                let builder = Arc::clone(&builder);
                 update_registers(&mut app, &builder);
             });
         }
 
         {
-            let app = Arc::clone(&self.app);
+            let app = self.app.clone();
             button_dump_memory.connect_clicked(move |_| {
-                let app = app.lock().unwrap();
+                let app = app.borrow();
                 app.dump_memory("emu_mem.bin", 0x085F, 0x0000, 0xFFFF);
             });
         }
 
         {
-            let app = Arc::clone(&self.app);
-            let builder = Arc::clone(&self.builder);
+            let app = self.app.clone();
+            let builder = self.builder.clone();
             let disasm_text = disasm_text.clone();
 
             window.connect_key_press_event(move |_, key| {
+                
                 match key.get_keyval() as u32 {
                     key::Escape => gtk::main_quit(),
                     key::Return => {
                         let search_word = input_command.get_text().unwrap();
                         println!("> {}", search_word);
-                        let mut app = app.lock().unwrap();
+                        let mut app = app.borrow_mut();
                         app.exec_command(&search_word);
                         input_command.set_text("");
-                        // XXX redraw all
 
                         // update disasm
                         let text = app.disasm_n_instructions_to_text(20);
@@ -248,7 +233,6 @@ impl Interface {
                             .get_buffer()
                             .map(|buffer| buffer.set_text(text.as_str()));
 
-                        let builder = Arc::clone(&builder);
                         update_registers(&mut app, &builder);
                     },
                     _ => ()
@@ -281,10 +265,9 @@ fn u16_as_register_str(v: u16, prev: u16) -> String {
 
 fn update_registers(
     app: &mut debugger::Debugger,
-    builder: &std::sync::Arc<std::sync::Mutex<gtk::Builder>>,
+    builder: &Rc<RefCell<gtk::Builder>>,
 ) {
-    let builder = builder.lock().unwrap();
-
+    let builder = builder.borrow();
     let ax_value: gtk::Label = builder.get_object("ax_value").unwrap();
     let bx_value: gtk::Label = builder.get_object("bx_value").unwrap();
     let cx_value: gtk::Label = builder.get_object("cx_value").unwrap();
@@ -365,8 +348,6 @@ fn update_registers(
     ));
     ip_value.set_markup(&u16_as_register_str(app.cpu.ip, app.prev_regs.ip));
 
-    // flags
-
     // XXX: color changes for flag changes too
     let c_flag: gtk::CheckButton = builder.get_object("c_flag").unwrap();
     let z_flag: gtk::CheckButton = builder.get_object("z_flag").unwrap();
@@ -386,34 +367,9 @@ fn update_registers(
     d_flag.set_active(app.cpu.flags.direction);
     i_flag.set_active(app.cpu.flags.interrupt);
 
-    // save previous regs for next update
+    // save previous values for next update
     app.prev_regs.ip = app.cpu.ip;
     app.prev_regs.r16 = app.cpu.r16;
     app.prev_regs.sreg16 = app.cpu.sreg16;
     app.prev_regs.flags = app.cpu.flags;
 }
-
-/*
-fn render_canvas(canvas: &std::sync::Arc<gtk::Image>, cpu: &CPU) {
-    XXX rewrite for rs-gtk
-
-    let mut image = canvas.image.borrow_mut();
-
-    // XXX rather replace image pixels
-    // image = dbg.cpu.gpu.render_frame();
-    // image.from_data(frame.into_data());
-
-    // VGA, mode 13h:
-    let height = 320; // dbg.cpu.gpu.height;
-    let width = 240; // dbg.cpu.gpu.width;
-
-    for y in 0..height {
-        for x in 0..width {
-            let offset = 0xA0000 + ((y * width) + x) as usize;
-            let byte = cpu.memory.memory[offset];
-            let pal = &cpu.gpu.palette[byte as usize];
-            image.pixel(x as i32, y as i32, Color::rgb(pal.r, pal.g, pal.b));
-        }
-    }
-}
-*/
