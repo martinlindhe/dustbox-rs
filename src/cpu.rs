@@ -31,6 +31,7 @@ pub struct CPU {
     pub gpu: GPU,
     rom_base: usize,
     pub fatal_error: bool, // for debugging: signals to debugger we hit an error
+    pub deterministic: bool, // for tests: disables nondeterministic behaviour
 }
 
 impl CPU {
@@ -46,6 +47,7 @@ impl CPU {
             gpu: GPU::new(),
             rom_base: 0,
             fatal_error: false,
+            deterministic: false,
         }
     }
 
@@ -1308,6 +1310,7 @@ impl CPU {
                 println!("XXX imp salc: {}", op);
             }
             Op::Sar8() => {
+                // Signed divide* r/m8 by 2, imm8 times.
                 let dst = self.read_parameter_value(&op.params.dst);
                 let count = self.read_parameter_value(&op.params.src);
 
@@ -3603,6 +3606,7 @@ impl CPU {
     fn int(&mut self, int: u8) {
         // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
         // http://wiki.osdev.org/Interrupt_Vector_Table   XXX or is those just for real-mode interrupts?
+        let deterministic = self.deterministic;
         match int {
             0x03 => {
                 // debugger interrupt
@@ -3618,7 +3622,7 @@ impl CPU {
                 println!("INT 20 - Terminating program");
                 self.fatal_error = true; // stops running debugger
             }
-            0x21 => int21::handle(self),
+            0x21 => int21::handle(self, deterministic),
             0x33 => int33::handle(self),
             _ => {
                 println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}",

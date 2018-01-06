@@ -4,7 +4,7 @@ use cpu::CPU;
 use register::{AX, BX, CX, DX, DS, ES};
 
 // dos related interrupts
-pub fn handle(cpu: &mut CPU) {
+pub fn handle(cpu: &mut CPU, deterministic: bool) {
     match cpu.r16[AX].hi_u8() {
         0x06 => {
             // DOS 1+ - DIRECT CONSOLE OUTPUT
@@ -69,11 +69,13 @@ pub fn handle(cpu: &mut CPU) {
             let now = time::now();
             let centi_sec = now.tm_nsec / 1000_0000; // nanosecond to 1/100 sec
 
-            // Return:
-            cpu.r16[CX].set_hi(now.tm_hour as u8); // CH = hour
-            cpu.r16[CX].set_lo(now.tm_min as u8); // CL = minute
-            cpu.r16[DX].set_hi(now.tm_sec as u8); // DH = second
-            cpu.r16[DX].set_lo(centi_sec as u8); // DL = 1/100 second
+            if !deterministic {
+                // Return:
+                cpu.r16[CX].set_hi(now.tm_hour as u8); // CH = hour
+                cpu.r16[CX].set_lo(now.tm_min as u8); // CL = minute
+                cpu.r16[DX].set_hi(now.tm_sec as u8); // DH = second
+                cpu.r16[DX].set_lo(centi_sec as u8); // DL = 1/100 second
+            }
         }
         0x30 => {
             // DOS 2+ - GET DOS VERSION

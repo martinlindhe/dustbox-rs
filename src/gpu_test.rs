@@ -70,6 +70,7 @@ fn demo_256() {
         println!("demo_256: {}", bin);
 
         let mut cpu = CPU::new();
+        cpu.deterministic = true;
         let code = tools::read_binary(bin).unwrap();
         cpu.load_com(&code);
 
