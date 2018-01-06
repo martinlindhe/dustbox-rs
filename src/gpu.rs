@@ -18,7 +18,6 @@ pub struct GPU {
     pub dac_color: usize,         // for out 03c9, 0 = red, 1 = green, 2 = blue
     pub dac_index: u8,            // for out 03c9
     pub dac_current_pal: Vec<u8>, // for out 03c9
-    pixbuf: RefCell<gdk_pixbuf::Pixbuf>,
 }
 
 #[derive(Clone)]
@@ -30,20 +29,14 @@ pub struct DACPalette {
 
 impl GPU {
     pub fn new() -> Self {
-        let (width, height) = (320, 200);
-        let colorspace = 0; // XXX: gdk_pixbuf_sys::GDK_COLORSPACE_RGB = 0
-
         GPU {
             scanline: 0,
-            width: width,
-            height: height,
+            width: 320,
+            height: 200,
             pal: vec![DACPalette { r: 0, g: 0, b: 0 }; 256],
             dac_color: 0,
             dac_index: 0,
             dac_current_pal: vec![0u8; 3],
-            pixbuf: RefCell::new(
-                unsafe { gdk_pixbuf::Pixbuf::new(colorspace, false, 8, width, height) }.unwrap(),
-            ),
         }
     }
     pub fn progress_scanline(&mut self) {
@@ -56,20 +49,23 @@ impl GPU {
 
     // render current video to canvas `c`
     pub fn draw_canvas(&self, c: &cairo::Context, memory: &[u8]) {
-        println!("draw canvas");
+        let colorspace = 0; // XXX: gdk_pixbuf_sys::GDK_COLORSPACE_RGB = 0
 
-        let buf = self.pixbuf.borrow();
+        // XXX FIXME +1 hack because of off-by-1 bug accessing the pixbuf
+        let buf = unsafe { gdk_pixbuf::Pixbuf::new(colorspace, false, 8, self.width, self.height + 1) }.unwrap();
+        // println!("draw_canvas: buf w {}, h {}. video w {}, h {}", buf.get_width(), buf.get_height(), self.width, self.height);
 
         for y in 0..self.height {
             for x in 0..self.width {
                 let offset = 0xA_0000 + ((y * self.width) + x) as usize;
                 let byte = memory[offset];
                 let pal = &self.pal[byte as usize];
-                buf.put_pixel(x as i32, y as i32, pal.r, pal.g, pal.b, 255);
+                buf.put_pixel(x, y, pal.r, pal.g, pal.b, 255);
             }
         }
 
-        c.set_source_pixbuf(&buf, f64::from(self.width), f64::from(self.height));
+        c.set_source_pixbuf(&buf, 0., 0.);
+        c.paint();
     }
 
     pub fn draw_image(&self, memory: &[u8]) -> raster::Image {

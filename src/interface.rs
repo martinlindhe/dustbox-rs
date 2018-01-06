@@ -71,7 +71,6 @@ impl Interface {
             .unwrap();
         input_command.set_placeholder_text("Enter command (or type help)");
 
-        /*
         let canvas: gtk::DrawingArea = self.builder
             .borrow()
             .get_object("canvas")
@@ -79,17 +78,11 @@ impl Interface {
         {
             let app = self.app.clone();
             canvas.connect_draw(move |_, ctx| {
-                //ctx.move_to(10., 10.);
-                //ctx.show_text("Hello");
-                println!("canvas drawed");
-
                 let app = app.borrow();
-                app.cpu.gpu.draw_canvas(&ctx, &app.cpu.memory.memory);
-
-                Inhibit(true)
+                app.cpu.gpu.draw_canvas(ctx, &app.cpu.memory.memory);
+                Inhibit(false)
             });
         }
-        */
 
         // menu items
         let file_quit: gtk::MenuItem = self.builder
