@@ -10,8 +10,11 @@ If you are looking for a more complete dos emulator, I suggest you check out [do
 
 ## Contributing
 
-Any help and contributions are much welcome!
+Any help and contributions are much welcome! 
 
+## IRC
+
+Join us in irc.mozilla.com #dustbox
 
 ## Tests
 
