@@ -155,21 +155,22 @@ impl Debugger {
 
          match parts[0].as_ref() {
             "help" => {
-                println!("load <file>      - load a binary (.com) file");
-                println!("load             - load previous binary (.com) file");
-                println!("r                - run until breakpoint");
-                println!("step into <n>    - steps into n instructions");
-                println!("step over        - steps over the next instruction");
-                println!("reset            - resets the cpu");
-                println!("v                - show number of instructions executed");
-                println!("r                - show register values");
-                println!("bp add <n>       - add a breakpoint at offset n");
-                println!("bp list          - show breakpoints");
-                println!("bp clear         - clear breakpoints");
-                println!("flat             - show current address as flat value");
-                println!("d                - disasm instruction");
-                println!("dump <off> <len> - dumps len bytes of memory at given offset");
-                println!("exit             - exit");
+                println!("load <file>                      - load a binary (.com) file");
+                println!("load                             - load previous binary (.com) file");
+                println!("r                                - run until breakpoint");
+                println!("step into <n>                    - steps into n instructions");
+                println!("step over                        - steps over the next instruction");
+                println!("reset                            - resets the cpu");
+                println!("v                                - show number of instructions executed");
+                println!("r                                - show register values");
+                println!("bp add <n>                       - add a breakpoint at offset n");
+                println!("bp list                          - show breakpoints");
+                println!("bp clear                         - clear breakpoints");
+                println!("flat                             - show current address as flat value");
+                println!("d                                - disasm instruction");
+                println!("hexdump <off> <len>              - dumps len bytes of memory at given offset to the console");
+                println!("bindump <seg> <off> <len> <file> - writes memory dump to file");
+                println!("exit                             - exit");
             }
             "step" => {
                 match parts[1].as_ref() {
@@ -277,7 +278,7 @@ impl Debugger {
                     self.last_program = Option::Some(path);
                 }
             }
-            "dump" => {
+            "hexdump" => {
                 // dump memory at <offset> <length>
                 let mut offset: usize = 0;
                 let mut length: usize = 0xFFFF;
@@ -297,11 +298,43 @@ impl Debugger {
                         }
                     }
                 }
-                // TODO: write to file instead
                 for i in offset..(offset + length) {
                     print!("{:02X} ", self.cpu.memory.memory[i]);
                 }
                 println!();
+            }
+            "bindump" => {
+                // bindump <seg> <off> <len> <file>
+                if parts.len() < 5 {
+                    println!("bindump: not enough arguments");
+                    return;
+                }
+
+                let mut segment: usize;
+                let mut offset: usize;
+                let mut length: usize;
+                match parse_number_string(&parts[1]) {
+                    Ok(n) => segment = n,
+                    Err(e) => {
+                        println!("segment parse error: {}", e);
+                        return;
+                    }
+                }
+                match parse_number_string(&parts[2]) {
+                    Ok(n) => offset = n,
+                    Err(e) => {
+                        println!("offset parse error: {}", e);
+                        return;
+                    }
+                }
+                match parse_number_string(&parts[3]) {
+                    Ok(n) => length = n,
+                    Err(e) => {
+                        println!("length parse error: {}", e);
+                        return;
+                    }
+                }
+                self.dump_memory(&parts[4], segment as u16, offset as u16, length);
             }
             "r" | "run" => {
                 self.run_until_breakpoint();
