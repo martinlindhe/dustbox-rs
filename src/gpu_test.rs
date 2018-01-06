@@ -14,6 +14,7 @@ use tools;
 #[test] #[ignore] // it is too expensive
 fn demo_256() {
     let mut test_bins = vec![
+        "../dos-software-decoding/demo-256/4sum/4sum.com",
         "../dos-software-decoding/demo-256/165plasm/165plasm.com",
         "../dos-software-decoding/demo-256/244b/244b.com",
         "../dos-software-decoding/demo-256/alpc/alpc.com",
@@ -27,6 +28,7 @@ fn demo_256() {
         "../dos-software-decoding/demo-256/fire2/fire2.com",
         "../dos-software-decoding/demo-256/fire17/fire17.com",
         "../dos-software-decoding/demo-256/flame2/flame2.com",
+        "../dos-software-decoding/demo-256/flood/flood.com",
         "../dos-software-decoding/demo-256/fridge/fridge.com",
         // "../dos-software-decoding/demo-256/hungecek/hungecek.com", // ip wraps
         "../dos-software-decoding/demo-256/julia/julia.com",
