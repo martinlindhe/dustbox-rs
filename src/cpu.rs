@@ -3539,6 +3539,11 @@ impl CPU {
 
     // read byte from I/O port
     fn in_port(&mut self, port: u16) -> u8 {
+        /*
+        println!("in_port: read from {:04X} at {:06X}",
+                 port,
+                 self.get_offset());
+        */
         match port {
             0x0040 => {
                 // Programmable Interval Timer
