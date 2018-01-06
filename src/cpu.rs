@@ -2930,7 +2930,7 @@ impl CPU {
                 }
             }
             _ => {
-                println!("disasm: unknown op {:02X} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
+                println!("decode_instruction: unknown op {:02X} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
                          b,
                          self.sreg16[CS],
                          self.ip - 1,
