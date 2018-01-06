@@ -1,7 +1,7 @@
 use time;
 
 use cpu::CPU;
-use register::{AX, BX, CX, DX, DS};
+use register::{AX, BX, CX, DX, DS, ES};
 
 // dos related interrupts
 pub fn handle(cpu: &mut CPU) {
@@ -132,6 +132,31 @@ pub fn handle(cpu: &mut CPU) {
                      cpu.r16[CX].val,
                      cpu.sreg16[DS],
                      cpu.r16[DX].val);
+        }
+        0x48 => {
+            // DOS 2+ - ALLOCATE MEMORY
+            // BX = number of paragraphs to allocate
+            // Return:
+            // CF clear if successful
+            // AX = segment of allocated block
+            // CF set on error
+            // AX = error code (07h,08h) (see #01680 at AH=59h/BX=0000h)
+            // BX = size of largest available block
+            println!("XXX impl DOS 2+ - ALLOCATE MEMORY. BX={:04X}",
+                     cpu.r16[BX].val);
+        }
+        0x4A => {
+            // DOS 2+ - RESIZE MEMORY BLOCK
+            // BX = new size in paragraphs
+            // ES = segment of block to resize
+            // Return:
+            // CF clear if successful
+            // CF set on error
+            // AX = error code (07h,08h,09h) (see #01680 at AH=59h/BX=0000h)
+            // BX = maximum paragraphs available for specified memory block
+            println!("XXX impl DOS 2+ - RESIZE MEMORY BLOCK. BX={:04X}, ES={:04X}",
+                     cpu.r16[BX].val,
+                     cpu.sreg16[ES]);
         }
         0x4C => {
             // DOS 2+ - EXIT - TERMINATE WITH RETURN CODE
