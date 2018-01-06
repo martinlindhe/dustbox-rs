@@ -35,7 +35,7 @@ pub struct CPU {
 
 impl CPU {
     pub fn new() -> Self {
-        let mut cpu = CPU {
+        CPU {
             ip: 0,
             instruction_count: 0,
             memory: Memory::new(),
@@ -46,18 +46,7 @@ impl CPU {
             gpu: GPU::new(),
             rom_base: 0,
             fatal_error: false,
-        };
-
-        // initializes the cpu as if to run .com programs, info from
-        // http://www.delorie.com/djgpp/doc/rbinter/id/51/29.html
-
-        // offset of last word available in first 64k segment
-        cpu.r16[SP].val = 0xFFFD;
-
-        // apparently DOS initializes the CX register to 0xFF
-        cpu.r16[CX].val = 0xFF;
-
-        cpu
+        }
     }
 
     pub fn add_breakpoint(&mut self, bp: usize) {
@@ -97,7 +86,16 @@ impl CPU {
         self.sreg16[ES] = psp_segment;
         self.sreg16[SS] = psp_segment;
 
+        // offset of last word available in first 64k segment
+        self.r16[SP].val = 0xFFFE;
         self.r16[BP].val = 0x091C; // is what dosbox used
+
+        // This is what dosbox initializes the registers to
+        // at program load
+        self.r16[CX].val = 0xFF;
+        self.r16[DX].val = psp_segment;
+        self.r16[SI].val = 0x100;
+        self.r16[DI].val = 0xFFFE;
 
         self.ip = 0x0100;
         let min = self.get_offset();
@@ -106,9 +104,9 @@ impl CPU {
         self.rom_base = min;
 
         // init CS with a "INT 0x20" at cs:0000, like DOS
-        let cs = self.sreg16[CS];
-        self.write_u8(seg_offs_as_flat(cs, 0), 0xCD);
-        self.write_u8(seg_offs_as_flat(cs, 1), 0x20);
+        // let cs = self.sreg16[CS];
+        // self.write_u8(seg_offs_as_flat(cs, 0), 0xCD);
+        // self.write_u8(seg_offs_as_flat(cs, 1), 0x20);
 
         self.memory.memory[min..max].copy_from_slice(data);
     }

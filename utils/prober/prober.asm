@@ -10,18 +10,18 @@ section .bss
 section .text
     ; program code
 start:
-    call clear_regs
-    call clear_mem
+    ; call clear_regs
+    ; call clear_mem
 
-    int 3
-    ; ------------------
-    ; run a instruction
-    ; XXX
+    ; int 3
+    ; ; ------------------
+    ; ; run a instruction
+    ; ; XXX
 
-    mov si,0x100
-    mov di,0x400
-    mov cx,0x10
-    lodsb
+    ; mov si,0x100
+    ; mov di,0x400
+    ; mov cx,0x10
+    ; lodsb
 
     ; save reg states after instruction executes
     mov [_ax], ax
