@@ -3583,10 +3583,10 @@ impl CPU {
                 // HACK: fake bit 0 and 3 (retrace in progress)
                 if self.gpu.scanline == 0 {
                     flags |= 0b0000_0001; // set bit 0
-                    //flags |= 0b0000_1000; // set bit 3
+                    flags |= 0b0000_1000; // set bit 3
                 } else {
                     flags &= 0b1111_1110; // clear bit 0
-                    //flags &= 0b1111_0111; // clear bit 3
+                    flags &= 0b1111_0111; // clear bit 3
                 }
 
                 flags
