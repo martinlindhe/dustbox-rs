@@ -151,7 +151,7 @@ impl Debugger {
     
     pub fn exec_command(&mut self, cmd: &str) {
 
-        let parts: Vec<String> = cmd.split(' ').map(|s| s.to_string()).collect();
+        let parts: Vec<String> = cmd.trim().split(' ').map(|s| s.to_string()).collect();
 
          match parts[0].as_ref() {
             "help" => {
@@ -341,7 +341,7 @@ impl Debugger {
             }
             "" => {}
             _ => {
-                println!("Unknown command: {}", cmd);
+                println!("Unknown command: {}", parts[0]);
             }
         }
     }
