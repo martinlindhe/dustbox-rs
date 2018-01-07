@@ -41,7 +41,6 @@ impl MMU {
     }
 
     pub fn read(&self, seg: u16, offset: u16, length: usize) -> &[u8] {
-
         let addr = self.s_translate(seg, offset);
         self.memory.read(addr, length)
     }
