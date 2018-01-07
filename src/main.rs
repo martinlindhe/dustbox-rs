@@ -26,6 +26,7 @@ mod int10;
 mod int16;
 mod int21;
 mod int33;
+mod mmu;
 
 use std::rc::Rc;
 use std::cell::RefCell;
