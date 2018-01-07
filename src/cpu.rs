@@ -55,6 +55,16 @@ impl CPU {
         self.breakpoints.push(bp);
     }
 
+    pub fn remove_breakpoint(&mut self, bp: usize) -> Option<usize> {
+        match self.breakpoints.iter().position(|x| *x == bp) {
+            Some(pos) => {
+                self.breakpoints.remove(pos);
+                Some(bp)
+            },
+            None => None,
+        }
+    }
+
     pub fn get_breakpoints(&self) -> Vec<usize> {
         self.breakpoints.clone()
     }

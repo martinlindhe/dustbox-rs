@@ -164,7 +164,8 @@ impl Debugger {
                 println!("reset                            - resets the cpu");
                 println!("v                                - show number of instructions executed");
                 println!("r                                - show register values");
-                println!("bp add <n>                       - add a breakpoint at offset n");
+                println!("bp add <seg:off>                 - add breakpoint");
+                println!("bp remove <seg:off>              - remove breakpoint");
                 println!("bp list                          - show breakpoints");
                 println!("bp clear                         - clear breakpoints");
                 println!("flat                             - show current address as flat value");
@@ -222,9 +223,10 @@ impl Debugger {
                     match parts[1].as_ref() {
                         "help" => {
                             println!("Available breakpoint commands:");
-                            println!("  bp add <segment>:<offset>  adds a breakpoint");
-                            println!("  bp clear                   clears all breakpoints");
-                            println!("  bp list                    list all breakpoints");
+                            println!("  bp add <seg:off>     add breakpoint");
+                            println!("  bp remove <seg:off>  remove breakpoint");
+                            println!("  bp clear             clears all breakpoints");
+                            println!("  bp list              list all breakpoints");
                         }
                         "add" | "set" => {
                             match parse_segment_offset_pair(&parts[2]) {
@@ -239,8 +241,18 @@ impl Debugger {
                             }
                         }
                         "del" | "delete" | "remove" => {
-                            // TODO: "bp remove segment:offset"
-                            println!("TODO: remove breakpoint");
+                            match parse_segment_offset_pair(&parts[2]) {
+                                Ok(bp) => {
+                                    match self.cpu.remove_breakpoint(bp) {
+                                        Some(_) => println!("Breakpoint removed: {:06X}", bp),
+                                        None => println!("Breakpoint not found, so not removed!"),
+                                    }
+                                }
+                                Err(e) => {
+                                    println!("parse error: {:?}", e);
+                                    return;
+                                }
+                            }
                         }
                         "clear" => {
                             self.cpu.clear_breakpoints();
