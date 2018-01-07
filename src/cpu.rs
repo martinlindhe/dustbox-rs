@@ -398,6 +398,9 @@ impl CPU {
                 }
                 */
             }
+            Op::Bound() => {
+                println!("XXX impl {}", op);
+            }
             Op::CallNear() => {
                 // call near rel
                 let old_ip = self.ip;
@@ -2001,7 +2004,11 @@ impl CPU {
                 // popa
                 op.command = Op::Popa();
             }
-            // 0x62 = "bound"
+            0x62 => {
+                // bound r16, m16&16
+                op.command = Op::Bound();
+                op.params = self.r16_m16(op.segment);
+            }
             0x63 => {
                 // arpl r/m16, r16
                 op.command = Op::Arpl();

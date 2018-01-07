@@ -181,6 +181,7 @@ pub enum Op {
     And8(),
     And16(),
     Arpl(),
+    Bound(),
     CallNear(),
     Cbw(),
     Clc(),
