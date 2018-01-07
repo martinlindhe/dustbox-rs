@@ -273,7 +273,7 @@ impl Debugger {
                         Some(path)  => self.load_binary(&path),
                     }
                 } else {
-                    let path = parts[1..].join(" ");
+                    let path = parts[1..].join(" ").trim().to_string();
                     self.load_binary(&path);
                     self.last_program = Option::Some(path);
                 }
@@ -334,7 +334,7 @@ impl Debugger {
                         return;
                     }
                 }
-                self.dump_memory(&parts[4], segment as u16, offset as u16, length);
+                self.dump_memory(parts[4].trim(), segment as u16, offset as u16, length);
             }
             "r" | "run" => {
                 self.run_until_breakpoint();
