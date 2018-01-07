@@ -21,6 +21,7 @@ pub struct Instruction {
     pub command: Op,
     pub segment: Segment,
     pub params: ParameterPair,
+    pub byte_length: u8
 }
 
 impl fmt::Display for Instruction {
