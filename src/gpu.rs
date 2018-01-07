@@ -64,7 +64,6 @@ impl GPU {
 
         let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(buf, 0, false, 8, self.width, self.height, self.width * 3);
         c.set_source_pixbuf(&pixbuf, 0., 0.);
-        c.paint();
     }
 
     // render video frame as a raster::Image, used for saving video frame to disk

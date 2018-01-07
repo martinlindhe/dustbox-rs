@@ -80,6 +80,7 @@ impl Interface {
             canvas.connect_draw(move |_, ctx| {
                 let app = app.borrow();
                 app.cpu.gpu.draw_canvas(ctx, &app.cpu.memory.memory);
+                ctx.paint();
                 Inhibit(false)
             });
         }
@@ -128,6 +129,7 @@ impl Interface {
             {
                 let mut app = app.borrow_mut();
                 update_registers(&mut app, &builder);
+                update_canvas(&builder);
             }
         }
 
@@ -149,6 +151,7 @@ impl Interface {
                     .map(|buffer| buffer.set_text(text.as_str()));
 
                 update_registers(&mut app, &builder);
+                canvas.queue_draw();
             });
         }
 
@@ -170,6 +173,7 @@ impl Interface {
                     .map(|buffer| buffer.set_text(text.as_str()));
 
                 update_registers(&mut app, &builder);
+                update_canvas(&builder);
             });
         }
 
@@ -193,6 +197,7 @@ impl Interface {
                     .map(|buffer| buffer.set_text(text.as_str()));
 
                 update_registers(&mut app, &builder);
+                update_canvas(&builder);
             });
         }
 
@@ -227,6 +232,7 @@ impl Interface {
                             .map(|buffer| buffer.set_text(text.as_str()));
 
                         update_registers(&mut app, &builder);
+                        update_canvas(&builder);
                     },
                     _ => ()
                 }
@@ -254,6 +260,14 @@ fn u16_as_register_str(v: u16, prev: u16) -> String {
             v
         )
     }
+}
+
+fn update_canvas(builder: &Rc<RefCell<gtk::Builder>>) {
+    let canvas: gtk::DrawingArea = builder
+            .borrow()
+            .get_object("canvas")
+            .unwrap();
+    canvas.queue_draw();
 }
 
 fn update_registers(
