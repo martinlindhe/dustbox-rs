@@ -49,7 +49,7 @@ impl Debugger {
 
         if self.cpu.is_ip_at_breakpoint() {
             self.cpu.fatal_error = true;
-            warn!(
+            println!(
                 "Breakpoint reached (step-into), ip = {:04X}:{:04X}",
                 self.cpu.sreg16[CS],
                 self.cpu.ip
@@ -94,7 +94,7 @@ impl Debugger {
             self.cpu.execute_instruction();
 
             if self.cpu.is_ip_at_breakpoint() {
-                warn!("Breakpoint reached, breaking step-over");
+                println!("Breakpoint reached, breaking step-over");
                 break;
             }
 
@@ -203,12 +203,12 @@ impl Debugger {
             "exit" | "quit" | "q" => {
                 use std::process::exit;
 
-                info!("Exiting ... {} instructions was executed",
+                println!("Exiting ... {} instructions was executed",
                       self.cpu.instruction_count);
                 exit(0);
             }
             "v" => {
-                info!("Executed {} instructions", self.cpu.instruction_count);
+                println!("Executed {} instructions", self.cpu.instruction_count);
             }
             "reg" | "regs" | "registers" => {
                 self.cpu.print_registers();
@@ -217,20 +217,20 @@ impl Debugger {
                 // breakpoints - all values are flat offsets
                 // XXX allow to enter bp in format "segment:offset"
                 if parts.len() < 2 {
-                    error!("breakpoint: not enough arguments");
+                    println!("breakpoint: not enough arguments");
                 } else {
                     match parts[1].as_ref() {
                         "help" => {
-                            info!("Available breakpoint commands:");
-                            info!("  bp add 0x123     adds a breakpoint");
-                            info!("  bp clear         clears all breakpoints");
-                            info!("  bp list          list all breakpoints");
+                            println!("Available breakpoint commands:");
+                            println!("  bp add 0x123     adds a breakpoint");
+                            println!("  bp clear         clears all breakpoints");
+                            println!("  bp list          list all breakpoints");
                         }
                         "add" | "set" => {
                             match parse_number_string(&parts[2]) {
                                 Ok(bp) => {
                                     self.cpu.add_breakpoint(bp);
-                                    info!("Breakpoint added: {:04X}", bp);
+                                    println!("Breakpoint added: {:04X}", bp);
                                 }
                                 Err(e) => {
                                     println!("parse error: {}", e);
@@ -240,7 +240,7 @@ impl Debugger {
                         }
                         "del" | "delete" | "remove" => {
                             // TODO: "bp remove 0x123"
-                            info!("TODO: remove breakpoint");
+                            println!("TODO: remove breakpoint");
                         }
                         "clear" => {
                             self.cpu.clear_breakpoints();
@@ -252,9 +252,9 @@ impl Debugger {
                             let strs: Vec<String> =
                                 list.iter().map(|b| format!("{:04X}", b)).collect();
                             let formatted_list = strs.join(" ");
-                            warn!("breakpoints: {}", formatted_list);
+                            println!("breakpoints: {}", formatted_list);
                         }
-                        _ => error!("unknown breakpoint subcommand: {}", parts[1]),
+                        _ => println!("unknown breakpoint subcommand: {}", parts[1]),
                     }
                 }
             }
@@ -263,13 +263,13 @@ impl Debugger {
             }
             "d" | "disasm" => {
                 let op = self.cpu.disasm_instruction();
-                info!("{:?}", op);
-                info!("{}", op);
+                println!("{:?}", op);
+                println!("{}", op);
             }
             "load" => {
                 if parts.len() < 2 {
                     match self.last_program.clone() {
-                        None        => error!("Filename not provided."),
+                        None        => println!("Filename not provided."),
                         Some(path)  => self.load_binary(&path),
                     }
                 } else {
@@ -347,7 +347,7 @@ impl Debugger {
     }
 
     pub fn load_binary(&mut self, name: &str) {
-        info!("Reading rom from {}", name);
+        println!("Reading rom from {}", name);
         match tools::read_binary(name) {
             Ok(data) => {
                 self.cpu.reset();
@@ -360,7 +360,7 @@ impl Debugger {
     fn show_flat_address(&mut self) {
         let offset = self.cpu.get_offset();
         let rom_offset = offset - self.cpu.get_rom_base() + 0x100;
-        info!(
+        println!(
             "{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
             self.cpu.sreg16[CS],
             self.cpu.ip,
@@ -370,17 +370,17 @@ impl Debugger {
     }
 
     fn run_until_breakpoint(&mut self) {
-        warn!("Executing until we hit a breakpoint");
+        println!("Executing until we hit a breakpoint");
 
         loop {
             self.cpu.execute_instruction();
             if self.cpu.fatal_error {
-                error!("Failed to execute instruction, breaking.");
+                println!("Failed to execute instruction, breaking.");
                 break;
             }
             if self.cpu.is_ip_at_breakpoint() {
                 self.cpu.fatal_error = true;
-                warn!("Breakpoint reached");
+                println!("Breakpoint reached");
                 break;
             }
         }

@@ -3,8 +3,6 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-#[macro_use] extern crate log;
-
 extern crate time;
 extern crate test;
 extern crate gtk;

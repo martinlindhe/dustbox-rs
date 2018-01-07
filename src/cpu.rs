@@ -3194,7 +3194,7 @@ impl CPU {
         // break if we hit a breakpoint
         if self.is_offset_at_breakpoint(offset) {
             self.fatal_error = true;
-            warn!("Breakpoint (memory write to {:06X} = {:02X}), ip = {:04X}:{:04X}", 
+            println!("Breakpoint (memory write to {:06X} = {:02X}), ip = {:04X}:{:04X}",
                 offset,
                 data,
                 self.sreg16[CS],
