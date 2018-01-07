@@ -150,8 +150,9 @@ impl Debugger {
     }
     
     pub fn exec_command(&mut self, cmd: &str) {
-
-        let parts: Vec<String> = cmd.trim().split(' ').map(|s| s.to_string()).collect();
+        let cmd = cmd.trim();
+        println!("> {}", cmd);
+        let parts: Vec<String> = cmd.split(' ').map(|s| s.to_string()).collect();
 
          match parts[0].as_ref() {
             "help" => {
@@ -215,31 +216,30 @@ impl Debugger {
             }
             "bp" | "breakpoint" => {
                 // breakpoints - all values are flat offsets
-                // XXX allow to enter bp in format "segment:offset"
                 if parts.len() < 2 {
                     println!("breakpoint: not enough arguments");
                 } else {
                     match parts[1].as_ref() {
                         "help" => {
                             println!("Available breakpoint commands:");
-                            println!("  bp add 0x123     adds a breakpoint");
-                            println!("  bp clear         clears all breakpoints");
-                            println!("  bp list          list all breakpoints");
+                            println!("  bp add <segment>:<offset>  adds a breakpoint");
+                            println!("  bp clear                   clears all breakpoints");
+                            println!("  bp list                    list all breakpoints");
                         }
                         "add" | "set" => {
-                            match parse_number_string(&parts[2]) {
+                            match parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
                                     self.cpu.add_breakpoint(bp);
-                                    println!("Breakpoint added: {:04X}", bp);
+                                    println!("Breakpoint added: {:06X}", bp);
                                 }
                                 Err(e) => {
-                                    println!("parse error: {}", e);
+                                    println!("parse error: {:?}", e);
                                     return;
                                 }
                             }
                         }
                         "del" | "delete" | "remove" => {
-                            // TODO: "bp remove 0x123"
+                            // TODO: "bp remove segment:offset"
                             println!("TODO: remove breakpoint");
                         }
                         "clear" => {
@@ -250,7 +250,7 @@ impl Debugger {
                             // XXX sort list
 
                             let strs: Vec<String> =
-                                list.iter().map(|b| format!("{:04X}", b)).collect();
+                                list.iter().map(|b| format!("{:06X}", b)).collect();
                             let formatted_list = strs.join(" ");
                             println!("breakpoints: {}", formatted_list);
                         }
@@ -341,7 +341,7 @@ impl Debugger {
             }
             "" => {}
             _ => {
-                println!("Unknown command: {}", parts[0]);
+                println!("Unknown command: {}", cmd);
             }
         }
     }
@@ -396,5 +396,30 @@ fn parse_number_string(s: &str) -> Result<usize, ParseIntError> {
     } else {
         // decimal
         x.parse::<usize>()
+    }
+}
+
+// parses segment:offset pair to an integer. input must be unprefixed hexadecimal
+fn parse_segment_offset_pair(s: &str) -> Result<usize, ParseIntError> {
+    let x = &s.replace("_", "");
+    match x.find(':') {
+        Some(pos) => {
+            match usize::from_str_radix(&x[0..pos], 16) {
+                Ok(segment) => {
+                    match usize::from_str_radix(&x[pos+1..], 16) {
+                        Ok(offset) => Ok(seg_offs_as_flat(segment as u16, offset as u16)),
+                        Err(v) => Err(v),
+                    }
+                },
+                Err(v) => Err(v),
+            }
+        }
+        None => {
+            // flat address
+             match usize::from_str_radix(&x, 16) {
+                Ok(val) => Ok(val),
+                Err(v) => Err(v),
+            }
+        }
     }
 }

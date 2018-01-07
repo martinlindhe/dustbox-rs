@@ -218,7 +218,6 @@ impl Interface {
                 match key.get_keyval() as u32 {
                     key::Return => {
                         let search_word = input_command.get_text().unwrap();
-                        println!("> {}", search_word);
                         let mut app = app.borrow_mut();
                         app.exec_command(&search_word);
                         input_command.set_text("");
