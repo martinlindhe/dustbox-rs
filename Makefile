@@ -20,5 +20,8 @@ lint:
 typos:
 	speller . > spell
 
+glade:
+	glade src/interface.glade
+
 bindiff:
 	vbindiff ~/dosbox-x/MEMDUMP.BIN emu_mem.bin
