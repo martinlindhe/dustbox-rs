@@ -61,16 +61,14 @@ pub fn handle(cpu: &mut CPU, deterministic: bool) {
         }
         0x2C => {
             // DOS 1+ - GET SYSTEM TIME
-            //
-            // Note: On most systems, the resolution of the system clock
-            // is about 5/100sec, so returned times generally do not increment
-            // by 1. On some systems, DL may always return 00h
-
-            let now = time::now();
-            let centi_sec = now.tm_nsec / 1000_0000; // nanosecond to 1/100 sec
-
-            if !deterministic {
-                // Return:
+            if deterministic {
+                cpu.r16[CX].set_hi(0);
+                cpu.r16[CX].set_lo(0);
+                cpu.r16[DX].set_hi(0);
+                cpu.r16[DX].set_lo(0);
+            } else {
+                let now = time::now();
+                let centi_sec = now.tm_nsec / 1000_0000; // nanosecond to 1/100 sec
                 cpu.r16[CX].set_hi(now.tm_hour as u8); // CH = hour
                 cpu.r16[CX].set_lo(now.tm_min as u8); // CL = minute
                 cpu.r16[DX].set_hi(now.tm_sec as u8); // DH = second
@@ -94,7 +92,6 @@ pub fn handle(cpu: &mut CPU, deterministic: bool) {
             // BH = version flag
             //
             // bit 3: DOS is in ROM
-
 
             // (Table 01394)
             // Values for DOS OEM number:
