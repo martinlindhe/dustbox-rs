@@ -1802,6 +1802,11 @@ impl CPU {
                 op.params.dst = Parameter::Reg8(AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
+            0x1A => {
+                // sbb r8, r/m8
+                op.command = Op::Sbb8();
+                op.params = self.r8_rm8(op.segment);
+            }
             0x1C => {
                 // sbb AL, imm8
                 op.command = Op::Sbb8();
