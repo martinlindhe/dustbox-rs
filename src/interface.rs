@@ -215,9 +215,7 @@ impl Interface {
             let disasm_text = disasm_text.clone();
 
             window.connect_key_press_event(move |_, key| {
-                
                 match key.get_keyval() as u32 {
-                    key::Escape => gtk::main_quit(),
                     key::Return => {
                         let search_word = input_command.get_text().unwrap();
                         println!("> {}", search_word);
