@@ -9,4 +9,5 @@ fn test_parse_number_string() {
 #[test]
 fn test_parse_segment_offset_pair() {
     assert_eq!(0x008731, parse_segment_offset_pair("085F:0141").unwrap());
+    assert_eq!(0x00873F, parse_segment_offset_pair("873F").unwrap());
 }
