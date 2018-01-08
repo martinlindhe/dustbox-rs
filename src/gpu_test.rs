@@ -92,7 +92,7 @@ fn demo_256() {
         // XXX cpu.test_expect_memory_md5(x)
     }
 
-    let mut tera = compile_templates!("src/templates/**/*");
+    let mut tera = compile_templates!("docs/templates/**/*");
 
     // disable autoescaping completely
     tera.autoescape_on(vec![]);
@@ -105,7 +105,7 @@ fn demo_256() {
         Ok(res) => {
             use std::fs::File;
             use std::io::Write;
-            let mut f = File::create("demo256.html").expect("Unable to create file");
+            let mut f = File::create("docs/demo256.html").expect("Unable to create file");
             f.write_all(res.as_bytes()).expect("Unable to write data");
         }
         Err(why) => println!("ERROR = {}", why),
