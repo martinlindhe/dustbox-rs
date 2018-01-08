@@ -232,8 +232,11 @@ impl Debugger {
                         "add" | "set" => {
                             match parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
-                                    self.cpu.add_breakpoint(bp);
-                                    println!("Breakpoint added: {:06X}", bp);
+                                    if let Some(_) = self.cpu.add_breakpoint(bp) {
+                                        println!("Breakpoint added: {:06X}", bp);
+                                    } else {
+                                        println!("Breakpoint was already added");
+                                    }
                                 }
                                 Err(e) => {
                                     println!("parse error: {:?}", e);
