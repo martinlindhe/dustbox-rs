@@ -166,7 +166,7 @@ impl Debugger {
                 println!("bp clear                         - clear breakpoints");
                 println!("flat                             - show current address as flat value");
                 println!("d                                - disasm instruction");
-                println!("hexdump <off> <len>              - dumps len bytes of memory at given offset to the console");
+                println!("hexdump <seg:off> <len>          - dumps len bytes of memory at given offset to the console");
                 println!("bindump <seg:off> <len> <file>   - writes memory dump to file");
                 println!("exit                             - exit");
             }
@@ -287,27 +287,41 @@ impl Debugger {
                 }
             }
             "hexdump" => {
-                // dump memory at <offset> <length>
-                let mut offset: usize = 0;
-                let mut length: usize = 0xFFFF;
-                if parts.len() >= 3 {
-                    match parse_number_string(&parts[1]) {
-                        Ok(n) => offset = n,
-                        Err(e) => {
-                            println!("parse error: {}", e);
-                            return;
-                        }
-                    }
-                    match parse_number_string(&parts[2]) {
-                        Ok(n) => length = n,
-                        Err(e) => {
-                            println!("parse error: {}", e);
-                            return;
-                        }
+                // show dump of memory at <seg:off> <length>
+                if parts.len() < 3 {
+                    println!("hexdump: not enough arguments");
+                    return;
+                }
+
+                let mut pos: usize;
+                let mut length: usize;
+
+                match parse_segment_offset_pair(&parts[1]) {
+                    Ok(p) => pos = p,
+                    Err(e) => {
+                        println!("parse error: {:?}", e);
+                        return;
                     }
                 }
-                for i in offset..(offset + length) {
+                match parse_number_string(&parts[2]) {
+                    Ok(n) => length = n,
+                    Err(e) => {
+                        println!("parse error: {}", e);
+                        return;
+                    }
+                }
+
+                let mut row_cnt = 0;
+                for i in pos..(pos + length) {
+                    if row_cnt == 0 {
+                        print!("[{:06X}] ", i);
+                    }
                     print!("{:02X} ", self.cpu.memory.memory[i]);
+                    row_cnt += 1;
+                    if row_cnt == 16 {
+                        println!();
+                        row_cnt = 0;
+                    }
                 }
                 println!();
             }
