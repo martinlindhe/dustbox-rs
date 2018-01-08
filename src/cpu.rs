@@ -55,8 +55,13 @@ impl CPU {
         }
     }
 
-    pub fn add_breakpoint(&mut self, bp: usize) {
-        self.breakpoints.push(bp);
+    pub fn add_breakpoint(&mut self, bp: usize) -> Option<usize> {
+        if let None = self.breakpoints.iter().find(|&&x| x ==bp) {
+            self.breakpoints.push(bp);
+            Some(bp)
+        } else {
+            None
+        }
     }
 
     pub fn remove_breakpoint(&mut self, bp: usize) -> Option<usize> {
