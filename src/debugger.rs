@@ -1,6 +1,7 @@
 use std::time::Instant;
 use std::num::ParseIntError;
 use std::io::Error as IoError;
+use std::process::exit;
 
 use cpu::CPU;
 use register;
@@ -154,18 +155,18 @@ impl Debugger {
             "help" => {
                 println!("load <file>                      - load a binary (.com) file");
                 println!("load                             - load previous binary (.com) file");
-                println!("r                                - run until breakpoint");
+                println!("run                              - run until breakpoint");
                 println!("step into <n>                    - steps into n instructions");
                 println!("step over                        - steps over the next instruction");
                 println!("reset                            - resets the cpu");
-                println!("v                                - show number of instructions executed");
-                println!("r                                - show register values");
+                println!("instcount                        - show number of instructions executed");
+                println!("reg                              - show register values");
                 println!("bp add <seg:off>                 - add breakpoint");
                 println!("bp remove <seg:off>              - remove breakpoint");
                 println!("bp list                          - show breakpoints");
                 println!("bp clear                         - clear breakpoints");
                 println!("flat                             - show current address as flat value");
-                println!("d                                - disasm instruction");
+                println!("disasm                           - disasm instruction");
                 println!("hexdump <seg:off> <len>          - dumps len bytes of memory at given offset to the console");
                 println!("bindump <seg:off> <len> <file>   - writes memory dump to file");
                 println!("exit                             - exit");
@@ -199,13 +200,11 @@ impl Debugger {
                 self.cpu.reset();
             }
             "exit" | "quit" | "q" => {
-                use std::process::exit;
-
                 println!("Exiting ... {} instructions was executed",
                       self.cpu.instruction_count);
                 exit(0);
             }
-            "v" => {
+            "instcount" => {
                 println!("Executed {} instructions", self.cpu.instruction_count);
             }
             "reg" | "regs" | "registers" => {
