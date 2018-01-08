@@ -57,6 +57,10 @@ impl Interface {
             .borrow()
             .get_object("button_run")
             .unwrap();
+        let button_list_breakpoints: gtk::Button = self.builder
+            .borrow()
+            .get_object("button_list_breakpoints")
+            .unwrap();
         let button_dump_memory: gtk::Button = self.builder
             .borrow()
             .get_object("button_dump_memory")
@@ -198,6 +202,14 @@ impl Interface {
 
                 update_registers(&mut app, &builder);
                 update_canvas(&builder);
+            });
+        }
+
+        {
+            let app = Rc::clone(&self.app);
+            button_list_breakpoints.connect_clicked(move |_| {
+                let mut app = app.borrow_mut();
+                app.exec_command("bp list");
             });
         }
 
