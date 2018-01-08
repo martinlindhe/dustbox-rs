@@ -56,6 +56,7 @@ impl CPU {
     }
 
     pub fn remove_breakpoint(&mut self, bp: usize) -> Option<usize> {
+        // TODO later: simplify when https://github.com/rust-lang/rust/issues/40062 is stable
         match self.breakpoints.iter().position(|x| *x == bp) {
             Some(pos) => {
                 self.breakpoints.remove(pos);
