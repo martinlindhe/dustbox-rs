@@ -1645,6 +1645,7 @@ impl CPU {
                 src: Parameter::None(),
                 src2: Parameter::None(),
             },
+            byte_length: 0
         };
 
         match b {
