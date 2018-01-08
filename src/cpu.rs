@@ -14,6 +14,8 @@ use int21;
 use int33;
 use gpu::GPU;
 use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
+use decoder::Decoder;
+use mmu::MMU;
 
 #[cfg(test)]
 #[path = "./cpu_test.rs"]
@@ -24,6 +26,7 @@ pub struct CPU {
     pub ip: u16,
     pub instruction_count: usize,
     pub memory: Memory,
+    mmu: &MMU,
     pub r16: [Register16; 8], // general purpose registers
     pub sreg16: [u16; 6], // segment registers
     pub flags: Flags,
@@ -32,10 +35,11 @@ pub struct CPU {
     rom_base: usize,
     pub fatal_error: bool, // for debugging: signals to debugger we hit an error
     pub deterministic: bool, // for testing: toggles non-deterministic behaviour
+    pub decoder: Decoder<'a>,
 }
 
-impl CPU {
-    pub fn new() -> Self {
+impl<'a> CPU<'a> {
+    pub fn new(mmu: &MMU) -> Self {
         CPU {
             ip: 0,
             instruction_count: 0,
@@ -48,6 +52,7 @@ impl CPU {
             rom_base: 0,
             fatal_error: false,
             deterministic: false,
+            mmu: mmu
         }
     }
 
@@ -204,39 +209,6 @@ impl CPU {
                     self.ip);
                 return;
             }
-        }
-    }
-
-    pub fn disassemble_block(&mut self, origin: u16, count: usize) -> String {
-        let old_ip = self.ip;
-        self.ip = origin as u16;
-        let mut res = String::new();
-
-        for _ in 0..count {
-            let op = self.disasm_instruction();
-            res.push_str(&op.to_string());
-            res.push_str("\n");
-            self.ip += op.length as u16;
-        }
-
-        self.ip = old_ip;
-        res
-    }
-
-    pub fn disasm_instruction(&mut self) -> InstructionInfo {
-        let old_ip = self.ip;
-        let op = self.decode_instruction(Segment::Default());
-        let length = self.ip - old_ip;
-        self.ip = old_ip;
-        let offset = seg_offs_as_flat(self.sreg16[CS], old_ip);
-
-        InstructionInfo {
-            segment: self.sreg16[CS] as usize,
-            offset: old_ip as usize,
-            length: length as usize,
-            text: format!("{}", op),
-            bytes: self.read_u8_slice(offset, length as usize),
-            instruction: op,
         }
     }
 

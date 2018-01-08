@@ -9,6 +9,7 @@ use register::CS;
 use flags;
 use tools;
 use instruction::{seg_offs_as_flat, InstructionInfo};
+use mmu::MMU;
 
 #[cfg(test)]
 #[path = "./debugger_test.rs"]
@@ -21,15 +22,16 @@ pub struct PrevRegs {
     pub flags: flags::Flags,
 }
 
-pub struct Debugger {
-    pub cpu: CPU,
+pub struct Debugger<'a> {
+    pub cpu: CPU<'a>,
     pub prev_regs: PrevRegs,
     last_program: Option<String>,
 }
 
-impl Debugger {
+impl<'a> Debugger<'a> {
     pub fn new() -> Self {
-        let cpu = CPU::new();
+        let mmu = MMU::new();
+        let cpu = CPU::new(&mmu);
         Debugger {
             cpu: cpu.clone(),
             prev_regs: PrevRegs {
