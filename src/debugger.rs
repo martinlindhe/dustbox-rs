@@ -417,14 +417,24 @@ fn parse_number_string(s: &str) -> Result<usize, ParseIntError> {
     }
 }
 
-// parses segment:offset pair to an integer. input must be unprefixed hexadecimal
+// parses hex string to a integer
+fn parse_hex_string(s: &str) -> Result<usize, ParseIntError> {
+    let x = &s.replace("_", "");
+    if x.len() >= 2 && &x[0..2] == "0x" {
+        usize::from_str_radix(&x[2..], 16)
+    } else {
+        usize::from_str_radix(&x, 16)
+    }
+}
+
+// parses segment:offset pair to an integer
 fn parse_segment_offset_pair(s: &str) -> Result<usize, ParseIntError> {
     let x = &s.replace("_", "");
     match x.find(':') {
         Some(pos) => {
-            match usize::from_str_radix(&x[0..pos], 16) {
+            match parse_hex_string(&x[0..pos]) {
                 Ok(segment) => {
-                    match usize::from_str_radix(&x[pos+1..], 16) {
+                    match parse_hex_string(&x[pos+1..]) {
                         Ok(offset) => Ok(seg_offs_as_flat(segment as u16, offset as u16)),
                         Err(v) => Err(v),
                     }
@@ -434,7 +444,7 @@ fn parse_segment_offset_pair(s: &str) -> Result<usize, ParseIntError> {
         }
         None => {
             // flat address
-             match usize::from_str_radix(&x, 16) {
+             match parse_hex_string(&x) {
                 Ok(val) => Ok(val),
                 Err(v) => Err(v),
             }
