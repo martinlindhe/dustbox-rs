@@ -4,7 +4,8 @@ use instruction::{
     ParameterPair,
     Op,
     Parameter,
-    ModRegRm
+    ModRegRm,
+    InvalidOp
 };
 use segment::Segment;
 use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
@@ -188,6 +189,8 @@ impl<'a> Decoder<'a> {
                         op.params = self.r16_rm8(op.segment);
                     }
                     _ => {
+                        let invalid = InvalidOp::Op(vec![0x0F, b]);
+                        op.command = Op::Invalid(invalid);
                         // println!("op 0F, unknown {:02X}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
                         //     b,
                         //     self.sreg16[CS],
@@ -717,6 +720,8 @@ impl<'a> Decoder<'a> {
                         op.command = Op::Pop16();
                     }
                     _ => {
+                        let invalid = InvalidOp::Reg(x.reg);
+                        op.command = Op::Invalid(invalid);
                         // println!("op 8F unknown reg = {}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
                         //     x.reg,
                         //     self.sreg16[CS],
@@ -847,7 +852,10 @@ impl<'a> Decoder<'a> {
                     4 => Op::Shl8(),
                     5 => Op::Shr8(),
                     7 => Op::Sar8(),
-                    _ => Op::Unknown(),
+                    _ => {
+                        let invalid = InvalidOp::Op(vec![0xC0, x.reg]);
+                        Op::Invalid(invalid)
+                    }
                 };
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8());
@@ -863,7 +871,10 @@ impl<'a> Decoder<'a> {
                     4 => Op::Shl16(),
                     5 => Op::Shr16(),
                     7 => Op::Sar16(),
-                    _ => Op::Unknown(),
+                    _ => {
+                        let invalid = InvalidOp::Op(vec![0xC1, x.reg]);
+                        Op::Invalid(invalid)
+                    }
                 };
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8());
@@ -893,6 +904,8 @@ impl<'a> Decoder<'a> {
                         op.command = Op::Mov8();
                     }
                     _ => {
+                        let invalid = InvalidOp::Reg(x.reg);
+                        op.command = Op::Invalid(invalid);
                         // println!("op C6 unknown reg = {} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
                         //     x.reg,
                         //     self.sreg16[CS],
@@ -912,6 +925,8 @@ impl<'a> Decoder<'a> {
                         op.command = Op::Mov16();
                     }
                     _ => {
+                        let invalid = InvalidOp::Reg(x.reg);
+                        op.command = Op::Invalid(invalid);
                         // println!("op C7 unknown reg = {} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
                         //     x.reg,
                         //     self.sreg16[CS],
@@ -949,7 +964,10 @@ impl<'a> Decoder<'a> {
                     4 => Op::Shl8(),
                     5 => Op::Shr8(),
                     7 => Op::Sar8(),
-                    _ => Op::Unknown(),
+                    _ => {
+                        let invalid = InvalidOp::Op(vec![0xD0, x.reg]);
+                        Op::Invalid(invalid)
+                    }
                 };
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm8(1);
@@ -965,7 +983,10 @@ impl<'a> Decoder<'a> {
                     4 => Op::Shl16(),
                     5 => Op::Shr16(),
                     7 => Op::Sar16(),
-                    _ => Op::Unknown(),
+                    _ => {
+                        let invalid = InvalidOp::Op(vec![0xD1, x.reg]);
+                        Op::Invalid(invalid)
+                    }
                 };
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm16(1);
@@ -981,7 +1002,10 @@ impl<'a> Decoder<'a> {
                     4 => Op::Shl8(),
                     5 => Op::Shr8(),
                     7 => Op::Sar8(),
-                    _ => Op::Unknown(),
+                    _ => {
+                        let invalid = InvalidOp::Op(vec![0xD2, x.reg]);
+                        Op::Invalid(invalid)
+                    }
                 };
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Reg8(CL);
@@ -997,7 +1021,10 @@ impl<'a> Decoder<'a> {
                     4 => Op::Shl16(),
                     5 => Op::Shr16(),
                     7 => Op::Sar16(),
-                    _ => Op::Unknown(),
+                    _ => {
+                        let invalid = InvalidOp::Op(vec![0xD3, x.reg]);
+                        Op::Invalid(invalid)
+                    }
                 };
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Reg8(CL);
@@ -1143,7 +1170,9 @@ impl<'a> Decoder<'a> {
                         op.command = Op::RepneScasb();
                     }
                     _ => {
-                        println!("op F2 error: unhandled op {:02X}", b);
+                        let invalid = InvalidOp::Op(vec![0xF2, b]);
+                        op.command = Op::Invalid(invalid);
+                        // println!("op F2 error: unhandled op {:02X}", b);
                     }
                 }
             }
@@ -1167,7 +1196,9 @@ impl<'a> Decoder<'a> {
                         op.command = Op::RepStosw();
                     }
                     _ => {
-                        println!("op F3 error: unhandled op {:02X}", b);
+                        let invalid = InvalidOp::Op(vec![0xF3, b]);
+                        op.command = Op::Invalid(invalid);
+                        //println!("op F3 error: unhandled op {:02X}", b);
                     }
                 }
             }
@@ -1212,7 +1243,9 @@ impl<'a> Decoder<'a> {
                         op.command = Op::Idiv8();
                     }
                     _ => {
-                        println!("op F6 unknown reg={}", x.reg);
+                        let invalid = InvalidOp::Reg(x.reg);
+                        op.command = Op::Invalid(invalid);
+                        //println!("op F6 unknown reg={}", x.reg);
                     }
                 }
             }
@@ -1251,6 +1284,8 @@ impl<'a> Decoder<'a> {
                         op.command = Op::Idiv16();
                     }
                     _ => {
+                        let invalid = InvalidOp::Reg(x.reg);
+                        op.command = Op::Invalid(invalid);
                         // println!("op F7 unknown reg={} at {:04X}:{:04X}",
                         //          x.reg,
                         //          self.sreg16[CS],
@@ -1297,6 +1332,8 @@ impl<'a> Decoder<'a> {
                         op.command = Op::Dec8();
                     }
                     _ => {
+                        let invalid = InvalidOp::Reg(x.reg);
+                        op.command = Op::Invalid(invalid);
                         // println!("op FE, unknown reg {}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
                         //     x.reg,
                         //     self.sreg16[CS],
@@ -1334,6 +1371,8 @@ impl<'a> Decoder<'a> {
                         op.command = Op::Push16();
                     }
                     _ => {
+                        let invalid = InvalidOp::Reg(x.reg);
+                        op.command = Op::Invalid(invalid);
                         // println!("op FF, unknown reg {}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
                         //     x.reg,
                         //     self.sreg16[CS],
@@ -1344,6 +1383,8 @@ impl<'a> Decoder<'a> {
                 }
             }
             _ => {
+                let invalid = InvalidOp::Op(vec![b]);
+                op.command = Op::Invalid(invalid);
                 // println!("decode_instruction: unknown op {:02X} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
                 //          b,
                 //          self.sreg16[CS],

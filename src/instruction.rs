@@ -312,6 +312,13 @@ pub enum Op {
     Xor8(),
     Xor16(),
     Unknown(),
+    Invalid(InvalidOp),
+}
+
+#[derive(Debug)]
+pub enum InvalidOp {
+    Reg(u8),
+    Op(Vec<u8>),
 }
 
 #[derive(Debug)]
