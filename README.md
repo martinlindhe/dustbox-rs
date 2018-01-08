@@ -37,9 +37,6 @@ In order to run the expensive tests you need to check out the dos-software-decod
 We try to avoid using unstable features and unsafe code.
 This is not a hard requirement.
 
-Currently we make use of the current unstable features:
-- [#[bench]](https://github.com/rust-lang/rust/issues/29553)
-
 
 ## License
 

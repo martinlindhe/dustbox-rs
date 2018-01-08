@@ -3,6 +3,13 @@ name = "dustbox"
 version = "0.1.0"
 authors = ["Martin Lindhe"]
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "dustbox-gtk"
+path = "src/bin.rs"
+
 [dependencies]
 time = "0.1"
 rand = "0.4"
@@ -12,9 +19,16 @@ cairo-rs = "0.3"
 raster = "0.2"
 tera = "0.10"
 
+[dev-dependencies]
+bencher = "0.1"
+
 [dependencies.gtk]
 version = "0.3"
 features = ["v3_10"]
+
+[[bench]]
+name = "cpu"
+harness = false
 
 [profile.release]
 debug = true
