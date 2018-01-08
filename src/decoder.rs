@@ -1,6 +1,7 @@
 use mmu::MMU;
 use instruction::{
     Instruction,
+    InstructionInfo,
     ParameterPair,
     Op,
     Parameter,
@@ -23,6 +24,34 @@ impl<'a> Decoder<'a> {
             c_seg: 0,
             c_offset: 0,
         }
+    }
+
+    pub fn disassemble_block(&mut self, seg: u16, offset: u16, count: usize) -> String {
+        let mut res = String::new();
+
+        let mut instr_offset = 0;
+        for _ in 0..count {
+            let op = self.disasm_instruction(seg, offset+instr_offset);
+            res.push_str(&op.to_string());
+            res.push_str("\n");
+            instr_offset += op.instruction.byte_length;
+        }
+
+        res
+    }
+
+    pub fn  disasm_instruction(&mut self, seg: u16, offset: u16) -> InstructionInfo {
+       let op = self.get_instruction(seg, offset, Segment::Default());
+       InstructionInfo {
+           segment: seg as usize,
+           offset: (seg*16 + offset) as usize,
+           length: op.byte_length as usize,
+           text: format!("{}", op),
+           bytes: Vec::from(self.mmu.read(
+                   seg, offset, op.byte_length as usize
+                   )),
+           instruction: op
+       }
     }
 
     pub fn get_instruction(&mut self, iseg: u16, ioffset: u16, seg: Segment) -> Instruction {
