@@ -1,5 +1,6 @@
 use std::time::Instant;
 use std::num::ParseIntError;
+use std::io::Error as IoError;
 
 use cpu::CPU;
 use register;
@@ -129,24 +130,19 @@ impl Debugger {
         res
     }
 
-    pub fn dump_memory(&self, filename: &str, segment: u16, offset: u16, len: usize) {
+    pub fn dump_memory(&self, filename: &str, base: usize, len: usize) -> Result<usize, IoError> {
         use std::path::Path;
         use std::fs::File;
         use std::io::Write;
-
-        println!("Writing memory dump {:04X}:{:04X}, len {:04X} to {}", segment, offset, len, filename);
-
         let path = Path::new(filename);
-
         let mut file = match File::create(&path) {
-            Err(why) => panic!("Failed to create {:?}: {}", path, why),
+            Err(why) => return Err(why),
             Ok(file) => file,
         };
-
-        let base = seg_offs_as_flat(segment, offset);
         if let Err(why) = file.write(&self.cpu.memory.memory[base..base + len]) {
-            panic!("Failed to write to {:?}: {}", path, why);
+            return Err(why);
         }
+        Ok(0)
     }
     
     pub fn exec_command(&mut self, cmd: &str) {
@@ -171,7 +167,7 @@ impl Debugger {
                 println!("flat                             - show current address as flat value");
                 println!("d                                - disasm instruction");
                 println!("hexdump <off> <len>              - dumps len bytes of memory at given offset to the console");
-                println!("bindump <seg> <off> <len> <file> - writes memory dump to file");
+                println!("bindump <seg:off> <len> <file>   - writes memory dump to file");
                 println!("exit                             - exit");
             }
             "step" => {
@@ -316,37 +312,34 @@ impl Debugger {
                 println!();
             }
             "bindump" => {
-                // bindump <seg> <off> <len> <file>
-                if parts.len() < 5 {
+                // bindump <seg:off> <len> <file>
+                if parts.len() < 4 {
                     println!("bindump: not enough arguments");
                     return;
                 }
 
-                let mut segment: usize;
-                let mut offset: usize;
+                let mut pos: usize;
                 let mut length: usize;
-                match parse_number_string(&parts[1]) {
-                    Ok(n) => segment = n,
+
+                match parse_segment_offset_pair(&parts[1]) {
+                    Ok(p) => pos = p,
                     Err(e) => {
-                        println!("segment parse error: {}", e);
+                        println!("parse error: {:?}", e);
                         return;
                     }
                 }
                 match parse_number_string(&parts[2]) {
-                    Ok(n) => offset = n,
-                    Err(e) => {
-                        println!("offset parse error: {}", e);
-                        return;
-                    }
-                }
-                match parse_number_string(&parts[3]) {
                     Ok(n) => length = n,
                     Err(e) => {
                         println!("length parse error: {}", e);
                         return;
                     }
                 }
-                self.dump_memory(parts[4].trim(), segment as u16, offset as u16, length);
+                let filename = parts[3].trim();
+                println!("Writing memory dump {}, len {:04X} to {}", parts[1], length, filename);
+                if let Err(why) = self.dump_memory(filename, pos, length) {
+                    println!("Dump memory failed: {}", why);
+                }
             }
             "r" | "run" => {
                 self.run_until_breakpoint();
