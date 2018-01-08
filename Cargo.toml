@@ -6,10 +6,6 @@ authors = ["Martin Lindhe"]
 [lib]
 path = "src/lib.rs"
 
-[[bin]]
-name = "dustbox-gtk"
-path = "src/bin.rs"
-
 [dependencies]
 time = "0.1"
 rand = "0.4"
