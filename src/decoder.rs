@@ -10,15 +10,18 @@ use instruction::{
 };
 use segment::Segment;
 use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
+use std::rc::Rc;
+use std::cell::RefCell;
 
-pub struct Decoder<'a> {
-    mmu: &'a MMU,
+#[derive(Clone)]
+pub struct Decoder {
+    mmu: MMU,
     c_seg: u16,
     c_offset: u16,
 }
 
-impl<'a> Decoder<'a> {
-    pub fn new(mmu: &'a MMU) -> Self {
+impl Decoder {
+    pub fn new(mmu: MMU) -> Self {
         Decoder {
             mmu,
             c_seg: 0,
@@ -26,18 +29,15 @@ impl<'a> Decoder<'a> {
         }
     }
 
-    pub fn disassemble_block(&mut self, seg: u16, offset: u16, count: usize) -> String {
-        let mut res = String::new();
+    pub fn disassemble_block(&mut self, seg: u16, offset: u16, n: u16) -> Vec<InstructionInfo> {
+        let mut ops: Vec<InstructionInfo> = Vec::new();
 
-        let mut instr_offset = 0;
-        for _ in 0..count {
-            let op = self.disasm_instruction(seg, offset+instr_offset);
-            res.push_str(&op.to_string());
-            res.push_str("\n");
-            instr_offset += op.instruction.byte_length;
+        for i in 0..n {
+            let op = self.disasm_instruction(seg, offset+i);
+            ops.push(op);
         }
 
-        res
+        ops
     }
 
     pub fn  disasm_instruction(&mut self, seg: u16, offset: u16) -> InstructionInfo {
