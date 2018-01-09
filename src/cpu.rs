@@ -19,6 +19,19 @@ use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
 #[path = "./cpu_test.rs"]
 mod cpu_test;
 
+#[derive(Debug)]
+enum Exception {
+    // http://wiki.osdev.org/Interrupt_Vector_Table
+    DIV0 = 0,    // Divide by 0
+    UD = 6,      // Invalid opcode (UD2)
+    DF = 8,      // Double fault
+    TS = 10,     // Invalid TSS
+    NP = 11,     // Segment not present
+    SS = 12,     // Stack-segment fault
+    GP = 13,     // General protection fault
+    PF = 14,     // Page fault
+}
+
 #[derive(Clone)]
 pub struct CPU {
     pub ip: u16,
@@ -555,24 +568,31 @@ impl CPU {
                 println!("XXX impl hlt: {}", op);
             }
             Op::Idiv8() => {
-                let mut dst = self.r16[AX].val as usize; // AX
+                let dst = self.r16[AX].val as usize; // AX
                 let src = self.read_parameter_value(&op.params.dst);
+                if src == 0 {
+                    self.exception(Exception::DIV0, 0);
+                }
                 let quo = (Wrapping(dst) / Wrapping(src)).0;
                 let rem = (Wrapping(dst) % Wrapping(src)).0;
                 if dst > 0xFF {
-                    println!("XXX idiv8 INTERRUPT0 (div by 0)");
+                    self.exception(Exception::DIV0, 0);
                 } else {
                     self.r16[AX].set_lo((quo & 0xFF) as u8);
                     self.r16[AX].set_hi((rem & 0xFF) as u8);
                 }
             }
             Op::Idiv16() => {
-                let mut dst = ((self.r16[DX].val as usize) << 16) | self.r16[AX].val as usize; // DX:AX
+                let dst = ((self.r16[DX].val as usize) << 16) | self.r16[AX].val as usize; // DX:AX
                 let src = self.read_parameter_value(&op.params.dst);
+                if src == 0 {
+                    self.exception(Exception::DIV0, 0);
+                }
                 let quo = (Wrapping(dst) / Wrapping(src)).0;
                 let rem = (Wrapping(dst) % Wrapping(src)).0;
-                if dst > 0xFFFF {
-                    println!("XXX idiv16 INTERRUPT0 (div by 0)");
+
+                if quo as i32 != (quo as i16) as i32 {
+                    self.exception(Exception::DIV0, 0);
                 } else {
                     self.r16[AX].val = (quo & 0xFFFF) as u16;
                     self.r16[DX].val = (rem & 0xFFFF) as u16;
@@ -1664,6 +1684,18 @@ impl CPU {
                          self.get_offset());
             }
         }
+    }
+
+    fn exception(&mut self, which: Exception, error: usize) {
+        /*
+        #define CPU_INT_SOFTWARE    0x1
+        #define CPU_INT_EXCEPTION   0x2
+        #define CPU_INT_HAS_ERROR   0x4
+        #define CPU_INT_NOIOPLCHECK 0x8
+        */
+        println!("Exception {:?}, error {}", which, error);
+
+        // CPU_Interrupt(which,CPU_INT_EXCEPTION | ((which>=8) ? CPU_INT_HAS_ERROR : 0),reg_eip);
     }
 
     fn decode_instruction(&mut self, seg: Segment) -> Instruction {
@@ -3663,8 +3695,6 @@ impl CPU {
     }
 
     fn int(&mut self, int: u8) {
-        // XXX jump to offset 0x21 in interrupt table (look up how hw does this)
-        // http://wiki.osdev.org/Interrupt_Vector_Table   XXX or is those just for real-mode interrupts?
         let deterministic = self.deterministic;
         match int {
             0x03 => {
