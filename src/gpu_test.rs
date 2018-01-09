@@ -80,7 +80,7 @@ fn demo_256() {
 
         let stem = path.file_stem().unwrap_or(OsStr::new(""));
         let mut filename = OsString::new();
-        filename.push("tests/render/demo/256_");
+        filename.push("docs/render/demo-256/256_");
         filename.push(stem.to_os_string());
         filename.push(".png");
 
