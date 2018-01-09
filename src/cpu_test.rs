@@ -1061,15 +1061,14 @@ fn can_execute_sar8() {
     let mmu = MMU::new();
 let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB4, 0x34,       // mov ah,0x34
+        0xB4, 0xFE,       // mov ah,0xfe
         0xC0, 0xFC, 0x04, // sar ah,byte 0x4
     ];
     cpu.load_com(&code);
 
     cpu.execute_instruction();
     cpu.execute_instruction();
-    assert_eq!(0x03,  cpu.r16[AX].hi_u8());
-    // XXX flags
+    assert_eq!(0xFF, cpu.r16[AX].hi_u8());
 }
 
 #[test]
@@ -1077,21 +1076,14 @@ fn can_execute_sar16() {
     let mmu = MMU::new();
 let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB8, 0xF5, 0x05, // mov ax,0x5f5
-        0xC1, 0xF8, 0x09, // sar ax,byte 0x9
+        0xB8, 0x85, 0xFE, // mov ax,0xfe85
+        0xC1, 0xF8, 0x07, // sar ax,byte 0x7
     ];
     cpu.load_com(&code);
 
     cpu.execute_instruction();
-    assert_eq!(0x05F5, cpu.r16[AX].val);
-
     cpu.execute_instruction();
-    assert_eq!(0x0002,  cpu.r16[AX].val);
-    assert_eq!(true, cpu.flags.carry);
-    assert_eq!(false, cpu.flags.zero);
-    assert_eq!(false, cpu.flags.sign);
-    assert_eq!(false, cpu.flags.overflow);
-    assert_eq!(false, cpu.flags.parity);
+    assert_eq!(0xFFFD, cpu.r16[AX].val);
 }
 
 #[test]
