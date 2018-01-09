@@ -1127,6 +1127,21 @@ let mut cpu = CPU::new(mmu);
 }
 
 #[test]
+fn can_execute_imul16_2_args() {
+    let mut cpu = CPU::new();
+    let code: Vec<u8> = vec![
+        0xB9, 0x0A, 0x00, // mov cx,0xa
+        0xBF, 0x14, 0x00, // mov di,0x14
+        0x0F, 0xAF, 0xCF, // imul cx,di
+    ];
+    cpu.load_com(&code);
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x00C8, cpu.r16[CX].val);
+}
+
+#[test]
 fn can_execute_imul16_3_args() {
     let mmu = MMU::new();
 let mut cpu = CPU::new(mmu);
