@@ -217,22 +217,24 @@ pub fn handle(cpu: &mut CPU) {
                     // byte each of red, green and blue (0-63)
                     let count = cpu.r16[CX].val as usize;
                     let reg = cpu.r16[BX].val as usize;
-                    let mut offset = (cpu.sreg16[ES] as usize * 16) + cpu.r16[DX].val as usize;
                     println!("VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA) start={}, count={}",
                              reg,
                              count);
 
                     for i in reg..count {
-                        let r = cpu.peek_u8_at(offset) as usize;
-                        let g = cpu.peek_u8_at(offset + 1) as usize;
-                        let b = cpu.peek_u8_at(offset + 2) as usize;
+                        let next = (i*3) as u16;
+                        let r = cpu.mmu.read_u8(cpu.sreg16[ES],
+                                                cpu.r16[DX].val + next) as usize;
+                        let g = cpu.mmu.read_u8(cpu.sreg16[ES],
+                                                cpu.r16[DX].val + 1 + next) as usize;
+                        let b = cpu.mmu.read_u8(cpu.sreg16[ES],
+                                                cpu.r16[DX].val + 2 + next) as usize;
 
                         // XXX each value is 6 bits (0-63), scale it to 8 bits
 
                         cpu.gpu.pal[i].r = ((r << 2) & 0xFF) as u8;
                         cpu.gpu.pal[i].g = ((g << 2) & 0xFF) as u8;
                         cpu.gpu.pal[i].b = ((b << 2) & 0xFF) as u8;
-                        offset += 3;
                     }
                 }
                 _ => {

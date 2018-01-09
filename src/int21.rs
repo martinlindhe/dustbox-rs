@@ -38,10 +38,14 @@ pub fn handle(cpu: &mut CPU, deterministic: bool) {
             // Standard output is always the screen under DOS 1.x, but may be
             // redirected under DOS 2+. Under the FlashTek X-32 DOS extender,
             // the pointer is in DS:EDX
-            let mut offset = (cpu.sreg16[DS] as usize * 16) + (cpu.r16[DX].val as usize);
+            let mut count = 0;
             loop {
-                let b = cpu.peek_u8_at(offset) as char;
-                offset += 1;
+                let b = cpu.mmu.read_u8(
+                    cpu.sreg16[DS],
+                    cpu.r16[DX].val+count
+                ) as char;
+
+                count += 1;
                 if b == '$' {
                     break;
                 }

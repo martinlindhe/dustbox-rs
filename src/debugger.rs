@@ -10,6 +10,8 @@ use flags;
 use tools;
 use instruction::{seg_offs_as_flat, InstructionInfo};
 use mmu::MMU;
+use decoder::Decoder;
+use segment::Segment;
 
 #[cfg(test)]
 #[path = "./debugger_test.rs"]
@@ -22,16 +24,16 @@ pub struct PrevRegs {
     pub flags: flags::Flags,
 }
 
-pub struct Debugger<'a> {
-    pub cpu: CPU<'a>,
+pub struct Debugger {
+    pub cpu: CPU,
     pub prev_regs: PrevRegs,
     last_program: Option<String>,
 }
 
-impl<'a> Debugger<'a> {
+impl Debugger {
     pub fn new() -> Self {
         let mmu = MMU::new();
-        let cpu = CPU::new(&mmu);
+        let cpu = CPU::new(mmu);
         Debugger {
             cpu: cpu.clone(),
             prev_regs: PrevRegs {
@@ -87,7 +89,12 @@ impl<'a> Debugger<'a> {
         if self.cpu.fatal_error {
             return;
         }
-        let op = self.cpu.disasm_instruction();
+        let mut decoder = Decoder::new(self.cpu.mmu.clone());
+        let op = decoder
+            .disasm_instruction(
+                self.cpu.sreg16[CS],
+                self.cpu.ip,
+            );
 
         let dst_ip = self.cpu.ip + op.length as u16;
         println!("Step-over running to {:04X}", dst_ip);
@@ -115,39 +122,36 @@ impl<'a> Debugger<'a> {
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
         let mut rows: Vec<String> = Vec::new();
-        for op in self.disasm_n_instructions(n) {
+        let mut decoder = Decoder::new(self.cpu.mmu.clone());
+        let ops = decoder.disassemble_block(
+            self.cpu.sreg16[CS],
+            self.cpu.ip,
+            n as u16);
+
+        for op in ops {
             rows.push(op.to_string());
         }
         rows.join("\n")
-    }
-
-    fn disasm_n_instructions(&mut self, n: usize) -> Vec<InstructionInfo> {
-        let mut res: Vec<InstructionInfo> = Vec::new();
-        let org_ip = self.cpu.ip;
-        for _ in 0..n {
-            let op = self.cpu.disasm_instruction();
-            self.cpu.ip += op.length as u16;
-            res.push(op);
-        }
-        self.cpu.ip = org_ip;
-        res
     }
 
     pub fn dump_memory(&self, filename: &str, base: usize, len: usize) -> Result<usize, IoError> {
         use std::path::Path;
         use std::fs::File;
         use std::io::Write;
+
         let path = Path::new(filename);
         let mut file = match File::create(&path) {
             Err(why) => return Err(why),
             Ok(file) => file,
         };
-        if let Err(why) = file.write(&self.cpu.memory.memory[base..base + len]) {
+        let dump = self.cpu.mmu.dump_mem();
+
+        if let Err(why) = file.write(&dump[base..base + len]) {
             return Err(why);
         }
         Ok(0)
     }
-    
+
     pub fn exec_command(&mut self, cmd: &str) {
         let cmd = cmd.trim();
         println!("> {}", cmd);
@@ -199,7 +203,7 @@ impl<'a> Debugger<'a> {
             }
             "reset" => {
                 println!("Resetting CPU");
-                self.cpu.reset();
+                self.cpu.reset(MMU::new());
             }
             "exit" | "quit" | "q" => {
                 println!("Exiting ... {} instructions was executed",
@@ -271,7 +275,11 @@ impl<'a> Debugger<'a> {
                 self.show_flat_address();
             }
             "d" | "disasm" => {
-                let op = self.cpu.disasm_instruction();
+                let mut decoder = Decoder::new(self.cpu.mmu.clone());
+                let op = decoder.disasm_instruction(
+                    self.cpu.sreg16[CS],
+                    self.cpu.ip
+                );
                 println!("{:?}", op);
                 println!("{}", op);
             }
@@ -294,6 +302,7 @@ impl<'a> Debugger<'a> {
                     return;
                 }
 
+                let mem_dump = self.cpu.mmu.dump_mem();
                 let mut pos: usize;
                 let mut length: usize;
 
@@ -317,7 +326,7 @@ impl<'a> Debugger<'a> {
                     if row_cnt == 0 {
                         print!("[{:06X}] ", i);
                     }
-                    print!("{:02X} ", self.cpu.memory.memory[i]);
+                    print!("{:02X} ", mem_dump[i]);
                     row_cnt += 1;
                     if row_cnt == 16 {
                         println!();
@@ -370,7 +379,7 @@ impl<'a> Debugger<'a> {
         println!("Reading rom from {}", name);
         match tools::read_binary(name) {
             Ok(data) => {
-                self.cpu.reset();
+                self.cpu.reset(MMU::new());
                 self.cpu.load_com(&data);
             }
             Err(what) => println!("error {}", what),
