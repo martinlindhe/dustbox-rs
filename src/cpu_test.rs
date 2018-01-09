@@ -592,8 +592,8 @@ fn can_execute_idiv8() {
     let mmu = MMU::new();
 let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB8, 0x30, 0x00, // mov ax,0x30
-        0xB3, 0x02,       // mov bl,0x2
+        0xB8, 0x07, 0x00, // mov ax,0x7
+        0xB3, 0x03,       // mov bl,0x3
         0xF6, 0xFB,       // idiv bl
     ];
 
@@ -602,8 +602,8 @@ let mut cpu = CPU::new(mmu);
     cpu.execute_instruction();
     cpu.execute_instruction();
     cpu.execute_instruction();
-    assert_eq!(0x18, cpu.r16[AX].lo_u8()); // quotient
-    assert_eq!(0x00, cpu.r16[AX].hi_u8()); // remainder
+    assert_eq!(0x02, cpu.r16[AX].lo_u8()); // quotient
+    assert_eq!(0x01, cpu.r16[AX].hi_u8()); // remainder
 }
 
 #[test]
@@ -612,9 +612,9 @@ fn can_execute_idiv16() {
 let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBA, 0x00, 0x00, // mov dx,0x0
-        0xB8, 0x00, 0x80, // mov ax,0x8000
-        0xBB, 0x04, 0x00, // mov bx,0x4
-        0xF7, 0xFB,       // idiv bx
+        0xB8, 0x07, 0x00, // mov ax,0x7
+        0xBB, 0x03, 0x00, // mov bx,0x3
+        0xF7, 0xFB,       // idiv bx (dx:ax / bx)
     ];
 
     cpu.load_com(&code);
@@ -623,8 +623,8 @@ let mut cpu = CPU::new(mmu);
     cpu.execute_instruction();
     cpu.execute_instruction();
     cpu.execute_instruction();
-    assert_eq!(0x2000, cpu.r16[AX].val); // quotient
-    assert_eq!(0x0000, cpu.r16[DX].val); // remainder
+    assert_eq!(0x0002, cpu.r16[AX].val); // quotient
+    assert_eq!(0x0001, cpu.r16[DX].val); // remainder
 }
 
 #[test]
