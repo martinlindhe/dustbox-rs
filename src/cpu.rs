@@ -557,24 +557,24 @@ impl CPU {
             Op::Idiv8() => {
                 let mut dst = self.r16[AX].val as usize; // AX
                 let src = self.read_parameter_value(&op.params.dst);
-                dst = (Wrapping(dst) / Wrapping(src)).0;
+                let quo = (Wrapping(dst) / Wrapping(src)).0;
                 let rem = (Wrapping(dst) % Wrapping(src)).0;
                 if dst > 0xFF {
                     println!("XXX idiv8 INTERRUPT0 (div by 0)");
                 } else {
-                    self.r16[AX].set_lo((dst & 0xFF) as u8);
+                    self.r16[AX].set_lo((quo & 0xFF) as u8);
                     self.r16[AX].set_hi((rem & 0xFF) as u8);
                 }
             }
             Op::Idiv16() => {
-                let mut dst = ((self.r16[DX].val as usize) << 16) + self.r16[AX].val as usize; // DX:AX
+                let mut dst = ((self.r16[DX].val as usize) << 16) | self.r16[AX].val as usize; // DX:AX
                 let src = self.read_parameter_value(&op.params.dst);
-                dst = (Wrapping(dst) / Wrapping(src)).0;
+                let quo = (Wrapping(dst) / Wrapping(src)).0;
                 let rem = (Wrapping(dst) % Wrapping(src)).0;
                 if dst > 0xFFFF {
                     println!("XXX idiv16 INTERRUPT0 (div by 0)");
                 } else {
-                    self.r16[AX].val = (dst & 0xFFFF) as u16;
+                    self.r16[AX].val = (quo & 0xFFFF) as u16;
                     self.r16[DX].val = (rem & 0xFFFF) as u16;
                 }
             }
