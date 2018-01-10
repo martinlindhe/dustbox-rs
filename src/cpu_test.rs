@@ -4,10 +4,12 @@ use cpu::CPU;
 use register::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES};
 use instruction::seg_offs_as_flat;
 use segment::Segment;
+use mmu::MMU;
 
 #[test]
 fn can_handle_stack() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x88, 0x88, // mov ax,0x8888
         0x8E, 0xD8,       // mov ds,ax
@@ -33,7 +35,8 @@ fn can_handle_stack() {
 
 #[test]
 fn can_execute_mov_r8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB2, 0x13, // mov dl,0x13
         0x88, 0xD0, // mov al,dl
@@ -51,7 +54,8 @@ fn can_execute_mov_r8() {
 
 #[test]
 fn can_execute_mov_r8_rm8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x05, 0x01, // mov bx,0x105
         0x8A, 0x27,       // mov ah,[bx]   | r8, r/m8
@@ -71,7 +75,8 @@ fn can_execute_mov_r8_rm8() {
 
 #[test]
 fn can_execute_mv_r16() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x23, 0x01, // mov ax,0x123
         0x8B, 0xE0,       // mov sp,ax   | r16, r16
@@ -89,7 +94,8 @@ fn can_execute_mv_r16() {
 
 #[test]
 fn can_execute_mov_r16_rm16() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB9, 0x23, 0x01, // mov cx,0x123
         0x8E, 0xC1,       // mov es,cx   | r/m16, r16
@@ -107,7 +113,8 @@ fn can_execute_mov_r16_rm16() {
 
 #[test]
 fn can_execute_mov_rm16_sreg() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x34, 0x12,       // mov bx,0x1234
         0x8E, 0xC3,             // mov es,bx
@@ -126,12 +133,13 @@ fn can_execute_mov_rm16_sreg() {
     cpu.execute_instruction();
     assert_eq!(0x109, cpu.ip);
     let cs = cpu.sreg16[CS];
-    assert_eq!(0x1234, cpu.peek_u16_at(seg_offs_as_flat(cs, 0x0109)));
+    assert_eq!(0x1234, cpu.mmu.read_u16(cs, 0x0109));
 }
 
 #[test]
 fn can_execute_mov_data() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xC6, 0x06, 0x31, 0x10, 0x38,       // mov byte [0x1031],0x38
     ];
@@ -140,12 +148,13 @@ fn can_execute_mov_data() {
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
     let cs = cpu.sreg16[CS];
-    assert_eq!(0x38, cpu.peek_u8_at(seg_offs_as_flat(cs, 0x1031)));
+    assert_eq!(0x38, cpu.mmu.read_u8(cs, 0x1031));
 }
 
 #[test]
 fn can_execute_segment_prefixed() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x34, 0x12, // mov bx,0x1234
         0x8E, 0xC3,       // mov es,bx
@@ -170,8 +179,9 @@ fn can_execute_segment_prefixed() {
 
     cpu.execute_instruction();
     assert_eq!(0x10A, cpu.ip);
-    let offset = seg_offs_as_flat(cpu.segment(Segment::ES()), cpu.amode16(5)); // 5=amode DI
-    assert_eq!(0x88, cpu.peek_u8_at(offset));
+    assert_eq!(0x88, cpu.mmu.read_u8(
+            cpu.segment(Segment::ES()),
+            cpu.amode16(5)));
 
     cpu.execute_instruction();
     assert_eq!(0x10D, cpu.ip);
@@ -180,7 +190,8 @@ fn can_execute_segment_prefixed() {
 
 #[test]
 fn can_execute_imms8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBF, 0x00, 0x01, // mov di,0x100
         0x83, 0xC7, 0x3A, // add di,byte +0x3a
@@ -204,7 +215,8 @@ fn can_execute_imms8() {
 
 #[test]
 fn can_execute_with_flags() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0xFE,       // mov ah,0xfe
         0x80, 0xC4, 0x02, // add ah,0x2   - OF and ZF should be set
@@ -236,7 +248,8 @@ fn can_execute_with_flags() {
 #[test]
 fn can_execute_cmp() {
     // make sure we dont overflow (0 - 0x2000 = overflow)
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x00,       // mov bx,0x0
         0x89, 0xDF,             // mov di,bx
@@ -266,7 +279,8 @@ fn can_execute_cmp() {
 
 #[test]
 fn can_execute_xchg() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x91, // xchg ax,cx
     ];
@@ -283,7 +297,8 @@ fn can_execute_xchg() {
 
 #[test]
 fn can_execute_rep_movsb() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         // copy first 5 bytes into 0x200
         0x8D, 0x36, 0x00, 0x01, // lea si,[0x100]
@@ -306,15 +321,19 @@ fn can_execute_rep_movsb() {
     cpu.execute_instruction(); // rep movsb
     assert_eq!(0x0, cpu.r16[CX].val);
     let min = seg_offs_as_flat(cpu.sreg16[CS], 0x100);
+    let min = 0x100;
     let max = min + 5;
     for i in min..max {
-        assert_eq!(cpu.memory.memory[i], cpu.memory.memory[i + 0x100]);
+        assert_eq!(
+            cpu.mmu.read_u8(cpu.sreg16[CS], i),
+            cpu.mmu.read_u8(cpu.sreg16[CS], i+0x100));
     }
 }
 
 #[test]
 fn can_execute_rep_outsb() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBE, 0x00, 0x01, // mov si,0x100
         0xBA, 0xC9, 0x03, // mov dx,0x3c9
@@ -341,7 +360,8 @@ fn can_execute_rep_outsb() {
 
 #[test]
 fn can_execute_addressing() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x02,             // mov bx,0x200
         0xC6, 0x47, 0x2C, 0xFF,       // mov byte [bx+0x2c],0xff  ; rm8 [amode+s8]
@@ -356,7 +376,8 @@ fn can_execute_addressing() {
 
     cpu.load_com(&code);
 
-    let res = cpu.disassemble_block(0x100, 9);
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 9);
+    let res = cpu.decoder.instructions_to_str(ops);
     assert_eq!("[085F:0100] BB0002           Mov16    bx, 0x0200
 [085F:0103] C6472CFF         Mov8     byte [bx+0x2C], 0xFF
 [085F:0107] 8D360001         Lea16    si, word [0x0100]
@@ -374,7 +395,7 @@ fn can_execute_addressing() {
 
     cpu.execute_instruction();
     let cs = cpu.sreg16[CS];
-    assert_eq!(0xFF, cpu.peek_u8_at(seg_offs_as_flat(cs, 0x22C)));
+    assert_eq!(0xFF, cpu.mmu.read_u8(cs, 0x22C));
 
     cpu.execute_instruction();
     assert_eq!(0x100, cpu.r16[SI].val);
@@ -389,16 +410,16 @@ fn can_execute_addressing() {
 
     cpu.execute_instruction();
     // should have written word to [0x230]
-    assert_eq!(0x00FF, cpu.peek_u16_at(seg_offs_as_flat(cs, 0x230)));
+    assert_eq!(0x00FF, cpu.mmu.read_u16(cs, 0x230));
 
     cpu.execute_instruction();
     // should have written ax to [di]
     let di = cpu.r16[DI].val;
-    assert_eq!(0x00FF, cpu.peek_u16_at(seg_offs_as_flat(cs, di)));
+    assert_eq!(0x00FF, cpu.mmu.read_u16(cs, di));
 
     cpu.execute_instruction();
     // should have written byte to [di+0x06AE]
-    assert_eq!(0xFE, cpu.peek_u8_at(seg_offs_as_flat(cs, di) + 0x06AE));
+    assert_eq!(0xFE, cpu.mmu.read_u8(cs, di) + 0x06AE);
 
     cpu.execute_instruction();
     // should have read byte from [di+0x06AE] to al
@@ -407,14 +428,16 @@ fn can_execute_addressing() {
 
 #[test]
 fn can_execute_math() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xF6, 0x06, 0x2C, 0x12, 0xFF, // test byte [0x122c],0xff
     ];
 
     cpu.load_com(&code);
 
-    let res = cpu.disassemble_block(0x100, 1);
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 1);
+    let res = cpu.decoder.instructions_to_str(ops);
     assert_eq!("[085F:0100] F6062C12FF       Test8    byte [0x122C], 0xFF
 ",
                res);
@@ -424,7 +447,8 @@ fn can_execute_math() {
 
 #[test]
 fn can_execute_and() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0xF0, // mov al,0xF0
         0xB4, 0x1F, // mov ah,0x1F
@@ -433,7 +457,8 @@ fn can_execute_and() {
 
     cpu.load_com(&code);
 
-    let res = cpu.disassemble_block(0x100, 3);
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 3);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] B0F0             Mov8     al, 0xF0
 [085F:0102] B41F             Mov8     ah, 0x1F
@@ -456,7 +481,8 @@ fn can_execute_and() {
 
 #[test]
 fn can_execute_mul8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0x40, // mov al,0x40
         0xB3, 0x10, // mov bl,0x10
@@ -474,7 +500,8 @@ fn can_execute_mul8() {
 
 #[test]
 fn can_execute_mul16() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x00, 0x80, // mov ax,0x8000
         0xBB, 0x04, 0x00, // mov bx,0x4
@@ -493,7 +520,8 @@ fn can_execute_mul16() {
 
 #[test]
 fn can_execute_div8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x40, 0x00, // mov ax,0x40
         0xB3, 0x10,       // mov bl,0x10
@@ -502,7 +530,8 @@ fn can_execute_div8() {
 
     cpu.load_com(&code);
 
-    let res = cpu.disassemble_block(0x100, 3);
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 3);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] B84000           Mov16    ax, 0x0040
 [085F:0103] B310             Mov8     bl, 0x10
@@ -523,7 +552,8 @@ fn can_execute_div8() {
 
 #[test]
 fn can_execute_div16() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBA, 0x10, 0x00, // mov dx,0x10
         0xB8, 0x00, 0x40, // mov ax,0x4000
@@ -533,7 +563,8 @@ fn can_execute_div16() {
 
     cpu.load_com(&code);
 
-    let res = cpu.disassemble_block(0x100, 4);
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 4);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] BA1000           Mov16    dx, 0x0010
 [085F:0103] B80040           Mov16    ax, 0x4000
@@ -558,7 +589,8 @@ fn can_execute_div16() {
 
 #[test]
 fn can_execute_idiv8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x30, 0x00, // mov ax,0x30
         0xB3, 0x02,       // mov bl,0x2
@@ -576,7 +608,8 @@ fn can_execute_idiv8() {
 
 #[test]
 fn can_execute_idiv16() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBA, 0x00, 0x00, // mov dx,0x0
         0xB8, 0x00, 0x80, // mov ax,0x8000
@@ -596,7 +629,8 @@ fn can_execute_idiv16() {
 
 #[test]
 fn can_execute_les() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xC4, 0x06, 0x00, 0x01, // les ax,[0x100]
     ];
@@ -608,7 +642,8 @@ fn can_execute_les() {
 
 #[test]
 fn can_execute_cwd() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x00, 0xFE, // mov ax,0xfe00
         0x99,             // cwd
@@ -621,7 +656,8 @@ fn can_execute_cwd() {
 
 #[test]
 fn can_execute_aaa() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0x7E, // mov al,0x7e
         0x37,       // aaa
@@ -636,7 +672,8 @@ fn can_execute_aaa() {
 
 #[test]
 fn can_execute_aas() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0x13, // mov al,0x13
         0x3F,       // aas
@@ -651,7 +688,8 @@ fn can_execute_aas() {
 
 #[test]
 fn can_execute_daa() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0x79, // mov al,0x79
         0xB3, 0x35, // mov bl,0x35
@@ -668,7 +706,8 @@ fn can_execute_daa() {
 
 #[test]
 fn can_execute_das() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0x35, // mov al,0x35
         0xB3, 0x47, // mov bl,0x47
@@ -685,7 +724,8 @@ fn can_execute_das() {
 
 #[test]
 fn can_execute_sahf() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x6A, 0x00, // push byte +0x0
         0x9D,       // popf
@@ -708,7 +748,8 @@ fn can_execute_sahf() {
 
 #[test]
 fn can_execute_dec() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBD, 0x00, 0x02, // mov bp,0x200
         0x4D,             // dec bp
@@ -728,13 +769,16 @@ fn can_execute_dec() {
 #[test]
 fn can_execute_neg() {
 
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x23, 0x01, // mov bx,0x123
         0xF7, 0xDB,       // neg bx
     ];
     cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 2);
+
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 2);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] BB2301           Mov16    bx, 0x0123
 [085F:0103] F7DB             Neg16    bx
@@ -756,12 +800,15 @@ fn can_execute_neg() {
 
 #[test]
 fn can_execute_jmp_far() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xEA, 0x00, 0x06, 0x00, 0x00, // jmp word 0x0:0x600
     ];
     cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 1);
+
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 1);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] EA00060000       JmpFar   0000:0600
 ",
@@ -774,14 +821,17 @@ fn can_execute_jmp_far() {
 
 #[test]
 fn can_execute_movzx() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0xFF,       // mov ah,0xff
         0x0F, 0xB6, 0xDC, // movzx bx,ah
 
     ];
     cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 2);
+
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 2);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] B4FF             Mov8     ah, 0xFF
 [085F:0102] 0FB6DC           Movzx16  bx, ah
@@ -797,7 +847,8 @@ fn can_execute_movzx() {
 
 #[test]
 fn can_execute_rol8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x12,       // mov ah,0x12
         0xC0, 0xC4, 0x04, // rol ah,byte 0x4
@@ -815,7 +866,8 @@ fn can_execute_rol8() {
 
 #[test]
 fn can_execute_rol16() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x34, 0x12, // mov ax,0x1234
         0xC1, 0xC0, 0x03, // rol ax,byte 0x3
@@ -831,7 +883,8 @@ fn can_execute_rol16() {
 
 #[test]
 fn can_execute_ror8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x37,       // mov ah,0x37
         0xC0, 0xCC, 0x03, // ror ah,byte 0x3
@@ -847,7 +900,8 @@ fn can_execute_ror8() {
 
 #[test]
 fn can_execute_ror16() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x56, 0x34, // mov ax,0x3456
         0xC1, 0xC8, 0x03, // ror ax,byte 0x3
@@ -863,7 +917,8 @@ fn can_execute_ror16() {
 
 #[test]
 fn can_execute_rcl8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x12,       // mov ah,0x12
         0xC0, 0xD4, 0x04, // rcl ah,byte 0x4
@@ -881,7 +936,8 @@ fn can_execute_rcl8() {
 
 #[test]
 fn can_execute_rcl16() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x34, 0x12, // mov ax,0x1234
         0xC1, 0xD0, 0x04, // rcl ax,byte 0x4
@@ -899,7 +955,8 @@ fn can_execute_rcl16() {
 
 #[test]
 fn can_execute_rcr8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x12,       // mov ah,0x12
         0xC0, 0xDC, 0x04, // rcr ah,byte 0x4
@@ -916,7 +973,8 @@ fn can_execute_rcr8() {
 
 #[test]
 fn can_execute_rcr16() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x34, 0x12, // mov ax,0x1234
         0xC1, 0xD8, 0x04, // rcr ax,byte 0x4
@@ -933,7 +991,8 @@ fn can_execute_rcr16() {
 
 #[test]
 fn can_execute_shl8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x34,       // mov ah,0x34
         0xC0, 0xE4, 0x04, // shl ah,byte 0x4
@@ -950,7 +1009,8 @@ fn can_execute_shl8() {
 
 #[test]
 fn can_execute_shl16() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x34, 0x12, // mov ax,0x1234
         0xC1, 0xE0, 0x04, // shl ax,byte 0x4
@@ -965,7 +1025,8 @@ fn can_execute_shl16() {
 
 #[test]
 fn can_execute_shr8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x34,       // mov ah,0x34
         0xC0, 0xEC, 0x04, // shr ah,byte 0x4
@@ -981,7 +1042,8 @@ fn can_execute_shr8() {
 
 #[test]
 fn can_execute_shr16() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x34, 0x12, // mov ax,0x1234
         0xC1, 0xE8, 0x04, // shr ax,byte 0x4
@@ -996,7 +1058,8 @@ fn can_execute_shr16() {
 
 #[test]
 fn can_execute_sar8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x34,       // mov ah,0x34
         0xC0, 0xFC, 0x04, // sar ah,byte 0x4
@@ -1011,7 +1074,8 @@ fn can_execute_sar8() {
 
 #[test]
 fn can_execute_sar16() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0xF5, 0x05, // mov ax,0x5f5
         0xC1, 0xF8, 0x09, // sar ax,byte 0x9
@@ -1032,14 +1096,17 @@ fn can_execute_sar16() {
 
 #[test]
 fn can_execute_imul8() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0xF0, // mov al,0xf0
         0xB7, 0xD0, // mov bh,0xd0
         0xF6, 0xEF, // imul bh
     ];
     cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 3);
+
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 3);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] B0F0             Mov8     al, 0xF0
 [085F:0102] B7D0             Mov8     bh, 0xD0
@@ -1061,7 +1128,8 @@ fn can_execute_imul8() {
 
 #[test]
 fn can_execute_imul16_3_args() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBF, 0xFF, 0x8F,       // mov di,0x8fff
         0x69, 0xFF, 0x40, 0x01, // imul di,di,word 0x140
@@ -1075,7 +1143,8 @@ fn can_execute_imul16_3_args() {
 
 #[test]
 fn can_execute_movsx() {
- let mut cpu = CPU::new();
+ let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB7, 0xFF,       // mov bh,0xff
         0x0F, 0xBE, 0xC7, // movsx ax,bh
@@ -1090,7 +1159,8 @@ fn can_execute_movsx() {
 fn can_execute_mov_ds_addressing() {
     // NOTE: this test demonstrates a emulation bug described in https://github.com/martinlindhe/dustbox-rs/issues/9#issuecomment-355609424
     // BUG: "mov [bx+si],dx" writes to the CS segment instead of DS
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x10, 0x00, // mov bx,0x10
         0xBE, 0x01, 0x00, // mov si,0x1
@@ -1106,20 +1176,23 @@ fn can_execute_mov_ds_addressing() {
 
     let cs = cpu.sreg16[CS];
     let ds = cpu.sreg16[DS];
-    assert_eq!(0x0000, cpu.peek_u16_at(seg_offs_as_flat(cs, 0x10 + 0x1)));
-    assert_eq!(0x9999, cpu.peek_u16_at(seg_offs_as_flat(ds, 0x10 + 0x1)));
+    assert_eq!(0x0000, cpu.mmu.read_u16(cs, 0x10 + 0x1));
+    assert_eq!(0x9999, cpu.mmu.read_u16(ds, 0x10 + 0x1));
 }
 
 #[test]
 fn can_execute_shrd() {
-let mut cpu = CPU::new();
+let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0xFF, 0xFF,       // mov ax,0xffff
         0xBA, 0xFF, 0xFF,       // mov dx,0xffff
         0x0F, 0xAC, 0xD0, 0x0E, // shrd ax,dx,0xe
     ];
     cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 3);
+
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 3);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] B8FFFF           Mov16    ax, 0xFFFF
 [085F:0103] BAFFFF           Mov16    dx, 0xFFFF
@@ -1147,14 +1220,17 @@ let mut cpu = CPU::new();
 
 #[test]
 fn can_execute_imul16_1_arg() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x8F, 0x79, // mov bx,0x798f
         0xB8, 0xD9, 0xFF, // mov ax,0xffd9
         0xF7, 0xEB,       // imul bx
     ];
     cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 3);
+
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 3);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] BB8F79           Mov16    bx, 0x798F
 [085F:0103] B8D9FF           Mov16    ax, 0xFFD9
@@ -1175,7 +1251,8 @@ fn can_execute_imul16_1_arg() {
 
 #[test]
 fn can_disassemble_basic() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xE8, 0x05, 0x00, // call l_0x108   ; call a later offset
         0xBA, 0x0B, 0x01, // mov dx,0x10b
@@ -1184,7 +1261,9 @@ fn can_disassemble_basic() {
         0xE8, 0xFB, 0xFF, // call l_0x108   ; call an earlier offset
     ];
     cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 5);
+
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 5);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] E80500           CallNear 0x0108
 [085F:0103] BA0B01           Mov16    dx, 0x010B
@@ -1197,12 +1276,15 @@ fn can_disassemble_basic() {
 
 #[test]
 fn can_disassemble_lea() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x8D, 0x47, 0x80, // lea ax,[bx-0x80]
  ];
     cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 1);
+
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 1);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] 8D4780           Lea16    ax, word [bx-0x80]
 ",
@@ -1211,13 +1293,16 @@ fn can_disassemble_lea() {
 
 #[test]
 fn can_disassemble_segment_prefixed() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x26, 0x88, 0x25, // mov [es:di],ah
         0x26, 0x8A, 0x25, // mov ah,[es:di]
     ];
     cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 2);
+
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 2);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] 268825           Mov8     byte [es:di], ah
 [085F:0103] 268A25           Mov8     ah, byte [es:di]
@@ -1227,7 +1312,8 @@ fn can_disassemble_segment_prefixed() {
 
 #[test]
 fn can_disassemble_arithmetic() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x80, 0x3E, 0x31, 0x10, 0x00, // cmp byte [0x1031],0x0
         0x81, 0xC7, 0xC0, 0x00,       // add di,0xc0
@@ -1235,7 +1321,9 @@ fn can_disassemble_arithmetic() {
         0x83, 0xC7, 0xC6,             // add di,byte -0x3a
     ];
     cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 4);
+
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 4);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] 803E311000       Cmp8     byte [0x1031], 0x00
 [085F:0105] 81C7C000         Add16    di, 0x00C0
@@ -1247,7 +1335,8 @@ fn can_disassemble_arithmetic() {
 
 #[test]
 fn can_disassemble_jz_rel() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x74, 0x04, // jz 0x106
         0x74, 0xFE, // jz 0x102
@@ -1255,7 +1344,9 @@ fn can_disassemble_jz_rel() {
         0x74, 0xFA, // jz 0x102
     ];
     cpu.load_com(&code);
-    let res = cpu.disassemble_block(0x100, 4);
+
+    let ops = cpu.decoder.disassemble_block(0x100, 0, 4);
+    let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] 7404             Jz       0x0106
 [085F:0102] 74FE             Jz       0x0102
@@ -1269,7 +1360,8 @@ fn can_disassemble_jz_rel() {
 fn estimate_mips() {
     use std::time::Instant;
 
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB9, 0xFF, 0xFF, // mov cx,0xffff
         0x49,             // dec cx
@@ -1294,7 +1386,8 @@ fn estimate_mips() {
 
 #[bench]
 fn bench_simple_loop(b: &mut Bencher) {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB9, 0xFF, 0xFF, // mov cx,0xffff
         0x49,             // dec cx
@@ -1308,7 +1401,8 @@ fn bench_simple_loop(b: &mut Bencher) {
 
 #[bench]
 fn bench_disasm_small_prog(b: &mut Bencher) {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x80, 0x3E, 0x31, 0x10, 0x00, // cmp byte [0x1031],0x0
         0x80, 0x3E, 0x31, 0x10, 0x00, // cmp byte [0x1031],0x0
@@ -1321,5 +1415,5 @@ fn bench_disasm_small_prog(b: &mut Bencher) {
     ];
     cpu.load_com(&code);
 
-    b.iter(|| cpu.disassemble_block(0x100, 8))
+    b.iter(|| cpu.decoder.disassemble_block(0x100, 0, 8))
 }
