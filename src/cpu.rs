@@ -7,7 +7,7 @@ use register::Register16;
 use flags::Flags;
 use memory::Memory;
 use segment::Segment;
-use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm};
+use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm, InvalidOp};
 use int10;
 use int16;
 use int21;
@@ -202,6 +202,24 @@ impl CPU {
             Op::Unknown() => {
                 self.fatal_error = true;
                 println!("executed unknown op, stopping. {} instructions executed",
+                         self.instruction_count);
+            }
+            Op::Invalid(reason) => {
+                self.fatal_error = true;
+                match reason {
+                    InvalidOp::Op(ops) => {
+                        let mut ops_str = String::new();
+                        for x in ops {
+                            let hex = format!("{:X }", x);
+                            ops_str.push_str(&hex);
+                        }
+                        println!("Error unhandled OP {}", ops_str)
+                    }
+                    InvalidOp::Reg(reg) => {
+                        println!("Error invalid register {:X}", reg);
+                    }
+                }
+                println!("{} Instructions executed",
                          self.instruction_count);
             }
             _ => self.execute(&op),
