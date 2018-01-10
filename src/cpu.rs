@@ -233,16 +233,13 @@ impl CPU {
 
     pub fn execute_n_instructions(&mut self, n: usize) {
         for _ in 0..n {
-            //let op = self.disasm_instruction();
-            //println!("{}", op.pretty_string());
-            //println!("{}", self.print_registers());
             self.execute_instruction();
             if self.fatal_error {
                 return;
             }
             if self.is_ip_at_breakpoint() {
                 self.fatal_error = true;
-                println!("Breakpoint, ip = {:04X}:{:04X}",
+                println!("Breakpoint reached at {:04X}:{:04X}",
                     self.sreg16[CS],
                     self.ip);
                 return;
@@ -558,7 +555,7 @@ impl CPU {
                 self.r16[DX].val = (rem & 0xFFFF) as u16;
             }
             Op::Hlt() => {
-                println!("XXX impl hlt: {}", op);
+                println!("XXX impl {}", op);
             }
             Op::Idiv8() => {
                 let dst = self.r16[AX].val as usize; // AX
@@ -681,7 +678,7 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Insb() => {
-                println!("XXX impl insb: {}", op);
+                println!("XXX impl {}", op);
             }
             Op::Int() => {
                 let int = self.read_parameter_value(&op.params.dst);
@@ -718,15 +715,12 @@ impl CPU {
                 }
             }
             Op::JmpFar() => {
-                // dst=Ptr16Imm
                 match op.params.dst {
                     Parameter::Ptr16Imm(ip, seg) => {
                         self.sreg16[CS] = seg;
                         self.ip = ip;
                     }
-                    _ => {
-                        println!("FATAL jmp far with unexpected type {:?}", op.params.dst);
-                    }
+                    _ => panic!("jmp far with unexpected type {:?}", op.params.dst),
                 }
             }
             Op::JmpNear() | Op::JmpShort() => {
@@ -830,7 +824,7 @@ impl CPU {
                 let val = self.mmu
                     .read_u8(self.sreg16[DS], self.r16[SI].val);
 
-                self.r16[AX].set_lo(val); // AL =
+                self.r16[AX].set_lo(val);
                 self.r16[SI].val = if !self.flags.direction {
                     (Wrapping(self.r16[SI].val) + Wrapping(1)).0
                 } else {
@@ -857,7 +851,6 @@ impl CPU {
                 if res != 0 {
                     self.ip = dst;
                 }
-                // No flags affected.
             }
             Op::Loope() => {
                 let dst = self.read_parameter_value(&op.params.dst) as u16;
@@ -866,7 +859,6 @@ impl CPU {
                 if res != 0 && self.flags.zero {
                     self.ip = dst;
                 }
-                // No flags affected.
             }
             Op::Loopne() => {
                 let dst = self.read_parameter_value(&op.params.dst) as u16;
@@ -875,7 +867,6 @@ impl CPU {
                 if res != 0 && !self.flags.zero {
                     self.ip = dst;
                 }
-                // No flags affected.
             } 
             Op::Mov8() => {
                 // two arguments (dst=reg)
@@ -925,12 +916,11 @@ impl CPU {
                 let dst = self.read_parameter_value(&op.params.dst);
                 let res = (Wrapping(dst) * Wrapping(src)).0;
 
+                self.r16[AX].val = (res & 0xFFFF) as u16;
                 // The OF and CF flags are set to 0 if the upper half of the
                 // result is 0; otherwise, they are set to 1.
                 // The SF, ZF, AF, and PF flags are undefined.
                 // XXX flags
-
-                self.r16[AX].val = (res & 0xFFFF) as u16;
             }
             Op::Mul16() => {
                 // Unsigned multiply (DX:AX ← AX ∗ r/m16).
@@ -1047,7 +1037,7 @@ impl CPU {
             }
             Op::Outsw() => {
                 // no arguments
-                println!("XXX impl outs word: {}", op);
+                println!("XXX impl {}", op);
             }
             Op::Pop16() => {
                 // one arguments (dst)
@@ -1121,7 +1111,6 @@ impl CPU {
 	                self.flags.set_carry_u8(res);
                     count -= 1;
                 }
-
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Rcl16() => {
@@ -1140,7 +1129,6 @@ impl CPU {
 	                self.flags.set_carry_u16(res);
                     count -= 1;
                 }
-
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Rcr8() => {
@@ -1160,7 +1148,6 @@ impl CPU {
                     res >>= 1;
                     count -= 1;
                 }
-
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Rcr16() => {
@@ -1180,7 +1167,6 @@ impl CPU {
                     res >>= 1;
                     count -= 1;
                 }
-
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::RepMovsb() => {
@@ -1240,7 +1226,7 @@ impl CPU {
             }
             Op::RepneScasb() => {
                 // Find AL, starting at ES:[(E)DI].
-                println!("XXX impl repne scas byte: {}", op);
+                println!("XXX impl {}", op);
             }
             Op::Retf() => {
                 //no arguments
@@ -1266,7 +1252,6 @@ impl CPU {
                     }
                     count -= 1;
                 }
-
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
 
                 // XXX flags
@@ -1286,7 +1271,6 @@ impl CPU {
                     }
                     count -= 1;
                 }
-
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
 
                 // XXX flags:
@@ -1310,7 +1294,6 @@ impl CPU {
                     }
                     count -= 1;
                 }
-
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
                 // XXX flags
             }
@@ -1329,9 +1312,7 @@ impl CPU {
                     }
                     count -= 1;
                 }
-
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
-
                 // XXX flags
             }
             Op::Sahf() => {
@@ -1540,7 +1521,6 @@ impl CPU {
 
                 if count == 1 {
                     // XXX overflow if count == 1
-
                     // For a 1-bit shift, the OF flag is set if a sign change occurred; otherwise, it is cleared.
                     // For shifts greater than 1 bit, the OF flag is undefined. 
                 }
@@ -1639,7 +1619,7 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.src, src as u16);
             }
             Op::Xlatb() => {
-                // println!("XXX impl xlatb: {}", op);
+                println!("XXX impl {}", op);
             }
             Op::Xor8() => {
                 // two parameters (dst=reg)
@@ -1696,27 +1676,17 @@ impl CPU {
     fn push8(&mut self, data: u8) {
         let sp = (Wrapping(self.r16[SP].val) - Wrapping(1)).0;
         self.r16[SP].val = sp;
-
         self.mmu.write_u8(self.sreg16[SS], self.r16[SP].val, data);
     }
 
     fn push16(&mut self, data: u16) {
         let sp = (Wrapping(self.r16[SP].val) - Wrapping(2)).0;
         self.r16[SP].val = sp;
-
         self.mmu.write_u16(self.sreg16[SS], self.r16[SP].val, data);
     }
 
     fn pop16(&mut self) -> u16 {
         let data = self.mmu.read_u16(self.sreg16[SS], self.r16[SP].val);
-        /*
-        println!("pop16 {:04X}  from {:04X}:{:04X}  =>  {:06X}       instr {}",
-                 data,
-                 self.sreg16[SS],
-                 self.r16[SP].val,
-                 offset,
-                 self.instruction_count);
-        */
         let sp = (Wrapping(self.r16[SP].val) + Wrapping(2)).0;
         self.r16[SP].val = sp;
         data
@@ -1727,10 +1697,7 @@ impl CPU {
     }
 
     fn read_u8(&mut self) -> u8 {
-        let b = self.mmu.read_u8(
-            self.sreg16[CS],
-            self.ip);
-
+        let b = self.mmu.read_u8(self.sreg16[CS], self.ip);
         self.ip += 1;
         b
     }
@@ -1759,17 +1726,6 @@ impl CPU {
         (self.ip as i16 + val) as u16
     }
 
-    // pub fn peek_u8_at(&mut self, pos: usize) -> u8 {
-    //     // println!("peek_u8_at   pos {:04X}  = {:02X}", pos, self.memory[pos]);
-    //     self.memory.memory[pos]
-    // }
-
-    // fn peek_u16_at(&mut self, pos: usize) -> u16 {
-    //     let lo = self.peek_u8_at(pos);
-    //     let hi = self.peek_u8_at(pos + 1);
-    //     u16::from(hi) << 8 | u16::from(lo)
-    // }
-
     fn write_u8(&mut self, offset: usize, data: u8) {
         // break if we hit a breakpoint
         if self.is_offset_at_breakpoint(offset) {
@@ -1780,12 +1736,10 @@ impl CPU {
                 self.sreg16[CS],
                 self.ip);
         }
-
         self.mmu.write_byte_flat(offset, data);
     }
 
     fn write_u16(&mut self, offset: usize, data: u16) {
-        // println!("write_u16 [{:06X}] = {:04X}", offset, data);
         let hi = (data >> 8) as u8;
         let lo = (data & 0xff) as u8;
         self.write_u8(offset, lo);
@@ -1825,14 +1779,12 @@ impl CPU {
                 self.mmu.read_u8(seg, offset) as usize
             }
             Parameter::Ptr8AmodeS8(seg, r, imm) => {
-                let offset = (Wrapping(self.amode16(r))
-                              + Wrapping(imm as u16)).0;
+                let offset = (Wrapping(self.amode16(r)) + Wrapping(imm as u16)).0;
                 let seg = self.segment(seg);
                 self.mmu.read_u8(seg, offset) as usize
             }
             Parameter::Ptr8AmodeS16(seg, r, imm) => {
-                let offset = (Wrapping(self.amode16(r))
-                              + Wrapping(imm as u16)).0;
+                let offset = (Wrapping(self.amode16(r)) + Wrapping(imm as u16)).0;
                 let seg = self.segment(seg);
                 self.mmu.read_u8(seg, offset) as usize
             }
@@ -1842,14 +1794,12 @@ impl CPU {
                 self.mmu.read_u16(seg, offset) as usize
             }
             Parameter::Ptr16AmodeS8(seg, r, imm) => {
-                let offset = (Wrapping(self.amode16(r))
-                              + Wrapping(imm as u16)).0;
+                let offset = (Wrapping(self.amode16(r)) + Wrapping(imm as u16)).0;
                 let seg = self.segment(seg);
                 self.mmu.read_u16(seg, offset) as usize
             }
             Parameter::Ptr16AmodeS16(seg, r, imm) => {
-                let offset = (Wrapping(self.amode16(r))
-                              + Wrapping(imm as u16)).0;
+                let offset = (Wrapping(self.amode16(r)) + Wrapping(imm as u16)).0;
                 let seg = self.segment(seg);
                 self.mmu.read_u16(seg, offset) as usize
             }
@@ -1893,16 +1843,12 @@ impl CPU {
             }
             Parameter::Ptr8AmodeS8(seg, r, imm) => {
                 let seg = self.segment(seg);
-                let offset = Wrapping(self.amode16(r))
-                    + Wrapping(imm as u16);
-
+                let offset = Wrapping(self.amode16(r)) + Wrapping(imm as u16);
                 self.mmu.write_u8(seg, offset.0, data);
             }
             Parameter::Ptr8AmodeS16(seg, r, imm) => {
                 let seg = self.segment(seg);
-                let offset = Wrapping(self.amode16(r))
-                    + Wrapping(imm as u16);
-
+                let offset = Wrapping(self.amode16(r)) + Wrapping(imm as u16);
                 self.mmu.write_u8(seg, offset.0, data);
             }
             _ => {
@@ -1927,27 +1873,21 @@ impl CPU {
             }
             Parameter::Ptr16(seg, imm) => {
                 let seg = self.segment(seg);
-
                 self.mmu.write_u16(seg, imm, data);
             }
             Parameter::Ptr16Amode(seg, r) => {
                 let seg = self.segment(seg);
                 let offset = self.amode16(r);
-
                 self.mmu.write_u16(seg, offset, data);
             }
             Parameter::Ptr16AmodeS8(seg, r, imm) => {
                 let seg = self.segment(seg);
-                let offset = Wrapping(self.amode16(r))
-                    + Wrapping(imm as u16);
-
+                let offset = Wrapping(self.amode16(r)) + Wrapping(imm as u16);
                 self.mmu.write_u16(seg, offset.0, data);
             }
             Parameter::Ptr16AmodeS16(seg, r, imm) => {
                 let seg = self.segment(seg);
-                let offset = Wrapping(self.amode16(r))
-                    + Wrapping(imm as u16);
-
+                let offset = Wrapping(self.amode16(r)) + Wrapping(imm as u16);
                 self.mmu.write_u16(seg, offset.0, data);
             }
             _ => {
@@ -2042,7 +1982,6 @@ impl CPU {
 
     fn stosb(&mut self) {
         let data = self.r16[AX].lo_u8(); // = AL
-
         self.mmu.write_u8(self.sreg16[ES], self.r16[DI].val, data);
         self.r16[DI].val = if !self.flags.direction {
             (Wrapping(self.r16[DI].val) + Wrapping(1)).0
@@ -2053,9 +1992,7 @@ impl CPU {
 
     fn stosw(&mut self) {
         let data = self.r16[AX].val;
-
         self.mmu.write_u16(self.sreg16[ES], self.r16[DI].val, data);
-
         self.r16[DI].val = if !self.flags.direction {
             (Wrapping(self.r16[DI].val) + Wrapping(2)).0
         } else {

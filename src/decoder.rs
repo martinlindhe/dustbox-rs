@@ -32,13 +32,11 @@ impl Decoder {
     pub fn disassemble_block(&mut self, seg: u16, offset: u16, n: u16) -> Vec<InstructionInfo> {
         let mut ops: Vec<InstructionInfo> = Vec::new();
         let mut inst_offset = 0;
-
         for _ in 0..n {
             let op = self.disasm_instruction(seg, offset+inst_offset);
             inst_offset += op.instruction.byte_length;
             ops.push(op);
         }
-
         ops
     }
 
@@ -68,7 +66,6 @@ impl Decoder {
     pub fn get_instruction(&mut self, iseg: u16, ioffset: u16, seg: Segment) -> Instruction {
         self.c_seg = iseg;
         self.c_offset = ioffset;
-
         self.decode(seg)
     }
 
@@ -593,39 +590,15 @@ impl Decoder {
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8());
                 match x.reg {
-                    0 => {
-                        // add r/m8, imm8
-                        op.command = Op::Add8();
-                    }
-                    1 => {
-                        // or r/m8, imm8
-                        op.command = Op::Or8();
-                    }
-                    2 => {
-                        // adc r/m8, imm8
-                        op.command = Op::Adc8();
-                    }
-                    3 => {
-                        // sbb r/m8, imm8
-                        op.command = Op::Sbb8();
-                    }
-                    4 => {
-                        // and r/m8, imm8
-                        op.command = Op::And8();
-                    }
-                    5 => {
-                        // sub r/m8, imm8
-                        op.command = Op::Sub8();
-                    }
-                    6 => {
-                        // xor r/m8, imm8
-                        op.command = Op::Xor8();
-                    }
-                    7 => {
-                        // cmp r/m8, imm8
-                        op.command = Op::Cmp8();
-                    }
-                    _ => {} // XXX how to get rid of this pattern, x.reg is only 3 bits
+                    0 => op.command = Op::Add8(), // add r/m8, imm8
+                    1 => op.command = Op::Or8(), // or r/m8, imm8
+                    2 => op.command = Op::Adc8(), // adc r/m8, imm8
+                    3 => op.command = Op::Sbb8(), // sbb r/m8, imm8
+                    4 => op.command = Op::And8(), // and r/m8, imm8
+                    5 => op.command = Op::Sub8(), // sub r/m8, imm8
+                    6 => op.command = Op::Xor8(), // xor r/m8, imm8
+                    7 => op.command = Op::Cmp8(), // cmp r/m8, imm8
+                    _ => {}
                 }
             }
             0x81 => {
@@ -634,30 +607,14 @@ impl Decoder {
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm16(self.read_u16());
                 match x.reg {
-                    0 => {
-                        op.command = Op::Add16();
-                    }
-                    1 => {
-                        op.command = Op::Or16();
-                    }
-                    2 => {
-                        op.command = Op::Adc16();
-                    }
-                    3 => {
-                        op.command = Op::Sbb16();
-                    }
-                    4 => {
-                        op.command = Op::And16();
-                    }
-                    5 => {
-                        op.command = Op::Sub16();
-                    }
-                    6 => {
-                        op.command = Op::Xor16();
-                    }
-                    7 => {
-                        op.command = Op::Cmp16();
-                    }
+                    0 => op.command = Op::Add16(),
+                    1 => op.command = Op::Or16(),
+                    2 => op.command = Op::Adc16(),
+                    3 => op.command = Op::Sbb16(),
+                    4 => op.command = Op::And16(),
+                    5 => op.command = Op::Sub16(),
+                    6 => op.command = Op::Xor16(),
+                    7 => op.command = Op::Cmp16(),
                     _ => {}
                 }
             }
@@ -668,30 +625,14 @@ impl Decoder {
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 op.params.src = Parameter::ImmS8(self.read_s8());
                 match x.reg {
-                    0 => {
-                        op.command = Op::Add16();
-                    }
-                    1 => {
-                        op.command = Op::Or16();
-                    }
-                    2 => {
-                        op.command = Op::Adc16();
-                    }
-                    3 => {
-                        op.command = Op::Sbb16();
-                    }
-                    4 => {
-                        op.command = Op::And16();
-                    }
-                    5 => {
-                        op.command = Op::Sub16();
-                    }
-                    6 => {
-                        op.command = Op::Xor16();
-                    }
-                    7 => {
-                        op.command = Op::Cmp16();
-                    }
+                    0 => op.command = Op::Add16(),
+                    1 => op.command = Op::Or16(),
+                    2 => op.command = Op::Adc16(),
+                    3 => op.command = Op::Sbb16(),
+                    4 => op.command = Op::And16(),
+                    5 => op.command = Op::Sub16(),
+                    6 => op.command = Op::Xor16(),
+                    7 => op.command = Op::Cmp16(),
                     _ => {}
                 }
             }
@@ -761,12 +702,6 @@ impl Decoder {
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);
-                        // println!("op 8F unknown reg = {}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
-                        //     x.reg,
-                        //     self.sreg16[CS],
-                        //     self.ip - 1,
-                        //     self.get_offset() - 1,
-                        //     self.instruction_count);
                     }
                 }
             }
@@ -775,8 +710,8 @@ impl Decoder {
                 op.command = Op::Nop();
             }
             0x91...0x97 => {
-                // xchg AX, r16  | xchg r16, AX
-                // NOTE: ("xchg ax,ax" is an alias of "nop")
+                // xchg AX, r16 | xchg r16, AX
+                // NOTE: "xchg ax,ax" is an alias of "nop"
                 op.command = Op::Xchg16();
                 op.params.dst = Parameter::Reg16(AX);
                 op.params.src = Parameter::Reg16((b & 7) as usize);
@@ -945,12 +880,6 @@ impl Decoder {
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);
-                        // println!("op C6 unknown reg = {} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
-                        //     x.reg,
-                        //     self.sreg16[CS],
-                        //     self.ip - 1,
-                        //     self.get_offset() - 1,
-                        //     self.instruction_count);
                     }
                 }
             }
@@ -966,12 +895,6 @@ impl Decoder {
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);
-                        // println!("op C7 unknown reg = {} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
-                        //     x.reg,
-                        //     self.sreg16[CS],
-                        //     self.ip - 1,
-                        //     self.get_offset() - 1,
-                        //     self.instruction_count);
                     }
                 }
             }
@@ -1085,30 +1008,14 @@ impl Decoder {
                 op.command = Op::Xlatb();
             }
             /*
-            0xD8 => { // fpu
-                op.decodeD8(data)
-            }
-            0xD9 => { // fpu
-                op.decodeD9(data)
-            }
-            0xDA => { // fpu
-                op.decodeDA(data)
-            }
-            0xDB => { // fpu
-                op.decodeDB(data)
-            }
-            0xDC => { // fpu
-                op.decodeDC(data)
-            }
-            0xDD => { // fpu
-                op.decodeDD(data)
-            }
-            0xDE => { // fpu
-                op.decodeDE(data)
-            }
-            0xDF => { // fpu
-                op.decodeDF(data)
-            }
+            0xD8 => {} // fpu
+            0xD9 => {} // fpu
+            0xDA => {} // fpu
+            0xDB => {} // fpu
+            0xDC => {} // fpu
+            0xDD => {} // fpu
+            0xDE => {} // fpu
+            0xDF => {} // fpu
             */
             0xE0 => {
                 op.command = Op::Loopne();
@@ -1257,30 +1164,12 @@ impl Decoder {
                         op.command = Op::Test8();
                         op.params.src = Parameter::Imm8(self.read_u8());
                     }
-                    2 => {
-                        // not r/m8
-                        op.command = Op::Not8();
-                    }
-                    3 => {
-                        // neg r/m8
-                        op.command = Op::Neg8();
-                    }
-                    4 => {
-                        // mul r/m8
-                        op.command = Op::Mul8();
-                    }
-                    5 => {
-                        // imul r/m8
-                        op.command = Op::Imul8();
-                    }
-                    6 => {
-                        // div r/m8
-                        op.command = Op::Div8();
-                    }
-                    7 => {
-                        // idiv r/m8
-                        op.command = Op::Idiv8();
-                    }
+                    2 => op.command = Op::Not8(), // not r/m8
+                    3 => op.command = Op::Neg8(), // neg r/m8
+                    4 => op.command = Op::Mul8(), // mul r/m8
+                    5 => op.command = Op::Imul8(), // imul r/m8
+                    6 => op.command = Op::Div8(), // div r/m8
+                    7 => op.command = Op::Idiv8(), // idiv r/m8
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);
@@ -1298,37 +1187,15 @@ impl Decoder {
                         op.command = Op::Test16();
                         op.params.src = Parameter::Imm16(self.read_u16());
                     }
-                    2 => {
-                        // not r/m16
-                        op.command = Op::Not16();
-                    }
-                    3 => {
-                        // neg r/m16
-                        op.command = Op::Neg16();
-                    }
-                    4 => {
-                        // mul r/m16
-                        op.command = Op::Mul16();
-                    }
-                    5 => {
-                        // imul r/m16
-                        op.command = Op::Imul16();
-                    }
-                    6 => {
-                        // div r/m16
-                        op.command = Op::Div16();
-                    }
-                    7 => {
-                        // idiv r/m16
-                        op.command = Op::Idiv16();
-                    }
+                    2 => op.command = Op::Not16(), // not r/m16
+                    3 => op.command = Op::Neg16(), // neg r/m16
+                    4 => op.command = Op::Mul16(), // mul r/m16
+                    5 => op.command = Op::Imul16(), // imul r/m16
+                    6 => op.command = Op::Div16(), // div r/m16
+                    7 => op.command = Op::Idiv16(), // idiv r/m16
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);
-                        // println!("op F7 unknown reg={} at {:04X}:{:04X}",
-                        //          x.reg,
-                        //          self.sreg16[CS],
-                        //          self.ip);
                     }
                 }
             }
@@ -1361,24 +1228,14 @@ impl Decoder {
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 match x.reg {
-                    0 | 2 => {
-                        // NOTE: 2 is a old encoding, example user:
-                        // https://www.pouet.net/prod.php?which=65203
-                        // 00000140  FEC5              inc ch
-                        op.command = Op::Inc8();
-                    }
-                    1 => {
-                        op.command = Op::Dec8();
-                    }
+                    // NOTE: 2 is a deprecated but valid encoding, example user:
+                    // https://www.pouet.net/prod.php?which=65203
+                    // 00000140  FEC5              inc ch
+                    0 | 2 => op.command = Op::Inc8(),
+                    1 => op.command = Op::Dec8(),
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);
-                        // println!("op FE, unknown reg {}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
-                        //     x.reg,
-                        //     self.sreg16[CS],
-                        //     self.ip - 1,
-                        //     self.get_offset() - 1,
-                        //     self.instruction_count);
                     }
                 }
             }
@@ -1387,53 +1244,26 @@ impl Decoder {
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 match x.reg {
-                    0 => {
-                        // inc r/m16
-                        op.command = Op::Inc16();
-                    }
-                    1 => {
-                        // dec r/m16
-                        op.command = Op::Dec16();
-                    }
-                    2 => {
-                        // call r/m16
-                        op.command = Op::CallNear();
-                    }
+                    0 => op.command = Op::Inc16(), // inc r/m16
+                    1 => op.command = Op::Dec16(), // dec r/m16
+                    2 => op.command = Op::CallNear(), // call r/m16
                     // 3 => call far
-                    4 => {
-                        // jmp r/m16
-                        op.command = Op::JmpNear();
-                    }
+                    4 => op.command = Op::JmpNear(), // jmp r/m16
                     // 5 => jmp far
-                    6 => {
-                        // push r/m16
-                        op.command = Op::Push16();
-                    }
+                    6 => op.command = Op::Push16(), // push r/m16
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);
-                        // println!("op FF, unknown reg {}: at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
-                        //     x.reg,
-                        //     self.sreg16[CS],
-                        //     self.ip - 1,
-                        //     self.get_offset() - 1,
-                        //     self.instruction_count);
                     }
                 }
             }
             _ => {
                 let invalid = InvalidOp::Op(vec![b]);
                 op.command = Op::Invalid(invalid);
-                // println!("decode_instruction: unknown op {:02X} at {:04X}:{:04X} ({:06X} flat), {} instructions executed",
-                //          b,
-                //          self.sreg16[CS],
-                //          self.ip - 1,
-                //          self.get_offset() - 1,
-                //          self.instruction_count);
             }
         }
 
-        //calculate instruction length
+        // calculate instruction length
         op.byte_length = self.c_offset - ioffset;
         op
     }
