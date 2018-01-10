@@ -9,6 +9,7 @@ use std::ffi::OsString;
 use tera::Context;
 
 use cpu::CPU;
+use mmu::MMU;
 use tools;
 
 #[test] #[ignore] // it is too expensive
@@ -69,7 +70,7 @@ fn demo_256() {
     while let Some(bin) = test_bins.pop() {
         println!("demo_256: {}", bin);
 
-        let mut cpu = CPU::new();
+        let mut cpu = CPU::new(MMU::new());
         cpu.deterministic = true;
         let code = tools::read_binary(bin).unwrap();
         cpu.load_com(&code);
@@ -83,7 +84,10 @@ fn demo_256() {
         filename.push(stem.to_os_string());
         filename.push(".png");
 
-        cpu.gpu.test_render_frame(&cpu.memory.memory, filename.to_str().unwrap());
+        //just to make the test a bit slower (sorry)
+        let mem_dump = cpu.mmu.dump_mem();
+
+        cpu.gpu.test_render_frame(&mem_dump, filename.to_str().unwrap());
         out_images.push(filename.into_string().unwrap());
         // XXX cpu.test_expect_memory_md5(x)
     }
