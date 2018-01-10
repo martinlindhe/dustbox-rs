@@ -22,7 +22,7 @@ fn demo_256() {
         "../dos-software-decoding/demo-256/beziesux/beziesux.com",
         "../dos-software-decoding/demo-256/blah/blah.com",
         "../dos-software-decoding/demo-256/bob/bob.com",
-        //"../dos-software-decoding/demo-256/chaos/chaos.com",
+        "../dos-software-decoding/demo-256/chaos/chaos.com",
         "../dos-software-decoding/demo-256/conf/conf.com",
         "../dos-software-decoding/demo-256/ectotrax/ectotrax.com",
         "../dos-software-decoding/demo-256/fire/fire.com",
