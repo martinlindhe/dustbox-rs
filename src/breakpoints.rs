@@ -1,3 +1,6 @@
+#[cfg(test)]
+#[path = "./breakpoints_test.rs"]
+mod breakpoints_test;
 
 #[derive(Default)]
 pub struct Breakpoints {
@@ -31,9 +34,11 @@ impl Breakpoints {
         }
     }
 
+    // returns a Vec with breakpoints sorted ascending
     pub fn get(&self) -> Vec<usize> {
-        // XXX return sorted list .sort()
-        self.breakpoints.clone()
+        let mut sorted = self.breakpoints.clone();
+        sorted.sort();
+        sorted
     }
 
     pub fn clear(&mut self) {
