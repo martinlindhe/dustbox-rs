@@ -419,7 +419,8 @@ let mut cpu = CPU::new(mmu);
 
     cpu.execute_instruction();
     // should have written byte to [di+0x06AE]
-    assert_eq!(0xFE, cpu.mmu.read_u8(cs, (Wrapping(di) + 
+    let ds = cpu.sreg16[DS];
+    assert_eq!(0xFE, cpu.mmu.read_u8(ds, (Wrapping(di) +
                                      Wrapping(0x06AE)).0));
 
     cpu.execute_instruction();
