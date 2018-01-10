@@ -1889,7 +1889,7 @@ impl CPU {
         }
     }
 
-    fn amode16(&mut self, idx: usize) -> u16 {
+    fn amode16(&self, idx: usize) -> u16 {
         match idx {
             0 => (Wrapping(self.r16[BX].val) + Wrapping(self.r16[SI].val)).0,
             1 => (Wrapping(self.r16[BX].val) + Wrapping(self.r16[DI].val)).0,
