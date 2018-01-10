@@ -67,7 +67,6 @@ impl Debugger {
     }
 
     pub fn step_into_n_instructions(&mut self, cnt: usize) {
-        // measure time
         let start = Instant::now();
         let mut done = 0;
         for _ in 0..cnt {
@@ -205,7 +204,7 @@ impl Debugger {
             }
             "reset" => {
                 println!("Resetting CPU");
-                self.cpu.reset(MMU::new());
+                self.cpu.hard_reset(MMU::new());
             }
             "exit" | "quit" | "q" => {
                 println!("Exiting ... {} instructions was executed",
@@ -381,10 +380,10 @@ impl Debugger {
     }
 
     pub fn load_binary(&mut self, name: &str) {
-        println!("Reading rom from {}", name);
+        println!("Reading raw binary from {}", name);
         match tools::read_binary(name) {
             Ok(data) => {
-                self.cpu.reset(MMU::new());
+                self.cpu.hard_reset(MMU::new());
                 self.cpu.load_com(&data);
             }
             Err(what) => println!("error {}", what),

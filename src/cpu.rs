@@ -96,13 +96,14 @@ impl CPU {
         self.breakpoints.clear();
     }
 
-    //reset the CPU but keep the memory
+    // reset the CPU but keep the memory
     pub fn soft_reset(&mut self) {
         let cpu = CPU::new(self.mmu.clone());
         *self = cpu;
     }
 
-    pub fn reset(&mut self, mmu: MMU) {
+    // reset the CPU and memory
+    pub fn hard_reset(&mut self, mmu: MMU) {
         let cpu = CPU::new(mmu);
         *self = cpu;
     }
@@ -1710,6 +1711,7 @@ impl CPU {
     }
 
     fn write_u8(&mut self, offset: usize, data: u8) {
+        /*
         // break if we hit a breakpoint
         if self.is_offset_at_breakpoint(offset) {
             self.fatal_error = true;
@@ -1719,6 +1721,7 @@ impl CPU {
                 self.sreg16[CS],
                 self.ip);
         }
+        */
         self.mmu.write_byte_flat(offset, data);
     }
 
@@ -1883,8 +1886,8 @@ impl CPU {
 
     fn segment(&self, seg: Segment) -> u16 {
         match seg {
-            Segment::DS() |
-            Segment::Default() => self.sreg16[DS],
+            Segment::Default() |
+            Segment::DS() => self.sreg16[DS],
             Segment::CS() => self.sreg16[CS],
             Segment::ES() => self.sreg16[ES],
             Segment::FS() => self.sreg16[FS],
@@ -1903,10 +1906,7 @@ impl CPU {
             5 => self.r16[DI].val,
             6 => self.r16[BP].val,
             7 => self.r16[BX].val,
-            _ => {
-                println!("Impossible amode16, idx {}", idx);
-                0
-            }
+            _ => panic!("Impossible amode16, idx {}", idx),
         }
     }
 
@@ -1919,12 +1919,10 @@ impl CPU {
         self.breakpoints.iter().any(|&x| x == offset)
     }
 
-    // used for OUTSB instruction
     fn outsb(&mut self) {
         let val = self.mmu.read_u8(self.sreg16[DS], self.r16[SI].val);
         let port = self.r16[DX].val;
         self.out_u8(port, val);
-
         self.r16[SI].val = if !self.flags.direction {
             (Wrapping(self.r16[SI].val) + Wrapping(1)).0
         } else {
@@ -1947,7 +1945,6 @@ impl CPU {
         };
     }
 
-    // used for MOVSW
     fn movsw(&mut self) {
         let b = self.mmu.read_u16(self.sreg16[DS], self.r16[SI].val);
         self.r16[SI].val = if !self.flags.direction {
@@ -1983,7 +1980,7 @@ impl CPU {
         };
     }
 
-    // output byte `data` to I/O port
+    // write byte to I/O port
     fn out_u8(&mut self, dst: u16, data: u8) {
         match dst {
             0x03C8 => {
@@ -2025,7 +2022,7 @@ impl CPU {
         }
     }
 
-    // output word `data` to I/O port
+    // write word to I/O port
     fn out_u16(&mut self, dst: u16, data: u16) {
         match dst {
             0x03C4 => {
@@ -2132,6 +2129,7 @@ impl CPU {
         }
     }
 
+    // execute interrupt
     fn int(&mut self, int: u8) {
         let deterministic = self.deterministic;
         match int {
