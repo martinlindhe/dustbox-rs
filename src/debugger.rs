@@ -56,20 +56,27 @@ impl Debugger {
         self.ip_breakpoints.hit(offset)
     }
 
+    fn should_break(&self) -> bool {
+        if self.cpu.fatal_error {
+            return true;
+        }
+        if self.is_ip_at_breakpoint() {
+            println!(
+                "Breakpoint reached, ip = {:04X}:{:04X}",
+                self.cpu.sreg16[CS],
+                self.cpu.ip
+            );
+            return true;
+        }
+        false
+    }
+
     pub fn step_into(&mut self, cnt: usize) {
         let start = Instant::now();
         let mut done = 0;
         for _ in 0..cnt {
             self.cpu.execute_instruction();
-            if self.cpu.fatal_error {
-                break;
-            }
-            if self.is_ip_at_breakpoint() {
-                println!(
-                    "Breakpoint reached (step-into), ip = {:04X}:{:04X}",
-                    self.cpu.sreg16[CS],
-                    self.cpu.ip
-                );
+            if self.should_break() {
                 break;
             }
             done += 1;
@@ -95,18 +102,9 @@ impl Debugger {
         loop {
             cnt += 1;
             self.cpu.execute_instruction();
-            if self.cpu.fatal_error {
+            if self.should_break() {
                 break;
             }
-            if self.is_ip_at_breakpoint() {
-                println!(
-                    "Breakpoint reached (step-over), ip = {:04X}:{:04X}",
-                    self.cpu.sreg16[CS],
-                    self.cpu.ip
-                );
-                break;
-            }
-
             if self.cpu.ip == dst_ip {
                 break;
             }
@@ -121,15 +119,7 @@ impl Debugger {
     fn run_until_breakpoint(&mut self) {
         loop {
             self.cpu.execute_instruction();
-            if self.cpu.fatal_error {
-                break;
-            }
-            if self.is_ip_at_breakpoint() {
-                println!(
-                    "Breakpoint reached (run), ip = {:04X}:{:04X}",
-                    self.cpu.sreg16[CS],
-                    self.cpu.ip
-                );
+            if self.should_break() {
                 break;
             }
         }
