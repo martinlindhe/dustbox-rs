@@ -75,7 +75,7 @@ impl Decoder {
     fn decode(&mut self, seg: Segment) -> Instruction {
         let iseg = self.c_seg;
         let ioffset = self.c_offset;
-        let b = self.mmu.read_u8(iseg, ioffset);
+        let b = self.read_u8();
 
         let mut op = Instruction {
             segment: seg,
