@@ -79,7 +79,7 @@ impl Debugger {
     }
 
     pub fn is_ip_at_breakpoint(&self) -> bool {
-        let offset = self.cpu.get_offset();
+        let offset = self.cpu.get_address();
         self.is_offset_at_breakpoint(offset)
     }
 
@@ -435,7 +435,7 @@ impl Debugger {
     }
 
     fn show_flat_address(&mut self) {
-        let offset = self.cpu.get_offset();
+        let offset = self.cpu.get_address();
         let rom_offset = offset - self.cpu.get_rom_base() + 0x100;
         println!(
             "{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",

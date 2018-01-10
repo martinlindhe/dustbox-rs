@@ -78,15 +78,16 @@ impl CPU {
         *self = cpu;
     }
 
+    /*
     pub fn load_bios(&mut self, data: &[u8]) {
         self.sreg16[CS] = 0xF000;
         self.ip = 0x0000;
         let end = self.ip + data.len() as u16;
         println!("loading bios to {:06X}..{:06X}", self.ip, end);
         self.rom_base = self.ip as usize;
-
         self.mmu.write(self.sreg16[CS], self.ip, data);
     }
+    */
 
     // load .com program into CS:0100 and set IP to program start
     pub fn load_com(&mut self, data: &[u8]) {
@@ -109,8 +110,7 @@ impl CPU {
         self.r16[DI].val = 0xFFFE;
 
         self.ip = 0x0100;
-        let min = self.get_offset();
-        // println!("loading rom to {:06X}..{:06X}", min, max);
+        let min = self.get_address();
         self.rom_base = min;
 
         self.mmu.write(self.sreg16[CS], self.ip, data);
@@ -156,44 +156,6 @@ impl CPU {
         // XXX need instruction timing to do this properly
         if self.instruction_count % 100 == 0 {
             self.gpu.progress_scanline();
-        }
-    }
-
-    // used by aaa, aas
-    fn adjb(&mut self, param1: i8, param2: i8) {
-        if self.flags.auxiliary_carry || (self.r16[AX].lo_u8() & 0xf) > 9 {
-            let al = self.r16[AX].lo_u8();
-            let ah = self.r16[AX].hi_u8();
-            self.r16[AX].set_lo((u16::from(al) + param1 as u16) as u8);
-            self.r16[AX].set_hi((u16::from(ah) + param2 as u16) as u8);
-            self.flags.auxiliary_carry = true;
-            self.flags.carry = true;
-        } else {
-            self.flags.auxiliary_carry = false;
-            self.flags.carry = false;
-        }
-        let al = self.r16[AX].lo_u8();
-        self.r16[AX].set_lo(al & 0x0F);
-    }
-
-    // used by daa, das
-    fn adj4(&mut self, param1: i8, param2: i8) {
-        let old_al = self.r16[AX].lo_u8();
-        let old_cf = self.flags.carry;
-        self.flags.carry = false;
-
-        if (old_al & 0x0F) > 9 || self.flags.auxiliary_carry {
-            let tmp = u16::from(old_al) + param1 as u16;
-            self.r16[AX].set_lo(tmp as u8);
-            self.flags.carry = tmp & 0x100 != 0;
-            self.flags.auxiliary_carry = true;
-        } else {
-            self.flags.auxiliary_carry = false;
-        }
-
-        if old_al > 0x99 || old_cf {
-            self.r16[AX].set_lo((u16::from(old_al) + param2 as u16) as u8);
-            self.flags.carry = true;
         }
     }
 
@@ -1568,7 +1530,7 @@ impl CPU {
             _ => {
                 println!("execute error: unhandled: {:?} at {:06X}",
                          op.command,
-                         self.get_offset());
+                         self.get_address());
             }
         }
     }
@@ -1604,7 +1566,8 @@ impl CPU {
         data
     }
 
-    pub fn get_offset(&self) -> usize {
+    // returns the absoute address of CS:IP
+    pub fn get_address(&self) -> usize {
         self.mmu.s_translate(self.sreg16[CS], self.ip)
     }
 
@@ -1670,7 +1633,7 @@ impl CPU {
             _ => {
                 println!("read_parameter_address error: unhandled parameter: {:?} at {:06X}",
                          p,
-                         self.get_offset());
+                         self.get_address());
                 0
             }
         }
@@ -1730,7 +1693,7 @@ impl CPU {
             _ => {
                 println!("read_parameter_value error: unhandled parameter: {:?} at {:06X}",
                          p,
-                         self.get_offset());
+                         self.get_address());
                 0
             }
         }
@@ -1768,7 +1731,7 @@ impl CPU {
             _ => {
                 println!("write_parameter_u8 unhandled type {:?} at {:06X}",
                          p,
-                         self.get_offset());
+                         self.get_address());
             }
         }
     }
@@ -1807,7 +1770,7 @@ impl CPU {
             _ => {
                 println!("write_u16_param unhandled type {:?} at {:06X}",
                          p,
-                         self.get_offset());
+                         self.get_address());
             }
         }
     }
@@ -1835,6 +1798,44 @@ impl CPU {
             6 => self.r16[BP].val,
             7 => self.r16[BX].val,
             _ => panic!("Impossible amode16, idx {}", idx),
+        }
+    }
+
+    // used by aaa, aas
+    fn adjb(&mut self, param1: i8, param2: i8) {
+        if self.flags.auxiliary_carry || (self.r16[AX].lo_u8() & 0xf) > 9 {
+            let al = self.r16[AX].lo_u8();
+            let ah = self.r16[AX].hi_u8();
+            self.r16[AX].set_lo((u16::from(al) + param1 as u16) as u8);
+            self.r16[AX].set_hi((u16::from(ah) + param2 as u16) as u8);
+            self.flags.auxiliary_carry = true;
+            self.flags.carry = true;
+        } else {
+            self.flags.auxiliary_carry = false;
+            self.flags.carry = false;
+        }
+        let al = self.r16[AX].lo_u8();
+        self.r16[AX].set_lo(al & 0x0F);
+    }
+
+    // used by daa, das
+    fn adj4(&mut self, param1: i8, param2: i8) {
+        let old_al = self.r16[AX].lo_u8();
+        let old_cf = self.flags.carry;
+        self.flags.carry = false;
+
+        if (old_al & 0x0F) > 9 || self.flags.auxiliary_carry {
+            let tmp = u16::from(old_al) + param1 as u16;
+            self.r16[AX].set_lo(tmp as u8);
+            self.flags.carry = tmp & 0x100 != 0;
+            self.flags.auxiliary_carry = true;
+        } else {
+            self.flags.auxiliary_carry = false;
+        }
+
+        if old_al > 0x99 || old_cf {
+            self.r16[AX].set_lo((u16::from(old_al) + param2 as u16) as u8);
+            self.flags.carry = true;
         }
     }
 
@@ -2042,7 +2043,7 @@ impl CPU {
             _ => {
                 println!("in_port: unhandled in8 {:04X} at {:06X}",
                          port,
-                         self.get_offset());
+                         self.get_address());
                 0
             }
         }
