@@ -5,6 +5,7 @@ use register::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES};
 use instruction::seg_offs_as_flat;
 use segment::Segment;
 use mmu::MMU;
+use std::num::Wrapping;
 
 #[test]
 fn can_handle_stack() {
@@ -418,7 +419,8 @@ let mut cpu = CPU::new(mmu);
 
     cpu.execute_instruction();
     // should have written byte to [di+0x06AE]
-    assert_eq!(0xFE, cpu.mmu.read_u8(cs, di + 0x06AE));
+    assert_eq!(0xFE, cpu.mmu.read_u8(cs, (Wrapping(di) + 
+                                     Wrapping(0x06AE)).0));
 
     cpu.execute_instruction();
     // should have read byte from [di+0x06AE] to al
