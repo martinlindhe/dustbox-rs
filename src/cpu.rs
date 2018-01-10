@@ -1857,8 +1857,8 @@ impl CPU {
                 self.sreg16[r] = data;
             }
             Parameter::Imm16(imm) => {
-                let offset = seg_offs_as_flat(self.segment(segment), imm);
-                self.write_u16(offset, data);
+                let seg = self.segment(seg);
+                self.mmu.write_u16(seg, imm, data);
             }
             Parameter::Ptr16(seg, imm) => {
                 let seg = self.segment(seg);
