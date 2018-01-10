@@ -7,7 +7,7 @@ use register::Register16;
 use flags::Flags;
 use memory::Memory;
 use segment::Segment;
-use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm, seg_offs_as_flat};
+use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm};
 use int10;
 use int16;
 use int21;
@@ -1678,31 +1678,15 @@ impl CPU {
     fn push8(&mut self, data: u8) {
         let sp = (Wrapping(self.r16[SP].val) - Wrapping(1)).0;
         self.r16[SP].val = sp;
-        let offset = seg_offs_as_flat(self.sreg16[SS], self.r16[SP].val);
-        /*
-        println!("push8 {:02X}  to {:04X}:{:04X}  =>  {:06X}       instr {}",
-                 data,
-                 self.sreg16[SS],
-                 self.r16[SP].val,
-                 offset,
-                 self.instruction_count);
-        */
-        self.write_u8(offset, data);
+
+        self.mmu.write_u8(self.sreg16[SS], self.r16[SP].val, data);
     }
 
     fn push16(&mut self, data: u16) {
         let sp = (Wrapping(self.r16[SP].val) - Wrapping(2)).0;
         self.r16[SP].val = sp;
-        let offset = seg_offs_as_flat(self.sreg16[SS], self.r16[SP].val);
-        /*
-        println!("push16 {:04X}  to {:04X}:{:04X}  =>  {:06X}       instr {}",
-                 data,
-                 self.sreg16[SS],
-                 self.r16[SP].val,
-                 offset,
-                 self.instruction_count);
-        */
-        self.write_u16(offset, data);
+
+        self.mmu.write_u16(self.sreg16[SS], self.r16[SP].val, data);
     }
 
     fn pop16(&mut self) -> u16 {
@@ -2040,8 +2024,8 @@ impl CPU {
 
     fn stosb(&mut self) {
         let data = self.r16[AX].lo_u8(); // = AL
-        let dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
-        self.write_u8(dst, data);
+
+        self.mmu.write_u8(self.sreg16[ES], self.r16[DI].val, data);
         self.r16[DI].val = if !self.flags.direction {
             (Wrapping(self.r16[DI].val) + Wrapping(1)).0
         } else {
@@ -2051,8 +2035,8 @@ impl CPU {
 
     fn stosw(&mut self) {
         let data = self.r16[AX].val;
-        let dst = seg_offs_as_flat(self.sreg16[ES], self.r16[DI].val);
-        self.write_u16(dst, data);
+
+        self.mmu.write_u16(self.sreg16[ES], self.r16[DI].val, data);
 
         self.r16[DI].val = if !self.flags.direction {
             (Wrapping(self.r16[DI].val) + Wrapping(2)).0
