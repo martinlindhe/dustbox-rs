@@ -178,7 +178,7 @@ impl CPU {
         let cs = self.sreg16[CS];
         let ip = self.ip;
         let op = self.decoder
-            .get_instruction(cs, ip, Segment::CS());
+            .get_instruction(cs, ip, Segment::DS());
 
         match op.command {
             Op::Unknown() => {
