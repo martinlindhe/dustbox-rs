@@ -359,7 +359,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_addressing() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x02,             // mov bx,0x200
         0xC6, 0x47, 0x2C, 0xFF,       // mov byte [bx+0x2c],0xff  ; rm8 [amode+s8]
@@ -392,8 +392,8 @@ let mut cpu = CPU::new(mmu);
     assert_eq!(0x200, cpu.r16[BX].val);
 
     cpu.execute_instruction();
-    let cs = cpu.sreg16[CS];
-    assert_eq!(0xFF, cpu.mmu.read_u8(cs, 0x22C));
+    let ds = cpu.sreg16[DS];
+    assert_eq!(0xFF, cpu.mmu.read_u8(ds, 0x22C));
 
     cpu.execute_instruction();
     assert_eq!(0x100, cpu.r16[SI].val);
@@ -408,16 +408,15 @@ let mut cpu = CPU::new(mmu);
 
     cpu.execute_instruction();
     // should have written word to [0x230]
-    assert_eq!(0x00FF, cpu.mmu.read_u16(cs, 0x230));
+    assert_eq!(0x00FF, cpu.mmu.read_u16(ds, 0x230));
 
     cpu.execute_instruction();
     // should have written ax to [di]
     let di = cpu.r16[DI].val;
-    assert_eq!(0x00FF, cpu.mmu.read_u16(cs, di));
+    assert_eq!(0x00FF, cpu.mmu.read_u16(ds, di));
 
     cpu.execute_instruction();
     // should have written byte to [di+0x06AE]
-    let ds = cpu.sreg16[DS];
     assert_eq!(0xFE, cpu.mmu.read_u8(ds, (Wrapping(di) +
                                      Wrapping(0x06AE)).0));
 
