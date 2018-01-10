@@ -1857,7 +1857,7 @@ impl CPU {
                 self.sreg16[r] = data;
             }
             Parameter::Imm16(imm) => {
-                let seg = self.segment(seg);
+                let seg = self.segment(segment);
                 self.mmu.write_u16(seg, imm, data);
             }
             Parameter::Ptr16(seg, imm) => {
