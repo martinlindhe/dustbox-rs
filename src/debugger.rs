@@ -12,6 +12,7 @@ use instruction::{seg_offs_as_flat, InstructionInfo};
 use mmu::MMU;
 use decoder::Decoder;
 use segment::Segment;
+use breakpoints::Breakpoints;
 
 #[cfg(test)]
 #[path = "./debugger_test.rs"]
@@ -30,7 +31,7 @@ pub struct Debugger {
     pub cpu: CPU,
     pub prev_regs: PrevRegs,
     last_program: Option<String>,
-    breakpoints: Vec<usize>,
+    breakpoints: Breakpoints,
 }
 
 impl Debugger {
@@ -46,45 +47,13 @@ impl Debugger {
                 flags: cpu.flags,
             },
             last_program: None,
-            breakpoints: vec![0; 0],
+            breakpoints: Breakpoints::new(),
         }
-    }
-
-    pub fn add_breakpoint(&mut self, bp: usize) -> Option<usize> {
-        if self.breakpoints.iter().find(|&&x|x == bp).is_none() {
-            self.breakpoints.push(bp);
-            Some(bp)
-        } else {
-            None
-        }
-    }
-
-    pub fn remove_breakpoint(&mut self, bp: usize) -> Option<usize> {
-        // TODO later: simplify when https://github.com/rust-lang/rust/issues/40062 is stable
-        match self.breakpoints.iter().position(|x| *x == bp) {
-            Some(pos) => {
-                self.breakpoints.remove(pos);
-                Some(bp)
-            },
-            None => None,
-        }
-    }
-
-    pub fn get_breakpoints(&self) -> Vec<usize> {
-        self.breakpoints.clone()
-    }
-
-    pub fn clear_breakpoints(&mut self) {
-        self.breakpoints.clear();
     }
 
     pub fn is_ip_at_breakpoint(&self) -> bool {
         let offset = self.cpu.get_address();
-        self.is_offset_at_breakpoint(offset)
-    }
-
-    pub fn is_offset_at_breakpoint(&self, offset: usize) -> bool {
-        self.breakpoints.iter().any(|&x| x == offset)
+        self.breakpoints.hit(offset)
     }
 
     pub fn step_into(&mut self, cnt: usize) {
@@ -277,7 +246,7 @@ impl Debugger {
                         "add" | "set" => {
                             match parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
-                                    if self.add_breakpoint(bp).is_some() {
+                                    if self.breakpoints.add(bp).is_some() {
                                         println!("Breakpoint added: {:06X}", bp);
                                     } else {
                                         println!("Breakpoint was already added");
@@ -292,7 +261,7 @@ impl Debugger {
                         "del" | "delete" | "remove" => {
                             match parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
-                                    match self.remove_breakpoint(bp) {
+                                    match self.breakpoints.remove(bp) {
                                         Some(_) => println!("Breakpoint removed: {:06X}", bp),
                                         None => println!("Breakpoint not found, so not removed!"),
                                     }
@@ -304,12 +273,10 @@ impl Debugger {
                             }
                         }
                         "clear" => {
-                            self.clear_breakpoints();
+                            self.breakpoints.clear();
                         }
                         "list" => {
-                            let list = self.get_breakpoints(); // .sort();
-                            // XXX sort list
-
+                            let list = self.breakpoints.get();
                             let strs: Vec<String> =
                                 list.iter().map(|b| format!("{:06X}", b)).collect();
                             let formatted_list = strs.join(" ");

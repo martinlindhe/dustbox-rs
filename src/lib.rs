@@ -10,6 +10,7 @@ extern crate raster;
 #[macro_use] extern crate tera;
 
 pub mod debugger;
+mod breakpoints;
 mod tools;
 pub mod cpu;
 mod flags;
