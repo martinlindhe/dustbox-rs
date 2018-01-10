@@ -195,8 +195,7 @@ impl CPU {
     pub fn execute_instruction(&mut self) {
         let cs = self.sreg16[CS];
         let ip = self.ip;
-        let op = self.decoder
-            .get_instruction(cs, ip, Segment::DS());
+        let op = self.decoder.get_instruction(cs, ip, Segment::DS());
 
         match op.command {
             Op::Unknown() => {
@@ -228,22 +227,6 @@ impl CPU {
         // XXX need instruction timing to do this properly
         if self.instruction_count % 100 == 0 {
             self.gpu.progress_scanline();
-        }
-    }
-
-    pub fn execute_n_instructions(&mut self, n: usize) {
-        for _ in 0..n {
-            self.execute_instruction();
-            if self.fatal_error {
-                return;
-            }
-            if self.is_ip_at_breakpoint() {
-                self.fatal_error = true;
-                println!("Breakpoint reached at {:04X}:{:04X}",
-                    self.sreg16[CS],
-                    self.ip);
-                return;
-            }
         }
     }
 

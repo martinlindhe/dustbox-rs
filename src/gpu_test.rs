@@ -8,8 +8,7 @@ use std::ffi::OsString;
 
 use tera::Context;
 
-use cpu::CPU;
-use mmu::MMU;
+use debugger::Debugger;
 use tools;
 
 #[test] #[ignore] // it is too expensive
@@ -70,12 +69,12 @@ fn demo_256() {
     while let Some(bin) = test_bins.pop() {
         println!("demo_256: {}", bin);
 
-        let mut cpu = CPU::new(MMU::new());
-        cpu.deterministic = true;
+        let mut debugger = Debugger::new();
+        debugger.cpu.deterministic = true;
         let code = tools::read_binary(bin).unwrap();
-        cpu.load_com(&code);
+        debugger.cpu.load_com(&code);
 
-        cpu.execute_n_instructions(5_000_000);
+        debugger.step_into_n_instructions(5_000_000);
         let path = Path::new(bin);
 
         let stem = path.file_stem().unwrap_or(OsStr::new(""));
@@ -85,9 +84,9 @@ fn demo_256() {
         filename.push(".png");
 
         //just to make the test a bit slower (sorry)
-        let mem_dump = cpu.mmu.dump_mem();
+        let mem_dump = debugger.cpu.mmu.dump_mem();
 
-        cpu.gpu.test_render_frame(&mem_dump, filename.to_str().unwrap());
+        debugger.cpu.gpu.test_render_frame(&mem_dump, filename.to_str().unwrap());
 
         let mut pub_filename = String::new();
         pub_filename.push_str("render/demo-256/256_");

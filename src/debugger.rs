@@ -66,7 +66,7 @@ impl Debugger {
         }
     }
 
-    fn step_into_n_instructions(&mut self, cnt: usize) {
+    pub fn step_into_n_instructions(&mut self, cnt: usize) {
         // measure time
         let start = Instant::now();
         let mut done = 0;
