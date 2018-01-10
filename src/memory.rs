@@ -13,8 +13,8 @@ impl Memory {
     }
 
     pub fn read_u16(&self, addr: usize) -> u16 {
-        u16::from(self.read_u8(addr)) << 8 |
-            u16::from(self.read_u8(addr+1))
+        u16::from(self.read_u8(addr+1)) << 8 |
+            u16::from(self.read_u8(addr))
     }
 
     pub fn write_u8(&mut self, addr: usize, data: u8) {
