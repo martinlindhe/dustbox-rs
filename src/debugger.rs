@@ -460,7 +460,7 @@ fn parse_segment_offset_pair(s: &str) -> Result<usize, ParseIntError> {
         }
         None => {
             // flat address
-             match parse_hex_string(&x) {
+             match parse_hex_string(x) {
                 Ok(val) => Ok(val),
                 Err(v) => Err(v),
             }

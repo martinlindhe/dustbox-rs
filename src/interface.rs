@@ -230,23 +230,20 @@ impl Interface {
             let disasm_text = disasm_text.clone();
 
             window.connect_key_press_event(move |_, key| {
-                match key.get_keyval() as u32 {
-                    key::Return => {
-                        let search_word = input_command.get_text().unwrap();
-                        let mut app = app.borrow_mut();
-                        app.exec_command(&search_word);
-                        input_command.set_text("");
+                if let key::Return = key.get_keyval() as u32 {
+                    let search_word = input_command.get_text().unwrap();
+                    let mut app = app.borrow_mut();
+                    app.exec_command(&search_word);
+                    input_command.set_text("");
 
-                        // update disasm
-                        let text = app.disasm_n_instructions_to_text(20);
-                        disasm_text
-                            .get_buffer()
-                            .map(|buffer| buffer.set_text(text.as_str()));
+                    // update disasm
+                    let text = app.disasm_n_instructions_to_text(20);
+                    disasm_text
+                        .get_buffer()
+                        .map(|buffer| buffer.set_text(text.as_str()));
 
-                        update_registers(&mut app, &builder);
-                        update_canvas(&builder);
-                    },
-                    _ => ()
+                    update_registers(&mut app, &builder);
+                    update_canvas(&builder);
                 }
                 Inhibit(false)
             });

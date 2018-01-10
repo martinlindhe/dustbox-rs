@@ -69,7 +69,7 @@ impl CPU {
     }
 
     pub fn add_breakpoint(&mut self, bp: usize) -> Option<usize> {
-        if let None = self.breakpoints.iter().find(|&&x| x ==bp) {
+        if self.breakpoints.iter().find(|&&x|x == bp).is_none() {
             self.breakpoints.push(bp);
             Some(bp)
         } else {
@@ -584,7 +584,7 @@ impl CPU {
                 let quo = (Wrapping(dst) / Wrapping(src)).0;
                 let rem = (Wrapping(dst) % Wrapping(src)).0;
 
-                if quo as i32 != (quo as i16) as i32 {
+                if quo as i32 != i32::from(quo as i16) {
                     self.exception(Exception::DIV0, 0);
                 } else {
                     self.r16[AX].val = (quo & 0xFFFF) as u16;
