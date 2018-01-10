@@ -31,9 +31,11 @@ impl Decoder {
 
     pub fn disassemble_block(&mut self, seg: u16, offset: u16, n: u16) -> Vec<InstructionInfo> {
         let mut ops: Vec<InstructionInfo> = Vec::new();
+        let mut inst_offset = 0;
 
-        for i in 0..n {
-            let op = self.disasm_instruction(seg, offset+i);
+        for _ in 0..n {
+            let op = self.disasm_instruction(seg, offset+inst_offset);
+            inst_offset += op.instruction.byte_length;
             ops.push(op);
         }
 
