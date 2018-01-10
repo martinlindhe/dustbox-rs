@@ -88,7 +88,12 @@ fn demo_256() {
         let mem_dump = cpu.mmu.dump_mem();
 
         cpu.gpu.test_render_frame(&mem_dump, filename.to_str().unwrap());
-        out_images.push(filename.into_string().unwrap());
+
+        let mut pub_filename = String::new();
+        pub_filename.push_str("render/demo-256/256_");
+        pub_filename.push_str(stem.to_str().unwrap());
+        pub_filename.push_str(".png");
+        out_images.push(pub_filename);
         // XXX cpu.test_expect_memory_md5(x)
     }
 
