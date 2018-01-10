@@ -5,7 +5,7 @@ use std::process::exit;
 
 use cpu::CPU;
 use register;
-use register::CS;
+use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
 use flags;
 use tools;
 use instruction::{seg_offs_as_flat, InstructionInfo};
@@ -239,7 +239,6 @@ impl Debugger {
                         self.step_into(cnt);
                     },
                     "over" => {
-                        // TODO: parse arg 3 (count)
                         self.step_over();
                     }
                      _ => {
@@ -260,7 +259,7 @@ impl Debugger {
                 println!("Executed {} instructions", self.cpu.instruction_count);
             }
             "reg" | "regs" | "registers" => {
-                self.cpu.print_registers();
+                self.print_registers();
             }
             "bp" | "breakpoint" => {
                 // breakpoints - all values are flat offsets
@@ -445,6 +444,48 @@ impl Debugger {
             offset,
             rom_offset
         );
+    }
+
+    fn print_registers(&mut self) -> String {
+        let mut res = String::new();
+
+        res += format!("AX:{:04X}  SI:{:04X}  DS:{:04X}  IP:{:04X}  cnt:{}\n",
+                       self.cpu.r16[AX].val,
+                       self.cpu.r16[SI].val,
+                       self.cpu.sreg16[DS],
+                       self.cpu.ip,
+                       self.cpu.instruction_count)
+                .as_ref();
+        res += format!("BX:{:04X}  DI:{:04X}  CS:{:04X}  fl:{:04X}\n",
+                       self.cpu.r16[BX].val,
+                       self.cpu.r16[DI].val,
+                       self.cpu.sreg16[CS],
+                       self.cpu.flags.u16())
+                .as_ref();
+        res += format!("CX:{:04X}  BP:{:04X}  ES:{:04X}  GS:{:04X}\n",
+                       self.cpu.r16[CX].val,
+                       self.cpu.r16[BP].val,
+                       self.cpu.sreg16[ES],
+                       self.cpu.sreg16[GS])
+                .as_ref();
+        res += format!("DX:{:04X}  SP:{:04X}  FS:{:04X}  SS:{:04X}\n",
+                       self.cpu.r16[DX].val,
+                       self.cpu.r16[SP].val,
+                       self.cpu.sreg16[FS],
+                       self.cpu.sreg16[SS])
+                .as_ref();
+        res += format!("C{} Z{} S{} O{} A{} P{} D{} I{}",
+                       self.cpu.flags.carry_numeric(),
+                       self.cpu.flags.zero_numeric(),
+                       self.cpu.flags.sign_numeric(),
+                       self.cpu.flags.overflow_numeric(),
+                       self.cpu.flags.auxiliary_numeric(),
+                       self.cpu.flags.parity_numeric(),
+                       self.cpu.flags.direction_numeric(),
+                       self.cpu.flags.interrupt_numeric())
+                .as_ref();
+
+        res
     }
 }
 

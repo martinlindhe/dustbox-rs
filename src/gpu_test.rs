@@ -74,7 +74,7 @@ fn demo_256() {
         let code = tools::read_binary(bin).unwrap();
         debugger.cpu.load_com(&code);
 
-        debugger.step_into_n_instructions(5_000_000);
+        debugger.step_into(5_000_000);
         let path = Path::new(bin);
 
         let stem = path.file_stem().unwrap_or(OsStr::new(""));

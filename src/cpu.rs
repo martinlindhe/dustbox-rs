@@ -121,48 +121,6 @@ impl CPU {
         self.rom_base
     }
 
-    pub fn print_registers(&mut self) -> String {
-        let mut res = String::new();
-
-        res += format!("AX:{:04X}  SI:{:04X}  DS:{:04X}  IP:{:04X}  cnt:{}\n",
-                       self.r16[AX].val,
-                       self.r16[SI].val,
-                       self.sreg16[DS],
-                       self.ip,
-                       self.instruction_count)
-                .as_ref();
-        res += format!("BX:{:04X}  DI:{:04X}  CS:{:04X}  fl:{:04X}\n",
-                       self.r16[BX].val,
-                       self.r16[DI].val,
-                       self.sreg16[CS],
-                       self.flags.u16())
-                .as_ref();
-        res += format!("CX:{:04X}  BP:{:04X}  ES:{:04X}  GS:{:04X}\n",
-                       self.r16[CX].val,
-                       self.r16[BP].val,
-                       self.sreg16[ES],
-                       self.sreg16[GS])
-                .as_ref();
-        res += format!("DX:{:04X}  SP:{:04X}  FS:{:04X}  SS:{:04X}\n",
-                       self.r16[DX].val,
-                       self.r16[SP].val,
-                       self.sreg16[FS],
-                       self.sreg16[SS])
-                .as_ref();
-        res += format!("C{} Z{} S{} O{} A{} P{} D{} I{}",
-                       self.flags.carry_numeric(),
-                       self.flags.zero_numeric(),
-                       self.flags.sign_numeric(),
-                       self.flags.overflow_numeric(),
-                       self.flags.auxiliary_numeric(),
-                       self.flags.parity_numeric(),
-                       self.flags.direction_numeric(),
-                       self.flags.interrupt_numeric())
-                .as_ref();
-
-        res
-    }
-
     pub fn execute_instruction(&mut self) {
         let cs = self.sreg16[CS];
         let ip = self.ip;
