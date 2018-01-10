@@ -55,7 +55,7 @@ impl Decoder {
        let op = self.get_instruction(seg, offset, Segment::Default());
        InstructionInfo {
            segment: seg as usize,
-           offset: (seg*16 + offset) as usize,
+           offset: offset as usize,
            length: op.byte_length as usize,
            text: format!("{}", op),
            bytes: Vec::from(self.mmu.read(
