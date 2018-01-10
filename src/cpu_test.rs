@@ -320,7 +320,6 @@ let mut cpu = CPU::new(mmu);
 
     cpu.execute_instruction(); // rep movsb
     assert_eq!(0x0, cpu.r16[CX].val);
-    let min = seg_offs_as_flat(cpu.sreg16[CS], 0x100);
     let min = 0x100;
     let max = min + 5;
     for i in min..max {
@@ -376,7 +375,7 @@ let mut cpu = CPU::new(mmu);
 
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 9);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 9);
     let res = cpu.decoder.instructions_to_str(ops);
     assert_eq!("[085F:0100] BB0002           Mov16    bx, 0x0200
 [085F:0103] C6472CFF         Mov8     byte [bx+0x2C], 0xFF
@@ -419,7 +418,7 @@ let mut cpu = CPU::new(mmu);
 
     cpu.execute_instruction();
     // should have written byte to [di+0x06AE]
-    assert_eq!(0xFE, cpu.mmu.read_u8(cs, di) + 0x06AE);
+    assert_eq!(0xFE, cpu.mmu.read_u8(cs, di + 0x06AE));
 
     cpu.execute_instruction();
     // should have read byte from [di+0x06AE] to al
@@ -436,7 +435,7 @@ let mut cpu = CPU::new(mmu);
 
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 1);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 1);
     let res = cpu.decoder.instructions_to_str(ops);
     assert_eq!("[085F:0100] F6062C12FF       Test8    byte [0x122C], 0xFF
 ",
@@ -457,7 +456,7 @@ let mut cpu = CPU::new(mmu);
 
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 3);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 3);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] B0F0             Mov8     al, 0xF0
@@ -530,7 +529,7 @@ let mut cpu = CPU::new(mmu);
 
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 3);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 3);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] B84000           Mov16    ax, 0x0040
@@ -563,7 +562,7 @@ let mut cpu = CPU::new(mmu);
 
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 4);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 4);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] BA1000           Mov16    dx, 0x0010
@@ -777,7 +776,7 @@ let mut cpu = CPU::new(mmu);
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 2);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 2);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] BB2301           Mov16    bx, 0x0123
@@ -807,7 +806,7 @@ let mut cpu = CPU::new(mmu);
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 1);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 1);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] EA00060000       JmpFar   0000:0600
@@ -830,7 +829,7 @@ let mut cpu = CPU::new(mmu);
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 2);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 2);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] B4FF             Mov8     ah, 0xFF
@@ -1105,7 +1104,7 @@ let mut cpu = CPU::new(mmu);
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 3);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 3);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] B0F0             Mov8     al, 0xF0
@@ -1191,7 +1190,7 @@ let mut cpu = CPU::new(mmu);
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 3);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 3);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] B8FFFF           Mov16    ax, 0xFFFF
@@ -1229,7 +1228,7 @@ let mut cpu = CPU::new(mmu);
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 3);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 3);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] BB8F79           Mov16    bx, 0x798F
@@ -1262,7 +1261,7 @@ let mut cpu = CPU::new(mmu);
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 5);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 5);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] E80500           CallNear 0x0108
@@ -1283,7 +1282,7 @@ let mut cpu = CPU::new(mmu);
  ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 1);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 1);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] 8D4780           Lea16    ax, word [bx-0x80]
@@ -1301,7 +1300,7 @@ let mut cpu = CPU::new(mmu);
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 2);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 2);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] 268825           Mov8     byte [es:di], ah
@@ -1322,7 +1321,7 @@ let mut cpu = CPU::new(mmu);
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 4);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 4);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] 803E311000       Cmp8     byte [0x1031], 0x00
@@ -1345,7 +1344,7 @@ let mut cpu = CPU::new(mmu);
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x100, 0, 4);
+    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 4);
     let res = cpu.decoder.instructions_to_str(ops);
 
     assert_eq!("[085F:0100] 7404             Jz       0x0106
@@ -1415,5 +1414,5 @@ let mut cpu = CPU::new(mmu);
     ];
     cpu.load_com(&code);
 
-    b.iter(|| cpu.decoder.disassemble_block(0x100, 0, 8))
+    b.iter(|| cpu.decoder.disassemble_block(0x85F, 0x100, 8))
 }
