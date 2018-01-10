@@ -1120,7 +1120,8 @@ let mut cpu = CPU::new(mmu);
 
 #[test]
 fn can_execute_imul16_2_args() {
-    let mut cpu = CPU::new();
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB9, 0x0A, 0x00, // mov cx,0xa
         0xBF, 0x14, 0x00, // mov di,0x14
