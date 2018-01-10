@@ -42,7 +42,6 @@ pub struct CPU {
     pub r16: [Register16; 8], // general purpose registers
     pub sreg16: [u16; 6], // segment registers
     pub flags: Flags,
-    breakpoints: Vec<usize>,
     pub gpu: GPU,
     rom_base: usize,
     pub fatal_error: bool, // for debugging: signals to debugger we hit an error
@@ -58,7 +57,6 @@ impl CPU {
             r16: [Register16 { val: 0 }; 8],
             sreg16: [0; 6],
             flags: Flags::new(),
-            breakpoints: vec![0; 0],
             gpu: GPU::new(),
             rom_base: 0,
             fatal_error: false,
@@ -66,34 +64,6 @@ impl CPU {
             mmu: mmu.clone(),
             decoder: Decoder::new(mmu)
         }
-    }
-
-    pub fn add_breakpoint(&mut self, bp: usize) -> Option<usize> {
-        if self.breakpoints.iter().find(|&&x|x == bp).is_none() {
-            self.breakpoints.push(bp);
-            Some(bp)
-        } else {
-            None
-        }
-    }
-
-    pub fn remove_breakpoint(&mut self, bp: usize) -> Option<usize> {
-        // TODO later: simplify when https://github.com/rust-lang/rust/issues/40062 is stable
-        match self.breakpoints.iter().position(|x| *x == bp) {
-            Some(pos) => {
-                self.breakpoints.remove(pos);
-                Some(bp)
-            },
-            None => None,
-        }
-    }
-
-    pub fn get_breakpoints(&self) -> Vec<usize> {
-        self.breakpoints.clone()
-    }
-
-    pub fn clear_breakpoints(&mut self) {
-        self.breakpoints.clear();
     }
 
     // reset the CPU but keep the memory
@@ -1908,15 +1878,6 @@ impl CPU {
             7 => self.r16[BX].val,
             _ => panic!("Impossible amode16, idx {}", idx),
         }
-    }
-
-    pub fn is_ip_at_breakpoint(&self) -> bool {
-        let offset = self.get_offset();
-        self.is_offset_at_breakpoint(offset)
-    }
-
-    pub fn is_offset_at_breakpoint(&self, offset: usize) -> bool {
-        self.breakpoints.iter().any(|&x| x == offset)
     }
 
     fn outsb(&mut self) {

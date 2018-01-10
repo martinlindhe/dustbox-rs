@@ -30,6 +30,7 @@ pub struct Debugger {
     pub cpu: CPU,
     pub prev_regs: PrevRegs,
     last_program: Option<String>,
+    breakpoints: Vec<usize>,
 }
 
 impl Debugger {
@@ -44,8 +45,46 @@ impl Debugger {
                 sreg16: cpu.sreg16,
                 flags: cpu.flags,
             },
-            last_program: Option::None
+            last_program: None,
+            breakpoints: vec![0; 0],
         }
+    }
+
+    pub fn add_breakpoint(&mut self, bp: usize) -> Option<usize> {
+        if self.breakpoints.iter().find(|&&x|x == bp).is_none() {
+            self.breakpoints.push(bp);
+            Some(bp)
+        } else {
+            None
+        }
+    }
+
+    pub fn remove_breakpoint(&mut self, bp: usize) -> Option<usize> {
+        // TODO later: simplify when https://github.com/rust-lang/rust/issues/40062 is stable
+        match self.breakpoints.iter().position(|x| *x == bp) {
+            Some(pos) => {
+                self.breakpoints.remove(pos);
+                Some(bp)
+            },
+            None => None,
+        }
+    }
+
+    pub fn get_breakpoints(&self) -> Vec<usize> {
+        self.breakpoints.clone()
+    }
+
+    pub fn clear_breakpoints(&mut self) {
+        self.breakpoints.clear();
+    }
+
+    pub fn is_ip_at_breakpoint(&self) -> bool {
+        let offset = self.cpu.get_offset();
+        self.is_offset_at_breakpoint(offset)
+    }
+
+    pub fn is_offset_at_breakpoint(&self, offset: usize) -> bool {
+        self.breakpoints.iter().any(|&x| x == offset)
     }
 
     fn step_into(&mut self) {
@@ -55,7 +94,7 @@ impl Debugger {
             return;
         }
 
-        if self.cpu.is_ip_at_breakpoint() {
+        if self.is_ip_at_breakpoint() {
             self.cpu.fatal_error = true;
             println!(
                 "Breakpoint reached (step-into), ip = {:04X}:{:04X}",
@@ -105,7 +144,7 @@ impl Debugger {
             cnt += 1;
             self.cpu.execute_instruction();
 
-            if self.cpu.is_ip_at_breakpoint() {
+            if self.is_ip_at_breakpoint() {
                 println!("Breakpoint reached, breaking step-over");
                 break;
             }
@@ -233,7 +272,7 @@ impl Debugger {
                         "add" | "set" => {
                             match parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
-                                    if self.cpu.add_breakpoint(bp).is_some() {
+                                    if self.add_breakpoint(bp).is_some() {
                                         println!("Breakpoint added: {:06X}", bp);
                                     } else {
                                         println!("Breakpoint was already added");
@@ -248,7 +287,7 @@ impl Debugger {
                         "del" | "delete" | "remove" => {
                             match parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
-                                    match self.cpu.remove_breakpoint(bp) {
+                                    match self.remove_breakpoint(bp) {
                                         Some(_) => println!("Breakpoint removed: {:06X}", bp),
                                         None => println!("Breakpoint not found, so not removed!"),
                                     }
@@ -260,10 +299,10 @@ impl Debugger {
                             }
                         }
                         "clear" => {
-                            self.cpu.clear_breakpoints();
+                            self.clear_breakpoints();
                         }
                         "list" => {
-                            let list = self.cpu.get_breakpoints(); // .sort();
+                            let list = self.get_breakpoints(); // .sort();
                             // XXX sort list
 
                             let strs: Vec<String> =
@@ -411,7 +450,7 @@ impl Debugger {
                 println!("Failed to execute instruction, breaking.");
                 break;
             }
-            if self.cpu.is_ip_at_breakpoint() {
+            if self.is_ip_at_breakpoint() {
                 self.cpu.fatal_error = true;
                 println!("Breakpoint reached");
                 break;
