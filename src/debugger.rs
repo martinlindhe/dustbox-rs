@@ -31,7 +31,7 @@ pub struct Debugger {
     pub cpu: CPU,
     pub prev_regs: PrevRegs,
     last_program: Option<String>,
-    breakpoints: Breakpoints,
+    ip_breakpoints: Breakpoints, // break when IP reach address
 }
 
 impl Debugger {
@@ -47,13 +47,13 @@ impl Debugger {
                 flags: cpu.flags,
             },
             last_program: None,
-            breakpoints: Breakpoints::new(),
+            ip_breakpoints: Breakpoints::new(),
         }
     }
 
     pub fn is_ip_at_breakpoint(&self) -> bool {
         let offset = self.cpu.get_address();
-        self.breakpoints.hit(offset)
+        self.ip_breakpoints.hit(offset)
     }
 
     pub fn step_into(&mut self, cnt: usize) {
@@ -246,7 +246,7 @@ impl Debugger {
                         "add" | "set" => {
                             match parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
-                                    if self.breakpoints.add(bp).is_some() {
+                                    if self.ip_breakpoints.add(bp).is_some() {
                                         println!("Breakpoint added: {:06X}", bp);
                                     } else {
                                         println!("Breakpoint was already added");
@@ -261,7 +261,7 @@ impl Debugger {
                         "del" | "delete" | "remove" => {
                             match parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
-                                    match self.breakpoints.remove(bp) {
+                                    match self.ip_breakpoints.remove(bp) {
                                         Some(_) => println!("Breakpoint removed: {:06X}", bp),
                                         None => println!("Breakpoint not found, so not removed!"),
                                     }
@@ -273,10 +273,10 @@ impl Debugger {
                             }
                         }
                         "clear" => {
-                            self.breakpoints.clear();
+                            self.ip_breakpoints.clear();
                         }
                         "list" => {
-                            let list = self.breakpoints.get();
+                            let list = self.ip_breakpoints.get();
                             let strs: Vec<String> =
                                 list.iter().map(|b| format!("{:06X}", b)).collect();
                             let formatted_list = strs.join(" ");
