@@ -87,32 +87,22 @@ impl Debugger {
         self.breakpoints.iter().any(|&x| x == offset)
     }
 
-    fn step_into(&mut self) {
-        self.cpu.execute_instruction();
-
-        if self.cpu.fatal_error {
-            return;
-        }
-
-        if self.is_ip_at_breakpoint() {
-            self.cpu.fatal_error = true;
-            println!(
-                "Breakpoint reached (step-into), ip = {:04X}:{:04X}",
-                self.cpu.sreg16[CS],
-                self.cpu.ip
-            );
-            return;
-        }
-    }
-
-    pub fn step_into_n_instructions(&mut self, cnt: usize) {
+    pub fn step_into(&mut self, cnt: usize) {
         let start = Instant::now();
         let mut done = 0;
         for _ in 0..cnt {
+            self.cpu.execute_instruction();
             if self.cpu.fatal_error {
                 break;
             }
-            self.step_into();
+            if self.is_ip_at_breakpoint() {
+                println!(
+                    "Breakpoint reached (step-into), ip = {:04X}:{:04X}",
+                    self.cpu.sreg16[CS],
+                    self.cpu.ip
+                );
+                break;
+            }
             done += 1;
         }
         let elapsed = start.elapsed();
@@ -126,15 +116,8 @@ impl Debugger {
     }
 
     pub fn step_over(&mut self) {
-        if self.cpu.fatal_error {
-            return;
-        }
         let mut decoder = Decoder::new(self.cpu.mmu.clone());
-        let op = decoder
-            .disasm_instruction(
-                self.cpu.sreg16[CS],
-                self.cpu.ip,
-            );
+        let op = decoder.disasm_instruction(self.cpu.sreg16[CS], self.cpu.ip);
 
         let dst_ip = self.cpu.ip + op.length as u16;
         println!("Step-over running to {:04X}", dst_ip);
@@ -143,9 +126,15 @@ impl Debugger {
         loop {
             cnt += 1;
             self.cpu.execute_instruction();
-
+            if self.cpu.fatal_error {
+                break;
+            }
             if self.is_ip_at_breakpoint() {
-                println!("Breakpoint reached, breaking step-over");
+                println!(
+                    "Breakpoint reached (step-over), ip = {:04X}:{:04X}",
+                    self.cpu.sreg16[CS],
+                    self.cpu.ip
+                );
                 break;
             }
 
@@ -158,6 +147,23 @@ impl Debugger {
             dst_ip,
             cnt
         );
+    }
+
+    fn run_until_breakpoint(&mut self) {
+        loop {
+            self.cpu.execute_instruction();
+            if self.cpu.fatal_error {
+                break;
+            }
+            if self.is_ip_at_breakpoint() {
+                println!(
+                    "Breakpoint reached (run), ip = {:04X}:{:04X}",
+                    self.cpu.sreg16[CS],
+                    self.cpu.ip
+                );
+                break;
+            }
+        }
     }
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
@@ -230,7 +236,7 @@ impl Debugger {
                                 }
                             }
                         };
-                        self.step_into_n_instructions(cnt);
+                        self.step_into(cnt);
                     },
                     "over" => {
                         // TODO: parse arg 3 (count)
@@ -439,23 +445,6 @@ impl Debugger {
             offset,
             rom_offset
         );
-    }
-
-    fn run_until_breakpoint(&mut self) {
-        println!("Executing until we hit a breakpoint");
-
-        loop {
-            self.cpu.execute_instruction();
-            if self.cpu.fatal_error {
-                println!("Failed to execute instruction, breaking.");
-                break;
-            }
-            if self.is_ip_at_breakpoint() {
-                self.cpu.fatal_error = true;
-                println!("Breakpoint reached");
-                break;
-            }
-        }
     }
 }
 

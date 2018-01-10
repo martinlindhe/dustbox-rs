@@ -2098,7 +2098,7 @@ impl CPU {
                 // debugger interrupt
                 // http://www.ctyme.com/intr/int-03.htm
                 println!("INT 3 - debugger interrupt. AX={:04X}", self.r16[AX].val);
-                self.fatal_error = true; // stops running debugger
+                self.fatal_error = true; // stops execution
             }
             0x10 => int10::handle(self),
             0x16 => int16::handle(self),
@@ -2106,7 +2106,7 @@ impl CPU {
                 // DOS 1+ - TERMINATE PROGRAM
                 // NOTE: Windows overloads INT 20
                 println!("INT 20 - Terminating program");
-                self.fatal_error = true; // stops running debugger
+                self.fatal_error = true; // stops execution
             }
             0x21 => int21::handle(self, deterministic),
             0x33 => int33::handle(self),
