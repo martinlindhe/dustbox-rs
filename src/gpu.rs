@@ -9,7 +9,7 @@ use raster;
 #[path = "./gpu_test.rs"]
 mod gpu_test;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct GPU {
     pub scanline: i32,
     pub width: i32,
@@ -20,7 +20,7 @@ pub struct GPU {
     pub dac_current_pal: Vec<u8>, // for out 03c9
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct DACPalette {
     pub r: u8,
     pub g: u8,

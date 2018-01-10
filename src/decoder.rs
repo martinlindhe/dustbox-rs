@@ -13,7 +13,7 @@ use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
 use std::rc::Rc;
 use std::cell::RefCell;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Decoder {
     mmu: MMU,
     c_seg: u16,

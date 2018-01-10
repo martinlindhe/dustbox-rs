@@ -17,6 +17,7 @@ use segment::Segment;
 #[path = "./debugger_test.rs"]
 mod debugger_test;
 
+#[derive(Default)]
 pub struct PrevRegs {
     pub ip: u16,
     pub r16: [register::Register16; 8], // general purpose registers
@@ -24,6 +25,7 @@ pub struct PrevRegs {
     pub flags: flags::Flags,
 }
 
+#[derive(Default)]
 pub struct Debugger {
     pub cpu: CPU,
     pub prev_regs: PrevRegs,
@@ -232,7 +234,7 @@ impl Debugger {
                         "add" | "set" => {
                             match parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
-                                    if let Some(_) = self.cpu.add_breakpoint(bp) {
+                                    if self.cpu.add_breakpoint(bp).is_some() {
                                         println!("Breakpoint added: {:06X}", bp);
                                     } else {
                                         println!("Breakpoint was already added");
@@ -437,7 +439,7 @@ fn parse_hex_string(s: &str) -> Result<usize, ParseIntError> {
     if x.len() >= 2 && &x[0..2] == "0x" {
         usize::from_str_radix(&x[2..], 16)
     } else {
-        usize::from_str_radix(&x, 16)
+        usize::from_str_radix(x, 16)
     }
 }
 

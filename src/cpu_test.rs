@@ -1,6 +1,5 @@
 use cpu::CPU;
 use register::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES};
-use instruction::seg_offs_as_flat;
 use segment::Segment;
 use mmu::MMU;
 use std::num::Wrapping;

@@ -34,7 +34,7 @@ enum Exception {
     PF = 14,     // Page fault
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct CPU {
     pub ip: u16,
     pub instruction_count: usize,

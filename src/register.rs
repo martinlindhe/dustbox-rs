@@ -1,4 +1,4 @@
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Register16 {
     pub val: u16,
 }

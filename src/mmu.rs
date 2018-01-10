@@ -2,7 +2,7 @@ use memory::Memory;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct MMU {
     memory: Rc<RefCell<Memory>>
 }
