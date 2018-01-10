@@ -42,6 +42,15 @@ impl Decoder {
         ops
     }
 
+    pub fn instructions_to_str(&mut self, ops: Vec<InstructionInfo>) -> String {
+        let mut res = String::new();
+        for op in ops {
+            res.push_str(&op.to_string());
+            res.push_str("\n");
+        }
+        res
+    }
+
     pub fn  disasm_instruction(&mut self, seg: u16, offset: u16) -> InstructionInfo {
        let op = self.get_instruction(seg, offset, Segment::Default());
        InstructionInfo {
