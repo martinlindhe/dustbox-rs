@@ -73,7 +73,6 @@ impl Decoder {
     }
 
     fn decode(&mut self, seg: Segment) -> Instruction {
-        let iseg = self.c_seg;
         let ioffset = self.c_offset;
         let b = self.read_u8();
 
