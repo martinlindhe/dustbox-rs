@@ -1818,20 +1818,27 @@ impl CPU {
                 }
             }
             Parameter::Ptr8(seg, imm) => {
-                let offset = seg_offs_as_flat(self.segment(seg), imm);
-                self.write_u8(offset, data);
+                let seg = self.segment(seg);
+                self.mmu.write_u8(seg, imm, data);
             }
             Parameter::Ptr8Amode(seg, r) => {
-                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r));
-                self.write_u8(offset, data);
+                let seg = self.segment(seg);
+                let offset = self.amode16(r);
+                self.mmu.write_u8(seg, offset, data);
             }
             Parameter::Ptr8AmodeS8(seg, r, imm) => {
-                let offset = (Wrapping(seg_offs_as_flat(self.segment(seg), self.amode16(r)) ) + Wrapping(imm as usize)).0;
-                self.write_u8(offset, data);
+                let seg = self.segment(seg);
+                let offset = Wrapping(self.amode16(r))
+                    + Wrapping(imm as u16);
+
+                self.mmu.write_u8(seg, offset.0, data);
             }
             Parameter::Ptr8AmodeS16(seg, r, imm) => {
-                let offset = (Wrapping(seg_offs_as_flat(self.segment(seg), self.amode16(r)) ) + Wrapping(imm as usize)).0;
-                self.write_u8(offset, data);
+                let seg = self.segment(seg);
+                let offset = Wrapping(self.amode16(r))
+                    + Wrapping(imm as u16);
+
+                self.mmu.write_u8(seg, offset.0, data);
             }
             _ => {
                 println!("write_parameter_u8 unhandled type {:?} at {:06X}",
@@ -1854,20 +1861,29 @@ impl CPU {
                 self.write_u16(offset, data);
             }
             Parameter::Ptr16(seg, imm) => {
-                let offset = seg_offs_as_flat(self.segment(seg), imm);
-                self.write_u16(offset, data);
+                let seg = self.segment(seg);
+
+                self.mmu.write_u16(seg, imm, data);
             }
             Parameter::Ptr16Amode(seg, r) => {
-                let offset = seg_offs_as_flat(self.segment(seg), self.amode16(r));
-                self.write_u16(offset, data);
+                let seg = self.segment(seg);
+                let offset = self.amode16(r);
+
+                self.mmu.write_u16(seg, offset, data);
             }
             Parameter::Ptr16AmodeS8(seg, r, imm) => {
-                let offset = (Wrapping(seg_offs_as_flat(self.segment(seg), self.amode16(r)) ) + Wrapping(imm as usize)).0;
-                self.write_u16(offset, data);
+                let seg = self.segment(seg);
+                let offset = Wrapping(self.amode16(r))
+                    + Wrapping(imm as u16);
+
+                self.mmu.write_u16(seg, offset.0, data);
             }
             Parameter::Ptr16AmodeS16(seg, r, imm) => {
-                let offset = (Wrapping(seg_offs_as_flat(self.segment(seg), self.amode16(r)) ) + Wrapping(imm as usize)).0;
-                self.write_u16(offset, data);
+                let seg = self.segment(seg);
+                let offset = Wrapping(self.amode16(r))
+                    + Wrapping(imm as u16);
+
+                self.mmu.write_u16(seg, offset.0, data);
             }
             _ => {
                 println!("write_u16_param unhandled type {:?} at {:06X}",
