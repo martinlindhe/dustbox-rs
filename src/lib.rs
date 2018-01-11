@@ -2,28 +2,23 @@
 #![allow(dead_code)]
 
 extern crate time;
-extern crate gtk;
-extern crate gdk;
-extern crate gdk_pixbuf;
-extern crate cairo;
-extern crate raster;
 #[macro_use] extern crate tera;
+extern crate raster;
 
-pub mod debugger;
-mod breakpoints;
-mod memory_breakpoints;
-mod tools;
+pub mod tools;
+
 pub mod cpu;
-mod flags;
-mod register;
-mod instruction;
-mod memory;
-mod segment;
-mod gpu;
-pub mod interface;
+pub mod decoder;
+pub mod instruction;
+pub mod register;
+pub mod flags;
+pub mod mmu;
+pub mod memory;
+pub mod segment;
+pub mod gpu;
+
 mod int10;
 mod int16;
 mod int21;
 mod int33;
-pub mod mmu;
-mod decoder;
+

@@ -1,10 +1,5 @@
 use std::cell::RefCell;
 
-use gdk::prelude::*;
-use gdk_pixbuf;
-use cairo;
-use raster;
-
 #[cfg(test)]
 #[path = "./gpu_test.rs"]
 mod gpu_test;
@@ -45,62 +40,5 @@ impl GPU {
         if self.scanline > self.width {
             self.scanline = 0;
         }
-    }
-
-    // render video frame to canvas `c`
-    pub fn draw_canvas(&self, c: &cairo::Context, memory: &[u8]) {
-        let mut buf = vec![0u8; (self.width * self.height * 3) as usize];
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let offset = 0xA_0000 + ((y * self.width) + x) as usize;
-                let byte = memory[offset];
-                let pal = &self.pal[byte as usize];
-                let i = ((y * self.width + x) * 3) as usize;
-                buf[i] = pal.r;
-                buf[i+1] = pal.g;
-                buf[i+2] = pal.b;
-            }
-        }
-
-        let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(buf, 0, false, 8, self.width, self.height, self.width * 3);
-        c.set_source_pixbuf(&pixbuf, 0., 0.);
-    }
-
-    // render video frame as a raster::Image, used for saving video frame to disk
-    pub fn draw_image(&self, memory: &[u8]) -> raster::Image {
-        let mut canvas = raster::Image::blank(self.width, self.height);
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let offset = 0xA_0000 + ((y * self.width) + x) as usize;
-                let byte = memory[offset];
-                let pal = &self.pal[byte as usize];
-                canvas
-                    .set_pixel(x, y, raster::Color::rgba(pal.r, pal.g, pal.b, 255))
-                    .unwrap();
-            }
-        }
-        canvas
-    }
-
-    // used by gpu tests
-    pub fn test_render_frame(&self, memory: &[u8], pngfile: &str) {
-        let img = self.draw_image(memory);
-        match raster::open(pngfile) {
-            Ok(v) => {
-                // alert if output has changed. NOTE: output change is not nessecary a bug
-                if !raster::compare::equal(&v, &img).unwrap() {
-                    println!("WARNING: Writing changed gpu test result to {}", pngfile);
-                    if let Err(why) = raster::save(&img, pngfile) {
-                        println!("save err: {:?}", why);
-                    }
-                }
-            }
-            Err(_) => {
-                println!("Writing initial gpu test result to {}", pngfile);
-                if let Err(why) = raster::save(&img, pngfile) {
-                    println!("save err: {:?}", why);
-                }
-            }
-        };
     }
 }
