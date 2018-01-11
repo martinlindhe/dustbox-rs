@@ -46,8 +46,9 @@ impl MemoryBreakpoints {
         self.breakpoints.clear();
     }
 
-    // returns true if address is at breakpoint
-    pub fn hit(&self, address: usize) -> bool {
-        self.breakpoints.iter().any(|&x| x == address)
+    // returns true memory value has changed since last check
+    pub fn has_changed(&self, address: usize, val: u8) -> bool {
+        // xxx compare to previous value
+        false
     }
 }

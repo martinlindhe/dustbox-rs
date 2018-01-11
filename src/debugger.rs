@@ -71,7 +71,13 @@ impl Debugger {
             );
             return true;
         }
-        // XXX was memory location changed?
+        for addr in self.memory_breakpoints.get() {
+            let val = self.cpu.mmu.memory.borrow().read_u8(addr);
+            if self.memory_breakpoints.has_changed(addr, val) {
+                println!("Value at memory breakpoint has changed. {:06X} = {:02X}", addr, val);
+                return true;
+            }
+        }
         false
     }
 

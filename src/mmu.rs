@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 #[derive(Clone, Default)]
 pub struct MMU {
-    memory: Rc<RefCell<Memory>>
+    pub memory: Rc<RefCell<Memory>>
 }
 
 impl MMU {
