@@ -13,6 +13,7 @@ use mmu::MMU;
 use decoder::Decoder;
 use segment::Segment;
 use breakpoints::Breakpoints;
+use memory_breakpoints::MemoryBreakpoints;
 
 #[cfg(test)]
 #[path = "./debugger_test.rs"]
@@ -32,7 +33,7 @@ pub struct Debugger {
     pub prev_regs: PrevRegs,
     last_program: Option<String>,
     ip_breakpoints: Breakpoints, // break when IP reach address
-    memory_breakpoints: Breakpoints, // break when memory change on this address
+    memory_breakpoints: MemoryBreakpoints, // break when memory change on this address
 }
 
 impl Debugger {
@@ -49,7 +50,7 @@ impl Debugger {
             },
             last_program: None,
             ip_breakpoints: Breakpoints::new(),
-            memory_breakpoints: Breakpoints::new(),
+            memory_breakpoints: MemoryBreakpoints::new(),
         }
     }
 
