@@ -8,13 +8,25 @@ This is a project I use to learn rust and improve my understanding of low level 
 In the current state, it runs a few simple demos and is not very impressive.
 If you are looking for a more complete dos emulator, I suggest you check out [dosbox-x](https://github.com/joncampbell123/dosbox-x).
 
+
 ## Contributing
 
 Any help and contributions are much welcome! 
 
+
 ## IRC
 
 Join us in irc.mozilla.com #dustbox
+
+
+## Running
+
+To launch the dustbox_gtk debugger:
+
+```
+cargo run --package dustbox_gtk
+```
+
 
 ## Tests
 

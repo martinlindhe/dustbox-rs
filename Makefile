@@ -1,17 +1,17 @@
 test:
-	cargo test -- --color always --nocapture
+	cargo test --all -- --color always --nocapture
 
 expensive-test:
-	cargo test -- --color always --nocapture --ignored
+	cargo test --all -- --color always --nocapture --ignored
 
 bench:
-	cargo bench
+	cargo bench --all
 
 run:
-	cargo run
+	cargo run --package dustbox_gtk
 
 run-release:
-	cargo run --release
+	cargo run --release --package dustbox_gtk
 
 lint:
 	# rm -rf target
