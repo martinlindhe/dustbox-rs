@@ -59,7 +59,7 @@ test_instr:
     ; TEST1: "idiv r8"
     mov ax, 0x30
     mov bl, 2
-    idiv bl   ; verified XXX was on XP, use win98se on real hw (might be hard with lacking drivers)
+    idiv bl
     cmp ax, 0x0018
     je t2
     mov dx, test1fail
@@ -70,7 +70,7 @@ t2:
     mov dx, 0x0
     mov ax, 0x8000
     mov bx, 4
-    idiv bx   ; verified XXX was on XP
+    idiv bx
     cmp ax, 0x2000
     je t3
     cmp dx, 0
@@ -81,5 +81,6 @@ t2:
 
 t3:
     ret
+
 %include "regs.inc.asm"
 %include "print.inc.asm"

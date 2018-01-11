@@ -8,11 +8,11 @@ clear_regs:
     mov si, 0
     mov di, 0
     push ax
-    popf            ; clear flags
+    popf                    ; clear flags
     ret
 
 clear_mem:
-    ; clears memory CS:0400 ... FFFF
+    ; writes 0xFF to CS:0400...CS:FFFF
     mov di, 0x0400
     mov cx, 0x8000
     mov al, 0xff
