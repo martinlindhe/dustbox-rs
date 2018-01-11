@@ -3,14 +3,14 @@
 mod breakpoints_test;
 
 #[derive(Default)]
-pub struct Breakpoints {
+pub struct MemoryBreakpoints {
     breakpoints: Vec<usize>,
 }
 
-// a list of addresses for the debugger to break on when CS:IP reach one of them
-impl Breakpoints {
+// a list of addresses for the debugger to break on when memory content changes
+impl MemoryBreakpoints {
      pub fn new() -> Self {
-        Breakpoints {
+        MemoryBreakpoints {
             breakpoints: vec![0; 0],
         }
     }

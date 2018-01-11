@@ -11,6 +11,7 @@ extern crate raster;
 
 pub mod debugger;
 mod breakpoints;
+mod memory_breakpoints;
 mod tools;
 pub mod cpu;
 mod flags;
