@@ -69,7 +69,7 @@ fn demo_256() {
         "../dos-software-decoding/demo-256/flame2/flame2.com",
         "../dos-software-decoding/demo-256/flood/flood.com",
         "../dos-software-decoding/demo-256/fridge/fridge.com",
-        // "../dos-software-decoding/demo-256/hungecek/hungecek.com", // ip wraps
+        "../dos-software-decoding/demo-256/hungecek/hungecek.com",
         "../dos-software-decoding/demo-256/julia/julia.com",
         "../dos-software-decoding/demo-256/lameland/lameland.com",
         "../dos-software-decoding/demo-256/lava/lava.com",
