@@ -115,6 +115,9 @@ fn demo_256() {
 
         for _ in 0..5_000_000 {
             cpu.execute_instruction();
+            if cpu.fatal_error {
+                break;
+            }
         }
         let path = Path::new(bin);
 
