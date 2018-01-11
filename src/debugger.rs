@@ -224,7 +224,6 @@ impl Debugger {
                 self.print_registers();
             }
             "bp" | "breakpoint" => {
-                // breakpoints - all values are flat offsets
                 if parts.len() < 2 {
                     println!("breakpoint: not enough arguments");
                 } else {
