@@ -179,6 +179,10 @@ impl Debugger {
                 println!("bp remove <seg:off>              - remove breakpoint");
                 println!("bp list                          - show breakpoints");
                 println!("bp clear                         - clear breakpoints");
+                println!("membp add <seg:off>              - add memory breakpoint");
+                println!("membp remove <seg:off>           - remove memory breakpoint");
+                println!("membp list                       - show memory breakpoints");
+                println!("membp clear                      - clear memory breakpoints");
                 println!("flat                             - show current address as flat value");
                 println!("disasm                           - disasm instruction");
                 println!("hexdump <seg:off> <len>          - dumps len bytes of memory at given offset to the console");
@@ -272,7 +276,62 @@ impl Debugger {
                             let strs: Vec<String> =
                                 list.iter().map(|b| format!("{:06X}", b)).collect();
                             let formatted_list = strs.join(" ");
-                            println!("breakpoints: {}", formatted_list);
+                            println!("Breakpoints: {}", formatted_list);
+                        }
+                        _ => println!("unknown breakpoint subcommand: {}", parts[1]),
+                    }
+                }
+            }
+            "membp" => {
+                if parts.len() < 2 {
+                    println!("memory breakpoint: not enough arguments");
+                } else {
+                    match parts[1].as_ref() {
+                        "help" => {
+                            println!("Available memory breakpoint commands:");
+                            println!("  membp add <seg:off>     add breakpoint");
+                            println!("  membp remove <seg:off>  remove breakpoint");
+                            println!("  membp clear             clears all breakpoints");
+                            println!("  membp list              list all breakpoints");
+                        }
+                        "add" | "set" => {
+                            match parse_segment_offset_pair(&parts[2]) {
+                                Ok(bp) => {
+                                    if self.memory_breakpoints.add(bp).is_some() {
+                                        println!("Breakpoint added: {:06X}", bp);
+                                    } else {
+                                        println!("Breakpoint was already added");
+                                    }
+                                }
+                                Err(e) => {
+                                    println!("parse error: {:?}", e);
+                                    return;
+                                }
+                            }
+                        }
+                        "del" | "delete" | "remove" => {
+                            match parse_segment_offset_pair(&parts[2]) {
+                                Ok(bp) => {
+                                    match self.memory_breakpoints.remove(bp) {
+                                        Some(_) => println!("Memory breakpoint removed: {:06X}", bp),
+                                        None => println!("Breakpoint not found, so not removed!"),
+                                    }
+                                }
+                                Err(e) => {
+                                    println!("parse error: {:?}", e);
+                                    return;
+                                }
+                            }
+                        }
+                        "clear" => {
+                            self.memory_breakpoints.clear();
+                        }
+                        "list" => {
+                            let list = self.memory_breakpoints.get();
+                            let strs: Vec<String> =
+                                list.iter().map(|b| format!("{:06X}", b)).collect();
+                            let formatted_list = strs.join(" ");
+                            println!("Memory breakpoints: {}", formatted_list);
                         }
                         _ => println!("unknown breakpoint subcommand: {}", parts[1]),
                     }
