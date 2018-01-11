@@ -59,7 +59,7 @@ impl Debugger {
         self.ip_breakpoints.hit(offset)
     }
 
-    fn should_break(&self) -> bool {
+    fn should_break(&mut self) -> bool {
         if self.cpu.fatal_error {
             return true;
         }

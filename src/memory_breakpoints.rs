@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[cfg(test)]
 #[path = "./breakpoints_test.rs"]
 mod breakpoints_test;
@@ -5,6 +7,7 @@ mod breakpoints_test;
 #[derive(Default)]
 pub struct MemoryBreakpoints {
     breakpoints: Vec<usize>,
+    map: HashMap<usize, u8>,
 }
 
 // a list of addresses for the debugger to break on when memory content changes
@@ -12,6 +15,7 @@ impl MemoryBreakpoints {
      pub fn new() -> Self {
         MemoryBreakpoints {
             breakpoints: vec![0; 0],
+            map: HashMap::new(),
         }
     }
 
@@ -47,8 +51,12 @@ impl MemoryBreakpoints {
     }
 
     // returns true memory value has changed since last check
-    pub fn has_changed(&self, address: usize, val: u8) -> bool {
-        // xxx compare to previous value
-        false
+    pub fn has_changed(&mut self, address: usize, val: u8) -> bool {
+        if !self.map.contains_key(&address) {
+            self.map.insert(address, val);
+            return false;
+        }
+        let old = self.map.get(&address).unwrap();
+        *old != val
     }
 }
