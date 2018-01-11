@@ -56,7 +56,7 @@ impl MemoryBreakpoints {
             self.map.insert(address, val);
             return false;
         }
-        let old = self.map.get(&address).unwrap();
+        let old = &self.map[&address];
         *old != val
     }
 }

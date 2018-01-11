@@ -16,7 +16,7 @@ use gpu::DACPalette;
 
 
 // render video frame as a raster::Image, used for saving video frame to disk
-fn draw_image(memory: &[u8], width: i32, height: i32, pal: &Vec<DACPalette>) -> raster::Image {
+fn draw_image(memory: &[u8], width: i32, height: i32, pal: &[DACPalette]) -> raster::Image {
     let mut canvas = raster::Image::blank(width, height);
     for y in 0..height {
         for x in 0..width {
@@ -31,7 +31,7 @@ fn draw_image(memory: &[u8], width: i32, height: i32, pal: &Vec<DACPalette>) -> 
     canvas
 }
 
-fn write_video_frame_to_disk(memory: &[u8], pngfile: &str, width: i32, height: i32, pal: &Vec<DACPalette>) {
+fn write_video_frame_to_disk(memory: &[u8], pngfile: &str, width: i32, height: i32, pal: &[DACPalette]) {
     let img = draw_image(memory, width, height, pal);
     match raster::open(pngfile) {
         Ok(v) => {

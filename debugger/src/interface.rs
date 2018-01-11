@@ -264,7 +264,7 @@ impl Interface {
 }
 
 // render video frame to canvas `c`
-fn draw_canvas(c: &cairo::Context, memory: &[u8], width: i32, height: i32, pal: &Vec<DACPalette>) {
+fn draw_canvas(c: &cairo::Context, memory: &[u8], width: i32, height: i32, pal: &[DACPalette]) {
     let mut buf = vec![0u8; (width * height * 3) as usize];
     for y in 0..height {
         for x in 0..width {

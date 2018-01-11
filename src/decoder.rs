@@ -56,9 +56,7 @@ impl Decoder {
            offset: offset as usize,
            length: op.byte_length as usize,
            text: format!("{}", op),
-           bytes: Vec::from(self.mmu.read(
-                   seg, offset, op.byte_length as usize
-                   )),
+           bytes: self.mmu.read(seg, offset, op.byte_length as usize),
            instruction: op
        }
     }

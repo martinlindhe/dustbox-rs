@@ -15,7 +15,7 @@ run-release:
 
 lint:
 	# rm -rf target
-	rustup run nightly cargo clippy
+	rustup run nightly cargo clippy --all
 
 typos:
 	speller . > spell
