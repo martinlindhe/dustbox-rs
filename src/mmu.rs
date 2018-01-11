@@ -14,12 +14,6 @@ impl MMU {
         }
     }
 
-    //Hack this function shouldn't be used in new code!!!
-    pub fn write_byte_flat(&mut self, flat_addr: usize, data: u8) {
-        self.memory.borrow_mut()
-            .write_u8(flat_addr, data);
-    }
-
     pub fn s_translate(&self, seg: u16, offset: u16) -> usize {
         let seg = seg as usize;
         let offset = offset as usize;

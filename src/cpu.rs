@@ -1601,28 +1601,6 @@ impl CPU {
         (self.ip as i16 + val) as u16
     }
 
-    fn write_u8(&mut self, offset: usize, data: u8) {
-        /*
-        // break if we hit a breakpoint
-        if self.is_offset_at_breakpoint(offset) {
-            self.fatal_error = true;
-            println!("Breakpoint (memory write to {:06X} = {:02X}), ip = {:04X}:{:04X}",
-                offset,
-                data,
-                self.sreg16[CS],
-                self.ip);
-        }
-        */
-        self.mmu.write_byte_flat(offset, data);
-    }
-
-    fn write_u16(&mut self, offset: usize, data: u16) {
-        let hi = (data >> 8) as u8;
-        let lo = (data & 0xff) as u8;
-        self.write_u8(offset, lo);
-        self.write_u8(offset + 1, hi);
-    }
-
     // returns the address of pointer, used by LEA, LDS, LES
     fn read_parameter_address(&mut self, p: &Parameter) -> usize {
         match *p {
