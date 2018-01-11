@@ -1,0 +1,17 @@
+[package]
+name = "dustbox_gtk"
+version = "0.1.0"
+authors = ["Martin Lindhe"]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+gdk = "0.7"
+gdk-pixbuf = "0.3"
+cairo-rs = "0.3"
+dustbox = { version = "0.1", path = "../" }
+
+[dependencies.gtk]
+version = "0.3"
+features = ["v3_10"]

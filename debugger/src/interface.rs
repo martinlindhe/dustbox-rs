@@ -8,18 +8,21 @@ use std::io::prelude::*;
 use gtk;
 use gtk::prelude::*;
 use gtk::{Button, Image, Label, Window, WindowType};
-use gdk::enums::key;
-
 use gdk::RGBA;
+use gdk::enums::key;
+use gdk::prelude::*;
 use gdk_pixbuf;
+use cairo;
 
-use memory::Memory;
+use dustbox::memory::Memory;
+use dustbox::flags;
+use dustbox::cpu::CPU;
+use dustbox::register;
+use dustbox::register::{AX, BP, BX, CS, CX, DI, DS, DX, ES, FS, GS, SI, SP, SS};
+use dustbox::instruction::seg_offs_as_flat;
+use dustbox::gpu::DACPalette;
+
 use debugger;
-use register;
-use flags;
-use cpu::CPU;
-use register::{AX, BP, BX, CS, CX, DI, DS, DX, ES, FS, GS, SI, SP, SS};
-use instruction::seg_offs_as_flat;
 
 pub struct Interface {
     app: Rc<RefCell<debugger::Debugger>>,
@@ -86,7 +89,7 @@ impl Interface {
                 //This makes a copy for every draw, maybe not a problem
                 //but it's stupid, and we shouldn't do this
                 let mem = app.cpu.mmu.dump_mem();
-                app.cpu.gpu.draw_canvas(ctx, &mem);
+                draw_canvas(ctx, &mem, app.cpu.gpu.width, app.cpu.gpu.height, &app.cpu.gpu.pal);
                 ctx.paint();
                 Inhibit(false)
             });
@@ -258,6 +261,25 @@ impl Interface {
 
         gtk::main();
     }
+}
+
+// render video frame to canvas `c`
+fn draw_canvas(c: &cairo::Context, memory: &[u8], width: i32, height: i32, pal: &Vec<DACPalette>) {
+    let mut buf = vec![0u8; (width * height * 3) as usize];
+    for y in 0..height {
+        for x in 0..width {
+            let offset = 0xA_0000 + ((y * width) + x) as usize;
+            let byte = memory[offset];
+            let pal = &pal[byte as usize];
+            let i = ((y * width + x) * 3) as usize;
+            buf[i] = pal.r;
+            buf[i+1] = pal.g;
+            buf[i+2] = pal.b;
+        }
+    }
+
+    let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(buf, 0, false, 8, width, height, width * 3);
+    c.set_source_pixbuf(&pixbuf, 0., 0.);
 }
 
 fn u16_as_register_str(v: u16, prev: u16) -> String {

@@ -3,15 +3,15 @@ use std::num::ParseIntError;
 use std::io::Error as IoError;
 use std::process::exit;
 
-use cpu::CPU;
-use register;
-use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
-use flags;
-use tools;
-use instruction::{seg_offs_as_flat, InstructionInfo};
-use mmu::MMU;
-use decoder::Decoder;
-use segment::Segment;
+use dustbox::cpu::CPU;
+use dustbox::register;
+use dustbox::register::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES, FS, GS, SS};
+use dustbox::flags;
+use dustbox::tools;
+use dustbox::instruction::seg_offs_as_flat;
+use dustbox::mmu::MMU;
+use dustbox::decoder::Decoder;
+
 use breakpoints::Breakpoints;
 use memory_breakpoints::MemoryBreakpoints;
 

@@ -7,11 +7,50 @@ use std::ffi::OsStr;
 use std::ffi::OsString;
 
 use tera::Context;
+use raster;
 
-use debugger::Debugger;
 use tools;
+use cpu::CPU;
+use mmu::MMU;
+use gpu::DACPalette;
 
-#[test] #[ignore] // it is too expensive
+
+// render video frame as a raster::Image, used for saving video frame to disk
+fn draw_image(memory: &[u8], width: i32, height: i32, pal: &Vec<DACPalette>) -> raster::Image {
+    let mut canvas = raster::Image::blank(width, height);
+    for y in 0..height {
+        for x in 0..width {
+            let offset = 0xA_0000 + ((y * width) + x) as usize;
+            let byte = memory[offset];
+            let p = &pal[byte as usize];
+            canvas
+                .set_pixel(x, y, raster::Color::rgba(p.r, p.g, p.b, 255))
+                .unwrap();
+        }
+    }
+    canvas
+}
+
+fn write_video_frame_to_disk(memory: &[u8], pngfile: &str, width: i32, height: i32, pal: &Vec<DACPalette>) {
+    let img = draw_image(memory, width, height, pal);
+    match raster::open(pngfile) {
+        Ok(v) => {
+            // alert if output has changed. NOTE: output change is not nessecary a bug
+            if !raster::compare::equal(&v, &img).unwrap() {
+                if let Err(why) = raster::save(&img, pngfile) {
+                    println!("save err: {:?}", why);
+                }
+            }
+        }
+        Err(_) => {
+            if let Err(why) = raster::save(&img, pngfile) {
+                println!("save err: {:?}", why);
+            }
+        }
+    };
+}
+
+#[test] #[ignore] // expensive test
 fn demo_256() {
     let mut test_bins = vec![
         "../dos-software-decoding/demo-256/4sum/4sum.com",
@@ -69,12 +108,17 @@ fn demo_256() {
     while let Some(bin) = test_bins.pop() {
         println!("demo_256: {}", bin);
 
-        let mut debugger = Debugger::new();
-        debugger.cpu.deterministic = true;
+        let mut cpu = CPU::new(MMU::new());
+        cpu.deterministic = true;
         let code = tools::read_binary(bin).unwrap();
-        debugger.cpu.load_com(&code);
+        cpu.load_com(&code);
 
-        debugger.step_into(5_000_000);
+        for _ in 0..5_000_000 {
+            cpu.execute_instruction();
+            if cpu.fatal_error {
+                break;
+            }
+        }
         let path = Path::new(bin);
 
         let stem = path.file_stem().unwrap_or(OsStr::new(""));
@@ -83,22 +127,25 @@ fn demo_256() {
         filename.push(stem.to_os_string());
         filename.push(".png");
 
-        //just to make the test a bit slower (sorry)
-        let mem_dump = debugger.cpu.mmu.dump_mem();
-
-        debugger.cpu.gpu.test_render_frame(&mem_dump, filename.to_str().unwrap());
+        let mem_dump = cpu.mmu.dump_mem();
+        write_video_frame_to_disk(
+            &mem_dump,
+            filename.to_str().unwrap(),
+            cpu.gpu.width,
+            cpu.gpu.height,
+            &cpu.gpu.pal,
+        );
 
         let mut pub_filename = String::new();
         pub_filename.push_str("render/demo-256/256_");
         pub_filename.push_str(stem.to_str().unwrap());
         pub_filename.push_str(".png");
         out_images.push(pub_filename);
-        // XXX cpu.test_expect_memory_md5(x)
     }
 
     let mut tera = compile_templates!("docs/templates/**/*");
 
-    // disable autoescaping completely
+    // disable autoescaping
     tera.autoescape_on(vec![]);
 
     let mut context = Context::new();

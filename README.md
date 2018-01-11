@@ -21,7 +21,7 @@ Join us in irc.mozilla.com #dustbox
 Run the basic tests with
 
 ```
-cargo test
+cargo test --all
 ```
 
 There is additional tests that are expensive, they also generate the tests/render/demo images.
