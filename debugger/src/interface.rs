@@ -30,7 +30,6 @@ pub struct Interface {
 }
 
 impl Interface {
-    // XXX rename to DebugWindow
     pub fn new(app: Rc<RefCell<debugger::Debugger>>) -> Self {
         gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));
 
