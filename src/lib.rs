@@ -1,9 +1,10 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
+extern crate image;
+#[macro_use]
+extern crate tera;
 extern crate time;
-#[macro_use] extern crate tera;
-extern crate raster;
 
 pub mod tools;
 

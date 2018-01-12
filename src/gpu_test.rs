@@ -5,9 +5,11 @@
 use std::path::Path;
 use std::ffi::OsStr;
 use std::ffi::OsString;
+use std::fs::File;
 
 use tera::Context;
-use raster;
+use image;
+use image::{ImageBuffer, Rgb};
 
 use tools;
 use cpu::CPU;
@@ -15,39 +17,22 @@ use mmu::MMU;
 use gpu::DACPalette;
 
 
-// render video frame as a raster::Image, used for saving video frame to disk
-fn draw_image(memory: &[u8], width: i32, height: i32, pal: &[DACPalette]) -> raster::Image {
-    let mut canvas = raster::Image::blank(width, height);
-    for y in 0..height {
-        for x in 0..width {
-            let offset = 0xA_0000 + ((y * width) + x) as usize;
-            let byte = memory[offset];
-            let p = &pal[byte as usize];
-            canvas
-                .set_pixel(x, y, raster::Color::rgba(p.r, p.g, p.b, 255))
-                .unwrap();
-        }
-    }
-    canvas
+// render video frame, used for saving video frame to disk
+fn draw_image(memory: &[u8], width: u32, height: u32, pal: &[DACPalette]) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+    let img = ImageBuffer::from_fn(width, height, |x, y| {
+        let offset = 0xA_0000 + ((y * width) + x) as usize;
+        let byte = memory[offset];
+        let p = &pal[byte as usize];
+        Rgb([p.r, p.g, p.b])
+    });
+    img
 }
 
-fn write_video_frame_to_disk(memory: &[u8], pngfile: &str, width: i32, height: i32, pal: &[DACPalette]) {
+fn write_video_frame_to_disk(memory: &[u8], pngfile: &str, width: u32, height: u32, pal: &[DACPalette]) {
     let img = draw_image(memory, width, height, pal);
-    match raster::open(pngfile) {
-        Ok(v) => {
-            // alert if output has changed. NOTE: output change is not nessecary a bug
-            if !raster::compare::equal(&v, &img).unwrap() {
-                if let Err(why) = raster::save(&img, pngfile) {
-                    println!("save err: {:?}", why);
-                }
-            }
-        }
-        Err(_) => {
-            if let Err(why) = raster::save(&img, pngfile) {
-                println!("save err: {:?}", why);
-            }
-        }
-    };
+    if let Err(why) = img.save(pngfile) {
+        println!("save err: {:?}", why);
+    }
 }
 
 #[test] #[ignore] // expensive test

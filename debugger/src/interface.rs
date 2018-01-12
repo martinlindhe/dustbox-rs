@@ -264,7 +264,7 @@ impl Interface {
 }
 
 // render video frame to canvas `c`
-fn draw_canvas(c: &cairo::Context, memory: &[u8], width: i32, height: i32, pal: &[DACPalette]) {
+fn draw_canvas(c: &cairo::Context, memory: &[u8], width: u32, height: u32, pal: &[DACPalette]) {
     let mut buf = vec![0u8; (width * height * 3) as usize];
     for y in 0..height {
         for x in 0..width {
@@ -278,7 +278,15 @@ fn draw_canvas(c: &cairo::Context, memory: &[u8], width: i32, height: i32, pal: 
         }
     }
 
-    let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(buf, 0, false, 8, width, height, width * 3);
+    let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(
+        buf,
+        0,
+        false,
+        8,
+        width as i32,
+        height as i32,
+        width as i32 * 3,
+    );
     c.set_source_pixbuf(&pixbuf, 0., 0.);
 }
 

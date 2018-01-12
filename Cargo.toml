@@ -10,7 +10,7 @@ path = "src/lib.rs"
 time = "0.1"
 rand = "0.4"
 tera = "0.10"
-raster = "0.2"
+image = "0.18"
 
 [dev-dependencies]
 bencher = "0.1"

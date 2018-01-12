@@ -6,9 +6,9 @@ mod gpu_test;
 
 #[derive(Clone, Default)]
 pub struct GPU {
-    pub scanline: i32,
-    pub width: i32,
-    pub height: i32,
+    pub scanline: u32,
+    pub width: u32,
+    pub height: u32,
     pub pal: Vec<DACPalette>,     // the palette in use
     pub dac_color: usize,         // for out 03c9, 0 = red, 1 = green, 2 = blue
     pub dac_index: u8,            // for out 03c9
