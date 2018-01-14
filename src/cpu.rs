@@ -1202,11 +1202,16 @@ impl CPU {
                 self.flags.sign = ah & 0x80 != 0; // bit 7
             }
             Op::Salc() => {
-                // "setalc" is not documented in intel docs,
-                // but mentioned in http://ref.x86asm.net/coder32.html#gen_note_u_SALC_D6
+                // "setalc" is not documented in intel docs
+                // http://ref.x86asm.net/coder32.html#gen_note_u_SALC_D6
+                // http://www.rcollins.org/secrets/opcodes/SALC.html
                 // used in dos-software-decoding/demo-256/luminous/luminous.com
-
-                println!("XXX imp salc: {}", op);
+                let al = if self.flags.carry {
+                    0xFF
+                } else {
+                    0
+                };
+                self.r16[AX].set_lo(al);
             }
             Op::Sar8() => {
                 // Signed divide* r/m8 by 2, imm8 times.
