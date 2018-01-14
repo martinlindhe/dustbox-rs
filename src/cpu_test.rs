@@ -373,8 +373,7 @@ fn can_execute_addressing() {
 
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 9);
-    let res = cpu.decoder.instructions_to_str(ops);
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 9);
     assert_eq!("[085F:0100] BB0002           Mov16    bx, 0x0200
 [085F:0103] C6472CFF         Mov8     byte [bx+0x2C], 0xFF
 [085F:0107] 8D360001         Lea16    si, word [0x0100]
@@ -434,8 +433,7 @@ fn can_execute_math() {
 
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 1);
-    let res = cpu.decoder.instructions_to_str(ops);
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 1);
     assert_eq!("[085F:0100] F6062C12FF       Test8    byte [0x122C], 0xFF
 ",
                res);
@@ -455,9 +453,7 @@ fn can_execute_and() {
 
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 3);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 3);
     assert_eq!("[085F:0100] B0F0             Mov8     al, 0xF0
 [085F:0102] B41F             Mov8     ah, 0x1F
 [085F:0104] 20C4             And8     ah, al
@@ -528,9 +524,7 @@ fn can_execute_div8() {
 
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 3);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 3);
     assert_eq!("[085F:0100] B84000           Mov16    ax, 0x0040
 [085F:0103] B310             Mov8     bl, 0x10
 [085F:0105] F6F3             Div8     bl
@@ -561,9 +555,7 @@ fn can_execute_div16() {
 
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 4);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 4);
     assert_eq!("[085F:0100] BA1000           Mov16    dx, 0x0010
 [085F:0103] B80040           Mov16    ax, 0x4000
 [085F:0106] BB0001           Mov16    bx, 0x0100
@@ -774,9 +766,7 @@ fn can_execute_neg() {
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 2);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 2);
     assert_eq!("[085F:0100] BB2301           Mov16    bx, 0x0123
 [085F:0103] F7DB             Neg16    bx
 ",
@@ -804,9 +794,7 @@ fn can_execute_jmp_far() {
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 1);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 1);
     assert_eq!("[085F:0100] EA00060000       JmpFar   0000:0600
 ",
                res);
@@ -827,9 +815,7 @@ fn can_execute_movzx() {
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 2);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 2);
     assert_eq!("[085F:0100] B4FF             Mov8     ah, 0xFF
 [085F:0102] 0FB6DC           Movzx16  bx, ah
 ",
@@ -1094,9 +1080,7 @@ fn can_execute_imul8() {
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 3);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 3);
     assert_eq!("[085F:0100] B0F0             Mov8     al, 0xF0
 [085F:0102] B7D0             Mov8     bh, 0xD0
 [085F:0104] F6EF             Imul8    bh
@@ -1196,9 +1180,7 @@ fn can_execute_shrd() {
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 3);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 3);
     assert_eq!("[085F:0100] B8FFFF           Mov16    ax, 0xFFFF
 [085F:0103] BAFFFF           Mov16    dx, 0xFFFF
 [085F:0106] 0FACD00E         Shrd     ax, dx, 0x0E
@@ -1234,9 +1216,7 @@ fn can_execute_imul16_1_arg() {
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 3);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 3);
     assert_eq!("[085F:0100] BB8F79           Mov16    bx, 0x798F
 [085F:0103] B8D9FF           Mov16    ax, 0xFFD9
 [085F:0106] F7EB             Imul16   bx
@@ -1267,9 +1247,7 @@ fn can_disassemble_basic() {
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 5);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 5);
     assert_eq!("[085F:0100] E80500           CallNear 0x0108
 [085F:0103] BA0B01           Mov16    dx, 0x010B
 [085F:0106] B409             Mov8     ah, 0x09
@@ -1288,9 +1266,7 @@ fn can_disassemble_lea() {
  ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 1);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 1);
     assert_eq!("[085F:0100] 8D4780           Lea16    ax, word [bx-0x80]
 ",
                res);
@@ -1306,9 +1282,7 @@ fn can_disassemble_segment_prefixed() {
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 2);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 2);
     assert_eq!("[085F:0100] 268825           Mov8     byte [es:di], ah
 [085F:0103] 268A25           Mov8     ah, byte [es:di]
 ",
@@ -1327,9 +1301,7 @@ fn can_disassemble_arithmetic() {
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 4);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 4);
     assert_eq!("[085F:0100] 803E311000       Cmp8     byte [0x1031], 0x00
 [085F:0105] 81C7C000         Add16    di, 0x00C0
 [085F:0109] 83C73A           Add16    di, byte +0x3A
@@ -1350,9 +1322,7 @@ fn can_disassemble_jz_rel() {
     ];
     cpu.load_com(&code);
 
-    let ops = cpu.decoder.disassemble_block(0x85F, 0x100, 4);
-    let res = cpu.decoder.instructions_to_str(ops);
-
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 4);
     assert_eq!("[085F:0100] 7404             Jz       0x0106
 [085F:0102] 74FE             Jz       0x0102
 [085F:0104] 7400             Jz       0x0106
