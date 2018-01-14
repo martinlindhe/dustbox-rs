@@ -7,7 +7,7 @@ use std::num::Wrapping;
 #[test]
 fn can_handle_stack() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x88, 0x88, // mov ax,0x8888
         0x8E, 0xD8,       // mov ds,ax
@@ -34,7 +34,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_mov_r8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB2, 0x13, // mov dl,0x13
         0x88, 0xD0, // mov al,dl
@@ -53,7 +53,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_mov_r8_rm8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x05, 0x01, // mov bx,0x105
         0x8A, 0x27,       // mov ah,[bx]   | r8, r/m8
@@ -74,7 +74,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_mv_r16() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x23, 0x01, // mov ax,0x123
         0x8B, 0xE0,       // mov sp,ax   | r16, r16
@@ -93,7 +93,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_mov_r16_rm16() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB9, 0x23, 0x01, // mov cx,0x123
         0x8E, 0xC1,       // mov es,cx   | r/m16, r16
@@ -112,7 +112,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_mov_rm16_sreg() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x34, 0x12,       // mov bx,0x1234
         0x8E, 0xC3,             // mov es,bx
@@ -137,7 +137,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_mov_data() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xC6, 0x06, 0x31, 0x10, 0x38,       // mov byte [0x1031],0x38
     ];
@@ -152,7 +152,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_segment_prefixed() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x34, 0x12, // mov bx,0x1234
         0x8E, 0xC3,       // mov es,bx
@@ -189,7 +189,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_imms8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBF, 0x00, 0x01, // mov di,0x100
         0x83, 0xC7, 0x3A, // add di,byte +0x3a
@@ -214,7 +214,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_with_flags() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0xFE,       // mov ah,0xfe
         0x80, 0xC4, 0x02, // add ah,0x2   - OF and ZF should be set
@@ -247,7 +247,7 @@ let mut cpu = CPU::new(mmu);
 fn can_execute_cmp() {
     // make sure we dont overflow (0 - 0x2000 = overflow)
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x00,       // mov bx,0x0
         0x89, 0xDF,             // mov di,bx
@@ -278,7 +278,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_xchg() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x91, // xchg ax,cx
     ];
@@ -296,7 +296,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_rep_movsb() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         // copy first 5 bytes into 0x200
         0x8D, 0x36, 0x00, 0x01, // lea si,[0x100]
@@ -330,7 +330,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_rep_outsb() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBE, 0x00, 0x01, // mov si,0x100
         0xBA, 0xC9, 0x03, // mov dx,0x3c9
@@ -427,7 +427,7 @@ fn can_execute_addressing() {
 #[test]
 fn can_execute_math() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xF6, 0x06, 0x2C, 0x12, 0xFF, // test byte [0x122c],0xff
     ];
@@ -446,7 +446,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_and() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0xF0, // mov al,0xF0
         0xB4, 0x1F, // mov ah,0x1F
@@ -480,7 +480,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_mul8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0x40, // mov al,0x40
         0xB3, 0x10, // mov bl,0x10
@@ -499,7 +499,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_mul16() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x00, 0x80, // mov ax,0x8000
         0xBB, 0x04, 0x00, // mov bx,0x4
@@ -519,7 +519,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_div8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x40, 0x00, // mov ax,0x40
         0xB3, 0x10,       // mov bl,0x10
@@ -551,7 +551,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_div16() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBA, 0x10, 0x00, // mov dx,0x10
         0xB8, 0x00, 0x40, // mov ax,0x4000
@@ -588,7 +588,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_idiv8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x07, 0x00, // mov ax,0x7
         0xB3, 0x03,       // mov bl,0x3
@@ -607,7 +607,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_idiv16() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBA, 0x00, 0x00, // mov dx,0x0
         0xB8, 0x07, 0x00, // mov ax,0x7
@@ -628,7 +628,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_les() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xC4, 0x06, 0x00, 0x01, // les ax,[0x100]
     ];
@@ -641,7 +641,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_cwd() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x00, 0xFE, // mov ax,0xfe00
         0x99,             // cwd
@@ -655,7 +655,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_aaa() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0x7E, // mov al,0x7e
         0x37,       // aaa
@@ -671,7 +671,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_aas() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0x13, // mov al,0x13
         0x3F,       // aas
@@ -687,7 +687,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_daa() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0x79, // mov al,0x79
         0xB3, 0x35, // mov bl,0x35
@@ -705,7 +705,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_das() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0x35, // mov al,0x35
         0xB3, 0x47, // mov bl,0x47
@@ -723,7 +723,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_sahf() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x6A, 0x00, // push byte +0x0
         0x9D,       // popf
@@ -747,7 +747,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_dec() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBD, 0x00, 0x02, // mov bp,0x200
         0x4D,             // dec bp
@@ -766,9 +766,8 @@ let mut cpu = CPU::new(mmu);
 
 #[test]
 fn can_execute_neg() {
-
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x23, 0x01, // mov bx,0x123
         0xF7, 0xDB,       // neg bx
@@ -799,7 +798,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_jmp_far() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xEA, 0x00, 0x06, 0x00, 0x00, // jmp word 0x0:0x600
     ];
@@ -820,7 +819,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_movzx() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0xFF,       // mov ah,0xff
         0x0F, 0xB6, 0xDC, // movzx bx,ah
@@ -846,7 +845,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_rol8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x12,       // mov ah,0x12
         0xC0, 0xC4, 0x04, // rol ah,byte 0x4
@@ -865,7 +864,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_rol16() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x34, 0x12, // mov ax,0x1234
         0xC1, 0xC0, 0x03, // rol ax,byte 0x3
@@ -882,7 +881,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_ror8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x37,       // mov ah,0x37
         0xC0, 0xCC, 0x03, // ror ah,byte 0x3
@@ -899,7 +898,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_ror16() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x56, 0x34, // mov ax,0x3456
         0xC1, 0xC8, 0x03, // ror ax,byte 0x3
@@ -916,7 +915,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_rcl8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x12,       // mov ah,0x12
         0xC0, 0xD4, 0x04, // rcl ah,byte 0x4
@@ -935,7 +934,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_rcl16() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x34, 0x12, // mov ax,0x1234
         0xC1, 0xD0, 0x04, // rcl ax,byte 0x4
@@ -954,7 +953,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_rcr8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x12,       // mov ah,0x12
         0xC0, 0xDC, 0x04, // rcr ah,byte 0x4
@@ -972,7 +971,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_rcr16() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x34, 0x12, // mov ax,0x1234
         0xC1, 0xD8, 0x04, // rcr ax,byte 0x4
@@ -990,7 +989,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_shl8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x34,       // mov ah,0x34
         0xC0, 0xE4, 0x04, // shl ah,byte 0x4
@@ -1008,7 +1007,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_shl16() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x34, 0x12, // mov ax,0x1234
         0xC1, 0xE0, 0x04, // shl ax,byte 0x4
@@ -1024,7 +1023,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_shr8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0x34,       // mov ah,0x34
         0xC0, 0xEC, 0x04, // shr ah,byte 0x4
@@ -1041,7 +1040,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_shr16() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x34, 0x12, // mov ax,0x1234
         0xC1, 0xE8, 0x04, // shr ax,byte 0x4
@@ -1057,7 +1056,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_sar8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB4, 0xFE,       // mov ah,0xfe
         0xC0, 0xFC, 0x04, // sar ah,byte 0x4
@@ -1072,7 +1071,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_sar16() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0x85, 0xFE, // mov ax,0xfe85
         0xC1, 0xF8, 0x07, // sar ax,byte 0x7
@@ -1087,7 +1086,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_imul8() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB0, 0xF0, // mov al,0xf0
         0xB7, 0xD0, // mov bh,0xd0
@@ -1135,7 +1134,7 @@ fn can_execute_imul16_2_args() {
 #[test]
 fn can_execute_imul16_3_args() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBF, 0xFF, 0x8F,       // mov di,0x8fff
         0x69, 0xFF, 0x40, 0x01, // imul di,di,word 0x140
@@ -1149,8 +1148,8 @@ let mut cpu = CPU::new(mmu);
 
 #[test]
 fn can_execute_movsx() {
- let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB7, 0xFF,       // mov bh,0xff
         0x0F, 0xBE, 0xC7, // movsx ax,bh
@@ -1166,7 +1165,7 @@ fn can_execute_mov_ds_addressing() {
     // NOTE: this test demonstrates a emulation bug described in https://github.com/martinlindhe/dustbox-rs/issues/9#issuecomment-355609424
     // BUG: "mov [bx+si],dx" writes to the CS segment instead of DS
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x10, 0x00, // mov bx,0x10
         0xBE, 0x01, 0x00, // mov si,0x1
@@ -1188,8 +1187,8 @@ let mut cpu = CPU::new(mmu);
 
 #[test]
 fn can_execute_shrd() {
-let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB8, 0xFF, 0xFF,       // mov ax,0xffff
         0xBA, 0xFF, 0xFF,       // mov dx,0xffff
@@ -1227,7 +1226,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_execute_imul16_1_arg() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x8F, 0x79, // mov bx,0x798f
         0xB8, 0xD9, 0xFF, // mov ax,0xffd9
@@ -1258,7 +1257,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_disassemble_basic() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xE8, 0x05, 0x00, // call l_0x108   ; call a later offset
         0xBA, 0x0B, 0x01, // mov dx,0x10b
@@ -1283,7 +1282,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_disassemble_lea() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x8D, 0x47, 0x80, // lea ax,[bx-0x80]
  ];
@@ -1300,7 +1299,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_disassemble_segment_prefixed() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x26, 0x88, 0x25, // mov [es:di],ah
         0x26, 0x8A, 0x25, // mov ah,[es:di]
@@ -1319,7 +1318,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_disassemble_arithmetic() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x80, 0x3E, 0x31, 0x10, 0x00, // cmp byte [0x1031],0x0
         0x81, 0xC7, 0xC0, 0x00,       // add di,0xc0
@@ -1342,7 +1341,7 @@ let mut cpu = CPU::new(mmu);
 #[test]
 fn can_disassemble_jz_rel() {
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0x74, 0x04, // jz 0x106
         0x74, 0xFE, // jz 0x102
@@ -1367,7 +1366,7 @@ fn estimate_mips() {
     use std::time::Instant;
 
     let mmu = MMU::new();
-let mut cpu = CPU::new(mmu);
+    let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xB9, 0xFF, 0xFF, // mov cx,0xffff
         0x49,             // dec cx
