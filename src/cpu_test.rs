@@ -1131,6 +1131,24 @@ fn can_execute_imul16_3_args() {
 }
 
 #[test]
+fn can_execute_xlatb() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xBB, 0x40, 0x02, // mov bx,0x240
+        0xD7,             // xlatb
+    ];
+    cpu.load_com(&code);
+    // prepare ds:bx with expected value
+    let ds = cpu.sreg16[DS];
+    cpu.mmu.write_u16(ds, 0x0240, 0x80);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // xlatb; al = ds:bx
+    assert_eq!(0x80, cpu.r16[AX].lo_u8());
+}
+
+#[test]
 fn can_execute_movsx() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);

@@ -1493,7 +1493,9 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.src, src as u16);
             }
             Op::Xlatb() => {
-                println!("XXX impl {}", op);
+                // no parameters
+                let al = self.mmu.read_u8(self.sreg16[DS], self.r16[BX].val + self.r16[AX].lo_u8() as u16);
+                self.r16[AX].set_lo(al);
             }
             Op::Xor8() => {
                 // two parameters (dst=reg)
