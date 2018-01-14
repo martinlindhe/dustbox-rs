@@ -35,7 +35,7 @@ fn disasm_small_prog(b: &mut Bencher) {
     ];
     cpu.load_com(&code);
 
-    b.iter(|| cpu.decoder.disassemble_block(0x85F, 0x100, 8))
+    b.iter(|| cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 8))
 }
 
 benchmark_group!(benches, simple_loop, disasm_small_prog);
