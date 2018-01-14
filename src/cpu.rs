@@ -1894,7 +1894,6 @@ impl CPU {
                 // index (0..255) for following write accesses to 3C9h.
                 // Next access to 03C8h will stop pending mode immediately.
                 self.gpu.dac_index = data;
-                // println!("dac index = {}", data);
             }
             0x03C9 => {
                 // (VGA,MCGA) PEL data register
@@ -1986,7 +1985,7 @@ impl CPU {
                 0 // XXX
             },
             0x0060 => {
-                // "8042" PS/2 Controller (keyboard & mice)
+                // PS/2 Controller (keyboard & mice) data port
                 // http://wiki.osdev.org/%228042%22_PS/2_Controller
                 0 // XXX
             },

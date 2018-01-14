@@ -20,7 +20,7 @@ pub fn handle(cpu: &mut CPU) {
             // AH = BIOS scan code
             // AL = ASCII character
 
-            println!("XXX impl KEYBOARD - CHECK FOR KEYSTROKE");
+            //println!("XXX impl KEYBOARD - CHECK FOR KEYSTROKE");
             cpu.flags.zero = true;
         }
         0x11 => {

@@ -1,5 +1,5 @@
 use cpu::CPU;
-use register::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES};
+use register::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES, FS};
 use segment::Segment;
 use mmu::MMU;
 use std::num::Wrapping;
@@ -150,40 +150,64 @@ fn can_execute_mov_data() {
 }
 
 #[test]
-fn can_execute_segment_prefixed() {
+fn can_execute_mov_es_segment() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xBB, 0x34, 0x12, // mov bx,0x1234
-        0x8E, 0xC3,       // mov es,bx
-        0xB4, 0x88,       // mov ah,0x88
         0x26, 0x88, 0x25, // mov [es:di],ah
         0x26, 0x8A, 0x05, // mov al,[es:di]
+
+        0x26, 0x8A, 0x45, 0x01, // mov al,[es:di+0x1]
+        0x26, 0x8A, 0x5D, 0xFF, // mov bl,[es:di-0x1]
+
+        0x26, 0x8A, 0x85, 0x40, 0x01, // mov al,[es:di+0x140]
+        0x26, 0x8A, 0x9D, 0xC0, 0xFE, // mov bl,[es:di-0x140]
     ];
 
     cpu.load_com(&code);
+    let es = 0x4040;
+    let di = 0x0200;
+    cpu.sreg16[ES] = es;
+    cpu.r16[DI].val = di;
 
-    cpu.execute_instruction();
-    assert_eq!(0x103, cpu.ip);
-    assert_eq!(0x1234, cpu.r16[BX].val);
+    cpu.r16[AX].set_hi(0x88);
+    cpu.execute_instruction(); // mov [es:di],ah
+    assert_eq!(0x88, cpu.mmu.read_u8(es, di));
 
-    cpu.execute_instruction();
-    assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x1234, cpu.sreg16[ES]);
-
-    cpu.execute_instruction();
-    assert_eq!(0x107, cpu.ip);
-    assert_eq!(0x88, cpu.r16[AX].hi_u8());
-
-    cpu.execute_instruction();
-    assert_eq!(0x10A, cpu.ip);
-    assert_eq!(0x88, cpu.mmu.read_u8(
-            cpu.segment(Segment::ES()),
-            cpu.amode16(5)));
-
-    cpu.execute_instruction();
-    assert_eq!(0x10D, cpu.ip);
+    cpu.execute_instruction(); // mov al,[es:di]
     assert_eq!(0x88, cpu.r16[AX].lo_u8());
+
+    cpu.mmu.write_u8(es, di + 1, 0x1);
+    cpu.mmu.write_u8(es, di - 1, 0xFF);
+    cpu.execute_instruction(); // mov al,[es:di+0x1]
+    assert_eq!(0x1, cpu.r16[AX].lo_u8());
+    cpu.execute_instruction(); // mov bl,[es:di-0x1]
+    assert_eq!(0xFF, cpu.r16[BX].lo_u8());
+
+    cpu.mmu.write_u8(es, di + 0x140, 0x22);
+    cpu.mmu.write_u8(es, di - 0x140, 0x88);
+    cpu.execute_instruction(); // mov al,[es:di+0x140]
+    assert_eq!(0x22, cpu.r16[AX].lo_u8());
+    cpu.execute_instruction(); // mov bl,[es:di-0x140]
+    assert_eq!(0x88, cpu.r16[BX].lo_u8());
+}
+
+#[test]
+fn can_execute_mov_fs_segment() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0x64, 0x88, 0x05, // mov [fs:di],al
+    ];
+
+    cpu.load_com(&code);
+    let fs = 0x4040;
+    let di = 0x0200;
+    cpu.sreg16[FS] = fs;
+    cpu.r16[DI].val = di;
+    cpu.r16[AX].set_lo(0xFF);
+    cpu.execute_instruction(); // mov [fs:di],al
+    assert_eq!(0xFF, cpu.mmu.read_u8(fs, di));
 }
 
 #[test]
