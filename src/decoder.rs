@@ -54,19 +54,19 @@ impl Decoder {
         res
     }
 
-    pub fn  disasm_instruction(&mut self, seg: u16, offset: u16) -> InstructionInfo {
-       let op = self.get_instruction(seg, offset, Segment::Default());
+    pub fn disasm_instruction(&mut self, iseg: u16, ioffset: u16) -> InstructionInfo {
+       let op = self.get_instruction(Segment::Default(), iseg, ioffset);
        InstructionInfo {
-           segment: seg as usize,
-           offset: offset as usize,
+           segment: iseg as usize,
+           offset: ioffset as usize,
            length: op.byte_length as usize,
            text: format!("{}", op),
-           bytes: self.mmu.read(seg, offset, op.byte_length as usize),
+           bytes: self.mmu.read(iseg, ioffset, op.byte_length as usize),
            instruction: op
        }
     }
 
-    pub fn get_instruction(&mut self, iseg: u16, ioffset: u16, seg: Segment) -> Instruction {
+    pub fn get_instruction(&mut self, seg: Segment, iseg: u16, ioffset: u16) -> Instruction {
         self.c_seg = iseg;
         self.c_offset = ioffset;
         self.decode(seg)

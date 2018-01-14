@@ -124,7 +124,7 @@ impl CPU {
     pub fn execute_instruction(&mut self) {
         let cs = self.sreg16[CS];
         let ip = self.ip;
-        let op = self.decoder.get_instruction(cs, ip, Segment::DS());
+        let op = self.decoder.get_instruction(Segment::DS(), cs, ip);
 
         match op.command {
             Op::Unknown() => {
