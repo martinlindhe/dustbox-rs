@@ -34,7 +34,7 @@ impl Decoder {
         let mut inst_offset = 0;
         for _ in 0..n {
             let op = self.disasm_instruction(seg, offset+inst_offset);
-            inst_offset += op.instruction.byte_length;
+            inst_offset += op.instruction.length as u16;
             ops.push(op);
         }
 
@@ -55,9 +55,9 @@ impl Decoder {
        InstructionInfo {
            segment: iseg as usize,
            offset: ioffset as usize,
-           length: op.byte_length as usize,
+           length: op.length as usize,
            text: format!("{}", op),
-           bytes: self.mmu.read(iseg, ioffset, op.byte_length as usize),
+           bytes: self.mmu.read(iseg, ioffset, op.length as usize),
            instruction: op
        }
     }
@@ -80,7 +80,7 @@ impl Decoder {
                 src: Parameter::None(),
                 src2: Parameter::None(),
             },
-            byte_length: 0,
+            length: 0,
         };
 
         match b {
@@ -1263,7 +1263,7 @@ impl Decoder {
         }
 
         // calculate instruction length
-        op.byte_length = self.c_offset - ioffset;
+        op.length = (self.c_offset - ioffset) as u8;
         op
     }
 

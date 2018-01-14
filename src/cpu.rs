@@ -160,7 +160,7 @@ impl CPU {
     }
 
     fn execute(&mut self, op: &Instruction) {
-        self.ip += op.byte_length;
+        self.ip += op.length as u16;
         self.instruction_count += 1;
         match op.command {
             Op::Aaa() => {
