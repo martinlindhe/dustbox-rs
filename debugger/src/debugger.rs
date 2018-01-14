@@ -136,17 +136,8 @@ impl Debugger {
     }
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
-        let mut rows: Vec<String> = Vec::new();
         let mut decoder = Decoder::new(self.cpu.mmu.clone());
-        let ops = decoder.disassemble_block(
-            self.cpu.sreg16[CS],
-            self.cpu.ip,
-            n as u16);
-
-        for op in ops {
-            rows.push(op.to_string());
-        }
-        rows.join("\n")
+        decoder.disassemble_block_to_str(self.cpu.sreg16[CS], self.cpu.ip, n as u16)
     }
 
     pub fn dump_memory(&self, filename: &str, base: usize, len: usize) -> Result<usize, IoError> {
