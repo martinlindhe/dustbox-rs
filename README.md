@@ -36,8 +36,9 @@ There is additional tests that are expensive, they also generate the tests/rende
 In order to run the expensive tests you need to check out the dos-software-decoding repo in the parent directory and pass the `--ignored` flag to cargo:
 
     cd .. && git clone https://github.com/martinlindhe/dos-software-decoding && cd -
-    cargo test -- --ignored
+    cargo test --release -- --ignored
 
+(The `--release` flag is optional, but will speed up the execution time by a huge amount - from 143s to 9.5s on my laptop)
 
 ## Rust language use
 
