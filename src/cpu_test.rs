@@ -322,32 +322,26 @@ fn can_execute_rep_movsb() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        // copy first 5 bytes into 0x200
-        0x8D, 0x36, 0x00, 0x01, // lea si,[0x100]
-        0x8D, 0x3E, 0x00, 0x02, // lea di,[0x200]
-        0xB9, 0x05, 0x00,       // mov cx,0x5
         0xF3, 0xA4,             // rep movsb
     ];
-
     cpu.load_com(&code);
 
-    cpu.execute_instruction();
-    assert_eq!(0x100, cpu.r16[SI].val);
+    cpu.r16[SI].val = 0x100;
+    cpu.r16[DI].val = 0x200;
+    cpu.r16[CX].val = 4;
 
-    cpu.execute_instruction();
-    assert_eq!(0x200, cpu.r16[DI].val);
-
-    cpu.execute_instruction();
-    assert_eq!(0x5, cpu.r16[CX].val);
-
+    // copy first 4 bytes from DS:0x100 to ES:0x200
+    cpu.execute_instruction(); // rep movsb
+    cpu.execute_instruction(); // rep movsb
+    cpu.execute_instruction(); // rep movsb
     cpu.execute_instruction(); // rep movsb
     assert_eq!(0x0, cpu.r16[CX].val);
     let min = 0x100;
-    let max = min + 5;
+    let max = min + 4;
     for i in min..max {
         assert_eq!(
-            cpu.mmu.read_u8(cpu.sreg16[CS], i),
-            cpu.mmu.read_u8(cpu.sreg16[CS], i+0x100));
+            cpu.mmu.read_u8(cpu.sreg16[ES], i),
+            cpu.mmu.read_u8(cpu.sreg16[ES], i+0x100));
     }
 }
 
@@ -356,27 +350,23 @@ fn can_execute_rep_outsb() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xBE, 0x00, 0x01, // mov si,0x100
-        0xBA, 0xC9, 0x03, // mov dx,0x3c9
-        0xB9, 0x20, 0x00, // mov cx,0x20
         0xF3, 0x6E,       // rep outsb
     ];
     cpu.load_com(&code);
 
-    assert_eq!(0, cpu.gpu.pal[1].r);
-    assert_eq!(0, cpu.gpu.pal[1].g);
-    assert_eq!(0, cpu.gpu.pal[1].b);
+    cpu.r16[SI].val = 0x100;
+    cpu.r16[DX].val = 0x03C8;
+    cpu.r16[CX].val = 2;
 
-    cpu.execute_instruction();
-    cpu.execute_instruction();
-    cpu.execute_instruction();
+    assert_eq!(0, cpu.gpu.dac_index);
+
     cpu.execute_instruction(); // rep outsb
-    assert_eq!(0x0, cpu.r16[CX].val);
+    assert_eq!(0xF3, cpu.gpu.dac_index);
 
-    // we verify by checking for change in pal[1], indicating > 1 successful "rep outsb" operation
-    assert_eq!(0xE8, cpu.gpu.pal[1].r);
-    assert_eq!(0x24, cpu.gpu.pal[1].g);
-    assert_eq!(0x0C, cpu.gpu.pal[1].b);
+    cpu.execute_instruction(); // rep outsb
+    assert_eq!(0x6E, cpu.gpu.dac_index);
+
+    assert_eq!(0x0, cpu.r16[CX].val);
 }
 
 #[test]

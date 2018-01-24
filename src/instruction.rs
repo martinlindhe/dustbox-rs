@@ -5,14 +5,6 @@ use segment::Segment;
 
 // translates a segment:offset address into a flat address
 pub fn seg_offs_as_flat(segment: u16, offset: u16) -> usize {
-    /*
-    println!(
-        "seg_offs_as_flat: {:04X}:{:04X} -> {:06X}",
-        segment,
-        offset,
-        (segment as usize * 16) + offset as usize
-    );
-    */
     (segment as usize * 16) + offset as usize
 }
 
@@ -271,12 +263,8 @@ pub enum Op {
     Rcl16(),
     Rcr8(),
     Rcr16(),
-    RepMovsb(),
-    RepMovsw(),
-    RepOutsb(),
-    RepStosb(),
-    RepStosw(),
-    RepneScasb(),
+    Rep(),
+    Repne(),
     Retf(),
     Retn(),
     Rol8(),
