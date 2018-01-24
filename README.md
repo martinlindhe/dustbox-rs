@@ -1,8 +1,6 @@
 # About
 
-[![Join the chat at https://gitter.im/martinlindhe/dustbox-rs](https://badges.gitter.im/martinlindhe/dustbox-rs.svg)](https://gitter.im/martinlindhe/dustbox-rs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
-[![Build Status](https://travis-ci.org/martinlindhe/dustbox-rs.svg?branch=master)](https://travis-ci.org/martinlindhe/dustbox-rs)
+[![Join the chat at https://gitter.im/martinlindhe/dustbox-rs](https://badges.gitter.im/martinlindhe/dustbox-rs.svg)](https://gitter.im/martinlindhe/dustbox-rs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/martinlindhe/dustbox-rs.svg?branch=master)](https://travis-ci.org/martinlindhe/dustbox-rs)
 
 a x86 16-bit emulator with the goal of running old MS-DOS games.
 
@@ -14,11 +12,6 @@ If you are looking for a more complete dos emulator, I suggest you check out [do
 ## Contributing
 
 Any help and contributions are much welcome! 
-
-
-## IRC
-
-Join us in irc.mozilla.com #dustbox
 
 
 ## Running
