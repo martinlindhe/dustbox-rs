@@ -144,7 +144,7 @@ impl CPU {
                         println!("Error unhandled OP {}", ops_str)
                     }
                     InvalidOp::Reg(reg) => {
-                        println!("Error invalid register {:X}", reg);
+                        println!("Error invalid register {:02X} at {:04X}:{:04X}", reg, cs, ip);
                     }
                 }
                 println!("{} Instructions executed",
@@ -160,6 +160,7 @@ impl CPU {
     }
 
     fn execute(&mut self, op: &Instruction) {
+        let start_ip = self.ip;
         self.ip += op.length as u16;
         self.instruction_count += 1;
         match op.command {
@@ -719,26 +720,26 @@ impl CPU {
                 };
             }
             Op::Loop() => {
+                // Decrement count; jump short if count ≠ 0.
                 let dst = self.read_parameter_value(&op.params.dst) as u16;
-                let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
-                self.r16[CX].val = res;
-                if res != 0 {
+                self.r16[CX].val = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                if self.r16[CX].val != 0 {
                     self.ip = dst;
                 }
             }
             Op::Loope() => {
+                // Decrement count; jump short if count ≠ 0 and ZF = 1.
                 let dst = self.read_parameter_value(&op.params.dst) as u16;
-                let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
-                self.r16[CX].val = res;
-                if res != 0 && self.flags.zero {
+                self.r16[CX].val = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                if self.r16[CX].val != 0 && self.flags.zero {
                     self.ip = dst;
                 }
             }
             Op::Loopne() => {
+                // Decrement count; jump short if count ≠ 0 and ZF = 0.
                 let dst = self.read_parameter_value(&op.params.dst) as u16;
-                let res = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
-                self.r16[CX].val = res;
-                if res != 0 && !self.flags.zero {
+                self.r16[CX].val = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                if self.r16[CX].val != 0 && !self.flags.zero {
                     self.ip = dst;
                 }
             } 
@@ -1043,63 +1044,15 @@ impl CPU {
                 }
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
-            Op::RepMovsb() => {
-                // rep movs byte
-                // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
-                loop {
-                    self.movsb();
-                    self.r16[CX].val -= 1;
-                    if self.r16[CX].val == 0 {
-                        break;
-                    }
+            Op::Rep() => {
+                self.execute_instruction();
+                self.r16[CX].val = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                if self.r16[CX].val != 0 {
+                    self.ip = start_ip;
                 }
             }
-            Op::RepMovsw() => {
-                // rep movs word
-                // Move (E)CX bytes from DS:[(E)SI] to ES:[(E)DI].
-                loop {
-                    self.movsw();
-                    self.r16[CX].val -= 1;
-                    if self.r16[CX].val == 0 {
-                        break;
-                    }
-                }
-            }
-            Op::RepOutsb() => {
-                // rep outs byte
-                // Output (E)CX bytes from DS:[(E)SI] to port DX.
-                loop {
-                    self.outsb();
-                    self.r16[CX].val -= 1;
-                    if self.r16[CX].val == 0 {
-                        break;
-                    }
-                }
-            }
-            Op::RepStosb() => {
-                // rep stos byte
-                // Fill (E)CX bytes at ES:[(E)DI] with AL.
-                loop {
-                    self.stosb();
-                    self.r16[CX].val -= 1;
-                    if self.r16[CX].val == 0 {
-                        break;
-                    }
-                }
-            }
-            Op::RepStosw() => {
-                // rep stos word
-                // Fill (E)CX words at ES:[(E)DI] with AX.
-                loop {
-                    self.stosw();
-                    self.r16[CX].val -= 1;
-                    if self.r16[CX].val == 0 {
-                        break;
-                    }
-                }
-            }
-            Op::RepneScasb() => {
-                // Find AL, starting at ES:[(E)DI].
+            Op::Repne() => {
+                // repne (alias repnz)
                 println!("XXX impl {}", op);
             }
             Op::Retf() => {
@@ -1202,10 +1155,10 @@ impl CPU {
                 self.flags.sign = ah & 0x80 != 0; // bit 7
             }
             Op::Salc() => {
-                // "setalc" is not documented in intel docs
+                // "salc", or "setalc" is a undocumented Intel instruction
                 // http://ref.x86asm.net/coder32.html#gen_note_u_SALC_D6
                 // http://www.rcollins.org/secrets/opcodes/SALC.html
-                // used in dos-software-decoding/demo-256/luminous/luminous.com
+                // used by dos-software-decoding/demo-256/luminous/luminous.com
                 let al = if self.flags.carry {
                     0xFF
                 } else {
@@ -1824,6 +1777,7 @@ impl CPU {
         }
     }
 
+    // output byte from memory location specified in DS:(E)SI or RSI to I/O port specified in DX.
     fn outsb(&mut self) {
         let val = self.mmu.read_u8(self.sreg16[DS], self.r16[SI].val);
         let port = self.r16[DX].val;
@@ -1835,6 +1789,7 @@ impl CPU {
         };
     }
 
+    // move byte from address DS:(E)SI to ES:(E)DI.
     fn movsb(&mut self) {
         let b = self.mmu.read_u8(self.sreg16[DS], self.r16[SI].val);
         self.r16[SI].val = if !self.flags.direction {
@@ -1850,6 +1805,7 @@ impl CPU {
         };
     }
 
+    // move word from address DS:(E)SI to ES:(E)DI.
     fn movsw(&mut self) {
         let b = self.mmu.read_u16(self.sreg16[DS], self.r16[SI].val);
         self.r16[SI].val = if !self.flags.direction {
@@ -1865,6 +1821,7 @@ impl CPU {
         };
     }
 
+    // store AL at address ES:(E)DI.
     fn stosb(&mut self) {
         let data = self.r16[AX].lo_u8(); // = AL
         self.mmu.write_u8(self.sreg16[ES], self.r16[DI].val, data);
@@ -1875,6 +1832,7 @@ impl CPU {
         };
     }
 
+    // store AX at address ES:(E)DI.
     fn stosw(&mut self) {
         let data = self.r16[AX].val;
         self.mmu.write_u16(self.sreg16[ES], self.r16[DI].val, data);
@@ -1898,7 +1856,7 @@ impl CPU {
             0x03C9 => {
                 // (VGA,MCGA) PEL data register
                 // Three consecutive writes in the order: red, green, blue.
-                // The internal DAC index is incremented each 3rd access.
+                // The internal DAC index is incremented on every 3rd write.
                 if self.gpu.dac_color > 2 {
                     let i = self.gpu.dac_index as usize;
                     self.gpu.pal[i].r = self.gpu.dac_current_pal[0];

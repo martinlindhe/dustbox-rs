@@ -999,8 +999,6 @@ impl Decoder {
                 op.params.dst = Parameter::Imm8(self.read_u8());
             }
             0xD6 => {
-                // NOTE: 0xD6 unassigned in intel docs, but mapped to salc (aka 'setalc') in
-                // http://ref.x86asm.net/coder32.html#gen_note_u_SALC_D6
                 op.command = Op::Salc();
             }
             0xD7 => {
@@ -1107,45 +1105,10 @@ impl Decoder {
                 op.params.dst = Parameter::Imm8(1);
             }
             0xF2 => {
-                // repne  (alias repnz)
-                let b = self.read_u8();
-                match b {
-                    0xAE => {
-                        // repne scas byte
-                        op.command = Op::RepneScasb();
-                    }
-                    _ => {
-                        let invalid = InvalidOp::Op(vec![0xF2, b]);
-                        op.command = Op::Invalid(invalid);
-                        // println!("op F2 error: unhandled op {:02X}", b);
-                    }
-                }
+                op.command = Op::Repne();
             }
             0xF3 => {
-                // rep
-                let b = self.read_u8();
-                match b {
-                    0x6E => {
-                        op.command = Op::RepOutsb();
-                    }
-                    0xA4 => {
-                        op.command = Op::RepMovsb();
-                    }
-                    0xA5 => {
-                        op.command = Op::RepMovsw();
-                    }
-                    0xAA => {
-                        op.command = Op::RepStosb();
-                    }
-                    0xAB => {
-                        op.command = Op::RepStosw();
-                    }
-                    _ => {
-                        let invalid = InvalidOp::Op(vec![0xF3, b]);
-                        op.command = Op::Invalid(invalid);
-                        //println!("op F3 error: unhandled op {:02X}", b);
-                    }
-                }
+                op.command = Op::Rep();
             }
             0xF4 => {
                 op.command = Op::Hlt();

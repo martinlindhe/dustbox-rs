@@ -2,7 +2,7 @@ test:
 	cargo test --all -- --color always --nocapture
 
 expensive-test:
-	cargo test --all -- --color always --nocapture --ignored
+	cargo test --release -- --color always --nocapture --ignored
 
 bench:
 	cargo bench --all
