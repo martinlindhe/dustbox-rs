@@ -13,6 +13,7 @@ use int16;
 use int21;
 use int33;
 use gpu::GPU;
+use pit::PIT;
 use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
 use decoder::Decoder;
 use mmu::MMU;
@@ -43,6 +44,7 @@ pub struct CPU {
     pub sreg16: [u16; 6], // segment registers
     pub flags: Flags,
     pub gpu: GPU,
+    pub pit: PIT,
     rom_base: usize,
     pub fatal_error: bool, // for debugging: signals to debugger we hit an error
     pub deterministic: bool, // for testing: toggles non-deterministic behaviour
@@ -58,6 +60,7 @@ impl CPU {
             sreg16: [0; 6],
             flags: Flags::new(),
             gpu: GPU::new(),
+            pit: PIT::new(),
             rom_base: 0,
             fatal_error: false,
             deterministic: false,
@@ -1937,10 +1940,7 @@ impl CPU {
         */
         match port {
             0x0040 => {
-                // Programmable Interval Timer
-                // http://wiki.osdev.org/Programmable_Interval_Timer
-
-                0 // XXX
+                self.pit.read_40()
             },
             0x0060 => {
                 // PS/2 Controller (keyboard & mice) data port
