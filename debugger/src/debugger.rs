@@ -229,7 +229,7 @@ impl Debugger {
                             println!("  bp list              list all breakpoints");
                         }
                         "add" | "set" => {
-                            match parse_segment_offset_pair(&parts[2]) {
+                            match self.parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
                                     if self.ip_breakpoints.add(bp).is_some() {
                                         println!("Breakpoint added: {:06X}", bp);
@@ -244,7 +244,7 @@ impl Debugger {
                             }
                         }
                         "del" | "delete" | "remove" => {
-                            match parse_segment_offset_pair(&parts[2]) {
+                            match self.parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
                                     match self.ip_breakpoints.remove(bp) {
                                         Some(_) => println!("Breakpoint removed: {:06X}", bp),
@@ -284,7 +284,7 @@ impl Debugger {
                             println!("  membp list              list all breakpoints");
                         }
                         "add" | "set" => {
-                            match parse_segment_offset_pair(&parts[2]) {
+                            match self.parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
                                     if self.memory_breakpoints.add(bp).is_some() {
                                         println!("Breakpoint added: {:06X}", bp);
@@ -299,7 +299,7 @@ impl Debugger {
                             }
                         }
                         "del" | "delete" | "remove" => {
-                            match parse_segment_offset_pair(&parts[2]) {
+                            match self.parse_segment_offset_pair(&parts[2]) {
                                 Ok(bp) => {
                                     match self.memory_breakpoints.remove(bp) {
                                         Some(_) => println!("Memory breakpoint removed: {:06X}", bp),
@@ -361,7 +361,7 @@ impl Debugger {
                 let mut pos: usize;
                 let mut length: usize;
 
-                match parse_segment_offset_pair(&parts[1]) {
+                match self.parse_segment_offset_pair(&parts[1]) {
                     Ok(p) => pos = p,
                     Err(e) => {
                         println!("parse error: {:?}", e);
@@ -400,7 +400,7 @@ impl Debugger {
                 let mut pos: usize;
                 let mut length: usize;
 
-                match parse_segment_offset_pair(&parts[1]) {
+                match self.parse_segment_offset_pair(&parts[1]) {
                     Ok(p) => pos = p,
                     Err(e) => {
                         println!("parse error: {:?}", e);
@@ -451,6 +451,58 @@ impl Debugger {
             offset,
             rom_offset
         );
+    }
+
+    // parses segment:offset pair to an integer
+    fn parse_segment_offset_pair(&self, s: &str) -> Result<usize, ParseIntError> {
+        let x = &s.replace("_", "");
+        match x.find(':') {
+            Some(pos) => {
+                match self.parse_register_hex_string(&x[0..pos]) {
+                    Ok(segment) => {
+                        match self.parse_register_hex_string(&x[pos+1..]) {
+                            Ok(offset) => Ok(seg_offs_as_flat(segment as u16, offset as u16)),
+                            Err(v) => Err(v),
+                        }
+                    },
+                    Err(v) => Err(v),
+                }
+            }
+            None => {
+                // flat address
+                match self.parse_register_hex_string(x) {
+                    Ok(val) => Ok(val),
+                    Err(v) => Err(v),
+                }
+            }
+        }
+    }
+
+    // parses hex string or register name to a integer
+    fn parse_register_hex_string(&self, s: &str) -> Result<usize, ParseIntError> {
+        let x = &s.replace("_", "");
+        let x = x.to_lowercase();
+        if x.len() >= 2 && &x[0..2] == "0x" {
+            usize::from_str_radix(&x[2..], 16)
+        } else {
+            match x.as_ref() {
+                "ax" => Ok(self.cpu.r16[AX].val as usize),
+                "bx" => Ok(self.cpu.r16[BX].val as usize),
+                "cx" => Ok(self.cpu.r16[CX].val as usize),
+                "dx" => Ok(self.cpu.r16[DX].val as usize),
+                "sp" => Ok(self.cpu.r16[SP].val as usize),
+                "bp" => Ok(self.cpu.r16[BP].val as usize),
+                "si" => Ok(self.cpu.r16[SI].val as usize),
+                "di" => Ok(self.cpu.r16[DI].val as usize),
+                "es" => Ok(self.cpu.sreg16[ES] as usize),
+                "cs" => Ok(self.cpu.sreg16[CS] as usize),
+                "ss" => Ok(self.cpu.sreg16[SS] as usize),
+                "ds" => Ok(self.cpu.sreg16[DS] as usize),
+                "fs" => Ok(self.cpu.sreg16[FS] as usize),
+                "gs" => Ok(self.cpu.sreg16[GS] as usize),
+                _ => usize::from_str_radix(&x, 16)
+            }
+        }
     }
 
     fn print_registers(&mut self) -> String {
@@ -505,40 +557,5 @@ fn parse_number_string(s: &str) -> Result<usize, ParseIntError> {
     } else {
         // decimal
         x.parse::<usize>()
-    }
-}
-
-// parses hex string to a integer
-fn parse_hex_string(s: &str) -> Result<usize, ParseIntError> {
-    let x = &s.replace("_", "");
-    if x.len() >= 2 && &x[0..2] == "0x" {
-        usize::from_str_radix(&x[2..], 16)
-    } else {
-        usize::from_str_radix(x, 16)
-    }
-}
-
-// parses segment:offset pair to an integer
-fn parse_segment_offset_pair(s: &str) -> Result<usize, ParseIntError> {
-    let x = &s.replace("_", "");
-    match x.find(':') {
-        Some(pos) => {
-            match parse_hex_string(&x[0..pos]) {
-                Ok(segment) => {
-                    match parse_hex_string(&x[pos+1..]) {
-                        Ok(offset) => Ok(seg_offs_as_flat(segment as u16, offset as u16)),
-                        Err(v) => Err(v),
-                    }
-                },
-                Err(v) => Err(v),
-            }
-        }
-        None => {
-            // flat address
-             match parse_hex_string(x) {
-                Ok(val) => Ok(val),
-                Err(v) => Err(v),
-            }
-        }
     }
 }
