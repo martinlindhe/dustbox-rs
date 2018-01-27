@@ -22,31 +22,112 @@ pub struct DACPalette {
     pub b: u8,
 }
 
+fn default_vga_palette() -> Vec<DACPalette> {
+    let pal = [
+        // 0-15: EGA palette
+        DACPalette {r: 0x00, g: 0x00, b: 0x00}, // 0. black
+        DACPalette {r: 0x00, g: 0x00, b: 0xAA}, // 1. blue
+        DACPalette {r: 0x00, g: 0xAA, b: 0x00}, // 2. green
+        DACPalette {r: 0x00, g: 0xAA, b: 0xAA}, // 3. cyan
+        DACPalette {r: 0xAA, g: 0x00, b: 0x00}, // 4. red
+        DACPalette {r: 0xAA, g: 0x00, b: 0xAA}, // 5. magenta
+        DACPalette {r: 0xAA, g: 0x55, b: 0x00}, // 6. brown
+        DACPalette {r: 0xAA, g: 0xAA, b: 0xAA}, // 7. gray
+        DACPalette {r: 0x55, g: 0x55, b: 0x55}, // 8. dark gray
+        DACPalette {r: 0x55, g: 0x55, b: 0xFF}, // 9. bright blue
+        DACPalette {r: 0x55, g: 0xFF, b: 0x55}, // 10. bright green
+        DACPalette {r: 0x55, g: 0xFF, b: 0xFF}, // 11. bright cyan
+        DACPalette {r: 0xFF, g: 0x55, b: 0x55}, // 12. bright red
+        DACPalette {r: 0xFF, g: 0x55, b: 0xFF}, // 13. bright magenta
+        DACPalette {r: 0xFF, g: 0xFF, b: 0x55}, // 14. yellow
+        DACPalette {r: 0xFF, g: 0xFF, b: 0xFF}, // 15. white
+
+        // 16-31: gray scale
+        DACPalette {r: 0x00, g: 0x00, b: 0x00},
+        DACPalette {r: 0x14, g: 0x14, b: 0x14},
+        DACPalette {r: 0x20, g: 0x20, b: 0x20},
+        DACPalette {r: 0x2C, g: 0x2C, b: 0x2C},
+        DACPalette {r: 0x38, g: 0x38, b: 0x38},
+        DACPalette {r: 0x45, g: 0x45, b: 0x45},
+        DACPalette {r: 0x51, g: 0x51, b: 0x51},
+        DACPalette {r: 0x61, g: 0x61, b: 0x61},
+        DACPalette {r: 0x71, g: 0x71, b: 0x71},
+        DACPalette {r: 0x82, g: 0x82, b: 0x82},
+        DACPalette {r: 0x92, g: 0x92, b: 0x92},
+        DACPalette {r: 0xA2, g: 0xA2, b: 0xA2},
+        DACPalette {r: 0xB6, g: 0xB6, b: 0xB6},
+        DACPalette {r: 0xCB, g: 0xCB, b: 0xCB},
+        DACPalette {r: 0xE3, g: 0xE3, b: 0xE3},
+        DACPalette {r: 0xFF, g: 0xFF, b: 0xFF},
+
+        // 32-55: rainbow
+        DACPalette {r: 0x00, g: 0x00, b: 0xFF}, // blue
+        DACPalette {r: 0x41, g: 0x00, b: 0xFF},
+        DACPalette {r: 0x7D, g: 0x00, b: 0xFF},
+        DACPalette {r: 0xBE, g: 0x00, b: 0xFF},
+        DACPalette {r: 0xFF, g: 0x00, b: 0xFF}, // magenta
+        DACPalette {r: 0xFF, g: 0x00, b: 0xBE},
+        DACPalette {r: 0xFF, g: 0x00, b: 0x7D},
+        DACPalette {r: 0xFF, g: 0x00, b: 0x41},
+        DACPalette {r: 0xFF, g: 0x00, b: 0x00}, // red
+        DACPalette {r: 0xFF, g: 0x41, b: 0x00},
+        DACPalette {r: 0xFF, g: 0x7D, b: 0x00},
+        DACPalette {r: 0xFF, g: 0xBE, b: 0x00},
+        DACPalette {r: 0xFF, g: 0xFF, b: 0x00}, // yellow
+        DACPalette {r: 0xBE, g: 0xFF, b: 0x00},
+        DACPalette {r: 0x7D, g: 0xFF, b: 0x00},
+        DACPalette {r: 0x41, g: 0xFF, b: 0x00},
+        DACPalette {r: 0x00, g: 0xFF, b: 0x00}, // green
+        DACPalette {r: 0x00, g: 0xFF, b: 0x41},
+        DACPalette {r: 0x00, g: 0xFF, b: 0x7D},
+        DACPalette {r: 0x00, g: 0xFF, b: 0xBE},
+        DACPalette {r: 0x00, g: 0xFF, b: 0xFF}, // cyan
+        DACPalette {r: 0x00, g: 0xBE, b: 0xFF},
+        DACPalette {r: 0x00, g: 0x7D, b: 0xFF},
+        DACPalette {r: 0x00, g: 0x41, b: 0xFF},
+    ];
+
+    let mut out = vec![DACPalette { r: 0, g: 0, b: 0 }; 256];
+    for (i, el) in pal.iter().enumerate() {
+        out[i] = el.clone();
+    }
+
+    for i in 56..80 {
+        // XXX 56-79: 49% whitemix of 32-55   (video 01:38)
+        let el = out[i-24].clone();
+        out[i] = el;
+    }
+
+    for i in 80..104 {
+        // XXX 80-103: 72% whitemix of 32-55
+        let el = out[i-48].clone();
+        out[i] = el;
+    }
+
+    for i in 104..176 {
+        // XXX 104-175: 56% blackmix of 32-103
+        let el = out[i-72].clone();
+        out[i] = el;
+    }
+    
+    for i in 176..248 {
+        // XXX 176-247: 75% blackmix of 32-103
+        let el = out[i-144].clone();
+        out[i] = el;
+    }
+
+    // 248-255: all black
+
+    out
+}
+
 impl GPU {
     pub fn new() -> Self {
-        let mut pal = vec![DACPalette { r: 0, g: 0, b: 0 }; 256];
-        // the standard EGA palette
-        pal[0]  = DACPalette {r: 0, g: 0, b: 0};       // black
-        pal[1]  = DACPalette {r: 0, g: 0, b: 170};     // blue
-        pal[2]  = DACPalette {r: 0, g: 170, b: 0};     // green
-        pal[3]  = DACPalette {r: 0, g: 170, b: 170};   // cyan
-        pal[4]  = DACPalette {r: 170, g: 0, b: 0};     // red
-        pal[5]  = DACPalette {r: 170, g: 0, b: 170};   // magenta
-        pal[6]  = DACPalette {r: 170, g: 85, b: 0};    // brown
-        pal[7]  = DACPalette {r: 170, g: 170, b: 170}; // gray
-        pal[8]  = DACPalette {r: 85, g: 85, b: 85};    // dark gray
-        pal[9]  = DACPalette {r: 85, g: 85, b: 255};   // bright blue
-        pal[10] = DACPalette {r: 85, g: 255, b: 85};   // bright green
-        pal[11] = DACPalette {r: 85, g: 255, b: 255};  // bright cyan
-        pal[12] = DACPalette {r: 255, g: 85, b: 85};   // bright red
-        pal[13] = DACPalette {r: 255, g: 85, b: 255};  // bright magenta
-        pal[14] = DACPalette {r: 255, g: 255, b: 85};  // yellow
-        pal[15] = DACPalette {r: 255, g: 255, b: 255}; // white
         GPU {
             scanline: 0,
             width: 320,
             height: 200,
-            pal: pal,
+            pal: default_vga_palette(), // XXX use array all the time
             dac_color: 0,
             dac_index: 0,
             dac_current_pal: vec![0u8; 3],
