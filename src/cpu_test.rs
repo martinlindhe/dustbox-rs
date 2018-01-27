@@ -358,13 +358,13 @@ fn can_execute_rep_outsb() {
     cpu.r16[DX].val = 0x03C8;
     cpu.r16[CX].val = 2;
 
-    assert_eq!(0, cpu.gpu.dac_index);
+    assert_eq!(0, cpu.gpu.pel_address);
 
     cpu.execute_instruction(); // rep outsb
-    assert_eq!(0xF3, cpu.gpu.dac_index);
+    assert_eq!(0xF3, cpu.gpu.pel_address);
 
     cpu.execute_instruction(); // rep outsb
-    assert_eq!(0x6E, cpu.gpu.dac_index);
+    assert_eq!(0x6E, cpu.gpu.pel_address);
 
     assert_eq!(0x0, cpu.r16[CX].val);
 }
