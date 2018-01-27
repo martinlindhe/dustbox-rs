@@ -1877,40 +1877,10 @@ impl CPU {
     // write byte to I/O port
     fn out_u8(&mut self, dst: u16, data: u8) {
         match dst {
-            0x03C8 => {
-                // (VGA,MCGA) PEL address register
-                // Sets DAC in write mode and assign start of color register
-                // index (0..255) for following write accesses to 3C9h.
-                // Next access to 03C8h will stop pending mode immediately.
-                self.gpu.dac_index = data;
-            }
-            0x03C9 => {
-                // (VGA,MCGA) PEL data register
-                // Three consecutive writes in the order: red, green, blue.
-                // The internal DAC index is incremented on every 3rd write.
-                if self.gpu.dac_color > 2 {
-                    let i = self.gpu.dac_index as usize;
-                    self.gpu.pal[i].r = self.gpu.dac_current_pal[0];
-                    self.gpu.pal[i].g = self.gpu.dac_current_pal[1];
-                    self.gpu.pal[i].b = self.gpu.dac_current_pal[2];
-
-                    if self.gpu.dac_index == 0 {
-                        println!("DAC palette {} = {}, {}, {}",
-                                self.gpu.dac_index,
-                                self.gpu.pal[i].r,
-                                self.gpu.pal[i].g,
-                                self.gpu.pal[i].b);
-                    }
-
-                    self.gpu.dac_color = 0;
-                    self.gpu.dac_index = (Wrapping(self.gpu.dac_index) + Wrapping(1)).0;
-                }
-                // map 6-bit color into 8 bits
-                self.gpu.dac_current_pal[self.gpu.dac_color] = data << 2;
-                self.gpu.dac_color += 1;
-            }
+            0x03C8 => self.gpu.set_pel_address(data),
+            0x03C9 => self.gpu.set_pel_data(data),
             _ => {
-                println!("XXX unhandled out_u8 to {:04X}, data {:02X}", dst, data);
+                println!("ERROR: unhandled out_u8 to port {:04X}, data {:02X}", dst, data);
             }
         }
     }
