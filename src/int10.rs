@@ -226,15 +226,14 @@ pub fn handle(cpu: &mut CPU) {
                         let r = cpu.mmu.read_u8(cpu.sreg16[ES],
                                                 cpu.r16[DX].val + next) as usize;
                         let g = cpu.mmu.read_u8(cpu.sreg16[ES],
-                                                cpu.r16[DX].val + 1 + next) as usize;
+                                                cpu.r16[DX].val + next + 1) as usize;
                         let b = cpu.mmu.read_u8(cpu.sreg16[ES],
-                                                cpu.r16[DX].val + 2 + next) as usize;
+                                                cpu.r16[DX].val + next + 2) as usize;
 
-                        // XXX each value is 6 bits (0-63), scale it to 8 bits
-
-                        cpu.gpu.pal[i].r = ((r << 2) & 0xFF) as u8;
-                        cpu.gpu.pal[i].g = ((g << 2) & 0xFF) as u8;
-                        cpu.gpu.pal[i].b = ((b << 2) & 0xFF) as u8;
+                        // each value is 6 bits (0-63), scale them to 8 bits
+                        cpu.gpu.set_palette_r(i, ((r << 2) & 0xFF) as u8);
+                        cpu.gpu.set_palette_g(i, ((g << 2) & 0xFF) as u8);
+                        cpu.gpu.set_palette_b(i, ((b << 2) & 0xFF) as u8);
                     }
                 }
                 _ => {
