@@ -20,14 +20,16 @@ impl PIT {
         }
     }
 
+    pub fn dec(&mut self) {
+        self.counter0 = (Wrapping(self.counter0) - Wrapping(1)).0;
+    }
+
     pub fn read_40(&mut self) -> u8 {
-        // FIXME: counter should decrement on a steady frequency, not on each read
         let res = if self.counter0_hi {
             (self.counter0 >> 8) as u8
         } else {
             (self.counter0 & 0xFF) as u8
         };
-        self.counter0 = (Wrapping(self.counter0) - Wrapping(1)).0;
         self.counter0_hi = !self.counter0_hi;
         res
     }

@@ -126,15 +126,6 @@ impl Debugger {
         );
     }
 
-    fn run_until_breakpoint(&mut self) {
-        loop {
-            self.cpu.execute_instruction();
-            if self.should_break() {
-                break;
-            }
-        }
-    }
-
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
         let mut decoder = Decoder::new(self.cpu.mmu.clone());
         decoder.disassemble_block_to_str(self.cpu.sreg16[CS], self.cpu.ip, n as u16)
@@ -430,7 +421,7 @@ impl Debugger {
                 }
             }
             "r" | "run" => {
-                self.run_until_breakpoint();
+                self.cpu.execute_frame();
             }
             "" => {}
             _ => {

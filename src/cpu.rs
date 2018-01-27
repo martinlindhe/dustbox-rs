@@ -39,6 +39,7 @@ enum Exception {
 pub struct CPU {
     pub ip: u16,
     pub instruction_count: usize,
+    pub cycle_count: usize,
     pub mmu: MMU,
     pub r16: [Register16; 8], // general purpose registers
     pub sreg16: [u16; 6], // segment registers
@@ -49,6 +50,7 @@ pub struct CPU {
     pub fatal_error: bool, // for debugging: signals to debugger we hit an error
     pub deterministic: bool, // for testing: toggles non-deterministic behaviour
     pub decoder: Decoder,
+    pub clock_hz: usize,
 }
 
 impl CPU {
@@ -56,6 +58,7 @@ impl CPU {
         CPU {
             ip: 0,
             instruction_count: 0,
+            cycle_count: 0,
             r16: [Register16 { val: 0 }; 8],
             sreg16: [0; 6],
             flags: Flags::new(),
@@ -65,7 +68,8 @@ impl CPU {
             fatal_error: false,
             deterministic: false,
             mmu: mmu.clone(),
-            decoder: Decoder::new(mmu)
+            decoder: Decoder::new(mmu),
+            clock_hz: 5_000_000, // Intel 8086: 0.330 MIPS at 5.000 MHz
         }
     }
 
@@ -124,6 +128,24 @@ impl CPU {
         self.rom_base
     }
 
+    // executes enough instructions that can run for 1 video frame
+    pub fn execute_frame(&mut self) {
+        let fps = 60;
+        let cycles = self.clock_hz / fps;
+        // println!("will execute {} cycles", cycles);
+
+        loop {
+            self.execute_instruction();
+            if self.fatal_error {
+                break;
+            }
+            if self.cycle_count > cycles {
+                self.cycle_count = 0;
+                break;
+            }
+        }
+    }
+
     pub fn execute_instruction(&mut self) {
         let cs = self.sreg16[CS];
         let ip = self.ip;
@@ -157,8 +179,13 @@ impl CPU {
         }
 
         // XXX need instruction timing to do this properly
-        if self.instruction_count % 100 == 0 {
+        if self.cycle_count % 100 == 0 {
             self.gpu.progress_scanline();
+        }
+
+        if self.cycle_count % 100 == 0 {
+            // FIXME: counter should decrement ~18.2 times/sec
+            self.pit.dec();
         }
     }
 
@@ -166,6 +193,7 @@ impl CPU {
         let start_ip = self.ip;
         self.ip += op.length as u16;
         self.instruction_count += 1;
+        self.cycle_count += 1; // XXX temp hack; we pretend each instruction takes 8 cycles due to lack of timing
         match op.command {
             Op::Aaa() => {
                 // ASCII Adjust After Addition

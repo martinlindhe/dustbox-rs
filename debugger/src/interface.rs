@@ -4,6 +4,8 @@ use std;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::io::prelude::*;
+use std::time::Duration;
+use std::thread;
 
 use gtk;
 use gtk::prelude::*;
@@ -57,7 +59,11 @@ impl Interface {
             .unwrap();
         let button_run: gtk::Button = self.builder
             .borrow()
-            .get_object("button_run")
+            .get_object("button_run") // XXX currently runs 1 frame
+            .unwrap();
+        let button_run_to_breakpoint: gtk::Button = self.builder
+            .borrow()
+            .get_object("button_run_to_breakpoint")
             .unwrap();
         let button_list_breakpoints: gtk::Button = self.builder
             .borrow()
@@ -191,13 +197,36 @@ impl Interface {
             let builder = Rc::clone(&self.builder);
             let disasm_text = disasm_text.clone();
 
-            button_run.connect_clicked(move |_| {
+            button_run_to_breakpoint.connect_clicked(move |_| {
                 let mut app = app.borrow_mut();
 
                 app.cpu.fatal_error = false;
 
                 // run until bp is reached or 1M instructions was executed
                 app.exec_command("step into 1_000_000");
+
+                // update disasm
+                let text = app.disasm_n_instructions_to_text(20);
+                disasm_text
+                    .get_buffer()
+                    .map(|buffer| buffer.set_text(text.as_str()));
+
+                update_registers(&mut app, &builder);
+                update_canvas(&builder);
+            });
+        }
+
+        {
+            let app = Rc::clone(&self.app);
+            let builder = Rc::clone(&self.builder);
+            let disasm_text = disasm_text.clone();
+
+            button_run.connect_clicked(move |_| {
+                let mut app = app.borrow_mut();
+                app.cpu.fatal_error = false;
+
+                // runs & draws 1 frame
+                app.cpu.execute_frame();
 
                 // update disasm
                 let text = app.disasm_n_instructions_to_text(20);
