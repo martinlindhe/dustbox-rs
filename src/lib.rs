@@ -18,7 +18,7 @@ pub mod memory;
 pub mod segment;
 pub mod gpu;
 pub mod pit;
-mod palette;
+pub mod palette;
 
 mod int10;
 mod int16;

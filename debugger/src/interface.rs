@@ -22,7 +22,7 @@ use dustbox::cpu::CPU;
 use dustbox::register;
 use dustbox::register::{AX, BP, BX, CS, CX, DI, DS, DX, ES, FS, GS, SI, SP, SS};
 use dustbox::instruction::seg_offs_as_flat;
-use dustbox::gpu::DACPalette;
+use dustbox::palette::DACPalette;
 
 use debugger;
 
