@@ -177,6 +177,11 @@ impl Decoder {
                         op.command = Op::Jnz();
                         op.params.dst = Parameter::Imm16(self.read_rel16());
                     }
+                    0x89 => {
+                        // jns rel16
+                        op.command = Op::Jns();
+                        op.params.dst = Parameter::Imm16(self.read_rel16());
+                    }
                     0x92 => {
                         // setc r/m8
                         let x = self.read_mod_reg_rm();
