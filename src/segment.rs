@@ -26,17 +26,3 @@ impl fmt::Display for Segment {
         }
     }
 }
-
-impl Segment {
-    pub fn get_segment_register_index(&self) -> usize {
-        match *self {
-            Segment::Default() => register::DS,
-            Segment::CS() => register::CS,
-            Segment::DS() => register::DS,
-            Segment::ES() => register::ES,
-            Segment::FS() => register::FS,
-            Segment::GS() => register::GS,
-            Segment::SS() => register::SS,
-        }
-    }
-}
