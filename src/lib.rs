@@ -22,5 +22,6 @@ pub mod palette;
 
 mod int10;
 mod int16;
+mod int1a;
 mod int21;
 mod int33;

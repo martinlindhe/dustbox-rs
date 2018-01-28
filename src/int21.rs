@@ -4,7 +4,7 @@ use cpu::CPU;
 use register::{AX, BX, CX, DX, DS, ES};
 
 // dos related interrupts
-pub fn handle(cpu: &mut CPU, deterministic: bool) {
+pub fn handle(cpu: &mut CPU) {
     match cpu.r16[AX].hi_u8() {
         0x06 => {
             // DOS 1+ - DIRECT CONSOLE OUTPUT
@@ -65,11 +65,9 @@ pub fn handle(cpu: &mut CPU, deterministic: bool) {
         }
         0x2C => {
             // DOS 1+ - GET SYSTEM TIME
-            if deterministic {
-                cpu.r16[CX].set_hi(0);
-                cpu.r16[CX].set_lo(0);
-                cpu.r16[DX].set_hi(0);
-                cpu.r16[DX].set_lo(0);
+            if cpu.deterministic {
+                cpu.r16[CX].val = 0;
+                cpu.r16[DX].val = 0;
             } else {
                 let now = time::now();
                 let centi_sec = now.tm_nsec / 1000_0000; // nanosecond to 1/100 sec

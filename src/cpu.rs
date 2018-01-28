@@ -10,6 +10,7 @@ use segment::Segment;
 use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm, InvalidOp, RepeatMode};
 use int10;
 use int16;
+use int1a;
 use int21;
 use int33;
 use gpu::GPU;
@@ -1945,7 +1946,6 @@ impl CPU {
 
     // execute interrupt
     fn int(&mut self, int: u8) {
-        let deterministic = self.deterministic;
         match int {
             0x03 => {
                 // debugger interrupt
@@ -1955,13 +1955,14 @@ impl CPU {
             }
             0x10 => int10::handle(self),
             0x16 => int16::handle(self),
+            0x1A => int1a::handle(self),
             0x20 => {
                 // DOS 1+ - TERMINATE PROGRAM
                 // NOTE: Windows overloads INT 20
                 println!("INT 20 - Terminating program");
                 self.fatal_error = true; // stops execution
             }
-            0x21 => int21::handle(self, deterministic),
+            0x21 => int21::handle(self),
             0x33 => int33::handle(self),
             _ => {
                 println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}",
