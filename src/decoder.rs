@@ -257,6 +257,11 @@ impl Decoder {
                 op.params.dst = Parameter::Reg8(AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
+            0x17 => {
+                // pop ss
+                op.command = Op::Pop16();
+                op.params.dst = Parameter::SReg16(SS);
+            }
             0x1C => {
                 // sbb AL, imm8
                 op.command = Op::Sbb8();
