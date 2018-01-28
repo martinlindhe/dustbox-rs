@@ -7,7 +7,7 @@ use register::Register16;
 use flags::Flags;
 use memory::Memory;
 use segment::Segment;
-use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm, InvalidOp};
+use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm, InvalidOp, RepeatMode};
 use int10;
 use int16;
 use int21;
@@ -1108,17 +1108,6 @@ impl CPU {
                 }
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
-            Op::Rep() => {
-                self.execute_instruction();
-                self.r16[CX].val = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
-                if self.r16[CX].val != 0 {
-                    self.ip = start_ip;
-                }
-            }
-            Op::Repne() => {
-                // repne (alias repnz)
-                println!("XXX impl {}", op);
-            }
             Op::Retf() => {
                 //no arguments
                 self.ip = self.pop16();
@@ -1576,6 +1565,19 @@ impl CPU {
                          op.command,
                          self.get_address());
             }
+        }
+
+        match op.repeat {
+            RepeatMode::Rep => {
+                self.r16[CX].val = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                if self.r16[CX].val != 0 {
+                    self.ip = start_ip;
+                }
+            }
+            RepeatMode::Repne => {
+                panic!("XXX impl repne");
+            }
+            _ => {}
         }
     }
 

@@ -8,28 +8,56 @@ pub fn seg_offs_as_flat(segment: u16, offset: u16) -> usize {
     (segment as usize * 16) + offset as usize
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum RepeatMode {
+    None,
+    Rep,
+    Repne, // (alias repnz)
+}
+
+impl RepeatMode {
+    fn fmt(&self) -> &str {
+        match *self {
+            RepeatMode::None => "",
+            RepeatMode::Rep => "Rep ",
+            RepeatMode::Repne => "Repne ",
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Instruction {
     pub command: Op,
     pub segment: Segment,
     pub params: ParameterPair,
     pub length: u8,
+    pub repeat:  RepeatMode, // does the instruction have the REP prefix?
 }
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+
+        let instr = self.describe_instruction();
+
+        write!(f, "{}", instr)
+    }
+}
+
+impl Instruction {
+    fn describe_instruction(&self) -> String {
+        let prefix = self.repeat.fmt();
+
         match self.params.dst {
-            Parameter::None() => write!(f, "{:?}", self.command),
+            Parameter::None() => format!("{}{:?}", prefix, self.command),
             _ => {
-                let cmd = right_pad(&format!("{:?}", self.command), 9);
+                let cmd = right_pad(&format!("{}{:?}", prefix, self.command), 9);
 
                 match self.params.src2 {
                     Parameter::None() => match self.params.src {
-                        Parameter::None() => write!(f, "{}{}", cmd, self.params.dst),
-                        _ => write!(f, "{}{}, {}", cmd, self.params.dst, self.params.src),
+                        Parameter::None() => format!("{}{}", cmd, self.params.dst),
+                        _ => format!("{}{}, {}", cmd, self.params.dst, self.params.src),
                     },
-                    _ => write!(
-                        f,
+                    _ => format!(
                         "{}{}, {}, {}",
                         cmd,
                         self.params.dst,
@@ -263,8 +291,6 @@ pub enum Op {
     Rcl16(),
     Rcr8(),
     Rcr16(),
-    Rep(),
-    Repne(),
     Retf(),
     Retn(),
     Rol8(),
