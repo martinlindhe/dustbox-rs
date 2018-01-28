@@ -726,6 +726,7 @@ impl CPU {
             Op::Lodsb() => {
                 // no arguments
                 // For legacy mode, load byte at address DS:(E)SI into AL.
+                // The DS segment may be over-ridden with a segment override prefix.
                 let segment_index = op.segment.get_segment_register_index();
                 let val = self.mmu.read_u8(self.sreg16[segment_index], self.r16[SI].val);
 
@@ -739,6 +740,7 @@ impl CPU {
             Op::Lodsw() => {
                 // no arguments
                 // For legacy mode, Load word at address DS:(E)SI into AX.
+                // The DS segment may be over-ridden with a segment override prefix.
                 let segment_index = op.segment.get_segment_register_index();
                 let val = self.mmu.read_u16(self.sreg16[segment_index], self.r16[SI].val);
 
@@ -785,6 +787,7 @@ impl CPU {
             }
             Op::Movsb() => {
                 // move byte from address DS:(E)SI to ES:(E)DI.
+                // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
                 let segment_index = op.segment.get_segment_register_index();
                 let b = self.mmu.read_u8(self.sreg16[segment_index], self.r16[SI].val);
                 self.r16[SI].val = if !self.flags.direction {
@@ -801,6 +804,7 @@ impl CPU {
             }
             Op::Movsw() => {
                 // move word from address DS:(E)SI to ES:(E)DI.
+                // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
                 let segment_index = op.segment.get_segment_register_index();
                 let b = self.mmu.read_u16(self.sreg16[segment_index], self.r16[SI].val);
                 self.r16[SI].val = if !self.flags.direction {
@@ -1444,6 +1448,7 @@ impl CPU {
             Op::Stosb() => {
                 // no parameters
                 // store AL at ES:(E)DI
+                // The ES segment cannot be overridden with a segment override prefix.
                 let data = self.r16[AX].lo_u8(); // = AL
                 self.mmu.write_u8(self.sreg16[ES], self.r16[DI].val, data);
                 self.r16[DI].val = if !self.flags.direction {
@@ -1455,6 +1460,7 @@ impl CPU {
             Op::Stosw() => {
                 // no parameters
                 // store AX at address ES:(E)DI
+                // The ES segment cannot be overridden with a segment override prefix.
                 let data = self.r16[AX].val;
                 self.mmu.write_u16(self.sreg16[ES], self.r16[DI].val, data);
                 self.r16[DI].val = if !self.flags.direction {
@@ -1533,6 +1539,8 @@ impl CPU {
             }
             Op::Xlatb() => {
                 // no parameters
+                // Set AL to memory byte DS:[(E)BX + unsigned AL].
+                // The DS segment may be overridden with a segment override prefix.
                 let segment_index = op.segment.get_segment_register_index();
                 let al = self.mmu.read_u8(self.sreg16[segment_index], self.r16[BX].val + self.r16[AX].lo_u8() as u16);
                 self.r16[AX].set_lo(al);
