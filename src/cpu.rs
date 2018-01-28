@@ -1302,7 +1302,12 @@ impl CPU {
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
             Op::Setc() => {
-                println!("XXX impl setc: {}", op);
+                let val = if self.flags.carry {
+                    1
+                } else {
+                    0
+                };
+                self.write_parameter_u8(&op.params.dst, val);
             }
             Op::Shl8() => {
                 // Multiply `dst` by 2, `src` times.

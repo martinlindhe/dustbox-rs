@@ -868,6 +868,25 @@ fn can_execute_jmp_far() {
 }
 
 #[test]
+fn can_execute_setc() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0x0F, 0x92, 0xC0, // setc al
+    ];
+
+    cpu.load_com(&code);
+    cpu.flags.carry = true;
+    cpu.execute_instruction();
+    assert_eq!(0x01, cpu.r16[AX].lo_u8());
+
+    cpu.load_com(&code);
+    cpu.flags.carry = false;
+    cpu.execute_instruction();
+    assert_eq!(0x00, cpu.r16[AX].lo_u8());
+}
+
+#[test]
 fn can_execute_movzx() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
