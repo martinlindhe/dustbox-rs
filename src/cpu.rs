@@ -166,14 +166,13 @@ impl CPU {
                             let hex = format!("{:02X} ", x);
                             ops_str.push_str(&hex);
                         }
-                        println!("Error unhandled OP {}", ops_str)
+                        println!("Error unhandled OP {}at {:04X}:{:04X}", ops_str, cs, ip);
                     }
                     InvalidOp::Reg(reg) => {
                         println!("Error invalid register {:02X} at {:04X}:{:04X}", reg, cs, ip);
                     }
                 }
-                println!("{} Instructions executed",
-                         self.instruction_count);
+                println!("{} Instructions executed", self.instruction_count);
             }
             _ => self.execute(&op),
         }
@@ -1093,6 +1092,10 @@ impl CPU {
             }
             Op::Retn() => {
                 // no arguments
+                if self.r16[SP].val == 0xFFFE {
+                    println!("retn called at end of stack, ending program");
+                    self.fatal_error = true;
+                }
                 self.ip = self.pop16();
             }
             Op::Rol8() => {

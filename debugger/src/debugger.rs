@@ -120,9 +120,10 @@ impl Debugger {
             }
         }
         println!(
-            "Step-over to {:04X} done, executed {} instructions",
+            "Step-over to {:04X} done, executed {} instructions ({} total)",
             dst_ip,
-            cnt
+            cnt,
+            self.cpu.instruction_count
         );
     }
 
