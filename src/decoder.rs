@@ -256,6 +256,11 @@ impl Decoder {
                 op.command = Op::Adc8();
                 op.params = self.rm8_r8(op.segment);
             }
+            0x12 => {
+                // adc r8, r/m8
+                op.command = Op::Adc8();
+                op.params = self.r8_rm8(op.segment);
+            }
             0x13 => {
                 // adc r16, r/m16
                 op.command = Op::Adc16();
