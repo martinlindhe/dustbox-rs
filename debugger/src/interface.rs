@@ -251,7 +251,7 @@ impl Interface {
             let app = Rc::clone(&self.app);
             button_dump_memory.connect_clicked(move |_| {
                 let mut app = app.borrow_mut();
-                app.exec_command("bindump 0x085F 0x0000 0xFFFF emu_mem.bin");
+                app.exec_command("bindump 0x085F:0x0000 0xFFFF emu_mem.bin");
             });
         }
 
