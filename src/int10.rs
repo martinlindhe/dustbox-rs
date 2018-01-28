@@ -295,6 +295,36 @@ pub fn handle(cpu: &mut CPU) {
             // ES:BP -> string to write
             println!("XXX int10: VIDEO - WRITE STRING unhandled");
         }
+        0x4F => {
+            // VESA
+            match cpu.r16[AX].lo_u8() {
+                0x01 => {
+                    // VESA SuperVGA BIOS - GET SuperVGA MODE INFORMATION
+                    // CX = SuperVGA video mode (see #04082 for bitfields)
+                    // ES:DI -> 256-byte buffer for mode information (see #00079)
+                    // Return:
+                    // AL = 4Fh if function supported
+                    // AH = status:
+                    //   00h successful, ES:DI buffer filled
+                    //   01h failed
+                    println!("XXX VESA SuperVGA BIOS - GET SuperVGA MODE INFORMATION");
+                }
+                0x02 => {
+                    // VESA SuperVGA BIOS - SET SuperVGA VIDEO MODE
+                    // BX = new video mode (see #04082,#00083,#00084)
+                    // ES:DI -> (VBE 3.0+) CRTC information block, bit mode bit 11 set
+                    // Return:
+                    // AL = 4Fh if function supported
+                    // AH = status
+                    // 00h successful
+                    // 01h failed
+                    println!("XXX VESA SuperVGA BIOS - SET SuperVGA VIDEO MODE bx={:04X}", cpu.r16[BX].val)
+                }
+                 _ => {
+                    println!("int10 error: unknown AH 4F (VESA), AL={:02X}", cpu.r16[AX].lo_u8());
+                }
+            }
+        }
         _ => {
             println!("int10 error: unknown AH={:02X}, AX={:04X}",
                      cpu.r16[AX].hi_u8(),

@@ -25,6 +25,12 @@ pub fn handle(cpu: &mut CPU) {
             // state nothing is returned) (at least DOS 2.1-7.0)
             cpu.r16[AX].set_lo(b);
         }
+        0x07 => {
+            // DOS 1+ - DIRECT CHARACTER INPUT, WITHOUT ECHO
+            // Return:
+            // AL = character read from standard input
+            println!("XXX DOS 1+ - DIRECT CHARACTER INPUT, WITHOUT ECHO");
+        }
         0x09 => {
             // DOS 1+ - WRITE STRING TO STANDARD OUTPUT
             //
@@ -52,6 +58,14 @@ pub fn handle(cpu: &mut CPU) {
                 print!("{}", b as char);
             }
             cpu.r16[AX].set_lo(b'$');
+        }
+        0x0B => {
+            // DOS 1+ - GET STDIN STATUS
+            // Return:
+            // AL = status
+            // 00h if no character available
+            // FFh if character is available
+            println!("XXX DOS 1+ - GET STDIN STATUS");
         }
         0x0C => {
             // DOS 1+ - FLUSH BUFFER AND READ STANDARD INPUT
