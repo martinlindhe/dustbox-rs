@@ -98,7 +98,7 @@ fn demo_256() {
         let code = tools::read_binary(bin).unwrap();
         cpu.load_com(&code);
 
-        for _ in 0..5_000_000 {
+        for _ in 0..7_000_000 {
             cpu.execute_instruction();
             if cpu.fatal_error {
                 break;
