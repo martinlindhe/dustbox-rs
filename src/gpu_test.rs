@@ -77,7 +77,11 @@ fn demo_512() {
     let test_bins = vec![
         "../dos-software-decoding/demo-512/blaze/blaze5.com",
         "../dos-software-decoding/demo-512/bmatch/bmatch.com",
+        "../dos-software-decoding/demo-512/callnow/callnow.com",
+        "../dos-software-decoding/demo-512/madness/madness.com",
+        "../dos-software-decoding/demo-512/panyo/panyo.com",
         "../dos-software-decoding/demo-512/triopti2/triopti2.com",
+        "../dos-software-decoding/demo-512/wamma/wamma.com",
     ];
 
     run_and_save_video_frames(test_bins, "demo_512", "512");
