@@ -293,6 +293,11 @@ impl Decoder {
                 op.command = Op::Pop16();
                 op.params.dst = Parameter::SReg16(SS);
             }
+            0x1A => {
+                // sbb r8, r/m8
+                op.command = Op::Sbb8();
+                op.params = self.r8_rm8(op.segment);
+            }
             0x1C => {
                 // sbb AL, imm8
                 op.command = Op::Sbb8();
