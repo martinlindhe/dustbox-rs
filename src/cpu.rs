@@ -149,7 +149,7 @@ impl CPU {
     pub fn execute_instruction(&mut self) {
         let cs = self.sreg16[CS];
         let ip = self.ip;
-        let op = self.decoder.get_instruction(Segment::DS(), cs, ip);
+        let op = self.decoder.get_instruction(Segment::DS, cs, ip);
 
         match op.command {
             Op::Unknown() => {
@@ -621,9 +621,9 @@ impl CPU {
             }
             Op::JmpFar() => {
                 match op.params.dst {
-                    Parameter::Ptr16Imm(ip, seg) => {
+                    Parameter::Ptr16Imm(seg, imm) => {
                         self.sreg16[CS] = seg;
-                        self.ip = ip;
+                        self.ip = imm;
                     }
                     _ => panic!("jmp far with unexpected type {:?}", op.params.dst),
                 }
@@ -1801,13 +1801,13 @@ impl CPU {
 
     fn segment(&self, seg: Segment) -> u16 {
         match seg {
-            Segment::Default() |
-            Segment::DS() => self.sreg16[DS],
-            Segment::CS() => self.sreg16[CS],
-            Segment::ES() => self.sreg16[ES],
-            Segment::FS() => self.sreg16[FS],
-            Segment::GS() => self.sreg16[GS],
-            Segment::SS() => self.sreg16[SS],
+            Segment::Default |
+            Segment::DS => self.sreg16[DS],
+            Segment::CS => self.sreg16[CS],
+            Segment::ES => self.sreg16[ES],
+            Segment::FS => self.sreg16[FS],
+            Segment::GS => self.sreg16[GS],
+            Segment::SS => self.sreg16[SS],
         }
     }
 

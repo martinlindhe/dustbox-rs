@@ -51,7 +51,7 @@ impl Decoder {
     }
 
     pub fn disasm_instruction(&mut self, iseg: u16, ioffset: u16) -> InstructionInfo {
-       let op = self.get_instruction(Segment::Default(), iseg, ioffset);
+       let op = self.get_instruction(Segment::Default, iseg, ioffset);
        InstructionInfo {
            segment: iseg as usize,
            offset: ioffset as usize,
@@ -302,7 +302,7 @@ impl Decoder {
             }
             0x26 => {
                 // es segment prefix
-                op = self.decode(Segment::ES(), repeat);
+                op = self.decode(Segment::ES, repeat);
             }
             0x27 => {
                 // daa
@@ -342,7 +342,7 @@ impl Decoder {
             }
             0x2E => {
                 // XXX if next op is a Jcc, then this is a "branch not taken" hint
-                op = self.decode(Segment::CS(), repeat);
+                op = self.decode(Segment::CS, repeat);
             }
             0x2F => {
                 op.command = Op::Das();
@@ -381,7 +381,7 @@ impl Decoder {
             }
             0x36 => {
                 // ss segment prefix
-                op = self.decode(Segment::SS(), repeat);
+                op = self.decode(Segment::SS, repeat);
             }
             0x37 => {
                 op.command = Op::Aaa();
@@ -421,7 +421,7 @@ impl Decoder {
             0x3E => {
                 // ds segment prefix
                 // XXX if next op is a Jcc, then this is a "branch taken" hint
-                op = self.decode(Segment::DS(), repeat);
+                op = self.decode(Segment::DS, repeat);
             }
             0x3F => {
                 op.command = Op::Aas();
@@ -462,11 +462,11 @@ impl Decoder {
             }
             0x64 => {
                 // fs segment prefix
-                op = self.decode(Segment::FS(), repeat);
+                op = self.decode(Segment::FS, repeat);
             }
             0x65 => {
                 // gs segment prefix
-                op = self.decode(Segment::GS(), repeat);
+                op = self.decode(Segment::GS, repeat);
             }
             // 0x66 = 80386+ Operand-size override prefix
             // 0x67 = 80386+ Address-size override prefix

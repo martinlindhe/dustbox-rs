@@ -16,7 +16,7 @@ pub enum RepeatMode {
 }
 
 impl RepeatMode {
-    fn fmt(&self) -> &str {
+    fn as_str(&self) -> &str {
         match *self {
             RepeatMode::None => "",
             RepeatMode::Rep => "Rep ",
@@ -36,16 +36,23 @@ pub struct Instruction {
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-
         let instr = self.describe_instruction();
-
-        write!(f, "{}", instr)
+        if self.segment == Segment::Default || self.hide_segment_prefix() {
+            write!(f, "{}", instr)
+        } else {
+            write!(f, "{} {}", self.segment.as_str(), instr)
+        }
     }
 }
 
 impl Instruction {
+    fn hide_segment_prefix(&self) -> bool {
+        self.command == Op::Mov8() ||
+        self.command == Op::Mov16()
+    }
+
     fn describe_instruction(&self) -> String {
-        let prefix = self.repeat.fmt();
+        let prefix = self.repeat.as_str();
 
         match self.params.dst {
             Parameter::None() => format!("{}{:?}", prefix, self.command),
@@ -128,13 +135,13 @@ impl fmt::Display for Parameter {
                     imm
                 }
             ),
-            Parameter::Ptr8(seg, v) => write!(f, "byte [{}0x{:04X}]", seg, v),
-            Parameter::Ptr16(seg, v) => write!(f, "word [{}0x{:04X}]", seg, v),
-            Parameter::Ptr16Imm(ip, seg) => write!(f, "{:04X}:{:04X}", seg, ip),
-            Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}{}]", seg, amode(v as u8)),
+            Parameter::Ptr8(seg, v) => write!(f, "byte [{}:0x{:04X}]", seg, v),
+            Parameter::Ptr16(seg, v) => write!(f, "word [{}:0x{:04X}]", seg, v),
+            Parameter::Ptr16Imm(seg, v) => write!(f, "{:04X}:{:04X}", seg, v),
+            Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}:{}]", seg, amode(v as u8)),
             Parameter::Ptr8AmodeS8(seg, v, imm) => write!(
                 f,
-                "byte [{}{}{}0x{:02X}]",
+                "byte [{}:{}{}0x{:02X}]",
                 seg,
                 amode(v as u8),
                 if imm < 0 { "-" } else { "+" },
@@ -146,7 +153,7 @@ impl fmt::Display for Parameter {
             ),
             Parameter::Ptr8AmodeS16(seg, v, imm) => write!(
                 f,
-                "byte [{}{}{}0x{:04X}]",
+                "byte [{}:{}{}0x{:04X}]",
                 seg,
                 amode(v as u8),
                 if imm < 0 { "-" } else { "+" },
@@ -156,10 +163,10 @@ impl fmt::Display for Parameter {
                     imm
                 }
             ),
-            Parameter::Ptr16Amode(seg, v) => write!(f, "word [{}{}]", seg, amode(v as u8)),
+            Parameter::Ptr16Amode(seg, v) => write!(f, "word [{}:{}]", seg, amode(v as u8)),
             Parameter::Ptr16AmodeS8(seg, v, imm) => write!(
                 f,
-                "word [{}{}{}0x{:02X}]",
+                "word [{}:{}{}0x{:02X}]",
                 seg,
                 amode(v as u8),
                 if imm < 0 { "-" } else { "+" },
@@ -171,7 +178,7 @@ impl fmt::Display for Parameter {
             ),
             Parameter::Ptr16AmodeS16(seg, v, imm) => write!(
                 f,
-                "word [{}{}{}0x{:04X}]",
+                "word [{}:{}{}0x{:04X}]",
                 seg,
                 amode(v as u8),
                 if imm < 0 { "-" } else { "+" },
@@ -189,7 +196,7 @@ impl fmt::Display for Parameter {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Op {
     Aaa(),
     Aad(),
@@ -329,7 +336,7 @@ pub enum Op {
     Invalid(InvalidOp),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum InvalidOp {
     Reg(u8),
     Op(Vec<u8>),
