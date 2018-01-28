@@ -69,17 +69,18 @@ impl GPU {
 
     // sets the 0-255 intensity of the red color channel
     pub fn set_palette_r(&mut self, index: usize, val: u8) {
-        self.pal[index].r = val;
+        // XXX unsure how to handle color index > 0xFF. wrap or ignore?
+        self.pal[index & 0xFF].r = val;
     }
 
     // sets the 0-255 intensity of the green color channel
     pub fn set_palette_g(&mut self, index: usize, val: u8) {
-        self.pal[index].g = val;
+        self.pal[index & 0xFF].g = val;
     }
 
     // sets the 0-255 intensity of the blue color channel
     pub fn set_palette_b(&mut self, index: usize, val: u8) {
-        self.pal[index].b = val;
+        self.pal[index & 0xFF].b = val;
     }
 
     // CGA status register (0x03DA)

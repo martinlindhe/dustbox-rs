@@ -204,7 +204,7 @@ pub fn handle(cpu: &mut CPU) {
                     // BL = palette register number (00h-0Fh)
                     //    = attribute register number (undocumented) (see #00017)
                     // BH = color or attribute register value
-                    println!("XXX VIDEO - SET SINGLE PALETTE REGISTER {:02X}, color = {:02X}",
+                    panic!("XXX VIDEO - SET SINGLE PALETTE REGISTER {:02X}, color = {:02X}",
                              cpu.r16[BX].lo_u8(),
                              cpu.r16[BX].hi_u8());
                 }
@@ -215,13 +215,13 @@ pub fn handle(cpu: &mut CPU) {
                     // CX = number of registers to set
                     // ES:DX -> table of 3*CX bytes where each 3 byte group represents one
                     // byte each of red, green and blue (0-63)
+                    let start = cpu.r16[BX].val as usize;
                     let count = cpu.r16[CX].val as usize;
-                    let reg = cpu.r16[BX].val as usize;
                     println!("VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA) start={}, count={}",
-                             reg,
+                             start,
                              count);
 
-                    for i in reg..count {
+                    for i in start..(start+count) {
                         let next = (i*3) as u16;
                         let r = cpu.mmu.read_u8(cpu.sreg16[ES],
                                                 cpu.r16[DX].val + next) as usize;
@@ -231,9 +231,14 @@ pub fn handle(cpu: &mut CPU) {
                                                 cpu.r16[DX].val + next + 2) as usize;
 
                         // each value is 6 bits (0-63), scale them to 8 bits
-                        cpu.gpu.set_palette_r(i, ((r << 2) & 0xFF) as u8);
-                        cpu.gpu.set_palette_g(i, ((g << 2) & 0xFF) as u8);
-                        cpu.gpu.set_palette_b(i, ((b << 2) & 0xFF) as u8);
+                        let r = ((r << 2) & 0xFF) as u8;
+                        let g = ((g << 2) & 0xFF) as u8;
+                        let b = ((b << 2) & 0xFF) as u8;
+
+                        cpu.gpu.set_palette_r(i, r);
+                        cpu.gpu.set_palette_g(i, g);
+                        cpu.gpu.set_palette_b(i, b);
+                        // println!("set color {}: {}, {}, {}", i, r, g, b);
                     }
                 }
                 _ => {

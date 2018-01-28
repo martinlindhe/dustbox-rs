@@ -203,7 +203,7 @@ impl Interface {
                 app.cpu.fatal_error = false;
 
                 // run until bp is reached or 1M instructions was executed
-                app.exec_command("step into 1_000_000");
+                app.exec_command("step into 6_000_000");
 
                 // update disasm
                 let text = app.disasm_n_instructions_to_text(20);
