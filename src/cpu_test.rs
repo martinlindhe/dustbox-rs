@@ -396,8 +396,7 @@ fn can_execute_addressing() {
 [085F:0110] 89873000         Mov16    word [bx+0x0030], ax
 [085F:0114] 8905             Mov16    word [di], ax
 [085F:0116] C685AE06FE       Mov8     byte [di+0x06AE], 0xFE
-[085F:011B] 8A85AE06         Mov8     al, byte [di+0x06AE]
-",
+[085F:011B] 8A85AE06         Mov8     al, byte [di+0x06AE]",
                res);
 
     cpu.execute_instruction();
@@ -448,8 +447,7 @@ fn can_execute_math() {
     cpu.load_com(&code);
 
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 1);
-    assert_eq!("[085F:0100] F6062C12FF       Test8    byte [0x122C], 0xFF
-",
+    assert_eq!("[085F:0100] F6062C12FF       Test8    byte [0x122C], 0xFF",
                res);
 
     // XXX also execute
@@ -470,8 +468,7 @@ fn can_execute_and() {
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 3);
     assert_eq!("[085F:0100] B0F0             Mov8     al, 0xF0
 [085F:0102] B41F             Mov8     ah, 0x1F
-[085F:0104] 20C4             And8     ah, al
-",
+[085F:0104] 20C4             And8     ah, al",
                res);
 
     cpu.execute_instruction();
@@ -541,8 +538,7 @@ fn can_execute_div8() {
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 3);
     assert_eq!("[085F:0100] B84000           Mov16    ax, 0x0040
 [085F:0103] B310             Mov8     bl, 0x10
-[085F:0105] F6F3             Div8     bl
-",
+[085F:0105] F6F3             Div8     bl",
                res);
 
     cpu.execute_instruction();
@@ -573,8 +569,7 @@ fn can_execute_div16() {
     assert_eq!("[085F:0100] BA1000           Mov16    dx, 0x0010
 [085F:0103] B80040           Mov16    ax, 0x4000
 [085F:0106] BB0001           Mov16    bx, 0x0100
-[085F:0109] F7F3             Div16    bx
-",
+[085F:0109] F7F3             Div16    bx",
                res);
 
     cpu.execute_instruction();
@@ -782,8 +777,7 @@ fn can_execute_neg() {
 
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 2);
     assert_eq!("[085F:0100] BB2301           Mov16    bx, 0x0123
-[085F:0103] F7DB             Neg16    bx
-",
+[085F:0103] F7DB             Neg16    bx",
                res);
 
     cpu.execute_instruction();
@@ -809,8 +803,7 @@ fn can_execute_jmp_far() {
     cpu.load_com(&code);
 
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 1);
-    assert_eq!("[085F:0100] EA00060000       JmpFar   0000:0600
-",
+    assert_eq!("[085F:0100] EA00060000       JmpFar   0000:0600",
                res);
 
     cpu.execute_instruction();
@@ -831,8 +824,7 @@ fn can_execute_movzx() {
 
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 2);
     assert_eq!("[085F:0100] B4FF             Mov8     ah, 0xFF
-[085F:0102] 0FB6DC           Movzx16  bx, ah
-",
+[085F:0102] 0FB6DC           Movzx16  bx, ah",
                res);
 
     cpu.execute_instruction();
@@ -1097,8 +1089,7 @@ fn can_execute_imul8() {
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 3);
     assert_eq!("[085F:0100] B0F0             Mov8     al, 0xF0
 [085F:0102] B7D0             Mov8     bh, 0xD0
-[085F:0104] F6EF             Imul8    bh
-",
+[085F:0104] F6EF             Imul8    bh",
                res);
 
     cpu.execute_instruction();
@@ -1215,8 +1206,7 @@ fn can_execute_shrd() {
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 3);
     assert_eq!("[085F:0100] B8FFFF           Mov16    ax, 0xFFFF
 [085F:0103] BAFFFF           Mov16    dx, 0xFFFF
-[085F:0106] 0FACD00E         Shrd     ax, dx, 0x0E
-",
+[085F:0106] 0FACD00E         Shrd     ax, dx, 0x0E",
                 res);
 
     cpu.execute_instruction();
@@ -1251,8 +1241,7 @@ fn can_execute_imul16_1_arg() {
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 3);
     assert_eq!("[085F:0100] BB8F79           Mov16    bx, 0x798F
 [085F:0103] B8D9FF           Mov16    ax, 0xFFD9
-[085F:0106] F7EB             Imul16   bx
-",
+[085F:0106] F7EB             Imul16   bx",
                res);
 
     cpu.execute_instruction();
@@ -1284,8 +1273,7 @@ fn can_disassemble_basic() {
 [085F:0103] BA0B01           Mov16    dx, 0x010B
 [085F:0106] B409             Mov8     ah, 0x09
 [085F:0108] CD21             Int      0x21
-[085F:010A] E8FBFF           CallNear 0x0108
-",
+[085F:010A] E8FBFF           CallNear 0x0108",
                res);
 }
 
@@ -1299,8 +1287,7 @@ fn can_disassemble_lea() {
     cpu.load_com(&code);
 
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 1);
-    assert_eq!("[085F:0100] 8D4780           Lea16    ax, word [bx-0x80]
-",
+    assert_eq!("[085F:0100] 8D4780           Lea16    ax, word [bx-0x80]",
                res);
 }
 
@@ -1316,8 +1303,7 @@ fn can_disassemble_segment_prefixed() {
 
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 2);
     assert_eq!("[085F:0100] 268825           Mov8     byte [es:di], ah
-[085F:0103] 268A25           Mov8     ah, byte [es:di]
-",
+[085F:0103] 268A25           Mov8     ah, byte [es:di]",
                res);
 }
 
@@ -1337,8 +1323,7 @@ fn can_disassemble_arithmetic() {
     assert_eq!("[085F:0100] 803E311000       Cmp8     byte [0x1031], 0x00
 [085F:0105] 81C7C000         Add16    di, 0x00C0
 [085F:0109] 83C73A           Add16    di, byte +0x3A
-[085F:010C] 83C7C6           Add16    di, byte -0x3A
-",
+[085F:010C] 83C7C6           Add16    di, byte -0x3A",
                res);
 }
 
@@ -1358,8 +1343,7 @@ fn can_disassemble_jz_rel() {
     assert_eq!("[085F:0100] 7404             Jz       0x0106
 [085F:0102] 74FE             Jz       0x0102
 [085F:0104] 7400             Jz       0x0106
-[085F:0106] 74FA             Jz       0x0102
-",
+[085F:0106] 74FA             Jz       0x0102",
                res);
 }
 

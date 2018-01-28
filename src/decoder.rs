@@ -42,12 +42,11 @@ impl Decoder {
     }
 
     fn instructions_to_str(&mut self, ops: Vec<InstructionInfo>) -> String {
-        let mut res = String::new();
+        let mut lines = Vec::new();
         for op in ops {
-            res.push_str(&op.to_string());
-            res.push_str("\n");
+            lines.push(op.to_string())
         }
-        res
+        lines.join("\n")
     }
 
     pub fn disasm_instruction(&mut self, iseg: u16, ioffset: u16) -> InstructionInfo {

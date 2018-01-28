@@ -47,7 +47,7 @@ pub fn handle(cpu: &mut CPU) {
                 }
                 0x13 => {
                     // 13h = G  40x25  8x8   320x200  256/256K  .   A000 VGA,MCGA,ATI VIP
-                    println!("XXX video: set video mode to 320x200, 256 colors (VGA)");
+                    println!("XXX video: set video mode to 320x200, 256 colors (VGA) after {} instr", cpu.instruction_count);
                 }
                 _ => {
                     println!("video error: unknown video mode {:02X}",
