@@ -746,6 +746,37 @@ fn can_execute_sahf() {
 }
 
 #[test]
+fn can_execute_pusha_popa() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0x60,       // pusha
+        0x61,       // popa
+    ];
+
+    cpu.load_com(&code);
+
+    cpu.r16[AX].val = 1000;
+    cpu.r16[CX].val = 1001;
+    cpu.r16[DX].val = 1002;
+    cpu.r16[BX].val = 1003;
+    cpu.r16[SP].val = 1004;
+    cpu.r16[BP].val = 1005;
+    cpu.r16[SI].val = 1006;
+    cpu.r16[DI].val = 1007;
+    cpu.execute_instruction(); // pusha
+    cpu.execute_instruction(); // popa
+    assert_eq!(1000, cpu.r16[AX].val);
+    assert_eq!(1001, cpu.r16[CX].val);
+    assert_eq!(1002, cpu.r16[DX].val);
+    assert_eq!(1003, cpu.r16[BX].val);
+    assert_eq!(1004, cpu.r16[SP].val);
+    assert_eq!(1005, cpu.r16[BP].val);
+    assert_eq!(1006, cpu.r16[SI].val);
+    assert_eq!(1007, cpu.r16[DI].val);
+}
+
+#[test]
 fn can_execute_dec() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);

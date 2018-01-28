@@ -951,14 +951,14 @@ impl CPU {
             }
             Op::Popa() => {
                 // Pop All General-Purpose Registers
-                self.r16[AX].val = self.pop16();
-                self.r16[CX].val = self.pop16();
-                self.r16[DX].val = self.pop16();
-                self.r16[BX].val = self.pop16();
-                self.r16[SP].val += 2;
-                self.r16[BP].val = self.pop16();
-                self.r16[SI].val = self.pop16();
                 self.r16[DI].val = self.pop16();
+                self.r16[SI].val = self.pop16();
+                self.r16[BP].val = self.pop16();
+                self.r16[SP].val += 2;
+                self.r16[BX].val = self.pop16();
+                self.r16[DX].val = self.pop16();
+                self.r16[CX].val = self.pop16();
+                self.r16[AX].val = self.pop16();
             }
             Op::Popf() => {
                 // Pop top of stack into lower 16 bits of EFLAGS.
