@@ -16,28 +16,9 @@ use cpu::CPU;
 use mmu::MMU;
 use gpu::DACPalette;
 
-
-// render video frame, used for saving video frame to disk
-fn draw_image(memory: &[u8], width: u32, height: u32, pal: &[DACPalette]) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
-    let img = ImageBuffer::from_fn(width, height, |x, y| {
-        let offset = 0xA_0000 + ((y * width) + x) as usize;
-        let byte = memory[offset];
-        let p = &pal[byte as usize];
-        Rgb([p.r, p.g, p.b])
-    });
-    img
-}
-
-fn write_video_frame_to_disk(memory: &[u8], pngfile: &str, width: u32, height: u32, pal: &[DACPalette]) {
-    let img = draw_image(memory, width, height, pal);
-    if let Err(why) = img.save(pngfile) {
-        println!("save err: {:?}", why);
-    }
-}
-
 #[test] #[ignore] // expensive test
 fn demo_256() {
-    let mut test_bins = vec![
+    let test_bins = vec![
         "../dos-software-decoding/demo-256/4sum/4sum.com",
         "../dos-software-decoding/demo-256/165plasm/165plasm.com",
         "../dos-software-decoding/demo-256/244b/244b.com",
@@ -88,10 +69,26 @@ fn demo_256() {
         "../dos-software-decoding/demo-256/zork/zork.com",
     ];
 
+    run_and_save_video_frames(test_bins, "demo_256", "256");
+}
+
+#[test] #[ignore] // expensive test
+fn demo_512() {
+    let test_bins = vec![
+        "../dos-software-decoding/demo-512/blaze/blaze5.com",
+        "../dos-software-decoding/demo-512/bmatch/bmatch.com",
+        "../dos-software-decoding/demo-512/triopti2/triopti2.com",
+    ];
+
+    run_and_save_video_frames(test_bins, "demo_512", "512");
+}
+
+fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix: &str) {
+
     let mut out_images = vec![];
 
     while let Some(bin) = test_bins.pop() {
-        println!("demo_256: {}", bin);
+        println!("{}: {}", group, bin);
 
         let mut cpu = CPU::new(MMU::new());
         cpu.deterministic = true;
@@ -108,7 +105,7 @@ fn demo_256() {
 
         let stem = path.file_stem().unwrap_or(OsStr::new(""));
         let mut filename = OsString::new();
-        filename.push("docs/render/demo-256/256_");
+        filename.push(format!("docs/render/{}/{}_", group, name_prefix));
         filename.push(stem.to_os_string());
         filename.push(".png");
 
@@ -122,7 +119,7 @@ fn demo_256() {
         );
 
         let mut pub_filename = String::new();
-        pub_filename.push_str("render/demo-256/256_");
+        pub_filename.push_str(&format!("render/{}/{}_", group, name_prefix));
         pub_filename.push_str(stem.to_str().unwrap());
         pub_filename.push_str(".png");
         out_images.push(pub_filename);
@@ -137,13 +134,31 @@ fn demo_256() {
     out_images.sort();
     context.add("out_images", &out_images);
     // add stuff to context
-    match tera.render("demo256.html", &context) {
+    match tera.render("test_category.tpl.html", &context) {
         Ok(res) => {
             use std::fs::File;
             use std::io::Write;
-            let mut f = File::create("docs/demo256.html").expect("Unable to create file");
+            let mut f = File::create(format!("docs/{}.html", group)).expect("Unable to create file");
             f.write_all(res.as_bytes()).expect("Unable to write data");
         }
         Err(why) => println!("ERROR = {}", why),
+    }
+}
+
+// render video frame, used for saving video frame to disk
+fn draw_image(memory: &[u8], width: u32, height: u32, pal: &[DACPalette]) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+    let img = ImageBuffer::from_fn(width, height, |x, y| {
+        let offset = 0xA_0000 + ((y * width) + x) as usize;
+        let byte = memory[offset];
+        let p = &pal[byte as usize];
+        Rgb([p.r, p.g, p.b])
+    });
+    img
+}
+
+fn write_video_frame_to_disk(memory: &[u8], pngfile: &str, width: u32, height: u32, pal: &[DACPalette]) {
+    let img = draw_image(memory, width, height, pal);
+    if let Err(why) = img.save(pngfile) {
+        println!("save err: {:?}", why);
     }
 }

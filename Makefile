@@ -4,6 +4,12 @@ test:
 expensive-test:
 	cargo test --release -- --color always --nocapture --ignored
 
+expensive-256:
+	cargo test demo_256 --release -- --color always --nocapture --ignored
+
+expensive-512:
+	cargo test demo_512 --release -- --color always --nocapture --ignored
+
 bench:
 	cargo bench --all
 

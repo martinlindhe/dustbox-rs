@@ -21,6 +21,13 @@ pub fn handle(cpu: &mut CPU) {
             //
             // more info and video modes: http://www.ctyme.com/intr/rb-0069.htm
             match cpu.r16[AX].lo_u8() {
+                0x01 => {
+                    // 01h = T  40x25  8x8   320x200   16       8   B800 CGA,PCjr,Tandy
+                    //     = T  40x25  8x14  320x350   16       8   B800 EGA
+                    //     = T  40x25  8x16  320x400   16       8   B800 MCGA
+                    //     = T  40x25  9x16  360x400   16       8   B800 VGA
+                    println!("XXX video: set video mode to 320x200, 16 colors (text)");
+                }
                 0x03 => {
                     // 03h = T  80x25  8x8   640x200   16       4   B800 CGA,PCjr,Tandy
                     //     = T  80x25  8x14  640x350   16/64    8   B800 EGA

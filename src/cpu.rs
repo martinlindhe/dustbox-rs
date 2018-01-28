@@ -461,6 +461,7 @@ impl CPU {
             }
             Op::Hlt() => {
                 println!("XXX impl {}", op);
+                // self.fatal_error = true; // XXX hack while halt is not implemented
             }
             Op::Idiv8() => {
                 let dst = self.r16[AX].val as usize; // AX
