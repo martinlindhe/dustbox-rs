@@ -12,7 +12,7 @@ pub struct GPU {
     pub scanline: u32,
     pub width: u32,
     pub height: u32,
-    pal: Vec<DACPalette>,           // the palette in use
+    pub pal: Vec<DACPalette>,       // the palette in use
     pub pel_address: u8,            // set by write to 03c8
     pel_component: usize,           // color component for next out 03c9, 0 = red, 1 = green, 2 = blue
 }

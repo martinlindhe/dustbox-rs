@@ -163,7 +163,7 @@ impl CPU {
                     InvalidOp::Op(ops) => {
                         let mut ops_str = String::new();
                         for x in ops {
-                            let hex = format!("{:X }", x);
+                            let hex = format!("{:02X} ", x);
                             ops_str.push_str(&hex);
                         }
                         println!("Error unhandled OP {}", ops_str)
