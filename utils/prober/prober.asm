@@ -13,15 +13,17 @@ start:
     ; call clear_regs
     ; call clear_mem
 
-    ; int 3
-    ; ; ------------------
-    ; ; run a instruction
-    ; ; XXX
+    ; -------------------------
+    ; run a snippet to analyse:
+    ; -------------------------
 
-    ; mov si,0x100
-    ; mov di,0x400
-    ; mov cx,0x10
-    ; lodsb
+    push word 0x8000
+    pop es
+    mov si, 0x100
+    mov byte [es:si], 9
+    mov dx, 0x03C8
+    es outsb    ; reads byte from SI (9) and output it to port DX
+
 
     ; save reg states after instruction executes
     mov [_ax], ax

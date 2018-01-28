@@ -938,7 +938,16 @@ impl CPU {
             }
             Op::Outsb() => {
                 // no arguments
-                self.outsb();
+                // output byte from memory location specified in DS:(E)SI or RSI to I/O port specified in DX.
+                let segment_index = op.segment.get_segment_register_index();
+                let val = self.mmu.read_u8(self.sreg16[segment_index], self.r16[SI].val);
+                let port = self.r16[DX].val;
+                self.out_u8(port, val);
+                self.r16[SI].val = if !self.flags.direction {
+                    (Wrapping(self.r16[SI].val) + Wrapping(1)).0
+                } else {
+                    (Wrapping(self.r16[SI].val) - Wrapping(1)).0
+                };
             }
             Op::Outsw() => {
                 // no arguments
@@ -1809,18 +1818,6 @@ impl CPU {
             self.r16[AX].set_lo((u16::from(old_al) + param2 as u16) as u8);
             self.flags.carry = true;
         }
-    }
-
-    // output byte from memory location specified in DS:(E)SI or RSI to I/O port specified in DX.
-    fn outsb(&mut self) {
-        let val = self.mmu.read_u8(self.sreg16[DS], self.r16[SI].val);
-        let port = self.r16[DX].val;
-        self.out_u8(port, val);
-        self.r16[SI].val = if !self.flags.direction {
-            (Wrapping(self.r16[SI].val) + Wrapping(1)).0
-        } else {
-            (Wrapping(self.r16[SI].val) - Wrapping(1)).0
-        };
     }
 
     // move byte from address DS:(E)SI to ES:(E)DI.

@@ -370,6 +370,31 @@ fn can_execute_rep_outsb() {
 }
 
 #[test]
+fn can_execute_es_outsb() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0x68, 0x00, 0x80,       // push word 0x8000
+        0x07,                   // pop es
+        0xBE, 0x00, 0x01,       // mov si,0x100
+        0x26, 0xC6, 0x04, 0x09, // mov byte [es:si],0x9
+        0xBA, 0xC8, 0x03,       // mov dx,0x3c8
+        0x26, 0x6E,             // es outsb
+    ];
+    cpu.load_com(&code);
+
+    assert_eq!(0, cpu.gpu.pel_address);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x09, cpu.gpu.pel_address);
+}
+
+#[test]
 fn can_execute_addressing() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
