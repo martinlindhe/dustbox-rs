@@ -726,8 +726,8 @@ impl CPU {
             Op::Lodsb() => {
                 // no arguments
                 // For legacy mode, load byte at address DS:(E)SI into AL.
-                let val = self.mmu
-                    .read_u8(self.sreg16[DS], self.r16[SI].val);
+                let segment_index = op.segment.get_segment_register_index();
+                let val = self.mmu.read_u8(self.sreg16[segment_index], self.r16[SI].val);
 
                 self.r16[AX].set_lo(val);
                 self.r16[SI].val = if !self.flags.direction {
@@ -739,8 +739,8 @@ impl CPU {
             Op::Lodsw() => {
                 // no arguments
                 // For legacy mode, Load word at address DS:(E)SI into AX.
-                let val = self.mmu
-                    .read_u16(self.sreg16[DS], self.r16[SI].val);
+                let segment_index = op.segment.get_segment_register_index();
+                let val = self.mmu.read_u16(self.sreg16[segment_index], self.r16[SI].val);
 
                 self.r16[AX].val = val;
                 self.r16[SI].val = if !self.flags.direction {
@@ -784,10 +784,36 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, data);
             }
             Op::Movsb() => {
-                self.movsb();
+                // move byte from address DS:(E)SI to ES:(E)DI.
+                let segment_index = op.segment.get_segment_register_index();
+                let b = self.mmu.read_u8(self.sreg16[segment_index], self.r16[SI].val);
+                self.r16[SI].val = if !self.flags.direction {
+                    (Wrapping(self.r16[SI].val) + Wrapping(1)).0
+                } else {
+                    (Wrapping(self.r16[SI].val) - Wrapping(1)).0
+                };
+                self.mmu.write_u8(self.sreg16[ES], self.r16[DI].val, b);
+                self.r16[DI].val = if !self.flags.direction {
+                    (Wrapping(self.r16[DI].val) + Wrapping(1)).0
+                } else {
+                    (Wrapping(self.r16[DI].val) - Wrapping(1)).0
+                };
             }
             Op::Movsw() => {
-                self.movsw();
+                // move word from address DS:(E)SI to ES:(E)DI.
+                let segment_index = op.segment.get_segment_register_index();
+                let b = self.mmu.read_u16(self.sreg16[segment_index], self.r16[SI].val);
+                self.r16[SI].val = if !self.flags.direction {
+                    (Wrapping(self.r16[SI].val) + Wrapping(2)).0
+                } else {
+                    (Wrapping(self.r16[SI].val) - Wrapping(2)).0
+                };
+                self.mmu.write_u16(self.sreg16[ES], self.r16[DI].val, b);
+                self.r16[DI].val = if !self.flags.direction {
+                    (Wrapping(self.r16[DI].val) + Wrapping(2)).0
+                } else {
+                    (Wrapping(self.r16[DI].val) - Wrapping(2)).0
+                };
             }
             Op::Movsx16() => {
                 // 80386+
@@ -1418,12 +1444,24 @@ impl CPU {
             Op::Stosb() => {
                 // no parameters
                 // store AL at ES:(E)DI
-                self.stosb();
+                let data = self.r16[AX].lo_u8(); // = AL
+                self.mmu.write_u8(self.sreg16[ES], self.r16[DI].val, data);
+                self.r16[DI].val = if !self.flags.direction {
+                    (Wrapping(self.r16[DI].val) + Wrapping(1)).0
+                } else {
+                    (Wrapping(self.r16[DI].val) - Wrapping(1)).0
+                };
             }
             Op::Stosw() => {
                 // no parameters
                 // store AX at address ES:(E)DI
-                self.stosw();
+                let data = self.r16[AX].val;
+                self.mmu.write_u16(self.sreg16[ES], self.r16[DI].val, data);
+                self.r16[DI].val = if !self.flags.direction {
+                    (Wrapping(self.r16[DI].val) + Wrapping(2)).0
+                } else {
+                    (Wrapping(self.r16[DI].val) - Wrapping(2)).0
+                };
             }
             Op::Sub8() => {
                 // two parameters (dst=reg)
@@ -1495,7 +1533,8 @@ impl CPU {
             }
             Op::Xlatb() => {
                 // no parameters
-                let al = self.mmu.read_u8(self.sreg16[DS], self.r16[BX].val + self.r16[AX].lo_u8() as u16);
+                let segment_index = op.segment.get_segment_register_index();
+                let al = self.mmu.read_u8(self.sreg16[segment_index], self.r16[BX].val + self.r16[AX].lo_u8() as u16);
                 self.r16[AX].set_lo(al);
             }
             Op::Xor8() => {
@@ -1818,60 +1857,6 @@ impl CPU {
             self.r16[AX].set_lo((u16::from(old_al) + param2 as u16) as u8);
             self.flags.carry = true;
         }
-    }
-
-    // move byte from address DS:(E)SI to ES:(E)DI.
-    fn movsb(&mut self) {
-        let b = self.mmu.read_u8(self.sreg16[DS], self.r16[SI].val);
-        self.r16[SI].val = if !self.flags.direction {
-            (Wrapping(self.r16[SI].val) + Wrapping(1)).0
-        } else {
-            (Wrapping(self.r16[SI].val) - Wrapping(1)).0
-        };
-        self.mmu.write_u8(self.sreg16[ES], self.r16[DI].val, b);
-        self.r16[DI].val = if !self.flags.direction {
-            (Wrapping(self.r16[DI].val) + Wrapping(1)).0
-        } else {
-            (Wrapping(self.r16[DI].val) - Wrapping(1)).0
-        };
-    }
-
-    // move word from address DS:(E)SI to ES:(E)DI.
-    fn movsw(&mut self) {
-        let b = self.mmu.read_u16(self.sreg16[DS], self.r16[SI].val);
-        self.r16[SI].val = if !self.flags.direction {
-            (Wrapping(self.r16[SI].val) + Wrapping(2)).0
-        } else {
-            (Wrapping(self.r16[SI].val) - Wrapping(2)).0
-        };
-        self.mmu.write_u16(self.sreg16[ES], self.r16[DI].val, b);
-        self.r16[DI].val = if !self.flags.direction {
-            (Wrapping(self.r16[DI].val) + Wrapping(2)).0
-        } else {
-            (Wrapping(self.r16[DI].val) - Wrapping(2)).0
-        };
-    }
-
-    // store AL at address ES:(E)DI.
-    fn stosb(&mut self) {
-        let data = self.r16[AX].lo_u8(); // = AL
-        self.mmu.write_u8(self.sreg16[ES], self.r16[DI].val, data);
-        self.r16[DI].val = if !self.flags.direction {
-            (Wrapping(self.r16[DI].val) + Wrapping(1)).0
-        } else {
-            (Wrapping(self.r16[DI].val) - Wrapping(1)).0
-        };
-    }
-
-    // store AX at address ES:(E)DI.
-    fn stosw(&mut self) {
-        let data = self.r16[AX].val;
-        self.mmu.write_u16(self.sreg16[ES], self.r16[DI].val, data);
-        self.r16[DI].val = if !self.flags.direction {
-            (Wrapping(self.r16[DI].val) + Wrapping(2)).0
-        } else {
-            (Wrapping(self.r16[DI].val) - Wrapping(2)).0
-        };
     }
 
     // write byte to I/O port
