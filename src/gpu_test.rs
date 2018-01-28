@@ -78,10 +78,21 @@ fn demo_512() {
         "../dos-software-decoding/demo-512/blaze/blaze5.com",
         "../dos-software-decoding/demo-512/bmatch/bmatch.com",
         "../dos-software-decoding/demo-512/callnow/callnow.com",
+        "../dos-software-decoding/demo-512/entry/entry.com",
+        "../dos-software-decoding/demo-512/entry2/entry2.com",
+        "../dos-software-decoding/demo-512/explsion/explsion.com",
+        "../dos-software-decoding/demo-512/flower/flower.com",
+        "../dos-software-decoding/demo-512/fountain_of_sparks/fountain_of_sparks.com",
+        "../dos-software-decoding/demo-512/jomppa/jomppa.com",
+        "../dos-software-decoding/demo-512/kintsmef/kintsmef.com",
+        "../dos-software-decoding/demo-512/kpara8/kpara8.com",
         "../dos-software-decoding/demo-512/madness/madness.com",
         "../dos-software-decoding/demo-512/panyo/panyo.com",
+        //"../dos-software-decoding/demo-512/plasmas/plasmas.com", // XXX crashes: index out of bounds: the len is 6 but the index is 6
+        //"../dos-software-decoding/demo-512/rwater/rwater.com", // XXX self-extracting, needs another look
         "../dos-software-decoding/demo-512/triopti2/triopti2.com",
         "../dos-software-decoding/demo-512/wamma/wamma.com",
+        "../dos-software-decoding/demo-512/waves/waves.com",
     ];
 
     run_and_save_video_frames(test_bins, "demo_512", "512");
