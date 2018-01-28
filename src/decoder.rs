@@ -198,6 +198,11 @@ impl Decoder {
                         op.command = Op::Pop16();
                         op.params.dst = Parameter::SReg16(FS);
                     }
+                    0xA3 => {
+                        // bt r/m16, r16
+                        op.command = Op::Bt;
+                        op.params = self.rm16_r16(op.segment);
+                    }
                     0xA8 => {
                         // push gs
                         op.command = Op::Push16();
@@ -226,7 +231,7 @@ impl Decoder {
                     }
                     0xBC => {
                         // bsf r16, r/m16
-                        op.command = Op::Bsf();
+                        op.command = Op::Bsf;
                         op.params = self.r16_rm16(op.segment);
                     }
                     0xBE => {
@@ -257,10 +262,16 @@ impl Decoder {
                 op.params = self.r16_rm16(op.segment);
             }
             0x14 => {
-                // adc AL, imm8
+                // adc al, imm8
                 op.command = Op::Adc8();
                 op.params.dst = Parameter::Reg8(AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
+            }
+            0x15 => {
+                // adc ax, imm16
+                op.command = Op::Adc16();
+                op.params.dst = Parameter::Reg16(AX);
+                op.params.src = Parameter::Imm16(self.read_u16());
             }
             0x16 => {
                 // push ss

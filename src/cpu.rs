@@ -1568,8 +1568,8 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
             _ => {
-                println!("execute error: unhandled: {:?} at {:06X}",
-                         op.command,
+                println!("execute error: unhandled '{}' at {:06X}",
+                         op,
                          self.get_address());
             }
         }
