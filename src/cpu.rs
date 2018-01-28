@@ -1924,49 +1924,13 @@ impl CPU {
                  self.get_offset());
         */
         match port {
-            0x0040 => {
-                self.pit.read_40()
-            },
+            0x0040 => self.pit.read_next_counter_part(),
             0x0060 => {
                 // PS/2 Controller (keyboard & mice) data port
                 // http://wiki.osdev.org/%228042%22_PS/2_Controller
                 0 // XXX
             },
-            0x03DA => {
-                // R-  CGA status register
-                // color EGA/VGA: input status 1 register
-                //
-                // Bitfields for CGA status register:
-                // Bit(s)	Description	(Table P0818)
-                // 7-6	not used
-                // 7	(C&T Wingine) vertical sync in progress (if enabled by XR14)
-                // 5-4	color EGA, color ET4000, C&T: diagnose video display feedback, select
-                //      from color plane enable
-                // 3	in vertical retrace
-                //      (C&T Wingine) video active (retrace/video selected by XR14)
-                // 2	(CGA,color EGA) light pen switch is off
-                //      (MCGA,color ET4000) reserved (0)
-                //      (VGA) reserved (1)
-                // 1	(CGA,color EGA) positive edge from light pen has set trigger
-                //      (VGA,MCGA,color ET4000) reserved (0)
-                // 0	horizontal retrace in progress
-                //    =0  do not use memory
-                //    =1  memory access without interfering with display
-                //        (VGA,Genoa SuperEGA) horizontal or vertical retrace
-                //    (C&T Wingine) display enabled (retrace/DE selected by XR14)
-                let mut flags = 0;
-
-                // HACK: fake bit 0 and 3 (retrace in progress)
-                if self.gpu.scanline == 0 {
-                    flags |= 0b0000_0001; // set bit 0
-                    flags |= 0b0000_1000; // set bit 3
-                } else {
-                    flags &= 0b1111_1110; // clear bit 0
-                    flags &= 0b1111_0111; // clear bit 3
-                }
-
-                flags
-            }
+            0x03DA => self.gpu.read_cga_status_register(),
             _ => {
                 println!("in_port: unhandled in8 {:04X} at {:06X}",
                          port,

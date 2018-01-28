@@ -81,4 +81,41 @@ impl GPU {
     pub fn set_palette_b(&mut self, index: usize, val: u8) {
         self.pal[index].b = val;
     }
+
+    // CGA status register (0x03DA)
+    // color EGA/VGA: input status 1 register
+    pub fn read_cga_status_register(&self) -> u8 {
+        // Bitfields for CGA status register:
+        // Bit(s)	Description	(Table P0818)
+        // 7-6	not used
+        // 7	(C&T Wingine) vertical sync in progress (if enabled by XR14)
+        // 5-4	color EGA, color ET4000, C&T: diagnose video display feedback, select
+        //      from color plane enable
+        // 3	in vertical retrace
+        //      (C&T Wingine) video active (retrace/video selected by XR14)
+        // 2	(CGA,color EGA) light pen switch is off
+        //      (MCGA,color ET4000) reserved (0)
+        //      (VGA) reserved (1)
+        // 1	(CGA,color EGA) positive edge from light pen has set trigger
+        //      (VGA,MCGA,color ET4000) reserved (0)
+        // 0	horizontal retrace in progress
+        //    =0  do not use memory
+        //    =1  memory access without interfering with display
+        //        (VGA,Genoa SuperEGA) horizontal or vertical retrace
+        //    (C&T Wingine) display enabled (retrace/DE selected by XR14)
+        let mut flags = 0;
+
+        // HACK: fake bit 0 and 3 (retrace in progress)
+        if self.scanline == 0 {
+            flags |= 0b0000_0001; // set bit 0
+            flags |= 0b0000_1000; // set bit 3
+        } else {
+            flags &= 0b1111_1110; // clear bit 0
+            flags &= 0b1111_0111; // clear bit 3
+        }
+
+        println!("read_cga_status_register: returns {:02X}", flags);
+
+        flags
+    }
 }

@@ -24,7 +24,8 @@ impl PIT {
         self.counter0 = (Wrapping(self.counter0) - Wrapping(1)).0;
     }
 
-    pub fn read_40(&mut self) -> u8 {
+    // i/o port 0x0040
+    pub fn read_next_counter_part(&mut self) -> u8 {
         let res = if self.counter0_hi {
             (self.counter0 >> 8) as u8
         } else {
