@@ -414,14 +414,14 @@ fn can_execute_addressing() {
 
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 9);
     assert_eq!("[085F:0100] BB0002           Mov16    bx, 0x0200
-[085F:0103] C6472CFF         Mov8     byte [bx+0x2C], 0xFF
-[085F:0107] 8D360001         Lea16    si, word [0x0100]
-[085F:010B] 8B14             Mov16    dx, word [si]
-[085F:010D] 8B472C           Mov16    ax, word [bx+0x2C]
-[085F:0110] 89873000         Mov16    word [bx+0x0030], ax
-[085F:0114] 8905             Mov16    word [di], ax
-[085F:0116] C685AE06FE       Mov8     byte [di+0x06AE], 0xFE
-[085F:011B] 8A85AE06         Mov8     al, byte [di+0x06AE]",
+[085F:0103] C6472CFF         Mov8     byte [ds:bx+0x2C], 0xFF
+[085F:0107] 8D360001         Lea16    si, word [ds:0x0100]
+[085F:010B] 8B14             Mov16    dx, word [ds:si]
+[085F:010D] 8B472C           Mov16    ax, word [ds:bx+0x2C]
+[085F:0110] 89873000         Mov16    word [ds:bx+0x0030], ax
+[085F:0114] 8905             Mov16    word [ds:di], ax
+[085F:0116] C685AE06FE       Mov8     byte [ds:di+0x06AE], 0xFE
+[085F:011B] 8A85AE06         Mov8     al, byte [ds:di+0x06AE]",
                res);
 
     cpu.execute_instruction();
@@ -472,7 +472,7 @@ fn can_execute_math() {
     cpu.load_com(&code);
 
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 1);
-    assert_eq!("[085F:0100] F6062C12FF       Test8    byte [0x122C], 0xFF",
+    assert_eq!("[085F:0100] F6062C12FF       Test8    byte [ds:0x122C], 0xFF",
                res);
 
     // XXX also execute
@@ -1343,7 +1343,7 @@ fn can_disassemble_lea() {
     cpu.load_com(&code);
 
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 1);
-    assert_eq!("[085F:0100] 8D4780           Lea16    ax, word [bx-0x80]",
+    assert_eq!("[085F:0100] 8D4780           Lea16    ax, word [ds:bx-0x80]",
                res);
 }
 
@@ -1376,7 +1376,7 @@ fn can_disassemble_arithmetic() {
     cpu.load_com(&code);
 
     let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 4);
-    assert_eq!("[085F:0100] 803E311000       Cmp8     byte [0x1031], 0x00
+    assert_eq!("[085F:0100] 803E311000       Cmp8     byte [ds:0x1031], 0x00
 [085F:0105] 81C7C000         Add16    di, 0x00C0
 [085F:0109] 83C73A           Add16    di, byte +0x3A
 [085F:010C] 83C7C6           Add16    di, byte -0x3A",

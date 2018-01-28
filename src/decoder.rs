@@ -1069,7 +1069,9 @@ impl Decoder {
             0xEA => {
                 // jmp far ptr16:16
                 op.command = Op::JmpFar();
-                op.params.dst = Parameter::Ptr16Imm(self.read_u16(), self.read_u16());
+                let imm = self.read_u16();
+                let seg = self.read_u16();
+                op.params.dst = Parameter::Ptr16Imm(seg, imm);
             }
             0xEB => {
                 // jmp short rel8
