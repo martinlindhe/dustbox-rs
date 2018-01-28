@@ -318,7 +318,21 @@ pub fn handle(cpu: &mut CPU) {
                     // AH = status
                     // 00h successful
                     // 01h failed
-                    println!("XXX VESA SuperVGA BIOS - SET SuperVGA VIDEO MODE bx={:04X}", cpu.r16[BX].val)
+                    println!("XXX VESA SuperVGA BIOS - SET SuperVGA VIDEO MODE. bx={:04X}", cpu.r16[BX].val)
+                }
+                0x05 => {
+                    // VESA SuperVGA BIOS - CPU VIDEO MEMORY CONTROL
+                    // BH = subfunction
+                    // 00h select video memory window
+                    // DX = window address in video memory (in granularity units)
+                    // 01h get video memory window
+                    // Return:
+                    // DX = window address in video memory (in gran. units).
+                    // BL = window number
+                    // 00h window A
+                    // 01h window B.
+                    // ES = selector for memory-mapped registers (VBE 2.0+, when called from 32-bit protected mode)
+                    println!("XXX  VESA SuperVGA BIOS - CPU VIDEO MEMORY CONTROL. bh={:02X}", cpu.r16[BX].hi_u8());
                 }
                  _ => {
                     println!("int10 error: unknown AH 4F (VESA), AL={:02X}", cpu.r16[AX].lo_u8());

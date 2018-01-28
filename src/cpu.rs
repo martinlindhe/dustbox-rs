@@ -323,6 +323,9 @@ impl CPU {
                 }
                 */
             }
+            Op::Bt => {
+                println!("XXX impl {}", op);
+            }
             Op::Bound() => {
                 println!("XXX impl {}", op);
             }
@@ -377,15 +380,16 @@ impl CPU {
                 // Modify status flags in the same manner as the SUB instruction
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
-                let res = (Wrapping(dst) - Wrapping(src)).0;
-
-                // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
-                self.flags.set_carry_u16(res);
-                self.flags.set_overflow_sub_u16(res, src, dst);
-                self.flags.set_sign_u16(res);
-                self.flags.set_zero_u16(res);
-                self.flags.set_auxiliary(res, src, dst);
-                self.flags.set_parity(res);
+                self.cmp16(dst, src);
+            }
+            Op::Cmpsw() => {
+                // no parameters
+                // Compare word at address DS:(E)SI with word at address ES:(E)DI
+                // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
+                let src = self.mmu.read_u16(self.segment(op.segment), self.r16[SI].val) as usize;
+                let dst = self.mmu.read_u16(self.sreg16[ES], self.r16[DI].val) as usize;
+                self.cmp16(dst, src);
+                println!("XXX Cmpsw - verify implementation");
             }
             Op::Cwd() => {
                 // Convert Word to Doubleword
@@ -727,7 +731,7 @@ impl CPU {
             }
             Op::Lodsb() => {
                 // no arguments
-                // For legacy mode, load byte at address DS:(E)SI into AL.
+                // Load byte at address DS:(E)SI into AL.
                 // The DS segment may be over-ridden with a segment override prefix.
                 let val = self.mmu.read_u8(self.segment(op.segment), self.r16[SI].val);
 
@@ -740,7 +744,7 @@ impl CPU {
             }
             Op::Lodsw() => {
                 // no arguments
-                // For legacy mode, Load word at address DS:(E)SI into AX.
+                // Load word at address DS:(E)SI into AX.
                 // The DS segment may be over-ridden with a segment override prefix.
                 let val = self.mmu.read_u16(self.segment(op.segment), self.r16[SI].val);
 
@@ -1568,8 +1572,10 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
             _ => {
-                println!("execute error: unhandled '{}' at {:06X}",
+                println!("execute error: unhandled '{}' at {:04X}:{:04X} (flat {:06X})",
                          op,
+                         self.sreg16[CS],
+                         self.ip,
                          self.get_address());
             }
         }
@@ -1598,6 +1604,18 @@ impl CPU {
         println!("Exception {:?}, error {}", which, error);
 
         // CPU_Interrupt(which,CPU_INT_EXCEPTION | ((which>=8) ? CPU_INT_HAS_ERROR : 0),reg_eip);
+    }
+
+    fn cmp16(&mut self, dst: usize, src: usize) {
+        let res = (Wrapping(dst) - Wrapping(src)).0;
+
+        // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
+        self.flags.set_carry_u16(res);
+        self.flags.set_overflow_sub_u16(res, src, dst);
+        self.flags.set_sign_u16(res);
+        self.flags.set_zero_u16(res);
+        self.flags.set_auxiliary(res, src, dst);
+        self.flags.set_parity(res);
     }
 
     fn push8(&mut self, data: u8) {
