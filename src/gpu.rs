@@ -105,7 +105,7 @@ impl GPU {
         //    (C&T Wingine) display enabled (retrace/DE selected by XR14)
         let mut flags = 0;
 
-        // HACK: fake bit 0 and 3 (retrace in progress)
+        // FIXME REMOVE THIS HACK: fake bit 0 and 3 (retrace in progress)
         if self.scanline == 0 {
             flags |= 0b0000_0001; // set bit 0
             flags |= 0b0000_1000; // set bit 3
@@ -114,7 +114,7 @@ impl GPU {
             flags &= 0b1111_0111; // clear bit 3
         }
 
-        println!("read_cga_status_register: returns {:02X}", flags);
+        // println!("read_cga_status_register: returns {:02X}", flags);
 
         flags
     }
