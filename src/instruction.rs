@@ -198,7 +198,7 @@ impl fmt::Display for Parameter {
 
 #[derive(Debug, PartialEq)]
 pub enum Op {
-    Aaa(),
+    Aaa,
     Aad(),
     Aam(),
     Aas(),
@@ -210,6 +210,7 @@ pub enum Op {
     And16(),
     Arpl(),
     Bound(),
+    Bsf(),
     CallNear(),
     Cbw(),
     Clc(),

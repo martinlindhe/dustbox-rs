@@ -195,7 +195,7 @@ impl CPU {
         self.instruction_count += 1;
         self.cycle_count += 1; // XXX temp hack; we pretend each instruction takes 8 cycles due to lack of timing
         match op.command {
-            Op::Aaa() => {
+            Op::Aaa => {
                 // ASCII Adjust After Addition
                 let v = if self.r16[AX].lo_u8() > 0xf9 {
                     2

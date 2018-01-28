@@ -224,6 +224,11 @@ impl Decoder {
                         op.command = Op::Movzx16();
                         op.params = self.r16_rm8(op.segment);
                     }
+                    0xBC => {
+                        // bsf r16, r/m16
+                        op.command = Op::Bsf();
+                        op.params = self.r16_rm16(op.segment);
+                    }
                     0xBE => {
                         // movsx r16, r/m8
                         op.command = Op::Movsx16();
@@ -399,7 +404,7 @@ impl Decoder {
                 op = self.decode(Segment::SS, repeat);
             }
             0x37 => {
-                op.command = Op::Aaa();
+                op.command = Op::Aaa;
             }
             0x38 => {
                 // cmp r/m8, r8
