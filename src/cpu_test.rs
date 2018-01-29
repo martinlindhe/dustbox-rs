@@ -769,6 +769,29 @@ fn can_execute_bsf() {
 }
 
 #[test]
+fn can_execute_bt() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xB8, 0x02, 0x00, // mov ax,0x2
+        0xBA, 0x02, 0x00, // mov dx,0x2
+        0x0F, 0xA3, 0xD0, // bt ax,dx
+        0xBA, 0x01, 0x00, // mov dx,0x1
+        0x0F, 0xA3, 0xD0, // bt ax,dx
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // bt
+    assert_eq!(false, cpu.flags.carry);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // bt
+    assert_eq!(true, cpu.flags.carry);
+}
+
+#[test]
 fn can_execute_daa() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);

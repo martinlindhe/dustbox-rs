@@ -334,6 +334,7 @@ impl CPU {
                 */
             }
             Op::Bsf => {
+                // Bit Scan Forward
                 let mut src = self.read_parameter_value(&op.params.src);
                 if src == 0 {
                     self.flags.zero = true;
@@ -348,7 +349,14 @@ impl CPU {
                 }
             }
             Op::Bt => {
-                println!("XXX impl {}", op);
+                // Bit Test
+                let bit_base = self.read_parameter_value(&op.params.dst);
+                let bit_offset = self.read_parameter_value(&op.params.src);
+                self.flags.carry = if bit_base & (1 << (bit_offset & 15)) != 0 {
+                    true
+                } else {
+                    false
+                };
             }
             Op::Bound() => {
                 println!("XXX impl {}", op);
