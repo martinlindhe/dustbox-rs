@@ -1620,6 +1620,10 @@ impl CPU {
             }
             _ => {}
         }
+
+        if op.lock {
+            println!("XXX FIXME: instruction has LOCK prefix: {}", op);
+        }
     }
 
     fn exception(&mut self, which: Exception, error: usize) {

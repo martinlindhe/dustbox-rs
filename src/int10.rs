@@ -46,6 +46,10 @@ pub fn handle(cpu: &mut CPU) {
                     //     = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
                     println!("XXX video: set video mode to 640x200, 2 colors");
                 }
+                0x11 => {
+                    // 11h = G  80x30  8x16  640x480  mono      .   A000 VGA,MCGA,ATI EGA,ATI VIP
+                    println!("XXX video: set video mode to 640x480, mono");
+                }
                 0x12 => {
                     // 12h = G  80x30  8x16  640x480   16/256K  .   A000 VGA,ATI VIP
                     //     = G  80x30  8x16  640x480   16/64    .   A000 ATI EGA Wonder

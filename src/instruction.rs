@@ -31,7 +31,8 @@ pub struct Instruction {
     pub segment: Segment,
     pub params: ParameterPair,
     pub length: u8,
-    pub repeat:  RepeatMode, // does the instruction have the REP prefix?
+    pub repeat: RepeatMode, // REPcc prefix
+    pub lock: bool,         // LOCK prefix
 }
 
 impl fmt::Display for Instruction {
