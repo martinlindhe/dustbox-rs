@@ -324,9 +324,9 @@ pub fn handle(cpu: &mut CPU) {
                     // Return:
                     // AL = 4Fh if function supported
                     // AH = status:
-                    //   00h successful, ES:DI buffer filled
-                    //   01h failed
-                    println!("XXX VESA SuperVGA BIOS - GET SuperVGA MODE INFORMATION");
+                    //      00h successful, ES:DI buffer filled
+                    //      01h failed
+                    println!("XXX VESA SuperVGA BIOS - GET SuperVGA MODE INFORMATION. cx={:04X}", cpu.r16[CX].val);
                 }
                 0x02 => {
                     // VESA SuperVGA BIOS - SET SuperVGA VIDEO MODE
@@ -335,9 +335,9 @@ pub fn handle(cpu: &mut CPU) {
                     // Return:
                     // AL = 4Fh if function supported
                     // AH = status
-                    // 00h successful
-                    // 01h failed
-                    println!("XXX VESA SuperVGA BIOS - SET SuperVGA VIDEO MODE. bx={:04X}", cpu.r16[BX].val)
+                    //      00h successful
+                    //      01h failed
+                    println!("XXX VESA SuperVGA BIOS - SET SuperVGA VIDEO MODE. bx={:04X}", cpu.r16[BX].val);
                 }
                 0x05 => {
                     // VESA SuperVGA BIOS - CPU VIDEO MEMORY CONTROL
@@ -348,10 +348,10 @@ pub fn handle(cpu: &mut CPU) {
                     // Return:
                     // DX = window address in video memory (in gran. units).
                     // BL = window number
-                    // 00h window A
-                    // 01h window B.
+                    //      00h window A
+                    //      01h window B.
                     // ES = selector for memory-mapped registers (VBE 2.0+, when called from 32-bit protected mode)
-                    println!("XXX  VESA SuperVGA BIOS - CPU VIDEO MEMORY CONTROL. bh={:02X}", cpu.r16[BX].hi_u8());
+                    println!("XXX VESA SuperVGA BIOS - CPU VIDEO MEMORY CONTROL. bh={:02X}", cpu.r16[BX].hi_u8());
                 }
                  _ => {
                     println!("int10 error: unknown AH 4F (VESA), AL={:02X}", cpu.r16[AX].lo_u8());

@@ -295,7 +295,6 @@ pub enum Op {
     Pop16(),
     Popa(),
     Popf(),
-    Push8(),
     Push16(),
     Pusha(),
     Pushf(),

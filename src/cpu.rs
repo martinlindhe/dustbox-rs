@@ -1043,11 +1043,6 @@ impl CPU {
                 let data = self.pop16();
                 self.flags.set_u16(data);
             }
-            Op::Push8() => {
-                // single parameter (dst)
-                let data = self.read_parameter_value(&op.params.dst) as u8;
-                self.push8(data);
-            }
             Op::Push16() => {
                 // single parameter (dst)
                 let data = self.read_parameter_value(&op.params.dst) as u16;
@@ -1680,12 +1675,6 @@ impl CPU {
         self.flags.set_zero_u16(res);
         self.flags.set_auxiliary(res, src, dst);
         self.flags.set_parity(res);
-    }
-
-    fn push8(&mut self, data: u8) {
-        let sp = (Wrapping(self.r16[SP].val) - Wrapping(1)).0;
-        self.r16[SP].val = sp;
-        self.mmu.write_u8(self.sreg16[SS], self.r16[SP].val, data);
     }
 
     fn push16(&mut self, data: u16) {

@@ -562,7 +562,7 @@ impl Decoder {
             }
             0x6A => {
                 // push imm8
-                op.command = Op::Push8();
+                op.command = Op::Push16();
                 op.params.dst = Parameter::ImmS8(self.read_s8());
             }
             0x6B => {
