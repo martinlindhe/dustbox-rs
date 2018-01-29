@@ -248,6 +248,15 @@ pub fn handle(cpu: &mut CPU) {
                         // println!("set color {}: {}, {}, {}", i, r, g, b);
                     }
                 }
+                0x17 => {
+                    // VIDEO - READ BLOCK OF DAC REGISTERS (VGA/MCGA)
+                    // BX = starting palette register
+                    // CX = number of palette registers to read
+                    // ES:DX -> buffer (3 * CX bytes in size) (see also AX=1012h)
+                    // Return:
+                    // Buffer filled with CX red, green and blue triples
+                    println!("XXX VIDEO - READ BLOCK OF DAC REGISTERS (VGA/MCGA)");
+                }
                 _ => {
                     println!("int10 error: unknown AH 10, AL={:02X}", cpu.r16[AX].lo_u8());
                 }
@@ -255,6 +264,12 @@ pub fn handle(cpu: &mut CPU) {
         }
         0x11 => {
             match cpu.r16[AX].lo_u8() {
+                0x24 => {
+                    // VIDEO - GRAPH-MODE CHARGEN - LOAD 8x16 GRAPHICS CHARS (VGA,MCGA)
+                    // BL = row specifier (see AX=1121h)
+                    // Return: Nothing
+                    println!("XXX VIDEO - GRAPH-MODE CHARGEN - LOAD 8x16 GRAPHICS CHARS (VGA,MCGA)");
+                }
                 0x30 => {
                     // VIDEO - GET FONT INFORMATION (EGA, MCGA, VGA)
                     // in:

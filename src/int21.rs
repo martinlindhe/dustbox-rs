@@ -6,6 +6,14 @@ use register::{AX, BX, CX, DX, DS, ES};
 // dos related interrupts
 pub fn handle(cpu: &mut CPU) {
     match cpu.r16[AX].hi_u8() {
+        0x02 => {
+            // DOS 1+ - WRITE CHARACTER TO STANDARD OUTPUT
+            // DL = character to write
+            // Return:
+            // AL = last character output (despite the official docs which state
+            // nothing is returned) (at least DOS 2.1-7.0)
+            println!("XXX DOS 1+ - WRITE CHARACTER TO STANDARD OUTPUT. dl = {:02X}", cpu.r16[DX].lo_u8());
+        }
         0x06 => {
             // DOS 1+ - DIRECT CONSOLE OUTPUT
             //
