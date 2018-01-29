@@ -1032,7 +1032,7 @@ impl CPU {
                 self.r16[DI].val = self.pop16();
                 self.r16[SI].val = self.pop16();
                 self.r16[BP].val = self.pop16();
-                self.r16[SP].val += 2;
+                self.r16[SP].val += 2; // skip next word of stack
                 self.r16[BX].val = self.pop16();
                 self.r16[DX].val = self.pop16();
                 self.r16[CX].val = self.pop16();
