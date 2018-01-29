@@ -1770,7 +1770,17 @@ impl CPU {
                 }
             }
             Parameter::Reg16(r) => self.r16[r].val as usize,
-            Parameter::SReg16(r) => self.sreg16[r] as usize,
+            Parameter::SReg16(r) => {
+                if r >= 6 {
+                    // NOTE: this should not be possible
+                    let cs = self.sreg16[CS];
+                    println!("FATAL ERROR invalid encoding: r = {} at {:04X}:{:04X}", r, cs, self.ip);
+                    self.fatal_error = true;
+                    0
+                } else {
+                    self.sreg16[r] as usize
+                }
+            },
             _ => {
                 println!("read_parameter_value error: unhandled parameter: {:?} at {:06X}",
                          p,

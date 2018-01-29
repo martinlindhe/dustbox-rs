@@ -97,7 +97,6 @@ fn demo_512() {
         "../dos-software-decoding/demo-512/morales/morales.com",
         "../dos-software-decoding/demo-512/panyo/panyo.com",
         "../dos-software-decoding/demo-512/phantas/phantas.com",
-        //"../dos-software-decoding/demo-512/plasmas/plasmas.com", // XXX crashes: index out of bounds: the len is 6 but the index is 6
         //"../dos-software-decoding/demo-512/rwater/rwater.com", // XXX self-extracting, needs another look
         "../dos-software-decoding/demo-512/sign/sign.com",
         "../dos-software-decoding/demo-512/skylight/skylight.com",

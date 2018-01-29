@@ -537,8 +537,18 @@ impl Decoder {
                 // gs segment prefix
                 op = self.decode(Segment::GS, repeat, lock);
             }
-            // 0x66 = 80386+ Operand-size override prefix
-            // 0x67 = 80386+ Address-size override prefix
+            0x66 => {
+                // 80386+ Operand-size override prefix
+                println!("ERROR: unsupported 386 operand-size override prefix");
+                let invalid = InvalidOp::Op(vec![b]);
+                op.command = Op::Invalid(invalid);
+            }
+            0x67 => {
+                // 80386+ Address-size override prefix
+                println!("ERROR: unsupported 386 address-size override prefix");
+                let invalid = InvalidOp::Op(vec![b]);
+                op.command = Op::Invalid(invalid);
+            }
             0x68 => {
                 // push imm16
                 op.command = Op::Push16();
@@ -1090,16 +1100,12 @@ impl Decoder {
             0xD7 => {
                 op.command = Op::Xlatb();
             }
-            /*
-            0xD8 => {} // fpu
-            0xD9 => {} // fpu
-            0xDA => {} // fpu
-            0xDB => {} // fpu
-            0xDC => {} // fpu
-            0xDD => {} // fpu
-            0xDE => {} // fpu
-            0xDF => {} // fpu
-            */
+            0xD8...0xDF => {
+                // fpu
+                println!("ERROR: unsupported FPU opcode {:02X}", b);
+                let invalid = InvalidOp::Op(vec![b]);
+                op.command = Op::Invalid(invalid);
+            }
             0xE0 => {
                 op.command = Op::Loopne();
                 op.params.dst = Parameter::Imm16(self.read_rel8());
