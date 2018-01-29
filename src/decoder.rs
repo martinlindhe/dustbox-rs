@@ -167,6 +167,11 @@ impl Decoder {
             0x0F => {
                 let b = self.read_u8();
                 match b {
+                    0x82 => {
+                        // jc rel16
+                        op.command = Op::Jc();
+                        op.params.dst = Parameter::Imm16(self.read_rel16());
+                    }
                     0x84 => {
                         // jz rel16
                         op.command = Op::Jz();
@@ -954,8 +959,16 @@ impl Decoder {
                     }
                 }
             }
-            // 0xC8 = "enter"
-            // 0xC9 = "leave"
+            0xC8 => {
+                // enter imm16, imm8
+                op.command = Op::Enter;
+                op.params.dst = Parameter::Imm16(self.read_u16());
+                op.params.src = Parameter::Imm8(self.read_u8());
+            }
+            0xC9 => {
+                // leave
+                op.command = Op::Leave;
+            }
             0xCA => {
                 // ret [far] imm16
                 op.command = Op::Retf;

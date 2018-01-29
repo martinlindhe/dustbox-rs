@@ -464,6 +464,9 @@ impl CPU {
                 self.r16[AX].val = (res & 0xFFFF) as u16;
                 self.r16[DX].val = (rem & 0xFFFF) as u16;
             }
+            Op::Enter => {
+                println!("XXX impl {}", op);
+            }
             Op::Hlt() => {
                 println!("XXX impl {}", op);
                 // self.fatal_error = true; // XXX hack while halt is not implemented
@@ -720,6 +723,9 @@ impl CPU {
                 let val = self.read_parameter_value(&op.params.src) as u16;
                 self.sreg16[DS] = seg;
                 self.write_parameter_u16(op.segment, &op.params.dst, val);
+            }
+            Op::Leave => {
+                println!("XXX impl {}", op);
             }
             Op::Les() => {
                 // les ax, [0x104]
