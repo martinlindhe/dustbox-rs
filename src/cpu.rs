@@ -191,7 +191,7 @@ impl CPU {
 
     fn execute(&mut self, op: &Instruction) {
         let start_ip = self.ip;
-        self.ip += op.length as u16;
+        self.ip += u16::from(op.length);
         self.instruction_count += 1;
         self.cycle_count += 1; // XXX temp hack; we pretend each instruction takes 8 cycles due to lack of timing
         match op.command {
@@ -1536,7 +1536,7 @@ impl CPU {
                 // no parameters
                 // Set AL to memory byte DS:[(E)BX + unsigned AL].
                 // The DS segment may be overridden with a segment override prefix.
-                let al = self.mmu.read_u8(self.segment(op.segment), self.r16[BX].val + self.r16[AX].lo_u8() as u16);
+                let al = self.mmu.read_u8(self.segment(op.segment), self.r16[BX].val + u16::from(self.r16[AX].lo_u8()));
                 self.r16[AX].set_lo(al);
             }
             Op::Xor8() => {

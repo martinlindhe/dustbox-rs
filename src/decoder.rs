@@ -35,7 +35,7 @@ impl Decoder {
         let mut inst_offset = 0;
         for _ in 0..n {
             let op = self.disasm_instruction(seg, offset+inst_offset);
-            inst_offset += op.instruction.length as u16;
+            inst_offset += u16::from(op.instruction.length);
             ops.push(op);
         }
 

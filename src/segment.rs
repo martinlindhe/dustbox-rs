@@ -22,9 +22,8 @@ impl fmt::Display for Segment {
 impl Segment {
     pub fn as_str(&self) -> &str {
         match *self {
-            Segment::Default => "ds",
+            Segment::Default | Segment::DS => "ds",
             Segment::CS => "cs",
-            Segment::DS => "ds",
             Segment::ES => "es",
             Segment::FS => "fs",
             Segment::GS => "gs",
