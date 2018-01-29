@@ -87,7 +87,7 @@ fn demo_512() {
         "../dos-software-decoding/demo-512/entry/entry.com",
         "../dos-software-decoding/demo-512/fire/fire.com",
         "../dos-software-decoding/demo-512/jive/jive.com",
-        // "../dos-software-decoding/demo-512/jomppa/jomppa.com", // XXX self-extracting, needs another look
+        "../dos-software-decoding/demo-512/jomppa/jomppa.com",
         "../dos-software-decoding/demo-512/kintsmef/kintsmef.com",
         "../dos-software-decoding/demo-512/kpara8/kpara8.com",
         "../dos-software-decoding/demo-512/legend/legend.com",

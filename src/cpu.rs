@@ -204,6 +204,16 @@ impl CPU {
                 };
                 self.adjb(6, v);
             }
+            Op::Aam() => {
+                // ASCII Adjust AX After Multiply
+                // tempAL ← AL;
+                // AH ← tempAL / imm8; (* imm8 is set to 0AH for the AAM mnemonic *)
+                // AL ← tempAL MOD imm8;
+                let imm8 = self.read_parameter_value(&op.params.dst) as u8;
+                let al = self.r16[AX].lo_u8();
+                self.r16[AX].set_hi(al / imm8);
+                self.r16[AX].set_lo(al % imm8);
+            }
             Op::Aas() => {
                 // ASCII Adjust AL After Subtraction
                 let v = if self.r16[AX].lo_u8() < 6 {

@@ -695,6 +695,34 @@ fn can_execute_aaa() {
 }
 
 #[test]
+fn can_execute_aam() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xB8, 0x44, 0x44,   // mov ax,0x4444
+        0xD4, 0x0A,         // aam
+        0xB8, 0x00, 0x00,   // mov ax,0x0
+        0xD4, 0x0A,         // aam
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0xD4, 0x0A,         // aam
+    ];
+
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // aam
+    assert_eq!(0x0608, cpu.r16[AX].val);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // aam
+    assert_eq!(0x0000, cpu.r16[AX].val);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // aam
+    assert_eq!(0x1905, cpu.r16[AX].val);
+}
+
+#[test]
 fn can_execute_aas() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);

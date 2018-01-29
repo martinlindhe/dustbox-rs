@@ -1087,6 +1087,7 @@ impl Decoder {
                 op.params.src = Parameter::Reg8(CL);
             }
             0xD4 => {
+                // aam imm8
                 op.command = Op::Aam();
                 op.params.dst = Parameter::Imm8(self.read_u8());
             }
