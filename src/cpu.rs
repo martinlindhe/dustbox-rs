@@ -185,7 +185,7 @@ impl CPU {
 
         if self.cycle_count % 100 == 0 {
             // FIXME: counter should decrement ~18.2 times/sec
-            self.pit.dec();
+            self.pit.counter0.dec();
         }
     }
 
@@ -1983,7 +1983,9 @@ impl CPU {
                  self.get_offset());
         */
         match port {
-            0x0040 => self.pit.read_next_counter_part(),
+            0x0040 => self.pit.counter0.read_next_part(),
+            0x0041 => self.pit.counter1.read_next_part(),
+            0x0042 => self.pit.counter2.read_next_part(),
             0x0060 => {
                 // PS/2 Controller (keyboard & mice) data port
                 // http://wiki.osdev.org/%228042%22_PS/2_Controller

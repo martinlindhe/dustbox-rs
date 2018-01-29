@@ -7,31 +7,47 @@
 use std::num::Wrapping;
 
 #[derive(Clone, Default)]
+pub struct Counter {
+    pub counter: u16,
+    hi: bool,
+}
+
+impl Counter {
+    pub fn new() -> Self {
+        Counter {
+            counter: 0,
+            hi: false,
+        }
+    }
+
+    pub fn dec(&mut self) {
+        self.counter = (Wrapping(self.counter) - Wrapping(1)).0;
+    }
+
+    pub fn read_next_part(&mut self) -> u8 {
+        let res = if self.hi {
+            (self.counter >> 8) as u8
+        } else {
+            (self.counter & 0xFF) as u8
+        };
+        self.hi = !self.hi;
+        res
+    }
+}
+
+#[derive(Clone, Default)]
 pub struct PIT {
-    pub counter0: u16,
-    pub counter0_hi: bool,
+    pub counter0: Counter,
+    pub counter1: Counter,
+    pub counter2: Counter,
 }
 
 impl PIT {
     pub fn new() -> Self {
         PIT {
-            counter0: 0,
-            counter0_hi: false,
+            counter0: Counter::new(), // read of i/o port 0x0040
+            counter1: Counter::new(), // read of i/o port 0x0041
+            counter2: Counter::new(), // read of i/o port 0x0042
         }
-    }
-
-    pub fn dec(&mut self) {
-        self.counter0 = (Wrapping(self.counter0) - Wrapping(1)).0;
-    }
-
-    // i/o port 0x0040
-    pub fn read_next_counter_part(&mut self) -> u8 {
-        let res = if self.counter0_hi {
-            (self.counter0 >> 8) as u8
-        } else {
-            (self.counter0 & 0xFF) as u8
-        };
-        self.counter0_hi = !self.counter0_hi;
-        res
     }
 }
