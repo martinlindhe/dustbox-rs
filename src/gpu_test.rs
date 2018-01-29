@@ -75,21 +75,38 @@ fn demo_256() {
 #[test] #[ignore] // expensive test
 fn demo_512() {
     let test_bins = vec![
+        "../dos-software-decoding/demo-512/1/1.com",
+        "../dos-software-decoding/demo-512/200h/200h.com",
+        "../dos-software-decoding/demo-512/bars512/bars512.com",
+        "../dos-software-decoding/demo-512/basicboy/basicboy.com",
         "../dos-software-decoding/demo-512/blaze/blaze5.com",
         "../dos-software-decoding/demo-512/bmatch/bmatch.com",
         "../dos-software-decoding/demo-512/callnow/callnow.com",
         "../dos-software-decoding/demo-512/dna/dna.com",
+        "../dos-software-decoding/demo-512/egghead/egghead.com",
         "../dos-software-decoding/demo-512/entry/entry.com",
+        "../dos-software-decoding/demo-512/fire/fire.com",
         "../dos-software-decoding/demo-512/jive/jive.com",
         // "../dos-software-decoding/demo-512/jomppa/jomppa.com", // XXX self-extracting, needs another look
         "../dos-software-decoding/demo-512/kintsmef/kintsmef.com",
         "../dos-software-decoding/demo-512/kpara8/kpara8.com",
+        "../dos-software-decoding/demo-512/legend/legend.com",
+        "../dos-software-decoding/demo-512/lkccmini/lkccmini.com",
         "../dos-software-decoding/demo-512/madness/madness.com",
+        "../dos-software-decoding/demo-512/mistake/mistake.com",
+        "../dos-software-decoding/demo-512/morales/morales.com",
         "../dos-software-decoding/demo-512/panyo/panyo.com",
+        "../dos-software-decoding/demo-512/phantas/phantas.com",
         //"../dos-software-decoding/demo-512/plasmas/plasmas.com", // XXX crashes: index out of bounds: the len is 6 but the index is 6
         //"../dos-software-decoding/demo-512/rwater/rwater.com", // XXX self-extracting, needs another look
         "../dos-software-decoding/demo-512/sign/sign.com",
+        "../dos-software-decoding/demo-512/skylight/skylight.com",
+        // "../dos-software-decoding/new/stars.exe/stars.exe", // XXX exe file
+        "../dos-software-decoding/demo-512/sun/sun.com",
+        "../dos-software-decoding/demo-512/superusr/superusr.com",
+        "../dos-software-decoding/demo-512/tiled/tiled.com",
         "../dos-software-decoding/demo-512/triopti2/triopti2.com",
+        "../dos-software-decoding/demo-512/unknown/unknown.com",
         "../dos-software-decoding/demo-512/wamma/wamma.com",
         "../dos-software-decoding/demo-512/waves/waves.com",
     ];
