@@ -1114,13 +1114,23 @@ impl CPU {
                 }
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
-            Op::Retf() => {
-                //no arguments
+            Op::Retf => {
+                if op.params.count() == 1 {
+                    // 1 argument: pop imm16 bytes from stack
+                    let imm16 = self.read_parameter_value(&op.params.dst) as u16;
+                    self.r16[SP].val += imm16;
+                    println!("XXX fixme - verify retf imm16 behaviour");
+                }
                 self.ip = self.pop16();
                 self.sreg16[CS] = self.pop16();
             }
-            Op::Retn() => {
-                // no arguments
+            Op::Retn => {
+                if op.params.count() == 1 {
+                    // 1 argument: pop imm16 bytes from stack
+                    let imm16 = self.read_parameter_value(&op.params.dst) as u16;
+                    self.r16[SP].val += imm16;
+                    println!("XXX fixme - verify retn imm16 behaviour");
+                }
                 if self.r16[SP].val == 0xFFFE {
                     println!("retn called at end of stack, ending program");
                     self.fatal_error = true;
@@ -1305,8 +1315,20 @@ impl CPU {
 
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
-            Op::Setc() => {
+            Op::Setc => {
+                // setc: Set byte if carry (CF=1).
+                // setb (alias): Set byte if below (CF=1).
                 let val = if self.flags.carry {
+                    1
+                } else {
+                    0
+                };
+                self.write_parameter_u8(&op.params.dst, val);
+            }
+            Op::Setnz => {
+                // setnz: Set byte if not zero (ZF=0).
+                // setne (alias): Set byte if not equal (ZF=0).
+                let val = if !self.flags.zero {
                     1
                 } else {
                     0

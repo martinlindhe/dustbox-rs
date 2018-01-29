@@ -190,7 +190,13 @@ impl Decoder {
                     0x92 => {
                         // setc r/m8
                         let x = self.read_mod_reg_rm();
-                        op.command = Op::Setc();
+                        op.command = Op::Setc;
+                        op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                    }
+                    0x95 => {
+                        // setnz r/m8  (alias setne)
+                        let x = self.read_mod_reg_rm();
+                        op.command = Op::Setnz;
                         op.params.dst = self.rm8(op.segment, x.rm, x.md);
                     }
                     0xA0 => {
@@ -899,10 +905,14 @@ impl Decoder {
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
-            // 0xC2 = ret imm16
+            0xC2 => {
+                // ret [near] imm16
+                op.command = Op::Retn;
+                op.params.dst = Parameter::Imm16(self.read_u16());
+            }
             0xC3 => {
                 // ret [near]
-                op.command = Op::Retn();
+                op.command = Op::Retn;
             }
             0xC4 => {
                 // les r16, m16
@@ -946,9 +956,13 @@ impl Decoder {
             }
             // 0xC8 = "enter"
             // 0xC9 = "leave"
-            // 0xCA = "retf imm16"
+            0xCA => {
+                // ret [far] imm16
+                op.command = Op::Retf;
+                op.params.dst = Parameter::Imm16(self.read_u16());
+            }
             0xCB => {
-                op.command = Op::Retf();
+                op.command = Op::Retf;
             }
             0xCC => {
                 op.command = Op::Int();
