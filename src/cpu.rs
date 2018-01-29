@@ -333,6 +333,20 @@ impl CPU {
                 }
                 */
             }
+            Op::Bsf => {
+                let mut src = self.read_parameter_value(&op.params.src);
+                if src == 0 {
+                    self.flags.zero = true;
+                } else {
+                    let mut count = 0;
+                    while src & 1 == 0 {
+                        count += 1;
+                        src >>= 1;
+                    }
+                    self.write_parameter_u16(op.segment, &op.params.dst, count);
+                    self.flags.zero = false;
+                }
+            }
             Op::Bt => {
                 println!("XXX impl {}", op);
             }

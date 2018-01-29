@@ -739,6 +739,36 @@ fn can_execute_aas() {
 }
 
 #[test]
+fn can_execute_bsf() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xB8, 0x04, 0x00, // mov ax,0x4
+        0x0F, 0xBC, 0xD0, // bsf dx,ax
+        0xB8, 0xF0, 0xFF, // mov ax,0xfff0
+        0x0F, 0xBC, 0xD0, // bsf dx,ax
+        0xB8, 0x00, 0x00, // mov ax,0x0
+        0x0F, 0xBC, 0xD0, // bsf dx,ax
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // bsf
+    assert_eq!(2, cpu.r16[DX].val);
+    assert_eq!(false, cpu.flags.zero);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // bsf
+    assert_eq!(4, cpu.r16[DX].val);
+    assert_eq!(false, cpu.flags.zero);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // bsf
+    assert_eq!(4, cpu.r16[DX].val); // NOTE: if ax is 0, dx won't change
+    assert_eq!(true, cpu.flags.zero);
+}
+
+#[test]
 fn can_execute_daa() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);

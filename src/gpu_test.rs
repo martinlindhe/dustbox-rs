@@ -97,7 +97,6 @@ fn demo_512() {
         "../dos-software-decoding/demo-512/morales/morales.com",
         "../dos-software-decoding/demo-512/panyo/panyo.com",
         "../dos-software-decoding/demo-512/phantas/phantas.com",
-        //"../dos-software-decoding/demo-512/rwater/rwater.com", // XXX self-extracting, needs another look
         "../dos-software-decoding/demo-512/skylight/skylight.com",
         // "../dos-software-decoding/new/stars.exe/stars.exe", // XXX exe file
         "../dos-software-decoding/demo-512/sun/sun.com",

@@ -2,7 +2,7 @@ test:
 	cargo test --all -- --color always --nocapture
 
 expensive-test:
-	cargo test --release -- --color always --nocapture --ignored
+	RUST_TEST_THREADS=1 cargo test --release -- --color always --nocapture --ignored
 
 expensive-256:
 	cargo test demo_256 --release -- --color always --nocapture --ignored
