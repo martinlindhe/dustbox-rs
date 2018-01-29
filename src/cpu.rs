@@ -1177,7 +1177,6 @@ impl CPU {
                     // 1 argument: pop imm16 bytes from stack
                     let imm16 = self.read_parameter_value(&op.params.dst) as u16;
                     self.r16[SP].val += imm16;
-                    println!("XXX fixme - verify retf imm16 behaviour");
                 }
                 self.ip = self.pop16();
                 self.sreg16[CS] = self.pop16();
@@ -1187,7 +1186,6 @@ impl CPU {
                     // 1 argument: pop imm16 bytes from stack
                     let imm16 = self.read_parameter_value(&op.params.dst) as u16;
                     self.r16[SP].val += imm16;
-                    println!("XXX fixme - verify retn imm16 behaviour");
                 }
                 if self.r16[SP].val == 0xFFFE {
                     println!("retn called at end of stack, ending program");

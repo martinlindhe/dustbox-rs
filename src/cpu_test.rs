@@ -1401,6 +1401,25 @@ fn can_execute_shrd() {
     assert_eq!(true, cpu.flags.parity);
 }
 
+#[test]
+fn can_execute_ret_imm() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xE8, 0x00, 0x00,   // call 0x103
+        0x50,               // push ax
+        0xC2, 0x02, 0x00,   // ret 0x2
+    ];
+    cpu.load_com(&code);
+
+    assert_eq!(0xFFFE, cpu.r16[SP].val);
+    cpu.execute_instruction(); // call
+    assert_eq!(0xFFFC, cpu.r16[SP].val);
+    cpu.execute_instruction(); // push
+    assert_eq!(0xFFFA, cpu.r16[SP].val);
+    cpu.execute_instruction(); // ret 0x2
+    assert_eq!(0xFFFE, cpu.r16[SP].val);
+}
 
 #[test]
 fn can_execute_imul16_1_arg() {
@@ -1412,12 +1431,6 @@ fn can_execute_imul16_1_arg() {
         0xF7, 0xEB,       // imul bx
     ];
     cpu.load_com(&code);
-
-    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 3);
-    assert_eq!("[085F:0100] BB8F79           Mov16    bx, 0x798F
-[085F:0103] B8D9FF           Mov16    ax, 0xFFD9
-[085F:0106] F7EB             Imul16   bx",
-               res);
 
     cpu.execute_instruction();
     assert_eq!(0x798F, cpu.r16[BX].val);
