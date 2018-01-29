@@ -912,11 +912,6 @@ fn can_execute_neg() {
     ];
     cpu.load_com(&code);
 
-    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 2);
-    assert_eq!("[085F:0100] BB2301           Mov16    bx, 0x0123
-[085F:0103] F7DB             Neg16    bx",
-               res);
-
     cpu.execute_instruction();
     assert_eq!(0x0123, cpu.r16[BX].val);
 
@@ -928,6 +923,30 @@ fn can_execute_neg() {
     assert_eq!(false, cpu.flags.overflow);
     assert_eq!(true, cpu.flags.auxiliary_carry);
     assert_eq!(true, cpu.flags.parity);
+}
+
+#[test]
+fn can_execute_sbb16() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xB8, 0x48, 0xF0, // mov ax,0xf048
+        0x1D, 0x45, 0x44, // sbb ax,0x4445
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0xAC03, cpu.r16[AX].val);
+
+    // 3286 (xp)     =  0b11_0010_1000_0110
+    // 7286 (dosbox) = 0b111_0010_1000_0110
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(false, cpu.flags.auxiliary_carry);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(true, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
 }
 
 #[test]

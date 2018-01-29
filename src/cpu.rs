@@ -1348,6 +1348,24 @@ impl CPU {
 
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
+            Op::Sbb16() => {
+                // Integer Subtraction with Borrow
+
+                let src = self.read_parameter_value(&op.params.src);
+                let dst = self.read_parameter_value(&op.params.dst);
+                let cf = if self.flags.carry { 1 } else { 0 };
+                let res = (Wrapping(dst) - (Wrapping(src) + Wrapping(cf))).0;
+
+                // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
+                self.flags.set_overflow_sub_u16(res, src, dst);
+                self.flags.set_sign_u16(res);
+                self.flags.set_zero_u16(res);
+                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_parity(res);
+                self.flags.set_carry_u16(res);
+
+                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+            }
             Op::Setc => {
                 // setc: Set byte if carry (CF=1).
                 // setb (alias): Set byte if below (CF=1).
