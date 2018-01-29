@@ -316,10 +316,16 @@ impl Decoder {
                 op.params = self.r8_rm8(op.segment);
             }
             0x1C => {
-                // sbb AL, imm8
+                // sbb al, imm8
                 op.command = Op::Sbb8();
                 op.params.dst = Parameter::Reg8(AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
+            }
+            0x1D => {
+                // sbb ax, imm16
+                op.command = Op::Sbb16();
+                op.params.dst = Parameter::Reg16(AX);
+                op.params.src = Parameter::Imm16(self.read_u16());
             }
             0x1E => {
                 // push ds
