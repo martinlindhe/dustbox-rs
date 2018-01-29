@@ -497,7 +497,29 @@ impl CPU {
                 self.r16[DX].val = (rem & 0xFFFF) as u16;
             }
             Op::Enter => {
-                println!("XXX impl {}", op);
+                // Make Stack Frame for Procedure Parameters
+                // Create a stack frame with optional nested pointers for a procedure.
+                // XXX test this
+                let alloc_size = self.read_parameter_value(&op.params.dst) as u16;
+                let mut nesting_level = self.read_parameter_value(&op.params.src);
+
+                nesting_level &= 0x1F; // XXX "mod 32" says docs
+                let bp = self.r16[BP].val;
+                self.push16(bp);
+                let frame_temp = self.r16[SP].val;
+
+                if nesting_level != 0 {
+                    for i in 0..nesting_level {
+                         self.r16[BP].val -= 2;
+                        let val = self.mmu.read_u16(self.sreg16[SS], self.r16[BP].val);
+                        println!("XXX ENTER: pushing {} = {:04X}", i, val);
+                        self.push16(val);
+                    }
+                    self.push16(frame_temp);
+                }
+
+                self.r16[BP].val = frame_temp;
+                self.r16[SP].val -= alloc_size;
             }
             Op::Hlt() => {
                 println!("XXX impl {}", op);
@@ -757,7 +779,10 @@ impl CPU {
                 self.write_parameter_u16(op.segment, &op.params.dst, val);
             }
             Op::Leave => {
-                println!("XXX impl {}", op);
+                // High Level Procedure Exit
+                // Set SP to BP, then pop BP.
+                self.r16[SP].val = self.r16[BP].val;
+                self.r16[BP].val = self.pop16();
             }
             Op::Les() => {
                 // les ax, [0x104]
