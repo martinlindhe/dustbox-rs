@@ -1923,6 +1923,7 @@ impl CPU {
     // write byte to I/O port
     fn out_u8(&mut self, dst: u16, data: u8) {
         match dst {
+            0x03C7 => self.gpu.set_pel_address(data), // XXX unsure if understood correctly
             0x03C8 => self.gpu.set_pel_address(data),
             0x03C9 => self.gpu.set_pel_data(data),
             _ => {
