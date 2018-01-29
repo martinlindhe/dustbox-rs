@@ -1,5 +1,9 @@
 // TODO later: look into bitflags! macro
 
+#[cfg(test)]
+#[path = "./flags_test.rs"]
+mod flags_test;
+
 // https://en.wikipedia.org/wiki/FLAGS_register
 #[derive(Copy, Clone, Default)]
 pub struct Flags {
@@ -136,9 +140,7 @@ impl Flags {
         self.carry           = val & 0x1 != 0;
         self.reserved1       = val & 0x2 != 0;
         self.parity          = val & 0x4 != 0;
-        self.reserved3       = val & 0x8 != 0;
         self.auxiliary_carry = val & 0x10 != 0;
-        self.reserved5       = val & 0x20 != 0;
         self.zero            = val & 0x40 != 0;
         self.sign            = val & 0x80 != 0;
         self.trap            = val & 0x100 != 0;
@@ -148,7 +150,6 @@ impl Flags {
         self.iopl12          = val & 0x1000 != 0;
         self.iopl13          = val & 0x2000 != 0;
         self.nested_task     = val & 0x4000 != 0;
-        self.reserved15      = val & 0x8000 != 0;
     }
     pub fn carry_numeric(&self) -> String {
         format!("{}", if self.carry {
@@ -206,9 +207,11 @@ impl Flags {
     // returns the FLAGS register
     pub fn u16(&self) -> u16 {
         let mut val = 0 as u16;
-
         if self.carry {
             val |= 1;
+        }
+        if self.reserved1 {
+            val |= 1 << 1;
         }
         if self.parity {
             val |= 1 << 2;
@@ -243,8 +246,6 @@ impl Flags {
         if self.nested_task {
             val |= 1 << 14;
         }
-        val |= 1 << 15; // always 1 on 8086 and 186, always 0 on later models
-
         val
     }
 }
