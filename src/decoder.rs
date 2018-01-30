@@ -904,7 +904,7 @@ impl Decoder {
                 // r8, byte imm8
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
-                    0 => Op::Rol8(),
+                    0 => Op::Rol8,
                     1 => Op::Ror8(),
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
@@ -923,7 +923,7 @@ impl Decoder {
                 // r16, byte imm8
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
-                    0 => Op::Rol16(),
+                    0 => Op::Rol16,
                     1 => Op::Ror16(),
                     2 => Op::Rcl16(),
                     3 => Op::Rcr16(),
@@ -1020,7 +1020,7 @@ impl Decoder {
                 // bit shift byte by 1
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
-                    0 => Op::Rol8(),
+                    0 => Op::Rol8,
                     1 => Op::Ror8(),
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
@@ -1039,7 +1039,7 @@ impl Decoder {
                 // bit shift word by 1
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
-                    0 => Op::Rol16(),
+                    0 => Op::Rol16,
                     1 => Op::Ror16(),
                     2 => Op::Rcl16(),
                     3 => Op::Rcr16(),
@@ -1058,7 +1058,7 @@ impl Decoder {
                 // bit shift byte by CL
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
-                    0 => Op::Rol8(),
+                    0 => Op::Rol8,
                     1 => Op::Ror8(),
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
@@ -1077,7 +1077,7 @@ impl Decoder {
                 // bit shift word by CL
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
-                    0 => Op::Rol16(),
+                    0 => Op::Rol16,
                     1 => Op::Ror16(),
                     2 => Op::Rcl16(),
                     3 => Op::Rcr16(),

@@ -1194,48 +1194,65 @@ impl CPU {
                 }
                 self.ip = self.pop16();
             }
-            Op::Rol8() => {
+            Op::Rol8 => {
                 // Rotate 8 bits of 'dst' left for 'src' times.
                 // two arguments
                 let mut res = self.read_parameter_value(&op.params.dst);
                 let mut count = self.read_parameter_value(&op.params.src);
-
+                let org_count = count;
                 while count > 0 {
                     let val = res & 0x80 != 0;
-	                self.flags.carry = val;
                     res = (res & 0xFF) << 1;
                     if val {
-	                    res |= 1;
+                        res |= 1;
                     }
                     count -= 1;
                 }
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
-
-                // XXX flags
+                let bit0 = res & 1;
+                let bit7 = (res >> 7) & 1;
+                if org_count == 1 {
+                    self.flags.overflow = if bit0 ^ bit7 != 0 {
+                        true
+                    } else {
+                        false
+                    };
+                }
+                self.flags.carry = if bit0 != 0 {
+                    true
+                } else {
+                    false
+                };
             }
-            Op::Rol16() => {
+            Op::Rol16 => {
                 // Rotate 16 bits of 'dst' left for 'src' times.
                 // two arguments
                 let mut res = self.read_parameter_value(&op.params.dst);
                 let mut count = self.read_parameter_value(&op.params.src);
-
+                let org_count = count;
                 while count > 0 {
                     let val = res & 0x8000 != 0;
-	                self.flags.carry = val;
                     res <<= 1;
                     if val {
-	                    res |= 1;
+                        res |= 1;
                     }
                     count -= 1;
                 }
                 self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
-
-                // XXX flags:
-                // If the masked count is 0, the flags are not affected.
-                // If the masked count is 1, then the OF flag is affected,
-                // otherwise (masked count is greater than 1) the OF flag is undefined.
-                // The CF flag is affected when the masked count is non- zero. The SF, ZF,
-                // AF, and PF flags are always unaffected.
+                let bit0 = res & 1;
+                let bit15 = (res >> 15) & 1;
+                if org_count == 1 {
+                    self.flags.overflow = if bit0 ^ bit15 != 0 {
+                        true
+                    } else {
+                        false
+                    };
+                }
+                self.flags.carry = if bit0 != 0 {
+                    true
+                } else {
+                    false
+                };
             }
             Op::Ror8() => {
                 // two arguments
