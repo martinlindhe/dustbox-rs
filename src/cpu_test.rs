@@ -1246,16 +1246,41 @@ fn can_execute_shr8() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB4, 0x34,       // mov ah,0x34
-        0xC0, 0xEC, 0x04, // shr ah,byte 0x4
+        0xB4, 0xFF,         // mov ah,0xff
+        0xC0, 0xEC, 0x01,   // shr ah,byte 0x1
+        0xB4, 0xFF,         // mov ah,0xff
+        0xC0, 0xEC, 0xFF,   // shr ah,byte 0xff
+        0xB4, 0x01,         // mov ah,0x1
+        0xC0, 0xEC, 0x04,   // shr ah,byte 0x4
     ];
-
     cpu.load_com(&code);
 
     cpu.execute_instruction();
+    cpu.execute_instruction(); // shr
+    assert_eq!(0x7F, cpu.r16[AX].hi_u8());
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.parity);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(true, cpu.flags.overflow);
+
     cpu.execute_instruction();
-    assert_eq!(0x03, cpu.r16[AX].hi_u8());
-    // XXX flags
+    cpu.execute_instruction(); // shr
+    assert_eq!(0x00, cpu.r16[AX].hi_u8());
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(true, cpu.flags.overflow);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // shr
+    assert_eq!(0x00, cpu.r16[AX].hi_u8());
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
 }
 
 #[test]
@@ -1263,15 +1288,47 @@ fn can_execute_shr16() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB8, 0x34, 0x12, // mov ax,0x1234
-        0xC1, 0xE8, 0x04, // shr ax,byte 0x4
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0xC1, 0xE8, 0x01,   // shr ax,byte 0x1
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0xC1, 0xE8, 0xFF,   // shr ax,byte 0xff
+        0xB8, 0x01, 0x00,   // mov ax,0x1
+        0xC1, 0xE8, 0x04,   // shr ax,byte 0x4
     ];
     cpu.load_com(&code);
 
     cpu.execute_instruction();
+    cpu.execute_instruction(); // shr
+    assert_eq!(0x7FFF, cpu.r16[AX].val);
+    // 3807 = 0b11_1000_0000_0111
+    //        ____ O___ SZ_A _P_C
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(true, cpu.flags.overflow);
+
     cpu.execute_instruction();
-    assert_eq!(0x0123, cpu.r16[AX].val);
-    // XXX flags
+    cpu.execute_instruction(); // shr
+    assert_eq!(0x0000, cpu.r16[AX].val);
+    // 3846 = 0b11_1000_0100_0110
+    //        ____ O___ SZ_A _P_C
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(true, cpu.flags.overflow);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // shr
+    assert_eq!(0x0000, cpu.r16[AX].val);
+    // 3046 = 0b11_0000_0100_0110
+    //        ____ O___ SZ_A _P_C
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
 }
 
 #[test]

@@ -319,7 +319,7 @@ impl CPU {
             }
             Op::Arpl() => {
                 // Adjust RPL Field of Segment Selector
-                println!("XXX impl arpl: {}", op);
+                println!("XXX impl {}", op);
                 /*
                 // NOTE: RPL is the low two bits of the address
                 let src = self.read_parameter_value(&op.params.src);
@@ -1418,7 +1418,6 @@ impl CPU {
                 if count > 0 {
                     let res = dst.wrapping_shl(count as u32);
                     self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
-                    // affected flags: CF, OF for 1 bit shifts, SF & ZF & PF for > 0 bit shifts
                     self.flags.carry = (res & 0x80) != 0;
                     if count == 1 {
                         self.flags.overflow = if self.flags.carry_val() ^ ((res & 0x80) >> 7) != 0 {
@@ -1440,7 +1439,6 @@ impl CPU {
                 if count > 0 {
                     let res = dst.wrapping_shl(count as u32);
                     self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
-                    // affected flags: CF, OF for 1 bit shifts, SF & ZF & PF for > 0 bit shifts
                     self.flags.carry = (res & 0x8000) != 0;
                     if count == 1 {
                         self.flags.overflow = if self.flags.carry_val() ^ ((res & 0x8000) >> 15) != 0 {
@@ -1459,46 +1457,42 @@ impl CPU {
                 // 3 arguments
                 println!("XXX impl {}", op);
             }
-            Op::Shr8() => {
+            Op::Shr8 => {
                 // Unsigned divide r/m8 by 2, `src` times.
                 // two arguments
                 let dst = self.read_parameter_value(&op.params.dst);
-                let count = self.read_parameter_value(&op.params.src);
-
-                let res = dst.rotate_right(count as u32);
-                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
-
-                self.flags.carry = (dst & 1) != 0;
-                if count == 1 {
-                    self.flags.overflow = false;
+                let count = self.read_parameter_value(&op.params.src) & 0x1F;
+                if count > 0 {
+                    let res = dst.wrapping_shr(count as u32);
+                    self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
+                    self.flags.carry = (dst.wrapping_shr((count - 1) as u32) & 0x1) != 0;
+                    self.flags.overflow = if dst & 0x80 != 0 {
+                        true
+                    } else {
+                        false
+                    };
+                    self.flags.set_sign_u8(res);
+                    self.flags.set_zero_u8(res);
+                    self.flags.set_parity(res);
                 }
-                self.flags.set_sign_u8(res);
-                self.flags.set_zero_u8(res);
-                self.flags.set_parity(res);
-                // XXX aux flag ?
             }
-            Op::Shr16() => {
+            Op::Shr16 => {
                 // two arguments
                 let dst = self.read_parameter_value(&op.params.dst);
-                let count = self.read_parameter_value(&op.params.src);
-
-                let res = dst.rotate_right(count as u32);
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
-
-                // The CF flag contains the value of the last bit shifted out of the destination
-                // operand; it is undefined for SHL and SHR instructions where the count is greater
-                // than or equal to the size (in bits) of the destination operand. The OF flag is
-                // affected only for 1-bit shifts; otherwise, it is undefined. The SF, ZF, and PF
-                // flags are set according to the result. If the count is 0, the flags are not
-                // affected. For a non-zero count, the AF flag is undefined.
-                self.flags.carry = (dst & 1) != 0;
-                if count == 1 {
-                    self.flags.overflow = false;
+                let count = self.read_parameter_value(&op.params.src) & 0x1F;
+                if count > 0 {
+                    let res = dst.wrapping_shr(count as u32);
+                    self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                    self.flags.carry = (dst.wrapping_shr((count - 1) as u32) & 0x1) != 0;
+                    self.flags.overflow = if dst & 0x8000 != 0 {
+                        true
+                    } else {
+                        false
+                    };
+                    self.flags.set_sign_u16(res);
+                    self.flags.set_zero_u16(res);
+                    self.flags.set_parity(res);
                 }
-                self.flags.set_sign_u16(res);
-                self.flags.set_zero_u16(res);
-                self.flags.set_parity(res);
-                // XXX aux flag ?
             }
             Op::Shrd() => {
                 // Double Precision Shift Right

@@ -7,6 +7,7 @@ mod flags_test;
 // https://en.wikipedia.org/wiki/FLAGS_register
 #[derive(Copy, Clone, Default)]
 pub struct Flags {
+    // ____ O___ SZ_A _P_C
     pub carry: bool, // 0: carry flag
     reserved1: bool, // 1: Reserved, always 1 in EFLAGS
     pub parity: bool, // 2: parity flag

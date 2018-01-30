@@ -199,6 +199,7 @@ impl fmt::Display for Parameter {
 
 #[derive(Debug, PartialEq)]
 pub enum Op {
+    // NOTE: currently removing paranthesis of enums to track if flags have been fully emulated & impl tested //martin, jan 2018
     Aaa(),
     Aad(),
     Aam(),
@@ -322,8 +323,8 @@ pub enum Op {
     Shl8,
     Shl16,
     Shld(),
-    Shr8(),
-    Shr16(),
+    Shr8,
+    Shr16,
     Shrd(),
     Stc(),
     Std(),
