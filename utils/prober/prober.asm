@@ -10,6 +10,7 @@ section .bss
 section .text
     ; program code
 start:
+    call clear_flags
     ; call clear_regs
     ; call clear_mem
 
@@ -17,12 +18,8 @@ start:
     ; run a snippet to analyse:
     ; -------------------------
 
-    push word 0x8000
-    pop es
-    mov si, 0x100
-    mov byte [es:si], 9
-    mov dx, 0x03C8
-    es outsb    ; reads byte from SI (9) and output it to port DX
+    mov ax,0xffff
+    shl ax,byte 0x1
 
 
     ; save reg states after instruction executes

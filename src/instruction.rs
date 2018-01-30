@@ -199,7 +199,7 @@ impl fmt::Display for Parameter {
 
 #[derive(Debug, PartialEq)]
 pub enum Op {
-    Aaa,
+    Aaa(),
     Aad(),
     Aam(),
     Aas(),
@@ -319,8 +319,9 @@ pub enum Op {
     Scasw(),
     Setc,
     Setnz,
-    Shl8(),
-    Shl16(),
+    Shl8,
+    Shl16,
+    Shld(),
     Shr8(),
     Shr16(),
     Shrd(),

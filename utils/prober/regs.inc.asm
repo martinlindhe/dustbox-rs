@@ -7,6 +7,9 @@ clear_regs:
     mov bp, 0
     mov si, 0
     mov di, 0
+    ret
+
+clear_flags:
     push ax
     popf                    ; clear flags
     ret

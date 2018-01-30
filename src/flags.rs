@@ -151,6 +151,13 @@ impl Flags {
         self.iopl13          = val & 0x2000 != 0;
         self.nested_task     = val & 0x4000 != 0;
     }
+    pub fn carry_val(&self) -> usize {
+        if self.carry {
+            1
+        } else {
+            0
+        }
+    }
     pub fn carry_numeric(&self) -> String {
         format!("{}", if self.carry {
             1

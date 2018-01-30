@@ -195,7 +195,7 @@ impl CPU {
         self.instruction_count += 1;
         self.cycle_count += 1; // XXX temp hack; we pretend each instruction takes 8 cycles due to lack of timing
         match op.command {
-            Op::Aaa => {
+            Op::Aaa() => {
                 // ASCII Adjust After Addition
                 let v = if self.r16[AX].lo_u8() > 0xf9 {
                     2
@@ -781,6 +781,7 @@ impl CPU {
             Op::Leave => {
                 // High Level Procedure Exit
                 // Set SP to BP, then pop BP.
+                // XXX test this
                 self.r16[SP].val = self.r16[BP].val;
                 self.r16[BP].val = self.pop16();
             }
@@ -1188,7 +1189,7 @@ impl CPU {
                     self.r16[SP].val += imm16;
                 }
                 if self.r16[SP].val == 0xFFFE {
-                    println!("retn called at end of stack, ending program");
+                    println!("retn called at end of stack, ending program after {} instructions", self.instruction_count);
                     self.fatal_error = true;
                 }
                 self.ip = self.pop16();
@@ -1409,39 +1410,54 @@ impl CPU {
                 };
                 self.write_parameter_u8(&op.params.dst, val);
             }
-            Op::Shl8() => {
+            Op::Shl8 => {
                 // Multiply `dst` by 2, `src` times.
                 // two arguments    (alias: sal)
                 let dst = self.read_parameter_value(&op.params.dst);
-                let count = self.read_parameter_value(&op.params.src);
-                let res = dst.rotate_left(count as u32);
-                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
-
-                self.flags.carry = (dst & 0x80) != 0;
-                if count == 1 {
-                    self.flags.overflow = false;
+                let count = self.read_parameter_value(&op.params.src) & 0x1F;
+                if count > 0 {
+                    let res = dst.wrapping_shl(count as u32);
+                    self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
+                    // affected flags: CF, OF for 1 bit shifts, SF & ZF & PF for > 0 bit shifts
+                    self.flags.carry = (res & 0x80) != 0;
+                    if count == 1 {
+                        self.flags.overflow = if self.flags.carry_val() ^ ((res & 0x80) >> 7) != 0 {
+                            true
+                        } else {
+                            false
+                        };
+                    }
+                    self.flags.set_sign_u8(res);
+                    self.flags.set_zero_u8(res);
+                    self.flags.set_parity(res);
                 }
-                self.flags.set_sign_u8(res);
-                self.flags.set_zero_u8(res);
-                self.flags.set_parity(res);
-                // XXX aux flag ?
             }
-            Op::Shl16() => {
+            Op::Shl16 => {
                 // Multiply `dst` by 2, `src` times.
                 // two arguments    (alias: sal)
                 let dst = self.read_parameter_value(&op.params.dst);
-                let count = self.read_parameter_value(&op.params.src);
-                let res = dst.rotate_left(count as u32);
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
-
-                self.flags.carry = (dst & 0x8000) != 0;
-                if count == 1 {
-                    self.flags.overflow = false;
+                let count = self.read_parameter_value(&op.params.src) & 0x1F;
+                if count > 0 {
+                    let res = dst.wrapping_shl(count as u32);
+                    self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                    // affected flags: CF, OF for 1 bit shifts, SF & ZF & PF for > 0 bit shifts
+                    self.flags.carry = (res & 0x8000) != 0;
+                    if count == 1 {
+                        self.flags.overflow = if self.flags.carry_val() ^ ((res & 0x8000) >> 15) != 0 {
+                            true
+                        } else {
+                            false
+                        };
+                    }
+                    self.flags.set_sign_u16(res);
+                    self.flags.set_zero_u16(res);
+                    self.flags.set_parity(res);
                 }
-                self.flags.set_sign_u16(res);
-                self.flags.set_zero_u16(res);
-                self.flags.set_parity(res);
-                // XXX aux flag ?
+            }
+            Op::Shld() => {
+                // Double Precision Shift Left
+                // 3 arguments
+                println!("XXX impl {}", op);
             }
             Op::Shr8() => {
                 // Unsigned divide r/m8 by 2, `src` times.
@@ -1475,7 +1491,6 @@ impl CPU {
                 // affected only for 1-bit shifts; otherwise, it is undefined. The SF, ZF, and PF
                 // flags are set according to the result. If the count is 0, the flags are not
                 // affected. For a non-zero count, the AF flag is undefined.
-
                 self.flags.carry = (dst & 1) != 0;
                 if count == 1 {
                     self.flags.overflow = false;

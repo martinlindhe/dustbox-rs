@@ -220,6 +220,12 @@ impl Decoder {
                         op.command = Op::Bt;
                         op.params = self.rm16_r16(op.segment);
                     }
+                    0xA4 =>{
+                        // shld r/m16, r16, imm8
+                        op.command = Op::Shld();
+                        op.params = self.rm16_r16(op.segment);
+                        op.params.src2 = Parameter::Imm8(self.read_u8());
+                    }
                     0xA8 => {
                         // push gs
                         op.command = Op::Push16();
@@ -453,7 +459,7 @@ impl Decoder {
                 op = self.decode(Segment::SS, repeat, lock);
             }
             0x37 => {
-                op.command = Op::Aaa;
+                op.command = Op::Aaa();
             }
             0x38 => {
                 // cmp r/m8, r8
@@ -902,7 +908,7 @@ impl Decoder {
                     1 => Op::Ror8(),
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
-                    4 => Op::Shl8(),
+                    4 => Op::Shl8,
                     5 => Op::Shr8(),
                     7 => Op::Sar8(),
                     _ => {
@@ -921,7 +927,7 @@ impl Decoder {
                     1 => Op::Ror16(),
                     2 => Op::Rcl16(),
                     3 => Op::Rcr16(),
-                    4 => Op::Shl16(),
+                    4 => Op::Shl16,
                     5 => Op::Shr16(),
                     7 => Op::Sar16(),
                     _ => {
@@ -1018,7 +1024,7 @@ impl Decoder {
                     1 => Op::Ror8(),
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
-                    4 => Op::Shl8(),
+                    4 => Op::Shl8,
                     5 => Op::Shr8(),
                     7 => Op::Sar8(),
                     _ => {
@@ -1037,7 +1043,7 @@ impl Decoder {
                     1 => Op::Ror16(),
                     2 => Op::Rcl16(),
                     3 => Op::Rcr16(),
-                    4 => Op::Shl16(),
+                    4 => Op::Shl16,
                     5 => Op::Shr16(),
                     7 => Op::Sar16(),
                     _ => {
@@ -1056,7 +1062,7 @@ impl Decoder {
                     1 => Op::Ror8(),
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
-                    4 => Op::Shl8(),
+                    4 => Op::Shl8,
                     5 => Op::Shr8(),
                     7 => Op::Sar8(),
                     _ => {
@@ -1075,7 +1081,7 @@ impl Decoder {
                     1 => Op::Ror16(),
                     2 => Op::Rcl16(),
                     3 => Op::Rcr16(),
-                    4 => Op::Shl16(),
+                    4 => Op::Shl16,
                     5 => Op::Shr16(),
                     7 => Op::Sar16(),
                     _ => {

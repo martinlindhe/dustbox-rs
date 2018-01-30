@@ -1158,17 +1158,45 @@ fn can_execute_shl8() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB4, 0x34,       // mov ah,0x34
-        0xC0, 0xE4, 0x04, // shl ah,byte 0x4
+        0xB4, 0xFF,         // mov ah,0xff
+        0xC0, 0xE4, 0x01,   // shl ah,byte 0x1
+        0xB4, 0xFF,         // mov ah,0xff
+        0xC0, 0xE4, 0xFF,   // shl ah,byte 0xff
+        0xB4, 0x01,         // mov ah,0x1
+        0xC0, 0xE4, 0x04,   // shl ah,byte 0x4
     ];
     cpu.load_com(&code);
 
     cpu.execute_instruction();
-   assert_eq!(0x34, cpu.r16[AX].hi_u8());
+    cpu.execute_instruction(); // shl
+    assert_eq!(0xFE, cpu.r16[AX].hi_u8());
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.parity);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(true, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instruction();
-    assert_eq!(0x40, cpu.r16[AX].hi_u8());
-    // XXX flags
+    cpu.execute_instruction(); // shl
+    assert_eq!(0x00, cpu.r16[AX].hi_u8());
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+    // flag bug, reported at https://github.com/joncampbell123/dosbox-x/issues/469
+    // win-xp:   flg 3046 = 0b11_0000_0100_0110       xp does not set aux or overflow
+    // dosbox-x: flg 0856 =    0b1000_0101_0110       dosbox-x changes aux flag (bug?), and sets overflow (bug?)
+    //                           O       A
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // shl
+    assert_eq!(0x10, cpu.r16[AX].hi_u8());
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.parity);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
 }
 
 #[test]
@@ -1176,15 +1204,41 @@ fn can_execute_shl16() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB8, 0x34, 0x12, // mov ax,0x1234
-        0xC1, 0xE0, 0x04, // shl ax,byte 0x4
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0xC1, 0xE0, 0x01,   // shl ax,byte 0x1
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0xC1, 0xE0, 0xFF,   // shl ax,byte 0xff
+        0xB8, 0x01, 0x00,   // mov ax,0x1
+        0xC1, 0xE0, 0x04,   // shl ax,byte 0x4
     ];
     cpu.load_com(&code);
 
     cpu.execute_instruction();
+    cpu.execute_instruction(); // shl
+    assert_eq!(0xFFFE, cpu.r16[AX].val);
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.parity);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(true, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+
     cpu.execute_instruction();
-    assert_eq!(0x2340, cpu.r16[AX].val);
-    // XXX flags
+    cpu.execute_instruction(); // shl
+    assert_eq!(0x0000, cpu.r16[AX].val);
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // shl
+    assert_eq!(0x0010, cpu.r16[AX].val);
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.parity);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
 }
 
 #[test]
