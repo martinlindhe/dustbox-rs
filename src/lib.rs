@@ -20,6 +20,8 @@ pub mod gpu;
 pub mod pit;
 pub mod palette;
 
+mod cp437;
+
 mod int10;
 mod int16;
 mod int1a;

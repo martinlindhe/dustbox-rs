@@ -2056,6 +2056,12 @@ impl CPU {
                  self.get_offset());
         */
         match port {
+            // PORT 0000-001F - DMA 1 - FIRST DIRECT MEMORY ACCESS CONTROLLER (8237)
+            0x0002 => {
+                // DMA channel 1	current address		byte  0, then byte 1
+                println!("XXX fixme in_port read DMA channel 1 current address");
+                0
+            }
             0x0040 => self.pit.counter0.read_next_part(),
             0x0041 => self.pit.counter1.read_next_part(),
             0x0042 => self.pit.counter2.read_next_part(),

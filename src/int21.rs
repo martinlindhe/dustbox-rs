@@ -1,6 +1,7 @@
 use time;
 
 use cpu::CPU;
+use cp437;
 use register::{AX, BX, CX, DX, DS, ES};
 
 // dos related interrupts
@@ -9,10 +10,12 @@ pub fn handle(cpu: &mut CPU) {
         0x02 => {
             // DOS 1+ - WRITE CHARACTER TO STANDARD OUTPUT
             // DL = character to write
+            let dl = cpu.r16[DX].lo_u8();
+            print!("{}", cp437::u8_as_char(dl));
             // Return:
             // AL = last character output (despite the official docs which state
             // nothing is returned) (at least DOS 2.1-7.0)
-            println!("XXX DOS 1+ - WRITE CHARACTER TO STANDARD OUTPUT. dl = {:02X}", cpu.r16[DX].lo_u8());
+            cpu.r16[AX].set_lo(dl);
         }
         0x06 => {
             // DOS 1+ - DIRECT CONSOLE OUTPUT
@@ -22,16 +25,14 @@ pub fn handle(cpu: &mut CPU) {
             // Notes: Does not check ^C/^Break. Writes to standard output,
             // which is always the screen under DOS 1.x, but may be redirected
             // under DOS 2+
-            let b = cpu.r16[DX].lo_u8();
-            if b != 0xFF {
-                print!("{}", b as char);
-            } else {
-                println!("XXX character out: {:02X}", b);
+            let dl = cpu.r16[DX].lo_u8();
+            if dl != 0xFF {
+                print!("{}", cp437::u8_as_char(dl));
             }
             // Return:
             // AL = character output (despite official docs which
             // state nothing is returned) (at least DOS 2.1-7.0)
-            cpu.r16[AX].set_lo(b);
+            cpu.r16[AX].set_lo(dl);
         }
         0x07 => {
             // DOS 1+ - DIRECT CHARACTER INPUT, WITHOUT ECHO
@@ -57,13 +58,12 @@ pub fn handle(cpu: &mut CPU) {
                 let b = cpu.mmu.read_u8(
                     cpu.sreg16[DS],
                     cpu.r16[DX].val+count
-                ) as char;
-
+                );
                 count += 1;
-                if b == '$' {
+                if b as char == '$' {
                     break;
                 }
-                print!("{}", b as char);
+                print!("{}", cp437::u8_as_char(b));
             }
             cpu.r16[AX].set_lo(b'$');
         }

@@ -83,8 +83,6 @@ fn demo_512() {
         "../dos-software-decoding/demo-512/bmatch/bmatch.com",
         "../dos-software-decoding/demo-512/callnow/callnow.com",
         "../dos-software-decoding/demo-512/dna/dna.com",
-        "../dos-software-decoding/demo-512/egghead/egghead.com",
-        "../dos-software-decoding/demo-512/entry/entry.com",
         "../dos-software-decoding/demo-512/fire/fire.com",
         "../dos-software-decoding/demo-512/jive/jive.com",
         "../dos-software-decoding/demo-512/jomppa/jomppa.com",
@@ -94,8 +92,6 @@ fn demo_512() {
         "../dos-software-decoding/demo-512/madness/madness.com",
         "../dos-software-decoding/demo-512/mistake/mistake.com",
         "../dos-software-decoding/demo-512/morales/morales.com",
-        "../dos-software-decoding/demo-512/panyo/panyo.com",
-        "../dos-software-decoding/demo-512/phantas/phantas.com",
         "../dos-software-decoding/demo-512/skylight/skylight.com",
         // "../dos-software-decoding/new/stars.exe/stars.exe", // XXX exe file
         "../dos-software-decoding/demo-512/sun/sun.com",
