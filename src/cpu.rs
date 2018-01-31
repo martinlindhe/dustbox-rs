@@ -352,11 +352,7 @@ impl CPU {
                 // Bit Test
                 let bit_base = self.read_parameter_value(&op.params.dst);
                 let bit_offset = self.read_parameter_value(&op.params.src);
-                self.flags.carry = if bit_base & (1 << (bit_offset & 15)) != 0 {
-                    true
-                } else {
-                    false
-                };
+                self.flags.carry = bit_base & (1 << (bit_offset & 15)) != 0;
             }
             Op::Bound() => {
                 println!("XXX impl {}", op);
@@ -1099,41 +1095,41 @@ impl CPU {
                 let data = self.flags.u16();
                 self.push16(data);
             }
-            Op::Rcl8() => {
+            Op::Rcl8 => {
+                // Rotate 9 bits (CF, r/m8) left imm8 times.
                 // two arguments
-                // rotate 9 bits (CF, `src`) times
-                let mut res = self.read_parameter_value(&op.params.dst);
-                let mut count = self.read_parameter_value(&op.params.src);
-
-                while count > 0 {
-                    let c = if self.flags.carry {
-                        1
+                let op1 = self.read_parameter_value(&op.params.dst) as u8;
+                let count = (self.read_parameter_value(&op.params.src) & 0x1F) % 9;
+                if count > 0 {
+                    let cf = self.flags.carry_val() as u8;
+                    let res = if count == 1 {
+                        (op1 << 1) | cf
                     } else {
-                        0
+                        (op1 << count) | (cf << (count - 1)) | (op1 >> (9 - count))
                     };
-                    res = (res << 1) | c;
-	                self.flags.set_carry_u8(res);
-                    count -= 1;
+                    self.write_parameter_u8(&op.params.dst, res as u8);
+                    self.flags.carry = (op1 >> (8 - count)) & 1 != 0;
+                    self.flags.overflow = self.flags.carry_val() as u8 ^ (op1 >> 7) != 0;
                 }
-                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
-            Op::Rcl16() => {
+            Op::Rcl16 => {
+                // Rotate 9 bits (CF, r/m8) left imm8 times.
                 // two arguments
-                // rotate 9 bits (CF, `src`) times
-                let mut res = self.read_parameter_value(&op.params.dst);
-                let mut count = self.read_parameter_value(&op.params.src);
-
-                while count > 0 {
-                    let c = if self.flags.carry {
-                        1
+                let op1 = self.read_parameter_value(&op.params.dst) as u16;
+                let count = (self.read_parameter_value(&op.params.src) & 0x1F) % 17;
+                if count > 0 {
+                    let cf = self.flags.carry_val() as u16;
+                    let res = if count == 1 {
+                        (op1 << 1) | cf
+                    } else if count == 16 {
+                        (cf << 15) | (op1 >> 1)
                     } else {
-                        0
+                        (op1 << count) | (cf << (count - 1)) | (op1 >> (17 - count))
                     };
-                    res = (res << 1) | c;
-	                self.flags.set_carry_u16(res);
-                    count -= 1;
+                    self.write_parameter_u16(op.segment, &op.params.dst, res as u16);
+                    self.flags.carry = (op1 >> (16 - count)) & 1 != 0;
+                    self.flags.overflow = self.flags.carry_val() as u16 ^ (op1 >> 15) != 0;
                 }
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Rcr8() => {
                 // two arguments
@@ -1204,17 +1200,9 @@ impl CPU {
                 let bit0 = res & 1;
                 let bit7 = (res >> 7) & 1;
                 if count == 1 {
-                    self.flags.overflow = if bit0 ^ bit7 != 0 {
-                        true
-                    } else {
-                        false
-                    };
+                    self.flags.overflow = bit0 ^ bit7 != 0;
                 }
-                self.flags.carry = if bit0 != 0 {
-                    true
-                } else {
-                    false
-                };
+                self.flags.carry = bit0 != 0;
             }
             Op::Rol16 => {
                 // Rotate 16 bits of 'dst' left for 'src' times.
@@ -1226,17 +1214,9 @@ impl CPU {
                 let bit0 = res & 1;
                 let bit15 = (res >> 15) & 1;
                 if count == 1 {
-                    self.flags.overflow = if bit0 ^ bit15 != 0 {
-                        true
-                    } else {
-                        false
-                    };
+                    self.flags.overflow = bit0 ^ bit15 != 0;
                 }
-                self.flags.carry = if bit0 != 0 {
-                    true
-                } else {
-                    false
-                };
+                self.flags.carry = bit0 != 0;
             }
             Op::Ror8 => {
                 // Rotate 8 bits of 'dst' right for 'src' times.
@@ -1248,17 +1228,9 @@ impl CPU {
                 let bit6 = (res >> 6) & 1;
                 let bit7 = (res >> 7) & 1;
                 if count == 1 {
-                    self.flags.overflow = if bit6 ^ bit7 != 0 {
-                        true
-                    } else {
-                        false
-                    };
+                    self.flags.overflow = bit6 ^ bit7 != 0;
                 }
-                self.flags.carry = if bit7 != 0 {
-                    true
-                } else {
-                    false
-                };
+                self.flags.carry = bit7 != 0;
             }
             Op::Ror16 => {
                 // Rotate 16 bits of 'dst' right for 'src' times.
@@ -1270,17 +1242,9 @@ impl CPU {
                 let bit14 = (res >> 14) & 1;
                 let bit15 = (res >> 15) & 1;
                 if count == 1 {
-                    self.flags.overflow = if bit14 ^ bit15 != 0 {
-                        true
-                    } else {
-                        false
-                    };
+                    self.flags.overflow = bit14 ^ bit15 != 0;
                 }
-                self.flags.carry = if bit15 != 0 {
-                    true
-                } else {
-                    false
-                };
+                self.flags.carry = bit15 != 0;
             }
             Op::Sahf() => {
                 // Store AH into Flags
@@ -1415,11 +1379,7 @@ impl CPU {
                     self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
                     self.flags.carry = (res & 0x80) != 0;
                     if count == 1 {
-                        self.flags.overflow = if self.flags.carry_val() ^ ((res & 0x80) >> 7) != 0 {
-                            true
-                        } else {
-                            false
-                        };
+                        self.flags.overflow = self.flags.carry_val() ^ ((res & 0x80) >> 7) != 0;
                     }
                     self.flags.set_sign_u8(res);
                     self.flags.set_zero_u8(res);
@@ -1436,11 +1396,7 @@ impl CPU {
                     self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
                     self.flags.carry = (res & 0x8000) != 0;
                     if count == 1 {
-                        self.flags.overflow = if self.flags.carry_val() ^ ((res & 0x8000) >> 15) != 0 {
-                            true
-                        } else {
-                            false
-                        };
+                        self.flags.overflow = self.flags.carry_val() ^ ((res & 0x8000) >> 15) != 0;
                     }
                     self.flags.set_sign_u16(res);
                     self.flags.set_zero_u16(res);
@@ -1461,11 +1417,7 @@ impl CPU {
                     let res = dst.wrapping_shr(count as u32);
                     self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
                     self.flags.carry = (dst.wrapping_shr((count - 1) as u32) & 0x1) != 0;
-                    self.flags.overflow = if dst & 0x80 != 0 {
-                        true
-                    } else {
-                        false
-                    };
+                    self.flags.overflow = dst & 0x80 != 0;
                     self.flags.set_sign_u8(res);
                     self.flags.set_zero_u8(res);
                     self.flags.set_parity(res);
@@ -1479,11 +1431,7 @@ impl CPU {
                     let res = dst.wrapping_shr(count as u32);
                     self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
                     self.flags.carry = (dst.wrapping_shr((count - 1) as u32) & 0x1) != 0;
-                    self.flags.overflow = if dst & 0x8000 != 0 {
-                        true
-                    } else {
-                        false
-                    };
+                    self.flags.overflow = dst & 0x8000 != 0;
                     self.flags.set_sign_u16(res);
                     self.flags.set_zero_u16(res);
                     self.flags.set_parity(res);
@@ -1688,7 +1636,11 @@ impl CPU {
                 }
             }
             RepeatMode::Repne => {
-                panic!("XXX impl repne");
+                println!("XXX verify repne: {}", op);
+                self.r16[CX].val = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                if self.r16[CX].val != 0 && !self.flags.zero {
+                    self.ip = start_ip;
+                }
             }
             _ => {}
         }

@@ -1146,18 +1146,38 @@ fn can_execute_rcl8() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB4, 0x12,       // mov ah,0x12
-        0xC0, 0xD4, 0x04, // rcl ah,byte 0x4
+        0xB4, 0xFE,         // mov ah,0xfe
+        0xF9,               // stc
+        0xC0, 0xD4, 0x01,   // rcl ah,byte 0x1
+        0xB4, 0xFF,         // mov ah,0xff
+        0xF9,               // stc
+        0xC0, 0xD4, 0xFF,   // rcl ah,byte 0xff
+        0xB4, 0x01,         // mov ah,0x1
+        0xF9,               // stc
+        0xC0, 0xD4, 0x04,   // rcl ah,byte 0x4
     ];
     cpu.load_com(&code);
 
     cpu.execute_instruction();
-    assert_eq!(0x12, cpu.r16[AX].hi_u8());
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0xFD, cpu.r16[AX].hi_u8());
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instruction();
-    assert_eq!(0x20,  cpu.r16[AX].hi_u8());
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0xFF, cpu.r16[AX].hi_u8());
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.overflow);
 
-    // XXX flags
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x18, cpu.r16[AX].hi_u8());
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.overflow);
 }
 
 #[test]
@@ -1165,18 +1185,38 @@ fn can_execute_rcl16() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB8, 0x34, 0x12, // mov ax,0x1234
-        0xC1, 0xD0, 0x04, // rcl ax,byte 0x4
+        0xB8, 0xFE, 0xFF,   // mov ax,0xfffe
+        0xF9,               // stc
+        0xC1, 0xD0, 0x01,   // rcl ax,byte 0x1
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0xF9,               // stc
+        0xC1, 0xD0, 0xFF,   // rcl ax,byte 0xff
+        0xB8, 0x01, 0x00,   // mov ax,0x1
+        0xF9,               // stc
+        0xC1, 0xD0, 0x04,   // rcl ax,byte 0x4
     ];
     cpu.load_com(&code);
 
     cpu.execute_instruction();
-    assert_eq!(0x1234, cpu.r16[AX].val);
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0xFFFD, cpu.r16[AX].val);
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instruction();
-    assert_eq!(0x2340,  cpu.r16[AX].val);
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0xFFFF, cpu.r16[AX].val);
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.overflow);
 
-    // XXX flags
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x0018, cpu.r16[AX].val);
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.overflow);
 }
 
 #[test]
