@@ -13,7 +13,7 @@ use cpu::{
 };
 use cpu::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
 use cpu::Segment;
-use mmu::MMU;
+use memory::mmu::MMU;
 
 #[derive(Clone, Default)]
 pub struct Decoder {

@@ -2,8 +2,8 @@ use std::num::Wrapping;
 
 use cpu::CPU;
 use cpu::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES, FS};
-use segment::Segment;
-use mmu::MMU;
+use cpu::segment::Segment;
+use memory::mmu::MMU;
 
 #[test]
 fn can_handle_stack() {

@@ -13,7 +13,7 @@ use image::{ImageBuffer, Rgb};
 
 use tools;
 use cpu::CPU;
-use mmu::MMU;
+use memory::mmu::MMU;
 use gpu::DACPalette;
 
 #[test] #[ignore] // expensive test

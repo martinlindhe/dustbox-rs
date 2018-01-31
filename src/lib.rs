@@ -9,7 +9,6 @@ extern crate time;
 pub mod tools;
 
 pub mod cpu;
-pub mod mmu;
 pub mod memory;
 pub mod gpu;
 pub mod pit;

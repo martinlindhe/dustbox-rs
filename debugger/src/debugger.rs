@@ -9,7 +9,7 @@ use dustbox::cpu::register::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES, FS, GS,
 use dustbox::cpu::flags;
 use dustbox::cpu::segment;
 use dustbox::cpu::decoder::Decoder;
-use dustbox::mmu::MMU;
+use dustbox::memory::mmu::MMU;
 use dustbox::tools;
 
 use breakpoints::Breakpoints;

@@ -10,6 +10,7 @@ use cpu::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
 use cpu::Decoder;
 use cpu::Segment;
 use memory::Memory;
+use memory::mmu::MMU;
 use int10;
 use int16;
 use int1a;
@@ -17,7 +18,6 @@ use int21;
 use int33;
 use gpu::GPU;
 use pit::PIT;
-use mmu::MMU;
 
 #[cfg(test)]
 #[path = "./cpu_test.rs"]
