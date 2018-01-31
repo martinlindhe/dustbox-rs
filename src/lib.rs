@@ -6,16 +6,11 @@ extern crate image;
 extern crate tera;
 extern crate time;
 
-pub mod tools;
-
 pub mod cpu;
 pub mod memory;
 pub mod gpu;
 pub mod pit;
 pub mod codepage;
+pub mod tools;
 
-mod int10;
-mod int16;
-mod int1a;
-mod int21;
-mod int33;
+mod interrupt;

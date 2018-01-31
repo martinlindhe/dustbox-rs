@@ -11,11 +11,7 @@ use cpu::Decoder;
 use cpu::Segment;
 use memory::Memory;
 use memory::mmu::MMU;
-use int10;
-use int16;
-use int1a;
-use int21;
-use int33;
+use interrupt;
 use gpu::GPU;
 use pit::PIT;
 
@@ -2035,17 +2031,17 @@ impl CPU {
                 println!("INT 3 - debugger interrupt. AX={:04X}", self.r16[AX].val);
                 self.fatal_error = true; // stops execution
             }
-            0x10 => int10::handle(self),
-            0x16 => int16::handle(self),
-            0x1A => int1a::handle(self),
+            0x10 => interrupt::int10::handle(self),
+            0x16 => interrupt::int16::handle(self),
+            0x1A => interrupt::int1a::handle(self),
             0x20 => {
                 // DOS 1+ - TERMINATE PROGRAM
                 // NOTE: Windows overloads INT 20
                 println!("INT 20 - Terminating program");
                 self.fatal_error = true; // stops execution
             }
-            0x21 => int21::handle(self),
-            0x33 => int33::handle(self),
+            0x21 => interrupt::int21::handle(self),
+            0x33 => interrupt::int33::handle(self),
             _ => {
                 println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}",
                          int,
