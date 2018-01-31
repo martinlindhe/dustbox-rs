@@ -17,11 +17,22 @@ start:
     ; run a snippet to analyse:
     ; -------------------------
         call clear_flags
-        mov ax,0xfffe
-        clc
-        rcr ax,byte 0x1
+
+        mov ax, 0xffff
+        add ax, 1   ;    0, 3057
 
 
+
+        mov ax, 1
+        add ax, 0xffff ;  0, 3057
+
+
+        mov ax, 0xffff
+        add ax, 0       ; ffff, 3086
+
+
+        mov ax, 0xffff
+        add ax, 0xffff    ; fffe, 3093
 
 
 

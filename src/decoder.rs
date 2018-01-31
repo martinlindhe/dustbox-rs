@@ -88,33 +88,33 @@ impl Decoder {
         match b {
             0x00 => {
                 // add r/m8, r8
-                op.command = Op::Add8();
+                op.command = Op::Add8;
                 op.params = self.rm8_r8(op.segment);
             }
             0x01 => {
                 // add r/m16, r16
-                op.command = Op::Add16();
+                op.command = Op::Add16;
                 op.params = self.rm16_r16(op.segment);
             }
             0x02 => {
                 // add r8, r/m8
-                op.command = Op::Add8();
+                op.command = Op::Add8;
                 op.params = self.r8_rm8(op.segment);
             }
             0x03 => {
                 // add r16, r/m16
-                op.command = Op::Add16();
+                op.command = Op::Add16;
                 op.params = self.r16_rm16(op.segment);
             }
             0x04 => {
                 // add AL, imm8
-                op.command = Op::Add8();
+                op.command = Op::Add8;
                 op.params.dst = Parameter::Reg8(AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
             0x05 => {
                 // add AX, imm16
-                op.command = Op::Add16();
+                op.command = Op::Add16;
                 op.params.dst = Parameter::Reg16(AX);
                 op.params.src = Parameter::Imm16(self.read_u16());
             }
@@ -670,29 +670,29 @@ impl Decoder {
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x80 => {
-                // arithmetic 8-bit
+                // <arithmetic> r/m8, imm8
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8());
                 match x.reg {
-                    0 => op.command = Op::Add8(), // add r/m8, imm8
-                    1 => op.command = Op::Or8(), // or r/m8, imm8
-                    2 => op.command = Op::Adc8(), // adc r/m8, imm8
-                    3 => op.command = Op::Sbb8(), // sbb r/m8, imm8
-                    4 => op.command = Op::And8(), // and r/m8, imm8
-                    5 => op.command = Op::Sub8(), // sub r/m8, imm8
-                    6 => op.command = Op::Xor8(), // xor r/m8, imm8
-                    7 => op.command = Op::Cmp8(), // cmp r/m8, imm8
+                    0 => op.command = Op::Add8,
+                    1 => op.command = Op::Or8(),
+                    2 => op.command = Op::Adc8(),
+                    3 => op.command = Op::Sbb8(),
+                    4 => op.command = Op::And8(),
+                    5 => op.command = Op::Sub8(),
+                    6 => op.command = Op::Xor8(),
+                    7 => op.command = Op::Cmp8(),
                     _ => {}
                 }
             }
             0x81 => {
-                // arithmetic 16-bit
+                // <arithmetic> r/m16, imm16
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 op.params.src = Parameter::Imm16(self.read_u16());
                 match x.reg {
-                    0 => op.command = Op::Add16(),
+                    0 => op.command = Op::Add16,
                     1 => op.command = Op::Or16(),
                     2 => op.command = Op::Adc16(),
                     3 => op.command = Op::Sbb16(),
@@ -705,12 +705,12 @@ impl Decoder {
             }
             // 0x82 is unrecognized by objdump & ndisasm, but alias to 0x80 on pre Pentium 4:s according to ref.x86asm.net
             0x83 => {
-                // arithmetic 16-bit with signed 8-bit value
+                // <arithmetic> r/m16, imm8
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 op.params.src = Parameter::ImmS8(self.read_s8());
                 match x.reg {
-                    0 => op.command = Op::Add16(),
+                    0 => op.command = Op::Add16,
                     1 => op.command = Op::Or16(),
                     2 => op.command = Op::Adc16(),
                     3 => op.command = Op::Sbb16(),
@@ -732,12 +732,12 @@ impl Decoder {
                 op.params = self.rm16_r16(op.segment);
             }
             0x86 => {
-                // xchg r/m8, r8 | xchg r8, r/m8
+                // xchg r/m8, r8
                 op.command = Op::Xchg8();
                 op.params = self.rm8_r8(op.segment);
             }
             0x87 => {
-                // xchg r/m16, r16 | xchg r16, r/m16
+                // xchg r/m16, r16
                 op.command = Op::Xchg16();
                 op.params = self.rm16_r16(op.segment);
             }

@@ -255,37 +255,31 @@ impl CPU {
                 self.flags.set_carry_u16(res);
                 self.flags.set_parity(res);
             }
-            Op::Add8() => {
+            Op::Add8 => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.params.src);
-                let dst = self.read_parameter_value(&op.params.dst);
-                let res = (Wrapping(dst) + Wrapping(src)).0;
-
-                // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
-                self.flags.set_overflow_add_u8(res, src, dst);
-                self.flags.set_sign_u8(res);
-                self.flags.set_zero_u8(res);
-                self.flags.set_auxiliary(res, src, dst);
+                let src = self.read_parameter_value(&op.params.src) as u8;
+                let dst = self.read_parameter_value(&op.params.dst) as u8;
+                let res = src as usize + dst as usize;
                 self.flags.set_carry_u8(res);
                 self.flags.set_parity(res);
-
-                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
+                self.flags.set_auxiliary(res, src as usize, dst as usize);
+                self.flags.set_zero_u8(res);
+                self.flags.set_sign_u8(res);
+                self.flags.set_overflow_add_u8(res, src as usize, dst as usize);
+                self.write_parameter_u8(&op.params.dst, res as u8);
             }
-            Op::Add16() => {
+            Op::Add16 => {
                 // two parameters (dst=reg)
-                let src = self.read_parameter_value(&op.params.src);
-                let dst = self.read_parameter_value(&op.params.dst);
-                let res = (Wrapping(dst) + Wrapping(src)).0;
-
-                // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
-                self.flags.set_overflow_add_u16(res, src, dst);
-                self.flags.set_sign_u16(res);
-                self.flags.set_zero_u16(res);
-                self.flags.set_auxiliary(res, src, dst);
+                let src = self.read_parameter_value(&op.params.src) as u16;
+                let dst = self.read_parameter_value(&op.params.dst) as u16;
+                let res = src as usize + dst as usize;
                 self.flags.set_carry_u16(res);
                 self.flags.set_parity(res);
-
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                self.flags.set_auxiliary(res, src as usize, dst as usize);
+                self.flags.set_zero_u16(res);
+                self.flags.set_sign_u16(res);
+                self.flags.set_overflow_add_u16(res, src as usize, dst as usize);
+                self.write_parameter_u16(op.segment, &op.params.dst, res as u16);
             }
             Op::And8() => {
                 // two parameters (dst=reg)

@@ -32,6 +32,118 @@ fn can_handle_stack() {
 }
 
 #[test]
+fn can_execute_add8() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xB4, 0xFF,         // mov ah,0xff
+        0x80, 0xC4, 0x01,   // add ah,0x1
+
+        0xB4, 0x01,         // mov ah,0x1
+        0x80, 0xC4, 0xFF,   // add ah,0xff
+
+        0xB4, 0xFF,         // mov ah,0xff
+        0x80, 0xC4, 0x00,   // add ah,0x0
+
+        0xB4, 0xFF,         // mov ah,0xff
+        0x80, 0xC4, 0xFF,   // add ah,0xff
+    ];
+    cpu.load_com(&code);
+
+    execute_instructions(&mut cpu, 2);
+    assert_eq!(0x00, cpu.r16[AX].hi_u8());
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+
+    execute_instructions(&mut cpu, 2);
+    assert_eq!(0x00, cpu.r16[AX].hi_u8());
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+
+    execute_instructions(&mut cpu, 2);
+    assert_eq!(0xFF, cpu.r16[AX].hi_u8());
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(false, cpu.flags.auxiliary_carry);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(true, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+
+    execute_instructions(&mut cpu, 2);
+    assert_eq!(0xFE, cpu.r16[AX].hi_u8());
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(true, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+}
+
+#[test]
+fn can_execute_add16() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0x83, 0xC0, 0x01,   // add ax,byte +0x1
+
+        0xB8, 0x01, 0x00,   // mov ax,0x1
+        0x83, 0xC0, 0xFF,   // add ax,byte -0x1
+
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0x83, 0xC0, 0x00,   // add ax,byte +0x0
+
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0x83, 0xC0, 0xFF,   // add ax,byte -0x1
+    ];
+    cpu.load_com(&code);
+
+    execute_instructions(&mut cpu, 2);
+    assert_eq!(0x0000, cpu.r16[AX].val);
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+
+    execute_instructions(&mut cpu, 2);
+    assert_eq!(0x0000, cpu.r16[AX].val);
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.zero);
+    assert_eq!(false, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+
+    execute_instructions(&mut cpu, 2);
+    assert_eq!(0xFFFF, cpu.r16[AX].val);
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.parity);
+    assert_eq!(false, cpu.flags.auxiliary_carry);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(true, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+
+    execute_instructions(&mut cpu, 2);
+    assert_eq!(0xFFFE, cpu.r16[AX].val);
+    assert_eq!(true, cpu.flags.carry);
+    assert_eq!(false, cpu.flags.parity);
+    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(true, cpu.flags.sign);
+    assert_eq!(false, cpu.flags.overflow);
+}
+
+#[test]
 fn can_execute_mov_r8() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
