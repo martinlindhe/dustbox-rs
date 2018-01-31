@@ -245,7 +245,7 @@ impl Decoder {
                     }
                     0xAF => {
                         // imul r16, r/m16
-                        op.command = Op::Imul16();
+                        op.command = Op::Imul16;
                         op.params = self.r16_rm16(op.segment);
                     }
                     0xB6 => {
@@ -563,7 +563,7 @@ impl Decoder {
             }
             0x69 => {
                 // imul r16, r/m16, imm16
-                op.command = Op::Imul16();
+                op.command = Op::Imul16;
                 op.params = self.r16_rm16(op.segment);
                 op.params.src2 = Parameter::Imm16(self.read_u16());
             }
@@ -574,7 +574,7 @@ impl Decoder {
             }
             0x6B => {
                 // imul r16, r/m16, imm8
-                op.command = Op::Imul16();
+                op.command = Op::Imul16;
                 op.params = self.r16_rm16(op.segment);
                 op.params.src2 = Parameter::Imm8(self.read_u8());
             }
@@ -1265,13 +1265,10 @@ impl Decoder {
                     2 => op.command = Op::Not8(),
                     3 => op.command = Op::Neg8(),
                     4 => op.command = Op::Mul8(),
-                    5 => op.command = Op::Imul8(),
+                    5 => op.command = Op::Imul8,
                     6 => op.command = Op::Div8(),
                     7 => op.command = Op::Idiv8,
-                    _ => {
-                        let invalid = InvalidOp::Reg(x.reg);
-                        op.command = Op::Invalid(invalid);
-                    }
+                    _ => unreachable!(),
                 }
             }
             0xF7 => {
@@ -1287,13 +1284,10 @@ impl Decoder {
                     2 => op.command = Op::Not16(),
                     3 => op.command = Op::Neg16(),
                     4 => op.command = Op::Mul16(),
-                    5 => op.command = Op::Imul16(),
+                    5 => op.command = Op::Imul16,
                     6 => op.command = Op::Div16(),
                     7 => op.command = Op::Idiv16,
-                    _ => {
-                        let invalid = InvalidOp::Reg(x.reg);
-                        op.command = Op::Invalid(invalid);
-                    }
+                    _ => unreachable!(),
                 }
             }
             0xF8 => {

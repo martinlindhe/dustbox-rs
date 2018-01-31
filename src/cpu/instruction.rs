@@ -232,8 +232,8 @@ pub enum Op {
     Hlt(),
     Idiv8,
     Idiv16,
-    Imul8(),
-    Imul16(),
+    Imul8,
+    Imul16,
     In8(),
     In16(),
     Inc8(),
@@ -394,7 +394,7 @@ fn r8(reg: u8) -> &'static str {
         5 => "ch",
         6 => "dh",
         7 => "bh",
-        _ => "?",
+        _ => unreachable!(),
     }
 }
 
@@ -408,7 +408,7 @@ fn r16(reg: u8) -> &'static str {
         5 => "bp",
         6 => "si",
         7 => "di",
-        _ => "?",
+        _ => unreachable!(),
     }
 }
 
@@ -420,7 +420,7 @@ fn sr16(reg: u8) -> &'static str {
         3 => "ds",
         4 => "fs",
         5 => "gs",
-        _ => "?",
+        _ => unreachable!(),
     }
 }
 
@@ -435,7 +435,7 @@ fn amode(reg: u8) -> &'static str {
         5 => "di",
         6 => "bp",
         7 => "bx",
-        _ => "?",
+        _ => unreachable!(),
     }
 }
 

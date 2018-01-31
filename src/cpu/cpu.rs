@@ -539,7 +539,7 @@ impl CPU {
                 self.r16[AX].val = quo as u16;
                 self.r16[DX].val = rem as u16;
             }
-            Op::Imul8() => {
+            Op::Imul8 => {
                 // NOTE: only 1-parameter imul8 instruction exists
                 // IMUL r/m8               : AX← AL ∗ r/m byte.
                 let dst = self.read_parameter_value(&op.params.dst) as i8;
@@ -555,7 +555,7 @@ impl CPU {
                     self.flags.overflow = false;
                 }
             }
-            Op::Imul16() => {
+            Op::Imul16 => {
                 match op.params.count() {
                     1 => {
                         // IMUL r/m16               : DX:AX ← AX ∗ r/m word.
