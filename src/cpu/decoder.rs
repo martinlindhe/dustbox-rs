@@ -1,5 +1,7 @@
-use mmu::MMU;
-use instruction::{
+use std::rc::Rc;
+use std::cell::RefCell;
+
+use cpu::{
     Instruction,
     InstructionInfo,
     ParameterPair,
@@ -9,10 +11,9 @@ use instruction::{
     InvalidOp,
     RepeatMode,
 };
-use segment::Segment;
-use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
-use std::rc::Rc;
-use std::cell::RefCell;
+use cpu::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
+use cpu::Segment;
+use mmu::MMU;
 
 #[derive(Clone, Default)]
 pub struct Decoder {

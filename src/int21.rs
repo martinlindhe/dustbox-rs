@@ -1,8 +1,8 @@
 use time;
 
 use cpu::CPU;
+use cpu::register::{AX, BX, CX, DX, DS, ES};
 use cp437;
-use register::{AX, BX, CX, DX, DS, ES};
 
 // dos related interrupts
 pub fn handle(cpu: &mut CPU) {

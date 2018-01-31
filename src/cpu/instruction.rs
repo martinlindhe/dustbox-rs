@@ -1,12 +1,7 @@
 use std::fmt;
 use std::num::Wrapping;
 
-use segment::Segment;
-
-// translates a segment:offset address into a flat address
-pub fn seg_offs_as_flat(segment: u16, offset: u16) -> usize {
-    (segment as usize * 16) + offset as usize
-}
+use cpu::Segment;
 
 #[derive(Copy, Clone, Debug)]
 pub enum RepeatMode {

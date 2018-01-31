@@ -3,11 +3,13 @@
 use std::{mem, u8};
 use std::num::Wrapping;
 
-use register::Register16;
-use flags::Flags;
+use cpu::Register16;
+use cpu::Flags;
+use cpu::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm, InvalidOp, RepeatMode};
+use cpu::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
+use cpu::Decoder;
+use cpu::Segment;
 use memory::Memory;
-use segment::Segment;
-use instruction::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm, InvalidOp, RepeatMode};
 use int10;
 use int16;
 use int1a;
@@ -15,8 +17,6 @@ use int21;
 use int33;
 use gpu::GPU;
 use pit::PIT;
-use register::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
-use decoder::Decoder;
 use mmu::MMU;
 
 #[cfg(test)]

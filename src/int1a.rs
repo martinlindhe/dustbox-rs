@@ -1,7 +1,7 @@
 use time;
 
 use cpu::CPU;
-use register::{AX, BX, CX, DX, AL, ES};
+use cpu::register::{AX, BX, CX, DX, AL, ES};
 
 // time related interrupts
 pub fn handle(cpu: &mut CPU) {

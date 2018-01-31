@@ -1,5 +1,5 @@
 use cpu::CPU;
-use register::AX;
+use cpu::register::AX;
 
 // keyboard related interrupts
 pub fn handle(cpu: &mut CPU) {

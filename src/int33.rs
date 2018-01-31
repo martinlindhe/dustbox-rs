@@ -1,5 +1,5 @@
 use cpu::CPU;
-use register::{CS, AX};
+use cpu::register::{CS, AX};
 
 // mouse related interrupts
 pub fn handle(cpu: &mut CPU) {

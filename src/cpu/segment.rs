@@ -1,7 +1,5 @@
 use std::fmt;
 
-use register;
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Segment {
     Default,
@@ -30,4 +28,9 @@ impl Segment {
             Segment::SS => "ss",
         }
     }
+}
+
+// translates a segment:offset address into a flat address
+pub fn as_flat_address(segment: u16, offset: u16) -> usize {
+    (segment as usize * 16) + offset as usize
 }

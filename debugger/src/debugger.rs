@@ -4,13 +4,13 @@ use std::io::Error as IoError;
 use std::process::exit;
 
 use dustbox::cpu::CPU;
-use dustbox::register;
-use dustbox::register::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES, FS, GS, SS};
-use dustbox::flags;
-use dustbox::tools;
-use dustbox::instruction::seg_offs_as_flat;
+use dustbox::cpu::register;
+use dustbox::cpu::register::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES, FS, GS, SS};
+use dustbox::cpu::flags;
+use dustbox::cpu::segment;
+use dustbox::cpu::decoder::Decoder;
 use dustbox::mmu::MMU;
-use dustbox::decoder::Decoder;
+use dustbox::tools;
 
 use breakpoints::Breakpoints;
 use memory_breakpoints::MemoryBreakpoints;
@@ -462,7 +462,7 @@ impl Debugger {
                 match self.parse_register_hex_string(&x[0..pos]) {
                     Ok(segment) => {
                         match self.parse_register_hex_string(&x[pos+1..]) {
-                            Ok(offset) => Ok(seg_offs_as_flat(segment as u16, offset as u16)),
+                            Ok(offset) => Ok(segment::as_flat_address(segment as u16, offset as u16)),
                             Err(v) => Err(v),
                         }
                     },

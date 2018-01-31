@@ -17,11 +17,9 @@ use gdk_pixbuf;
 use cairo;
 
 use dustbox::memory::Memory;
-use dustbox::flags;
 use dustbox::cpu::CPU;
-use dustbox::register;
-use dustbox::register::{AX, BP, BX, CS, CX, DI, DS, DX, ES, FS, GS, SI, SP, SS};
-use dustbox::instruction::seg_offs_as_flat;
+use dustbox::cpu;
+use dustbox::cpu::register::{AX, BP, BX, CS, CX, DI, DS, DX, ES, FS, GS, SI, SP, SS};
 use dustbox::palette::DACPalette;
 
 use debugger;

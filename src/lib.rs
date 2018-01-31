@@ -9,13 +9,8 @@ extern crate time;
 pub mod tools;
 
 pub mod cpu;
-pub mod decoder;
-pub mod instruction;
-pub mod register;
-pub mod flags;
 pub mod mmu;
 pub mod memory;
-pub mod segment;
 pub mod gpu;
 pub mod pit;
 pub mod palette;
