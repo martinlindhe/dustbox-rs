@@ -18,21 +18,35 @@ start:
     ; -------------------------
         call clear_flags
 
-        mov ax, 0xffff
-        add ax, 1   ;    0, 3057
+
+call clear_flags
+
+        mov ax,0x0
+        mov bl,0x2
+        idiv bl
+;  0000
 
 
 
-        mov ax, 1
-        add ax, 0xffff ;  0, 3057
+
+call clear_flags
+
+        mov ax,0xffff
+        mov bl,0x2
+        idiv bl
+; ff00
 
 
-        mov ax, 0xffff
-        add ax, 0       ; ffff, 3086
 
 
-        mov ax, 0xffff
-        add ax, 0xffff    ; fffe, 3093
+call clear_flags
+
+        mov ax,0x1
+        mov bl,0xf
+        idiv bl
+; 0100
+
+
 
 
 

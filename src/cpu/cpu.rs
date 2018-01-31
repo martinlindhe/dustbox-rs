@@ -511,36 +511,33 @@ impl CPU {
                 // println!("XXX impl {}", op);
                 // self.fatal_error = true;
             }
-            Op::Idiv8() => {
-                let dst = self.r16[AX].val as usize; // AX
-                let src = self.read_parameter_value(&op.params.dst);
-                if src == 0 {
+            Op::Idiv8 => {
+                let dividend = self.r16[AX].val as i16; // AX
+                let op1 = self.read_parameter_value(&op.params.dst) as i16;
+                if op1 == 0 {
                     self.exception(Exception::DIV0, 0);
                 }
-                let quo = (Wrapping(dst) / Wrapping(src)).0;
-                let rem = (Wrapping(dst) % Wrapping(src)).0;
-                if dst > 0xFF {
+                let quo = dividend / op1;
+                let rem = dividend % op1;
+                if dividend > 0xFF {
                     self.exception(Exception::DIV0, 0);
-                } else {
-                    self.r16[AX].set_lo((quo & 0xFF) as u8);
-                    self.r16[AX].set_hi((rem & 0xFF) as u8);
                 }
+                self.r16[AX].set_lo((quo & 0xFF) as u8);
+                self.r16[AX].set_hi((rem & 0xFF) as u8);
             }
-            Op::Idiv16() => {
-                let dst = ((self.r16[DX].val as usize) << 16) | self.r16[AX].val as usize; // DX:AX
-                let src = self.read_parameter_value(&op.params.dst);
-                if src == 0 {
+            Op::Idiv16 => {
+                let dividend = (((self.r16[DX].val as i32) << 16) | self.r16[AX].val as i32) as isize; // DX:AX
+                let op1 = (self.read_parameter_value(&op.params.dst) as i16) as isize;
+                if op1 == 0 {
                     self.exception(Exception::DIV0, 0);
                 }
-                let quo = (Wrapping(dst) / Wrapping(src)).0;
-                let rem = (Wrapping(dst) % Wrapping(src)).0;
-
-                if quo as i32 != i32::from(quo as i16) {
+                let quo = dividend / op1;
+                let rem = dividend % op1;
+                if quo != quo & 0xFFFF {
                     self.exception(Exception::DIV0, 0);
-                } else {
-                    self.r16[AX].val = (quo & 0xFFFF) as u16;
-                    self.r16[DX].val = (rem & 0xFFFF) as u16;
                 }
+                self.r16[AX].val = quo as u16;
+                self.r16[DX].val = rem as u16;
             }
             Op::Imul8() => {
                 // NOTE: only 1-parameter imul8 instruction exists
@@ -1645,7 +1642,8 @@ impl CPU {
         }
 
         if op.lock {
-            println!("XXX FIXME: instruction has LOCK prefix: {}", op);
+            // TODO implement lock
+            // println!("XXX FIXME: instruction has LOCK prefix: {}", op);
         }
     }
 

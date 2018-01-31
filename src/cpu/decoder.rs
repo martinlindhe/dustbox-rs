@@ -1267,7 +1267,7 @@ impl Decoder {
                     4 => op.command = Op::Mul8(),
                     5 => op.command = Op::Imul8(),
                     6 => op.command = Op::Div8(),
-                    7 => op.command = Op::Idiv8(),
+                    7 => op.command = Op::Idiv8,
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);
@@ -1289,7 +1289,7 @@ impl Decoder {
                     4 => op.command = Op::Mul16(),
                     5 => op.command = Op::Imul16(),
                     6 => op.command = Op::Div16(),
-                    7 => op.command = Op::Idiv16(),
+                    7 => op.command = Op::Idiv16,
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);

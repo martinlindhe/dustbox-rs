@@ -445,6 +445,9 @@ fn can_execute_rep_movsb() {
 
     // copy first 4 bytes from DS:0x100 to ES:0x200
     execute_instructions(&mut cpu, 4);
+    cpu.execute_instruction(); // rep movsb
+    cpu.execute_instruction(); // rep movsb
+    cpu.execute_instruction(); // rep movsb
     assert_eq!(0x0, cpu.r16[CX].val);
     let min = 0x100;
     let max = min + 4;
@@ -712,15 +715,31 @@ fn can_execute_idiv8() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB8, 0x07, 0x00, // mov ax,0x7
-        0xB3, 0x03,       // mov bl,0x3
-        0xF6, 0xFB,       // idiv bl
+        0xB8, 0x00, 0x00,   // mov ax,0x0
+        0xB3, 0x02,         // mov bl,0x2
+        0xF6, 0xFB,         // idiv bl     ; 0 / 2
+
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0xB3, 0x02,         // mov bl,0x2
+        0xF6, 0xFB,         // idiv bl     ; 0xffff / 2
+
+        0xB8, 0x01, 0x00,   // mov ax,0x1
+        0xB3, 0x0F,         // mov bl,0xf
+        0xF6, 0xFB,         // idiv bl     ; 0x1 / 0xf
     ];
     cpu.load_com(&code);
 
     execute_instructions(&mut cpu, 3);
-    assert_eq!(0x02, cpu.r16[AX].lo_u8()); // quotient
-    assert_eq!(0x01, cpu.r16[AX].hi_u8()); // remainder
+    assert_eq!(0x00, cpu.r16[AX].lo_u8()); // quotient
+    assert_eq!(0x00, cpu.r16[AX].hi_u8()); // remainder
+
+    execute_instructions(&mut cpu, 3);
+    assert_eq!(0x00, cpu.r16[AX].lo_u8());
+    assert_eq!(0xFF, cpu.r16[AX].hi_u8());
+
+    execute_instructions(&mut cpu, 3);
+    assert_eq!(0x00, cpu.r16[AX].lo_u8());
+    assert_eq!(0x01, cpu.r16[AX].hi_u8());
 }
 
 #[test]
@@ -728,16 +747,43 @@ fn can_execute_idiv16() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xBA, 0x00, 0x00, // mov dx,0x0
-        0xB8, 0x07, 0x00, // mov ax,0x7
-        0xBB, 0x03, 0x00, // mov bx,0x3
-        0xF7, 0xFB,       // idiv bx (dx:ax / bx)
+        0xBA, 0xFF, 0xFF,   // mov dx,0xffff
+        0xB8, 0x00, 0x00,   // mov ax,0x0
+        0xBB, 0x02, 0x00,   // mov bx,0x2
+        0xF7, 0xFB,         // idiv bx          ; 0xffff0000 / 2
+
+        0xBA, 0x00, 0x00,   // mov dx,0x0
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0xBB, 0x02, 0x00,   // mov bx,0x2
+        0xF7, 0xFB,         // idiv bx          ; 0xffff / 2
+
+        0xBA, 0x00, 0x00,   // mov dx,0x0
+        0xB8, 0x01, 0x00,   // mov ax,0x1
+        0xBB, 0x0F, 0x00,   // mov bx,0xf
+        0xF7, 0xFB,         // idiv bx          ; 0x1 / 0xf
+
+        0xBA, 0x00, 0x00,   // mov dx,0x0
+        0xB8, 0x01, 0x00,   // mov ax,0x1
+        0xBB, 0xFF, 0xFF,   // mov bx,0xffff
+        0xF7, 0xFB,         // idiv bx          ; 0x1 / 0xffff
     ];
     cpu.load_com(&code);
 
     execute_instructions(&mut cpu, 4);
-    assert_eq!(0x0002, cpu.r16[AX].val); // quotient
-    assert_eq!(0x0001, cpu.r16[DX].val); // remainder
+    assert_eq!(0x8000, cpu.r16[AX].val); // quotient
+    assert_eq!(0x0000, cpu.r16[DX].val); // remainder
+
+    execute_instructions(&mut cpu, 4);
+    assert_eq!(0x7FFF, cpu.r16[AX].val);
+    assert_eq!(0x0001, cpu.r16[DX].val);
+
+    execute_instructions(&mut cpu, 4);
+    assert_eq!(0x0000, cpu.r16[AX].val);
+    assert_eq!(0x0001, cpu.r16[DX].val);
+
+    execute_instructions(&mut cpu, 4);
+    assert_eq!(0xFFFF, cpu.r16[AX].val);
+    assert_eq!(0x0000, cpu.r16[DX].val);
 }
 
 #[test]
