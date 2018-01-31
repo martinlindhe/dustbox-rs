@@ -66,17 +66,17 @@ impl Decoder {
     pub fn get_instruction(&mut self, seg: Segment, iseg: u16, ioffset: u16) -> Instruction {
         self.c_seg = iseg;
         self.c_offset = ioffset;
-        self.decode(seg, false)
+        self.decode(seg)
     }
 
-    fn decode(&mut self, seg: Segment, lock: bool) -> Instruction {
+    fn decode(&mut self, seg: Segment) -> Instruction {
         let ioffset = self.c_offset;
         let b = self.read_u8();
 
         let mut op = Instruction {
             segment: seg,
             repeat: RepeatMode::None,
-            lock: lock,
+            lock: false,
             command: Op::Unknown(),
             params: ParameterPair {
                 dst: Parameter::None(),
@@ -378,7 +378,7 @@ impl Decoder {
             }
             0x26 => {
                 // es segment prefix
-                op = self.decode(Segment::ES, lock);
+                op = self.decode(Segment::ES);
             }
             0x27 => {
                 // daa
@@ -418,7 +418,7 @@ impl Decoder {
             }
             0x2E => {
                 // XXX if next op is a Jcc, then this is a "branch not taken" hint
-                op = self.decode(Segment::CS, lock);
+                op = self.decode(Segment::CS);
             }
             0x2F => {
                 op.command = Op::Das();
@@ -457,7 +457,7 @@ impl Decoder {
             }
             0x36 => {
                 // ss segment prefix
-                op = self.decode(Segment::SS, lock);
+                op = self.decode(Segment::SS);
             }
             0x37 => {
                 op.command = Op::Aaa();
@@ -497,7 +497,7 @@ impl Decoder {
             0x3E => {
                 // ds segment prefix
                 // XXX if next op is a Jcc, then this is a "branch taken" hint
-                op = self.decode(Segment::DS, lock);
+                op = self.decode(Segment::DS);
             }
             0x3F => {
                 op.command = Op::Aas();
@@ -538,11 +538,11 @@ impl Decoder {
             }
             0x64 => {
                 // fs segment prefix
-                op = self.decode(Segment::FS, lock);
+                op = self.decode(Segment::FS);
             }
             0x65 => {
                 // gs segment prefix
-                op = self.decode(Segment::GS, lock);
+                op = self.decode(Segment::GS);
             }
             0x66 => {
                 // 80386+ Operand-size override prefix
@@ -1203,7 +1203,8 @@ impl Decoder {
             }
             0xF0 => {
                 // lock prefix
-                op = self.decode(seg, true);
+                op = self.decode(seg);
+                op.lock = true;
             }
             0xF1 => {
                 op.command = Op::Int();
