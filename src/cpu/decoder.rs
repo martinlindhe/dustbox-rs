@@ -1252,7 +1252,7 @@ impl Decoder {
                 op.command = Op::Cmc();
             }
             0xF6 => {
-                // byte sized math
+                // <math> r/m8
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 match x.reg {
@@ -1261,21 +1261,20 @@ impl Decoder {
                         op.command = Op::Test8();
                         op.params.src = Parameter::Imm8(self.read_u8());
                     }
-                    2 => op.command = Op::Not8(), // not r/m8
-                    3 => op.command = Op::Neg8(), // neg r/m8
-                    4 => op.command = Op::Mul8(), // mul r/m8
-                    5 => op.command = Op::Imul8(), // imul r/m8
-                    6 => op.command = Op::Div8(), // div r/m8
-                    7 => op.command = Op::Idiv8(), // idiv r/m8
+                    2 => op.command = Op::Not8(),
+                    3 => op.command = Op::Neg8(),
+                    4 => op.command = Op::Mul8(),
+                    5 => op.command = Op::Imul8(),
+                    6 => op.command = Op::Div8(),
+                    7 => op.command = Op::Idiv8(),
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);
-                        //println!("op F6 unknown reg={}", x.reg);
                     }
                 }
             }
             0xF7 => {
-                // word sized math
+                // <math> r/m16
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm16(op.segment, x.rm, x.md);
                 match x.reg {
@@ -1284,12 +1283,12 @@ impl Decoder {
                         op.command = Op::Test16();
                         op.params.src = Parameter::Imm16(self.read_u16());
                     }
-                    2 => op.command = Op::Not16(), // not r/m16
-                    3 => op.command = Op::Neg16(), // neg r/m16
-                    4 => op.command = Op::Mul16(), // mul r/m16
-                    5 => op.command = Op::Imul16(), // imul r/m16
-                    6 => op.command = Op::Div16(), // div r/m16
-                    7 => op.command = Op::Idiv16(), // idiv r/m16
+                    2 => op.command = Op::Not16(),
+                    3 => op.command = Op::Neg16(),
+                    4 => op.command = Op::Mul16(),
+                    5 => op.command = Op::Imul16(),
+                    6 => op.command = Op::Div16(),
+                    7 => op.command = Op::Idiv16(),
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);
@@ -1325,7 +1324,7 @@ impl Decoder {
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm8(op.segment, x.rm, x.md);
                 match x.reg {
-                    // NOTE: 2 is a deprecated but valid encoding, example user:
+                    // NOTE: 2 is a deprecated but valid encoding, example:
                     // https://www.pouet.net/prod.php?which=65203
                     // 00000140  FEC5              inc ch
                     0 | 2 => op.command = Op::Inc8(),
