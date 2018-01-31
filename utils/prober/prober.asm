@@ -10,24 +10,19 @@ section .bss
 section .text
     ; program code
 start:
-    call clear_flags
     ; call clear_regs
     ; call clear_mem
 
     ; -------------------------
     ; run a snippet to analyse:
     ; -------------------------
-
+        call clear_flags
         mov ax,0xfffe
-        sar ax,byte 0x1     ; ffff, 3086
+        clc
+        rcr ax,byte 0x1
 
-        call clear_flags
-        mov ax,0xffff
-        sar ax,byte 0xff        ; ffff, 3787
 
-        call clear_flags
-        mov ax,0x1
-        sar ax,byte 0x4     ; 0000, 3746
+
 
 
     ; save reg states after instruction executes

@@ -1109,6 +1109,8 @@ impl CPU {
                     };
                     self.write_parameter_u8(&op.params.dst, res as u8);
                     self.flags.carry = (op1 >> (8 - count)) & 1 != 0;
+                    // For left rotates, the OF flag is set to the exclusive OR of the CF bit
+                    // (after the rotate) and the most-significant bit of the result.
                     self.flags.overflow = self.flags.carry_val() as u8 ^ (op1 >> 7) != 0;
                 }
             }
@@ -1131,43 +1133,37 @@ impl CPU {
                     self.flags.overflow = self.flags.carry_val() as u16 ^ (op1 >> 15) != 0;
                 }
             }
-            Op::Rcr8() => {
+            Op::Rcr8 => {
                 // two arguments
-                // rotate 9 bits right `src` times
-                let mut res = self.read_parameter_value(&op.params.dst);
-                let mut count = self.read_parameter_value(&op.params.src);
-
-                while count > 0 {
-                    let c = if self.flags.carry {
-                        0x100
-                    } else {
-                        0
-                    };
-                    res |= c;
-	                self.flags.carry = res & 1 != 0;
-                    res >>= 1;
-                    count -= 1;
+                // rotate 9 bits right `op1` times
+                let op1 = self.read_parameter_value(&op.params.dst);
+                let count = (self.read_parameter_value(&op.params.src) as u32 & 0x1F) % 9;
+                if count > 0 {
+                    let cf = self.flags.carry_val();
+                    let res = (op1 >> count) | (cf << (8 - count)) | (op1 << (9 - count));
+                    self.write_parameter_u8(&op.params.dst, res as u8);
+                    self.flags.carry = (op1 >> (count - 1)) & 1 != 0;
+                    // For right rotates, the OF flag is set to the exclusive OR of the
+                    // two most-significant bits of the result.
+                    let bit7 = (res >> 7) & 1;
+                    let bit6 = (res >> 6) & 1;
+                    self.flags.overflow = bit7 ^ bit6 != 0;
                 }
-                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
-            Op::Rcr16() => {
+            Op::Rcr16 => {
                 // two arguments
-                // rotate 9 bits right `src` times
-                let mut res = self.read_parameter_value(&op.params.dst);
-                let mut count = self.read_parameter_value(&op.params.src);
-
-                while count > 0 {
-                    let c = if self.flags.carry {
-                        0x1_0000
-                    } else {
-                        0
-                    };
-                    res |= c;
-	                self.flags.carry = res & 1 != 0;
-                    res >>= 1;
-                    count -= 1;
+                // rotate 9 bits right `op1` times
+                let op1 = self.read_parameter_value(&op.params.dst);
+                let count = (self.read_parameter_value(&op.params.src) as u32 & 0x1F) % 17;
+                if count > 0 {
+                    let cf = self.flags.carry_val();
+                    let res = (op1 >> count) | (cf << (16 - count)) | (op1 << (17 - count));
+                    self.write_parameter_u16(op.segment, &op.params.dst, res as u16);
+                    self.flags.carry = (op1 >> (count - 1)) & 1 != 0;
+                    let bit15 = (res >> 15) & 1;
+                    let bit14 = (res >> 14) & 1;
+                    self.flags.overflow = bit15 ^ bit14 != 0;
                 }
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Retf => {
                 if op.params.count() == 1 {
