@@ -12,8 +12,7 @@ pub mod cpu;
 pub mod memory;
 pub mod gpu;
 pub mod pit;
-
-mod cp437;
+pub mod codepage;
 
 mod int10;
 mod int16;

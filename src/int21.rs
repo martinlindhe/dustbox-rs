@@ -2,7 +2,7 @@ use time;
 
 use cpu::CPU;
 use cpu::register::{AX, BX, CX, DX, DS, ES};
-use cp437;
+use codepage::cp437;
 
 // dos related interrupts
 pub fn handle(cpu: &mut CPU) {
