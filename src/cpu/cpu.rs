@@ -508,8 +508,8 @@ impl CPU {
                 self.r16[SP].val -= alloc_size;
             }
             Op::Hlt() => {
-                println!("XXX impl {}", op);
-                // self.fatal_error = true; // XXX hack while halt is not implemented
+                // println!("XXX impl {}", op);
+                // self.fatal_error = true;
             }
             Op::Idiv8() => {
                 let dst = self.r16[AX].val as usize; // AX
@@ -1019,8 +1019,8 @@ impl CPU {
                 self.out_u16(addr, val);
             }
             Op::Outsb() => {
+                // Output byte from memory location specified in DS:(E)SI or RSI to I/O port specified in DX.
                 // no arguments
-                // output byte from memory location specified in DS:(E)SI or RSI to I/O port specified in DX.
                 let val = self.mmu.read_u8(self.segment(op.segment), self.r16[SI].val);
                 let port = self.r16[DX].val;
                 self.out_u8(port, val);
@@ -1031,8 +1031,16 @@ impl CPU {
                 };
             }
             Op::Outsw() => {
+                // Output word from memory location specified in DS:(E)SI or RSI to I/O port specified in DX**.
                 // no arguments
-                println!("XXX impl {}", op);
+                let val = self.mmu.read_u16(self.segment(op.segment), self.r16[SI].val);
+                let port = self.r16[DX].val;
+                self.out_u16(port, val);
+                self.r16[SI].val = if !self.flags.direction {
+                    (Wrapping(self.r16[SI].val) + Wrapping(2)).0
+                } else {
+                    (Wrapping(self.r16[SI].val) - Wrapping(2)).0
+                };
             }
             Op::Pop16() => {
                 // one arguments (dst)
@@ -1621,14 +1629,19 @@ impl CPU {
                     self.ip = start_ip;
                 }
             }
+            RepeatMode::Repe => {
+                self.r16[CX].val = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
+                if self.r16[CX].val != 0 && self.flags.zero {
+                    self.ip = start_ip;
+                }
+            }
             RepeatMode::Repne => {
-                println!("XXX verify repne: {}", op);
                 self.r16[CX].val = (Wrapping(self.r16[CX].val) - Wrapping(1)).0;
                 if self.r16[CX].val != 0 && !self.flags.zero {
                     self.ip = start_ip;
                 }
             }
-            _ => {}
+            RepeatMode::None => {}
         }
 
         if op.lock {

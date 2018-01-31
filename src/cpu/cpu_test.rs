@@ -444,10 +444,7 @@ fn can_execute_rep_movsb() {
     cpu.r16[CX].val = 4;
 
     // copy first 4 bytes from DS:0x100 to ES:0x200
-    cpu.execute_instruction(); // rep movsb
-    cpu.execute_instruction(); // rep movsb
-    cpu.execute_instruction(); // rep movsb
-    cpu.execute_instruction(); // rep movsb
+    execute_instructions(&mut cpu, 4);
     assert_eq!(0x0, cpu.r16[CX].val);
     let min = 0x100;
     let max = min + 4;

@@ -66,16 +66,16 @@ impl Decoder {
     pub fn get_instruction(&mut self, seg: Segment, iseg: u16, ioffset: u16) -> Instruction {
         self.c_seg = iseg;
         self.c_offset = ioffset;
-        self.decode(seg, RepeatMode::None, false)
+        self.decode(seg, false)
     }
 
-    fn decode(&mut self, seg: Segment, repeat: RepeatMode, lock: bool) -> Instruction {
+    fn decode(&mut self, seg: Segment, lock: bool) -> Instruction {
         let ioffset = self.c_offset;
         let b = self.read_u8();
 
         let mut op = Instruction {
             segment: seg,
-            repeat: repeat,
+            repeat: RepeatMode::None,
             lock: lock,
             command: Op::Unknown(),
             params: ParameterPair {
@@ -378,7 +378,7 @@ impl Decoder {
             }
             0x26 => {
                 // es segment prefix
-                op = self.decode(Segment::ES, repeat, lock);
+                op = self.decode(Segment::ES, lock);
             }
             0x27 => {
                 // daa
@@ -418,7 +418,7 @@ impl Decoder {
             }
             0x2E => {
                 // XXX if next op is a Jcc, then this is a "branch not taken" hint
-                op = self.decode(Segment::CS, repeat, lock);
+                op = self.decode(Segment::CS, lock);
             }
             0x2F => {
                 op.command = Op::Das();
@@ -457,7 +457,7 @@ impl Decoder {
             }
             0x36 => {
                 // ss segment prefix
-                op = self.decode(Segment::SS, repeat, lock);
+                op = self.decode(Segment::SS, lock);
             }
             0x37 => {
                 op.command = Op::Aaa();
@@ -497,7 +497,7 @@ impl Decoder {
             0x3E => {
                 // ds segment prefix
                 // XXX if next op is a Jcc, then this is a "branch taken" hint
-                op = self.decode(Segment::DS, repeat, lock);
+                op = self.decode(Segment::DS, lock);
             }
             0x3F => {
                 op.command = Op::Aas();
@@ -538,11 +538,11 @@ impl Decoder {
             }
             0x64 => {
                 // fs segment prefix
-                op = self.decode(Segment::FS, repeat, lock);
+                op = self.decode(Segment::FS, lock);
             }
             0x65 => {
                 // gs segment prefix
-                op = self.decode(Segment::GS, repeat, lock);
+                op = self.decode(Segment::GS, lock);
             }
             0x66 => {
                 // 80386+ Operand-size override prefix
@@ -1203,17 +1203,47 @@ impl Decoder {
             }
             0xF0 => {
                 // lock prefix
-                op = self.decode(seg, repeat, true);
+                op = self.decode(seg, true);
             }
             0xF1 => {
                 op.command = Op::Int();
                 op.params.dst = Parameter::Imm8(1);
             }
             0xF2 => {
-                op = self.decode(seg, RepeatMode::Repne, lock);
+                let b = self.read_u8();
+                match b {
+                    _ => {
+                        panic!("unhandled op F2 {:02X}", b);
+                    }
+                }
             }
             0xF3 => {
-                op = self.decode(seg, RepeatMode::Rep, lock);
+                let b = self.read_u8();
+                match b {
+                    0x6E => {
+                        op.repeat = RepeatMode::Rep;
+                        op.command = Op::Outsb();
+                    }
+                    0xA4 => {
+                        op.repeat = RepeatMode::Rep;
+                        op.command = Op::Movsb();
+                    }
+                    0xA5 => {
+                        op.repeat = RepeatMode::Rep;
+                        op.command = Op::Movsw();
+                    }
+                    0xAA => {
+                        op.repeat = RepeatMode::Rep;
+                        op.command = Op::Stosb();
+                    }
+                    0xAB => {
+                        op.repeat = RepeatMode::Rep;
+                        op.command = Op::Stosw();
+                    }
+                    _ => {
+                        panic!("unhandled op F3 {:02X}", b);
+                    }
+                }
             }
             0xF4 => {
                 op.command = Op::Hlt();

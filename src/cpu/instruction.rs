@@ -7,7 +7,8 @@ use cpu::Segment;
 pub enum RepeatMode {
     None,
     Rep,
-    Repne, // (alias repnz)
+    Repe, // alias repz
+    Repne, // alias repnz
 }
 
 impl RepeatMode {
@@ -15,6 +16,7 @@ impl RepeatMode {
         match *self {
             RepeatMode::None => "",
             RepeatMode::Rep => "Rep ",
+            RepeatMode::Repe => "Repe ",
             RepeatMode::Repne => "Repne ",
         }
     }
