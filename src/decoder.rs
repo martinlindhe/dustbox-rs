@@ -910,7 +910,7 @@ impl Decoder {
                     3 => Op::Rcr8(),
                     4 => Op::Shl8,
                     5 => Op::Shr8,
-                    7 => Op::Sar8(),
+                    7 => Op::Sar8,
                     _ => {
                         let invalid = InvalidOp::Op(vec![0xC0, x.reg]);
                         Op::Invalid(invalid)
@@ -929,7 +929,7 @@ impl Decoder {
                     3 => Op::Rcr16(),
                     4 => Op::Shl16,
                     5 => Op::Shr16,
-                    7 => Op::Sar16(),
+                    7 => Op::Sar16,
                     _ => {
                         let invalid = InvalidOp::Op(vec![0xC1, x.reg]);
                         Op::Invalid(invalid)
@@ -1026,7 +1026,7 @@ impl Decoder {
                     3 => Op::Rcr8(),
                     4 => Op::Shl8,
                     5 => Op::Shr8,
-                    7 => Op::Sar8(),
+                    7 => Op::Sar8,
                     _ => {
                         let invalid = InvalidOp::Op(vec![0xD0, x.reg]);
                         Op::Invalid(invalid)
@@ -1045,7 +1045,7 @@ impl Decoder {
                     3 => Op::Rcr16(),
                     4 => Op::Shl16,
                     5 => Op::Shr16,
-                    7 => Op::Sar16(),
+                    7 => Op::Sar16,
                     _ => {
                         let invalid = InvalidOp::Op(vec![0xD1, x.reg]);
                         Op::Invalid(invalid)
@@ -1064,7 +1064,7 @@ impl Decoder {
                     3 => Op::Rcr8(),
                     4 => Op::Shl8,
                     5 => Op::Shr8,
-                    7 => Op::Sar8(),
+                    7 => Op::Sar8,
                     _ => {
                         let invalid = InvalidOp::Op(vec![0xD2, x.reg]);
                         Op::Invalid(invalid)
@@ -1083,7 +1083,7 @@ impl Decoder {
                     3 => Op::Rcr16(),
                     4 => Op::Shl16,
                     5 => Op::Shr16,
-                    7 => Op::Sar16(),
+                    7 => Op::Sar16,
                     _ => {
                         let invalid = InvalidOp::Op(vec![0xD3, x.reg]);
                         Op::Invalid(invalid)

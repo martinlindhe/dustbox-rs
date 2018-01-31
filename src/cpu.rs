@@ -1306,64 +1306,49 @@ impl CPU {
                 };
                 self.r16[AX].set_lo(al);
             }
-            Op::Sar8() => {
-                // Signed divide* r/m8 by 2, imm8 times.
-                let dst = self.read_parameter_value(&op.params.dst);
-                let mut count = self.read_parameter_value(&op.params.src);
-                if count > 8 {
-                    count = 8;
-                }
-
-                let res = if dst & 0x80 != 0 {
-                    let x = 0xFF as usize;
-                    dst.rotate_right(count as u32) | x.rotate_left(8 - count as u32)
-                } else {
-                    dst.rotate_right(count as u32)
-                };
-
-                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
-
-                // The CF flag contains the value of the last bit shifted out of the destination operand.
-                // The OF flag is affected only for 1-bit shifts; otherwise, it is undefined.
-                // The SF, ZF, and PF flags are set according to the result.
-                // If the count is 0, the flags are not affected. For a non-zero count, the AF flag is undefined.
-                self.flags.carry = (dst & 1) != 0;
-                if count == 1 {
-                    self.flags.overflow = false;
-                }
-                self.flags.set_sign_u8(res);
-                self.flags.set_zero_u8(res);
-                self.flags.set_parity(res);
-            }
-            Op::Sar16() => {
+            Op::Sar8 => {
                 // Signed divide* r/m8 by 2, imm8 times.
                 // two arguments
                 let dst = self.read_parameter_value(&op.params.dst);
-                let mut count = self.read_parameter_value(&op.params.src);
-                if count > 16 {
-                    count = 16;
+                let count = self.read_parameter_value(&op.params.src) & 0x7;
+                if count > 0 {
+                    let res = if dst & 0x80 != 0 {
+                        let x = 0xFF as usize;
+                        dst.rotate_right(count as u32) | x.rotate_left(8 - count as u32)
+                    } else {
+                        dst.rotate_right(count as u32)
+                    };
+                    self.write_parameter_u8(&op.params.dst, res as u8);
+                    self.flags.carry = (dst as u8 >> (count - 1)) & 0x1 != 0;
+                    if count == 1 {
+                        self.flags.overflow = false;
+                    }
+                    self.flags.set_sign_u8(res);
+                    self.flags.set_zero_u8(res);
+                    self.flags.set_parity(res);
                 }
-                let res = if dst & 0x8000 != 0 {
-                    let x = 0xFFFF as usize;
-                    dst.rotate_right(count as u32) | x.rotate_left(16 - count as u32)
-                } else {
-                    dst.rotate_right(count as u32)
-                };
-
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
-
-                // The CF flag contains the value of the last bit shifted out of the destination operand.
-                // The OF flag is affected only for 1-bit shifts; otherwise, it is undefined.
-                // The SF, ZF, and PF flags are set according to the result.
-                // If the count is 0, the flags are not affected. For a non-zero count, the AF flag is undefined.
-                self.flags.carry = (dst & 1) != 0;
-                if count == 1 {
-                    self.flags.overflow = false;
+            }
+            Op::Sar16 => {
+                // Signed divide* r/m8 by 2, imm8 times.
+                // two arguments
+                let dst = self.read_parameter_value(&op.params.dst);
+                let count = self.read_parameter_value(&op.params.src) & 0xF;
+                if count > 0 {
+                    let res = if dst & 0x8000 != 0 {
+                        let x = 0xFFFF as usize;
+                        dst.rotate_right(count as u32) | x.rotate_left(16 - count as u32)
+                    } else {
+                        dst.rotate_right(count as u32)
+                    };
+                    self.write_parameter_u16(op.segment, &op.params.dst, res as u16);
+                    self.flags.carry = (dst as u16 >> (count - 1)) & 0x1 != 0;
+                    if count == 1 {
+                        self.flags.overflow = false;
+                    }
+                    self.flags.set_sign_u16(res);
+                    self.flags.set_zero_u16(res);
+                    self.flags.set_parity(res);
                 }
-                self.flags.set_sign_u16(res);
-                self.flags.set_zero_u16(res);
-                self.flags.set_parity(res);
-                // XXX aux flag ?
             }
             Op::Sbb8() => {
                 // Integer Subtraction with Borrow
