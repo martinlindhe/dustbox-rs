@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::num::Wrapping;
 
-use palette::{DACPalette, default_vga_palette};
+use gpu::palette::{DACPalette, default_vga_palette};
 
 #[cfg(test)]
 #[path = "./gpu_test.rs"]

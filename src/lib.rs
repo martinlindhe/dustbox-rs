@@ -12,7 +12,6 @@ pub mod cpu;
 pub mod memory;
 pub mod gpu;
 pub mod pit;
-pub mod palette;
 
 mod cp437;
 
