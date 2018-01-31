@@ -1033,13 +1033,13 @@ fn can_execute_rol8() {
     cpu.execute_instruction(); // rol
     assert_eq!(0xFF, cpu.r16[AX].hi_u8());
     assert_eq!(true, cpu.flags.carry);
-    assert_eq!(false, cpu.flags.overflow);
+    // overflow undefined with non-1 shift count
 
     cpu.execute_instruction();
     cpu.execute_instruction(); // rol
     assert_eq!(0x10,  cpu.r16[AX].hi_u8());
     assert_eq!(false, cpu.flags.carry);
-    assert_eq!(false, cpu.flags.overflow);
+    // overflow undefined with non-1 shift count
 }
 
 #[test]
@@ -1066,13 +1066,13 @@ fn can_execute_rol16() {
     cpu.execute_instruction(); // rol
     assert_eq!(0xFFFF, cpu.r16[AX].val);
     assert_eq!(true, cpu.flags.carry);
-    assert_eq!(false, cpu.flags.overflow);
+    // overflow undefined with non-1 shift count
 
     cpu.execute_instruction();
     cpu.execute_instruction(); // rol
     assert_eq!(0x0010, cpu.r16[AX].val);
     assert_eq!(false, cpu.flags.carry);
-    assert_eq!(false, cpu.flags.overflow);
+    // overflow undefined with non-1 shift count
 }
 
 #[test]
@@ -1080,16 +1080,32 @@ fn can_execute_ror8() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB4, 0x37,       // mov ah,0x37
-        0xC0, 0xCC, 0x03, // ror ah,byte 0x3
+        0xB4, 0xFE,         // mov ah,0xfe
+        0xC0, 0xCC, 0x01,   // ror ah,byte 0x1
+        0xB4, 0xFF,         // mov ah,0xff
+        0xC0, 0xCC, 0xFF,   // ror ah,byte 0xff
+        0xB4, 0x01,         // mov ah,0x1
+        0xC0, 0xCC, 0x04,   // ror ah,byte 0x4
     ];
     cpu.load_com(&code);
 
     cpu.execute_instruction();
-    cpu.execute_instruction();
-    assert_eq!(0xE6,  cpu.r16[AX].hi_u8());
+    cpu.execute_instruction(); // ror
+    assert_eq!(0x7F, cpu.r16[AX].hi_u8());
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.overflow);
 
-    // XXX flags
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // ror
+    assert_eq!(0xFF, cpu.r16[AX].hi_u8());
+    assert_eq!(true, cpu.flags.carry);
+    // overflow undefined with non-1 shift count
+
+    cpu.execute_instruction();
+    cpu.execute_instruction(); // ror
+    assert_eq!(0x10, cpu.r16[AX].hi_u8());
+    assert_eq!(false, cpu.flags.carry);
+    // overflow undefined with non-1 shift count
 }
 
 #[test]
@@ -1097,16 +1113,32 @@ fn can_execute_ror16() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB8, 0x56, 0x34, // mov ax,0x3456
-        0xC1, 0xC8, 0x03, // ror ax,byte 0x3
+        0xB8, 0xFE, 0xFF,   // mov ax,0xfffe
+        0xC1, 0xC8, 0x01,   // ror ax,byte 0x1
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0xC1, 0xC8, 0xFF,   // ror ax,byte 0xff
+        0xB8, 0x01, 0x00,   // mov ax,0x1
+        0xC1, 0xC8, 0x04,   // ror ax,byte 0x4
     ];
     cpu.load_com(&code);
 
     cpu.execute_instruction();
     cpu.execute_instruction();
-    assert_eq!(0xC68A,  cpu.r16[AX].val);
+    assert_eq!(0x7FFF, cpu.r16[AX].val);
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.overflow);
 
-    // XXX flags
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0xFFFF, cpu.r16[AX].val);
+    assert_eq!(true, cpu.flags.carry);
+    // overflow undefined with non-1 shift count
+
+    cpu.execute_instruction();
+    cpu.execute_instruction();
+    assert_eq!(0x1000, cpu.r16[AX].val);
+    assert_eq!(false, cpu.flags.carry);
+    // overflow undefined with non-1 shift count
 }
 
 #[test]

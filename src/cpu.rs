@@ -1197,21 +1197,13 @@ impl CPU {
             Op::Rol8 => {
                 // Rotate 8 bits of 'dst' left for 'src' times.
                 // two arguments
-                let mut res = self.read_parameter_value(&op.params.dst);
-                let mut count = self.read_parameter_value(&op.params.src);
-                let org_count = count;
-                while count > 0 {
-                    let val = res & 0x80 != 0;
-                    res = (res & 0xFF) << 1;
-                    if val {
-                        res |= 1;
-                    }
-                    count -= 1;
-                }
-                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
+                let mut res = self.read_parameter_value(&op.params.dst) as u8;
+                let count = self.read_parameter_value(&op.params.src) & 0x1F;
+                res = res.rotate_left(count as u32);
+                self.write_parameter_u8(&op.params.dst, res);
                 let bit0 = res & 1;
                 let bit7 = (res >> 7) & 1;
-                if org_count == 1 {
+                if count == 1 {
                     self.flags.overflow = if bit0 ^ bit7 != 0 {
                         true
                     } else {
@@ -1227,21 +1219,13 @@ impl CPU {
             Op::Rol16 => {
                 // Rotate 16 bits of 'dst' left for 'src' times.
                 // two arguments
-                let mut res = self.read_parameter_value(&op.params.dst);
-                let mut count = self.read_parameter_value(&op.params.src);
-                let org_count = count;
-                while count > 0 {
-                    let val = res & 0x8000 != 0;
-                    res <<= 1;
-                    if val {
-                        res |= 1;
-                    }
-                    count -= 1;
-                }
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                let mut res = self.read_parameter_value(&op.params.dst) as u16;
+                let count = self.read_parameter_value(&op.params.src) & 0x1F;
+                res = res.rotate_left(count as u32);
+                self.write_parameter_u16(op.segment, &op.params.dst, res);
                 let bit0 = res & 1;
                 let bit15 = (res >> 15) & 1;
-                if org_count == 1 {
+                if count == 1 {
                     self.flags.overflow = if bit0 ^ bit15 != 0 {
                         true
                     } else {
@@ -1254,40 +1238,49 @@ impl CPU {
                     false
                 };
             }
-            Op::Ror8() => {
-                // two arguments
+            Op::Ror8 => {
                 // Rotate 8 bits of 'dst' right for 'src' times.
-                let mut res = self.read_parameter_value(&op.params.dst);
-                let mut count = self.read_parameter_value(&op.params.src);
-
-                while count > 0 {
-	                self.flags.carry = res & 0x1 != 0;
-                    res >>= 1;
-                    if self.flags.carry {
-	                    res |= 0x80;
-                    }
-                    count -= 1;
+                // two arguments
+                let mut res = self.read_parameter_value(&op.params.dst) as u8;
+                let count = self.read_parameter_value(&op.params.src) & 0x1F;
+                res = res.rotate_right(count as u32);
+                self.write_parameter_u8(&op.params.dst, res);
+                let bit6 = (res >> 6) & 1;
+                let bit7 = (res >> 7) & 1;
+                if count == 1 {
+                    self.flags.overflow = if bit6 ^ bit7 != 0 {
+                        true
+                    } else {
+                        false
+                    };
                 }
-                self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
-                // XXX flags
+                self.flags.carry = if bit7 != 0 {
+                    true
+                } else {
+                    false
+                };
             }
-            Op::Ror16() => {
+            Op::Ror16 => {
                 // Rotate 16 bits of 'dst' right for 'src' times.
                 // two arguments
-                let mut res = self.read_parameter_value(&op.params.dst);
-                let mut count = self.read_parameter_value(&op.params.src);
-
-                while count > 0 {
-                    let val = res & 0x1 != 0;
-	                self.flags.carry = val;
-                    res >>= 1;
-                     if self.flags.carry {
-	                    res |= 0x8000;
-                    }
-                    count -= 1;
+                let mut res = self.read_parameter_value(&op.params.dst) as u16;
+                let mut count = self.read_parameter_value(&op.params.src) & 0x1F;
+                res = res.rotate_right(count as u32);
+                self.write_parameter_u16(op.segment, &op.params.dst, res);
+                let bit14 = (res >> 14) & 1;
+                let bit15 = (res >> 15) & 1;
+                if count == 1 {
+                    self.flags.overflow = if bit14 ^ bit15 != 0 {
+                        true
+                    } else {
+                        false
+                    };
                 }
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
-                // XXX flags
+                self.flags.carry = if bit15 != 0 {
+                    true
+                } else {
+                    false
+                };
             }
             Op::Sahf() => {
                 // Store AH into Flags

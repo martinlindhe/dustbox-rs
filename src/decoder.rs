@@ -905,7 +905,7 @@ impl Decoder {
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     0 => Op::Rol8,
-                    1 => Op::Ror8(),
+                    1 => Op::Ror8,
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
                     4 => Op::Shl8,
@@ -924,7 +924,7 @@ impl Decoder {
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     0 => Op::Rol16,
-                    1 => Op::Ror16(),
+                    1 => Op::Ror16,
                     2 => Op::Rcl16(),
                     3 => Op::Rcr16(),
                     4 => Op::Shl16,
@@ -1021,7 +1021,7 @@ impl Decoder {
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     0 => Op::Rol8,
-                    1 => Op::Ror8(),
+                    1 => Op::Ror8,
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
                     4 => Op::Shl8,
@@ -1040,7 +1040,7 @@ impl Decoder {
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     0 => Op::Rol16,
-                    1 => Op::Ror16(),
+                    1 => Op::Ror16,
                     2 => Op::Rcl16(),
                     3 => Op::Rcr16(),
                     4 => Op::Shl16,
@@ -1059,7 +1059,7 @@ impl Decoder {
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     0 => Op::Rol8,
-                    1 => Op::Ror8(),
+                    1 => Op::Ror8,
                     2 => Op::Rcl8(),
                     3 => Op::Rcr8(),
                     4 => Op::Shl8,
@@ -1078,7 +1078,7 @@ impl Decoder {
                 let x = self.read_mod_reg_rm();
                 op.command = match x.reg {
                     0 => Op::Rol16,
-                    1 => Op::Ror16(),
+                    1 => Op::Ror16,
                     2 => Op::Rcl16(),
                     3 => Op::Rcr16(),
                     4 => Op::Shl16,
