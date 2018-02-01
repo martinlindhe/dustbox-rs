@@ -542,9 +542,10 @@ impl CPU {
             Op::Imul8 => {
                 // NOTE: only 1-parameter imul8 instruction exists
                 // IMUL r/m8               : AX← AL ∗ r/m byte.
-                let dst = self.read_parameter_value(&op.params.dst) as i8;
-                let tmp = (self.r16[AX].lo_u8() as i8) as isize * dst as isize;
-                self.r16[AX].val = tmp as u16;
+                let f1 = self.r16[AX].lo_u8() as i8;
+                let f2 = self.read_parameter_value(&op.params.dst) as i8;
+                let product = f1 as i16 * f2 as i16;
+                self.r16[AX].val = product as u16;
 
                 // XXX flags
                 if self.r16[DX].val != 0 {

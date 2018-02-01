@@ -16,35 +16,32 @@ start:
     ; -------------------------
     ; run a snippet to analyse:
     ; -------------------------
-        call clear_flags
+call clear_flags
+ 
+;// IMUL r16, r/m16          : word register ← word register ∗ r/m16.
+
+        mov ax,0xffff
+        mov bx,0x2
+        imul ax, bx     ;  ax = ax * bx
+;  ax = fffe,   flg 3082
 
 
 call clear_flags
 
         mov ax,0x0
-        mov bl,0x2
-        idiv bl
-;  0000
-
-
-
-
-call clear_flags
-
-        mov ax,0xffff
-        mov bl,0x2
-        idiv bl
-; ff00
-
-
+        mov bx,0x2
+        imul ax, bx
+; ax 0, flg 3706
 
 
 call clear_flags
 
-        mov ax,0x1
-        mov bl,0xf
-        idiv bl
-; 0100
+        mov ax,0xff0
+        mov bx,0xf0
+        imul ax, bx
+; ax f100, flg 3887
+
+
 
 
 

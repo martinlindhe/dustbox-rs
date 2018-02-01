@@ -1649,28 +1649,59 @@ fn can_execute_imul8() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB0, 0xF0, // mov al,0xf0
-        0xB7, 0xD0, // mov bh,0xd0
-        0xF6, 0xEF, // imul bh
+        0xB0, 0xFF,     // mov al,0xff
+        0xB3, 0x02,     // mov bl,0x2
+        0xF6, 0xEB,     // imul bl
+        0xB0, 0x00,     // mov al,0x0
+        0xB3, 0x02,     // mov bl,0x2
+        0xF6, 0xEB,     // imul bl
     ];
     cpu.load_com(&code);
 
-    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 3);
-    assert_eq!("[085F:0100] B0F0             Mov8     al, 0xF0
-[085F:0102] B7D0             Mov8     bh, 0xD0
-[085F:0104] F6EF             Imul8    bh",
-               res);
+    execute_instructions(&mut cpu, 3);
+    assert_eq!(0xFFFE, cpu.r16[AX].val);
+    // 3082
 
-    cpu.execute_instruction();
-    assert_eq!(0xF0, cpu.r16[AX].lo_u8());
+    execute_instructions(&mut cpu, 3);
+    assert_eq!(0x0000, cpu.r16[AX].val);
+    // 3706
 
-    cpu.execute_instruction();
-    assert_eq!(0xD0, cpu.r16[BX].hi_u8());
+// XXX flags
+}
 
-    cpu.execute_instruction();
-    // AX = AL ∗ r/m byte.
-    assert_eq!(0x0300, cpu.r16[AX].val);
-    // XXX Carry & overflow is true in dosbox
+#[test]
+fn can_execute_imul16_1_args() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0xBB, 0x02, 0x00,   // mov bx,0x2
+        0xF7, 0xEB,         // imul bx
+
+        0xB8, 0x00, 0x00,   // mov ax,0x0
+        0xBB, 0x02, 0x00,   // mov bx,0x2
+        0xF7, 0xEB,         // imul bx
+
+        0xB8, 0xF0, 0x0F,   // mov ax,0xff0
+        0xBB, 0xF0, 0x00,   // mov bx,0xf0
+        0xF7, 0xEB,         // imul bx
+    ];
+    cpu.load_com(&code);
+
+    execute_instructions(&mut cpu, 3);
+    assert_eq!(0xFFFF, cpu.r16[DX].val); // hi
+    assert_eq!(0xFFFE, cpu.r16[AX].val); // lo
+    // 3082
+
+    execute_instructions(&mut cpu, 3);
+    assert_eq!(0x0000, cpu.r16[DX].val);
+    assert_eq!(0x0000, cpu.r16[AX].val);
+    // 3706
+
+    execute_instructions(&mut cpu, 3);
+    assert_eq!(0x000E, cpu.r16[DX].val);
+    assert_eq!(0xF100, cpu.r16[AX].val);
+    // 3887
 }
 
 #[test]
@@ -1678,13 +1709,31 @@ fn can_execute_imul16_2_args() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xB9, 0x0A, 0x00, // mov cx,0xa
-        0xBF, 0x14, 0x00, // mov di,0x14
-        0x0F, 0xAF, 0xCF, // imul cx,di
+        0xB8, 0xFF, 0xFF,   // mov ax,0xffff
+        0xBB, 0x02, 0x00,   // mov bx,0x2
+        0x0F, 0xAF, 0xC3,   // imul ax,bx
+
+        0xB8, 0x00, 0x00,   // mov ax,0x0
+        0xBB, 0x02, 0x00,   // mov bx,0x2
+        0x0F, 0xAF, 0xC3,   // imul ax,bx
+
+        0xB8, 0xF0, 0x0F,   // mov ax,0xff0
+        0xBB, 0xF0, 0x00,   // mov bx,0xf0
+        0x0F, 0xAF, 0xC3,   // imul ax,bx
     ];
     cpu.load_com(&code);
+
     execute_instructions(&mut cpu, 3);
-    assert_eq!(0x00C8, cpu.r16[CX].val);
+    assert_eq!(0xFFFE, cpu.r16[AX].val);
+    // 3082
+
+    execute_instructions(&mut cpu, 3);
+    assert_eq!(0x0000, cpu.r16[AX].val);
+    // 3706
+
+    execute_instructions(&mut cpu, 3);
+    assert_eq!(0xF100, cpu.r16[AX].val);
+    // 3887
 }
 
 #[test]

@@ -1,6 +1,6 @@
 use debugger;
 use debugger::parse_number_string;
-use dustbox::register::{CS};
+use dustbox::cpu::register::{CS};
 
 #[test]
 fn test_parse_number_string() {
