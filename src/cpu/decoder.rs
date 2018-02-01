@@ -60,7 +60,6 @@ impl Decoder {
        InstructionInfo {
            segment: iseg as usize,
            offset: ioffset as usize,
-           length: op.length as usize,
            text: format!("{}", op),
            bytes: self.mmu.read(iseg, ioffset, op.length as usize),
            instruction: op

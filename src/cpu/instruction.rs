@@ -351,7 +351,6 @@ pub enum InvalidOp {
 pub struct InstructionInfo {
     pub segment: usize,
     pub offset: usize,
-    pub length: usize,
     pub text: String,
     pub bytes: Vec<u8>,
     pub instruction: Instruction,

@@ -23,7 +23,6 @@ fn can_encode_instr() {
     assert_eq!(vec!(
         InstructionInfo{
             bytes: vec!(0xCD,0x21),
-            length: 2,// XXX redundant, or info redundant ?!
             segment: cs as usize, // XXX redundnant?!
             offset: 0x100,
             text: "Int      0x21".to_owned(),
