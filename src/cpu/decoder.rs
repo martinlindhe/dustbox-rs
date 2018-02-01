@@ -31,7 +31,7 @@ impl Decoder {
         }
     }
 
-    pub fn disassemble_block_to_str(&mut self, seg: u16, offset: u16, n: u16) -> String {
+    pub fn decode_to_block(&mut self, seg: u16, offset: u16, n: u16) -> Vec<InstructionInfo> {
         let mut ops: Vec<InstructionInfo> = Vec::new();
         let mut inst_offset = 0;
         for _ in 0..n {
@@ -39,7 +39,11 @@ impl Decoder {
             inst_offset += u16::from(op.instruction.length);
             ops.push(op);
         }
+        ops
+    }
 
+    pub fn disassemble_block_to_str(&mut self, seg: u16, offset: u16, n: u16) -> String {
+        let ops = self.decode_to_block(seg, offset, n);
         self.instructions_to_str(ops)
     }
 

@@ -15,3 +15,6 @@ pub mod register;
 
 use self::flags::*;
 pub mod flags;
+
+use self::encoder::*;
+pub mod encoder;

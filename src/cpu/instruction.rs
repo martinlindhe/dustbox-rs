@@ -3,7 +3,7 @@ use std::num::Wrapping;
 
 use cpu::Segment;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RepeatMode {
     None,
     Rep,
@@ -22,7 +22,7 @@ impl RepeatMode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Instruction {
     pub command: Op,
     pub segment: Segment,
@@ -75,7 +75,7 @@ impl Instruction {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ParameterPair {
     pub dst: Parameter,
     pub src: Parameter,
@@ -98,7 +98,7 @@ impl ParameterPair {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Parameter {
     Imm8(u8),
     Imm16(u16),
@@ -347,7 +347,7 @@ pub enum InvalidOp {
     Op(Vec<u8>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct InstructionInfo {
     pub segment: usize,
     pub offset: usize,

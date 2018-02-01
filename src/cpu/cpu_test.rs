@@ -1741,13 +1741,28 @@ fn can_execute_imul16_3_args() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xBF, 0xFF, 0x8F,       // mov di,0x8fff
-        0x69, 0xFF, 0x40, 0x01, // imul di,di,word 0x140
+        0xB8, 0xFF, 0xFF,       // mov ax,0xffff
+        0x6B, 0xC0, 0x02,       // imul ax,ax,byte +0x2
+
+        0xB8, 0x00, 0x00,       // mov ax,0x0
+        0x6B, 0xC0, 0x02,       // imul ax,ax,byte +0x2
+
+        0xB8, 0xF0, 0x0F,       // mov ax,0xff0
+        0x69, 0xC0, 0xF0, 0x00, // imul ax,ax,word 0xf0
     ];
     cpu.load_com(&code);
+
     execute_instructions(&mut cpu, 2);
-    assert_eq!(0xFEC0, cpu.r16[DI].val);
-    // XXX Carry & overflow is true in dosbox
+    assert_eq!(0xFFFE, cpu.r16[AX].val);
+    // 3082
+
+    execute_instructions(&mut cpu, 2);
+    assert_eq!(0x0000, cpu.r16[AX].val);
+    // 3706
+
+    execute_instructions(&mut cpu, 2);
+    assert_eq!(0xF100, cpu.r16[AX].val);
+    // 3887
 }
 
 #[test]
