@@ -23,12 +23,12 @@ fn can_encode_instr() {
     assert_eq!(vec!(
         InstructionInfo{
             bytes: vec!(0xCD,0x21),
-            segment: cs as usize, // XXX redundnant?!
+            segment: cs as usize,
             offset: 0x100,
             text: "Int      0x21".to_owned(),
             instruction: Instruction{
                 command: Op::Int(),
-                segment: Segment::Default, // XXX should be renamed to segment_prefix
+                segment_prefix: Segment::Default,
                 length: 2,
                 lock: false,
                 repeat: RepeatMode::None,

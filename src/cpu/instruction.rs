@@ -25,8 +25,8 @@ impl RepeatMode {
 #[derive(Debug, PartialEq)]
 pub struct Instruction {
     pub command: Op,
-    pub segment: Segment,
     pub params: ParameterPair,
+    pub segment_prefix: Segment,
     pub length: u8,
     pub repeat: RepeatMode, // REPcc prefix
     pub lock: bool,         // LOCK prefix
@@ -35,10 +35,10 @@ pub struct Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let instr = self.describe_instruction();
-        if self.segment == Segment::Default || self.hide_segment_prefix() {
+        if self.segment_prefix == Segment::Default || self.hide_segment_prefix() {
             write!(f, "{}", instr)
         } else {
-            write!(f, "{} {}", self.segment.as_str(), instr)
+            write!(f, "{} {}", self.segment_prefix.as_str(), instr)
         }
     }
 }

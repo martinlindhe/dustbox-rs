@@ -241,7 +241,7 @@ impl CPU {
                 let dst = self.read_parameter_value(&op.params.dst);
                 let carry = if self.flags.carry { 1 } else { 0 };
                 let res = (Wrapping(dst) + Wrapping(src) + Wrapping(carry)).0;
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
 
                 // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
                 self.flags.set_overflow_add_u16(res, src + carry, dst);
@@ -275,7 +275,7 @@ impl CPU {
                 self.flags.set_zero_u16(res);
                 self.flags.set_sign_u16(res);
                 self.flags.set_overflow_add_u16(res, src as usize, dst as usize);
-                self.write_parameter_u16(op.segment, &op.params.dst, res as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, res as u16);
             }
             Op::And8() => {
                 // two parameters (dst=reg)
@@ -305,7 +305,7 @@ impl CPU {
                 self.flags.set_sign_u16(res);
                 self.flags.set_zero_u16(res);
                 self.flags.set_parity(res);
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Arpl() => {
                 // Adjust RPL Field of Segment Selector
@@ -334,7 +334,7 @@ impl CPU {
                         count += 1;
                         src >>= 1;
                     }
-                    self.write_parameter_u16(op.segment, &op.params.dst, count);
+                    self.write_parameter_u16(op.segment_prefix, &op.params.dst, count);
                     self.flags.zero = false;
                 }
             }
@@ -404,7 +404,7 @@ impl CPU {
                 // no parameters
                 // Compare word at address DS:(E)SI with word at address ES:(E)DI
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
-                let src = self.mmu.read_u16(self.segment(op.segment), self.r16[SI].val) as usize;
+                let src = self.mmu.read_u16(self.segment(op.segment_prefix), self.r16[SI].val) as usize;
                 let dst = self.mmu.read_u16(self.sreg16[ES], self.r16[DI].val) as usize;
                 self.cmp16(dst, src);
                 println!("XXX Cmpsw - verify implementation");
@@ -456,7 +456,7 @@ impl CPU {
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
 
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Div8() => {
                 let dst = self.r16[AX].val as usize; // AX
@@ -570,7 +570,7 @@ impl CPU {
                         let a = self.read_parameter_value(&op.params.dst);
                         let b = self.read_parameter_value(&op.params.src);
                         let tmp = a as isize * b as isize;
-                        self.write_parameter_u16(op.segment, &op.params.dst, (tmp & 0xFFFF) as u16);
+                        self.write_parameter_u16(op.segment_prefix, &op.params.dst, (tmp & 0xFFFF) as u16);
                     }
                     3 => {
                         // IMUL r16, r/m16, imm8    : word register ← r/m16 ∗ sign-extended immediate byte.
@@ -578,7 +578,7 @@ impl CPU {
                         let a = self.read_parameter_value(&op.params.src);
                         let b = self.read_parameter_value(&op.params.src2);
                         let tmp = b as isize * a as isize;
-                        self.write_parameter_u16(op.segment, &op.params.dst, (tmp & 0xFFFF) as u16);
+                        self.write_parameter_u16(op.segment_prefix, &op.params.dst, (tmp & 0xFFFF) as u16);
                     }
                     _ => {
                         panic!("imul16 with {} parameters: {}", op.params.count(), op);
@@ -627,7 +627,7 @@ impl CPU {
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
 
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Insb() => {
                 println!("XXX impl {}", op);
@@ -753,14 +753,14 @@ impl CPU {
             Op::Lea16() => {
                 // Load Effective Address
                 let src = self.read_parameter_address(&op.params.src) as u16;
-                self.write_parameter_u16(op.segment, &op.params.dst, src);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, src);
             }
             Op::Lds() => {
                 // Load DS:r16 with far pointer from memory.
                 let seg = self.read_parameter_address(&op.params.src) as u16;
                 let val = self.read_parameter_value(&op.params.src) as u16;
                 self.sreg16[DS] = seg;
-                self.write_parameter_u16(op.segment, &op.params.dst, val);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, val);
             }
             Op::Leave => {
                 // High Level Procedure Exit
@@ -775,13 +775,13 @@ impl CPU {
                 let seg = self.read_parameter_address(&op.params.src) as u16;
                 let val = self.read_parameter_value(&op.params.src) as u16;
                 self.sreg16[ES] = seg;
-                self.write_parameter_u16(op.segment, &op.params.dst, val);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, val);
             }
             Op::Lodsb() => {
                 // no arguments
                 // Load byte at address DS:(E)SI into AL.
                 // The DS segment may be over-ridden with a segment override prefix.
-                let val = self.mmu.read_u8(self.segment(op.segment), self.r16[SI].val);
+                let val = self.mmu.read_u8(self.segment(op.segment_prefix), self.r16[SI].val);
 
                 self.r16[AX].set_lo(val);
                 self.r16[SI].val = if !self.flags.direction {
@@ -794,7 +794,7 @@ impl CPU {
                 // no arguments
                 // Load word at address DS:(E)SI into AX.
                 // The DS segment may be over-ridden with a segment override prefix.
-                let val = self.mmu.read_u16(self.segment(op.segment), self.r16[SI].val);
+                let val = self.mmu.read_u16(self.segment(op.segment_prefix), self.r16[SI].val);
 
                 self.r16[AX].val = val;
                 self.r16[SI].val = if !self.flags.direction {
@@ -835,12 +835,12 @@ impl CPU {
             Op::Mov16() => {
                 // two arguments (dst=reg)
                 let data = self.read_parameter_value(&op.params.src) as u16;
-                self.write_parameter_u16(op.segment, &op.params.dst, data);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, data);
             }
             Op::Movsb() => {
                 // move byte from address DS:(E)SI to ES:(E)DI.
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
-                let b = self.mmu.read_u8(self.segment(op.segment), self.r16[SI].val);
+                let b = self.mmu.read_u8(self.segment(op.segment_prefix), self.r16[SI].val);
                 self.r16[SI].val = if !self.flags.direction {
                     (Wrapping(self.r16[SI].val) + Wrapping(1)).0
                 } else {
@@ -856,7 +856,7 @@ impl CPU {
             Op::Movsw() => {
                 // move word from address DS:(E)SI to ES:(E)DI.
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
-                let b = self.mmu.read_u16(self.segment(op.segment), self.r16[SI].val);
+                let b = self.mmu.read_u16(self.segment(op.segment_prefix), self.r16[SI].val);
                 self.r16[SI].val = if !self.flags.direction {
                     (Wrapping(self.r16[SI].val) + Wrapping(2)).0
                 } else {
@@ -881,7 +881,7 @@ impl CPU {
                 if src & 0x80 != 0 {
                     data += 0xFF00;
                 }
-                self.write_parameter_u16(op.segment, &op.params.dst, data);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, data);
             }
             Op::Movzx16() => {
                 // 80386+
@@ -893,7 +893,7 @@ impl CPU {
                 if src & 0x80 != 0 {
                     data += 0xFF00;
                 }
-                self.write_parameter_u16(op.segment, &op.params.dst, data);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, data);
             }
             Op::Mul8() => {
                 // Unsigned multiply (AX ← AL ∗ r/m8).
@@ -946,7 +946,7 @@ impl CPU {
                 let dst = self.read_parameter_value(&op.params.dst);
                 let src = 0;
                 let res = (Wrapping(src) - Wrapping(dst)).0;
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
 
                 // The CF flag set to 0 if the source operand is 0; otherwise it is set to 1.
                 if src == 0 {
@@ -973,7 +973,7 @@ impl CPU {
                 // one arguments (dst)
                 let dst = self.read_parameter_value(&op.params.dst);
                 let res = !dst;
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
                 // Flags Affected: None
             }
             Op::Or8() => {
@@ -1002,7 +1002,7 @@ impl CPU {
                 self.flags.set_sign_u16(res);
                 self.flags.set_zero_u16(res);
                 self.flags.set_parity(res);
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Out8() => {
                 // two arguments
@@ -1019,7 +1019,7 @@ impl CPU {
             Op::Outsb() => {
                 // Output byte from memory location specified in DS:(E)SI or RSI to I/O port specified in DX.
                 // no arguments
-                let val = self.mmu.read_u8(self.segment(op.segment), self.r16[SI].val);
+                let val = self.mmu.read_u8(self.segment(op.segment_prefix), self.r16[SI].val);
                 let port = self.r16[DX].val;
                 self.out_u8(port, val);
                 self.r16[SI].val = if !self.flags.direction {
@@ -1031,7 +1031,7 @@ impl CPU {
             Op::Outsw() => {
                 // Output word from memory location specified in DS:(E)SI or RSI to I/O port specified in DX**.
                 // no arguments
-                let val = self.mmu.read_u16(self.segment(op.segment), self.r16[SI].val);
+                let val = self.mmu.read_u16(self.segment(op.segment_prefix), self.r16[SI].val);
                 let port = self.r16[DX].val;
                 self.out_u16(port, val);
                 self.r16[SI].val = if !self.flags.direction {
@@ -1043,7 +1043,7 @@ impl CPU {
             Op::Pop16() => {
                 // one arguments (dst)
                 let data = self.pop16();
-                self.write_parameter_u16(op.segment, &op.params.dst, data);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, data);
             }
             Op::Popa() => {
                 // Pop All General-Purpose Registers
@@ -1124,7 +1124,7 @@ impl CPU {
                     } else {
                         (op1 << count) | (cf << (count - 1)) | (op1 >> (17 - count))
                     };
-                    self.write_parameter_u16(op.segment, &op.params.dst, res as u16);
+                    self.write_parameter_u16(op.segment_prefix, &op.params.dst, res as u16);
                     self.flags.carry = (op1 >> (16 - count)) & 1 != 0;
                     self.flags.overflow = self.flags.carry_val() as u16 ^ (op1 >> 15) != 0;
                 }
@@ -1154,7 +1154,7 @@ impl CPU {
                 if count > 0 {
                     let cf = self.flags.carry_val();
                     let res = (op1 >> count) | (cf << (16 - count)) | (op1 << (17 - count));
-                    self.write_parameter_u16(op.segment, &op.params.dst, res as u16);
+                    self.write_parameter_u16(op.segment_prefix, &op.params.dst, res as u16);
                     self.flags.carry = (op1 >> (count - 1)) & 1 != 0;
                     let bit15 = (res >> 15) & 1;
                     let bit14 = (res >> 14) & 1;
@@ -1202,7 +1202,7 @@ impl CPU {
                 let mut res = self.read_parameter_value(&op.params.dst) as u16;
                 let count = self.read_parameter_value(&op.params.src) & 0x1F;
                 res = res.rotate_left(count as u32);
-                self.write_parameter_u16(op.segment, &op.params.dst, res);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, res);
                 let bit0 = res & 1;
                 let bit15 = (res >> 15) & 1;
                 if count == 1 {
@@ -1230,7 +1230,7 @@ impl CPU {
                 let mut res = self.read_parameter_value(&op.params.dst) as u16;
                 let mut count = self.read_parameter_value(&op.params.src) & 0x1F;
                 res = res.rotate_right(count as u32);
-                self.write_parameter_u16(op.segment, &op.params.dst, res);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, res);
                 let bit14 = (res >> 14) & 1;
                 let bit15 = (res >> 15) & 1;
                 if count == 1 {
@@ -1296,7 +1296,7 @@ impl CPU {
                     } else {
                         dst.rotate_right(count as u32)
                     };
-                    self.write_parameter_u16(op.segment, &op.params.dst, res as u16);
+                    self.write_parameter_u16(op.segment_prefix, &op.params.dst, res as u16);
                     self.flags.carry = (dst as u16 >> (count - 1)) & 0x1 != 0;
                     if count == 1 {
                         self.flags.overflow = false;
@@ -1339,7 +1339,7 @@ impl CPU {
                 self.flags.set_parity(res);
                 self.flags.set_carry_u16(res);
 
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Setc => {
                 // setc: Set byte if carry (CF=1).
@@ -1385,7 +1385,7 @@ impl CPU {
                 let count = self.read_parameter_value(&op.params.src) & 0x1F;
                 if count > 0 {
                     let res = dst.wrapping_shl(count as u32);
-                    self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                    self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
                     self.flags.carry = (res & 0x8000) != 0;
                     if count == 1 {
                         self.flags.overflow = self.flags.carry_val() ^ ((res & 0x8000) >> 15) != 0;
@@ -1421,7 +1421,7 @@ impl CPU {
                 let count = self.read_parameter_value(&op.params.src) & 0x1F;
                 if count > 0 {
                     let res = dst.wrapping_shr(count as u32);
-                    self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                    self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
                     self.flags.carry = (dst.wrapping_shr((count - 1) as u32) & 0x1) != 0;
                     self.flags.overflow = dst & 0x8000 != 0;
                     self.flags.set_sign_u16(res);
@@ -1443,7 +1443,7 @@ impl CPU {
                 // Shift `dst` to right `count` places while shifting bits from `src` in from the left
                 let res = (src & count_to_bitmask(count) as usize) << (16-count) | (dst >> count);
 
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
 
                 if count >= 1 {
                     // XXX carry if count is >= 1
@@ -1534,7 +1534,7 @@ impl CPU {
                 self.flags.set_parity(res);
                 self.flags.set_carry_u16(res);
 
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Test8() => {
                 // two parameters
@@ -1569,14 +1569,14 @@ impl CPU {
                 let mut src = self.read_parameter_value(&op.params.src);
                 let mut dst = self.read_parameter_value(&op.params.dst);
                 mem::swap(&mut src, &mut dst);
-                self.write_parameter_u16(op.segment, &op.params.dst, dst as u16);
-                self.write_parameter_u16(op.segment, &op.params.src, src as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, dst as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.src, src as u16);
             }
             Op::Xlatb() => {
                 // no parameters
                 // Set AL to memory byte DS:[(E)BX + unsigned AL].
                 // The DS segment may be overridden with a segment override prefix.
-                let al = self.mmu.read_u8(self.segment(op.segment), self.r16[BX].val + u16::from(self.r16[AX].lo_u8()));
+                let al = self.mmu.read_u8(self.segment(op.segment_prefix), self.r16[BX].val + u16::from(self.r16[AX].lo_u8()));
                 self.r16[AX].set_lo(al);
             }
             Op::Xor8() => {
@@ -1609,7 +1609,7 @@ impl CPU {
                 self.flags.set_zero_u16(res);
                 self.flags.set_parity(res);
 
-                self.write_parameter_u16(op.segment, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
             _ => {
                 println!("execute error: unhandled '{}' at {:04X}:{:04X} (flat {:06X})",

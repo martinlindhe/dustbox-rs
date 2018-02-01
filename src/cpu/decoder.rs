@@ -77,15 +77,15 @@ impl Decoder {
         let b = self.read_u8();
 
         let mut op = Instruction {
-            segment: seg,
-            repeat: RepeatMode::None,
-            lock: false,
             command: Op::Unknown(),
             params: ParameterPair {
                 dst: Parameter::None(),
                 src: Parameter::None(),
                 src2: Parameter::None(),
             },
+            segment_prefix: seg,
+            repeat: RepeatMode::None,
+            lock: false,
             length: 0,
         };
 
@@ -93,22 +93,22 @@ impl Decoder {
             0x00 => {
                 // add r/m8, r8
                 op.command = Op::Add8;
-                op.params = self.rm8_r8(op.segment);
+                op.params = self.rm8_r8(op.segment_prefix);
             }
             0x01 => {
                 // add r/m16, r16
                 op.command = Op::Add16;
-                op.params = self.rm16_r16(op.segment);
+                op.params = self.rm16_r16(op.segment_prefix);
             }
             0x02 => {
                 // add r8, r/m8
                 op.command = Op::Add8;
-                op.params = self.r8_rm8(op.segment);
+                op.params = self.r8_rm8(op.segment_prefix);
             }
             0x03 => {
                 // add r16, r/m16
                 op.command = Op::Add16;
-                op.params = self.r16_rm16(op.segment);
+                op.params = self.r16_rm16(op.segment_prefix);
             }
             0x04 => {
                 // add AL, imm8
@@ -135,22 +135,22 @@ impl Decoder {
             0x08 => {
                 // or r/m8, r8
                 op.command = Op::Or8();
-                op.params = self.rm8_r8(op.segment);
+                op.params = self.rm8_r8(op.segment_prefix);
             }
             0x09 => {
                 // or r/m16, r16
                 op.command = Op::Or16();
-                op.params = self.rm16_r16(op.segment);
+                op.params = self.rm16_r16(op.segment_prefix);
             }
             0x0A => {
                 // or r8, r/m8
                 op.command = Op::Or8();
-                op.params = self.r8_rm8(op.segment);
+                op.params = self.r8_rm8(op.segment_prefix);
             }
             0x0B => {
                 // or r16, r/m16
                 op.command = Op::Or16();
-                op.params = self.r16_rm16(op.segment);
+                op.params = self.r16_rm16(op.segment_prefix);
             }
             0x0C => {
                 // or AL, imm8
@@ -201,13 +201,13 @@ impl Decoder {
                         // setc r/m8
                         let x = self.read_mod_reg_rm();
                         op.command = Op::Setc;
-                        op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                        op.params.dst = self.rm8(op.segment_prefix, x.rm, x.md);
                     }
                     0x95 => {
                         // setnz r/m8  (alias setne)
                         let x = self.read_mod_reg_rm();
                         op.command = Op::Setnz;
-                        op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                        op.params.dst = self.rm8(op.segment_prefix, x.rm, x.md);
                     }
                     0xA0 => {
                         // push fs
@@ -222,12 +222,12 @@ impl Decoder {
                     0xA3 => {
                         // bt r/m16, r16
                         op.command = Op::Bt;
-                        op.params = self.rm16_r16(op.segment);
+                        op.params = self.rm16_r16(op.segment_prefix);
                     }
                     0xA4 =>{
                         // shld r/m16, r16, imm8
                         op.command = Op::Shld();
-                        op.params = self.rm16_r16(op.segment);
+                        op.params = self.rm16_r16(op.segment_prefix);
                         op.params.src2 = Parameter::Imm8(self.read_u8());
                     }
                     0xA8 => {
@@ -243,28 +243,28 @@ impl Decoder {
                     0xAC => {
                         // shrd r/m16, r16, imm8
                         op.command = Op::Shrd();
-                        op.params = self.rm16_r16(op.segment);
+                        op.params = self.rm16_r16(op.segment_prefix);
                         op.params.src2 = Parameter::Imm8(self.read_u8());
                     }
                     0xAF => {
                         // imul r16, r/m16
                         op.command = Op::Imul16;
-                        op.params = self.r16_rm16(op.segment);
+                        op.params = self.r16_rm16(op.segment_prefix);
                     }
                     0xB6 => {
                         // movzx r16, r/m8
                         op.command = Op::Movzx16();
-                        op.params = self.r16_rm8(op.segment);
+                        op.params = self.r16_rm8(op.segment_prefix);
                     }
                     0xBC => {
                         // bsf r16, r/m16
                         op.command = Op::Bsf;
-                        op.params = self.r16_rm16(op.segment);
+                        op.params = self.r16_rm16(op.segment_prefix);
                     }
                     0xBE => {
                         // movsx r16, r/m8
                         op.command = Op::Movsx16();
-                        op.params = self.r16_rm8(op.segment);
+                        op.params = self.r16_rm8(op.segment_prefix);
                     }
                     _ => {
                         let invalid = InvalidOp::Op(vec![0x0F, b]);
@@ -281,22 +281,22 @@ impl Decoder {
             0x10 => {
                 // adc r/m8, r8
                 op.command = Op::Adc8();
-                op.params = self.rm8_r8(op.segment);
+                op.params = self.rm8_r8(op.segment_prefix);
             }
             0x11 => {
                 // adc r/m16, r16
                 op.command = Op::Adc16();
-                op.params = self.rm16_r16(op.segment);
+                op.params = self.rm16_r16(op.segment_prefix);
             }
             0x12 => {
                 // adc r8, r/m8
                 op.command = Op::Adc8();
-                op.params = self.r8_rm8(op.segment);
+                op.params = self.r8_rm8(op.segment_prefix);
             }
             0x13 => {
                 // adc r16, r/m16
                 op.command = Op::Adc16();
-                op.params = self.r16_rm16(op.segment);
+                op.params = self.r16_rm16(op.segment_prefix);
             }
             0x14 => {
                 // adc al, imm8
@@ -323,7 +323,7 @@ impl Decoder {
             0x1A => {
                 // sbb r8, r/m8
                 op.command = Op::Sbb8();
-                op.params = self.r8_rm8(op.segment);
+                op.params = self.r8_rm8(op.segment_prefix);
             }
             0x1C => {
                 // sbb al, imm8
@@ -350,22 +350,22 @@ impl Decoder {
             0x20 => {
                 // and r/m8, r8
                 op.command = Op::And8();
-                op.params = self.rm8_r8(op.segment);
+                op.params = self.rm8_r8(op.segment_prefix);
             }
             0x21 => {
                 // and r/m16, r16
                 op.command = Op::And16();
-                op.params = self.rm16_r16(op.segment);
+                op.params = self.rm16_r16(op.segment_prefix);
             }
             0x22 => {
                 // and r8, r/m8
                 op.command = Op::And8();
-                op.params = self.r8_rm8(op.segment);
+                op.params = self.r8_rm8(op.segment_prefix);
             }
             0x23 => {
                 // and r16, r/m16
                 op.command = Op::And16();
-                op.params = self.r16_rm16(op.segment);
+                op.params = self.r16_rm16(op.segment_prefix);
             }
             0x24 => {
                 // and AL, imm8
@@ -390,22 +390,22 @@ impl Decoder {
             0x28 => {
                 // sub r/m8, r8
                 op.command = Op::Sub8();
-                op.params = self.rm8_r8(op.segment);
+                op.params = self.rm8_r8(op.segment_prefix);
             }
             0x29 => {
                 // sub r/m16, r16
                 op.command = Op::Sub16();
-                op.params = self.rm16_r16(op.segment);
+                op.params = self.rm16_r16(op.segment_prefix);
             }
             0x2A => {
                 // sub r8, r/m8
                 op.command = Op::Sub8();
-                op.params = self.r8_rm8(op.segment);
+                op.params = self.r8_rm8(op.segment_prefix);
             }
             0x2B => {
                 // sub r16, r/m16
                 op.command = Op::Sub16();
-                op.params = self.r16_rm16(op.segment);
+                op.params = self.r16_rm16(op.segment_prefix);
             }
             0x2C => {
                 // sub AL, imm8
@@ -429,22 +429,22 @@ impl Decoder {
             0x30 => {
                 // xor r/m8, r8
                 op.command = Op::Xor8();
-                op.params = self.rm8_r8(op.segment);
+                op.params = self.rm8_r8(op.segment_prefix);
             }
             0x31 => {
                 // xor r/m16, r16
                 op.command = Op::Xor16();
-                op.params = self.rm16_r16(op.segment);
+                op.params = self.rm16_r16(op.segment_prefix);
             }
             0x32 => {
                 // xor r8, r/m8
                 op.command = Op::Xor8();
-                op.params = self.r8_rm8(op.segment);
+                op.params = self.r8_rm8(op.segment_prefix);
             }
             0x33 => {
                 // xor r16, r/m16
                 op.command = Op::Xor16();
-                op.params = self.r16_rm16(op.segment);
+                op.params = self.r16_rm16(op.segment_prefix);
             }
             0x34 => {
                 // xor AL, imm8
@@ -468,22 +468,22 @@ impl Decoder {
             0x38 => {
                 // cmp r/m8, r8
                 op.command = Op::Cmp8();
-                op.params = self.rm8_r8(op.segment);
+                op.params = self.rm8_r8(op.segment_prefix);
             }
             0x39 => {
                 // cmp r/m16, r16
                 op.command = Op::Cmp16();
-                op.params = self.rm16_r16(op.segment);
+                op.params = self.rm16_r16(op.segment_prefix);
             }
             0x3A => {
                 // cmp r8, r/m8
                 op.command = Op::Cmp8();
-                op.params = self.r8_rm8(op.segment);
+                op.params = self.r8_rm8(op.segment_prefix);
             }
             0x3B => {
                 // cmp r16, r/m16
                 op.command = Op::Cmp16();
-                op.params = self.r16_rm16(op.segment);
+                op.params = self.r16_rm16(op.segment_prefix);
             }
             0x3C => {
                 // cmp AL, imm8
@@ -537,7 +537,7 @@ impl Decoder {
             0x63 => {
                 // arpl r/m16, r16
                 op.command = Op::Arpl();
-                op.params = self.rm16_r16(op.segment);
+                op.params = self.rm16_r16(op.segment_prefix);
             }
             0x64 => {
                 // fs segment prefix
@@ -567,7 +567,7 @@ impl Decoder {
             0x69 => {
                 // imul r16, r/m16, imm16
                 op.command = Op::Imul16;
-                op.params = self.r16_rm16(op.segment);
+                op.params = self.r16_rm16(op.segment_prefix);
                 op.params.src2 = Parameter::Imm16(self.read_u16());
             }
             0x6A => {
@@ -578,7 +578,7 @@ impl Decoder {
             0x6B => {
                 // imul r16, r/m16, imm8
                 op.command = Op::Imul16;
-                op.params = self.r16_rm16(op.segment);
+                op.params = self.r16_rm16(op.segment_prefix);
                 op.params.src2 = Parameter::Imm8(self.read_u8());
             }
             0x6C => {
@@ -676,7 +676,7 @@ impl Decoder {
             0x80 => {
                 // <arithmetic> r/m8, imm8
                 let x = self.read_mod_reg_rm();
-                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                op.params.dst = self.rm8(op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8());
                 match x.reg {
                     0 => op.command = Op::Add8,
@@ -693,7 +693,7 @@ impl Decoder {
             0x81 => {
                 // <arithmetic> r/m16, imm16
                 let x = self.read_mod_reg_rm();
-                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.dst = self.rm16(op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Imm16(self.read_u16());
                 match x.reg {
                     0 => op.command = Op::Add16,
@@ -711,7 +711,7 @@ impl Decoder {
             0x83 => {
                 // <arithmetic> r/m16, imm8
                 let x = self.read_mod_reg_rm();
-                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.dst = self.rm16(op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::ImmS8(self.read_s8());
                 match x.reg {
                     0 => op.command = Op::Add16,
@@ -728,61 +728,61 @@ impl Decoder {
             0x84 => {
                 // test r/m8, r8
                 op.command = Op::Test8();
-                op.params = self.rm8_r8(op.segment);
+                op.params = self.rm8_r8(op.segment_prefix);
             }
             0x85 => {
                 // test r/m16, r16
                 op.command = Op::Test16();
-                op.params = self.rm16_r16(op.segment);
+                op.params = self.rm16_r16(op.segment_prefix);
             }
             0x86 => {
                 // xchg r/m8, r8
                 op.command = Op::Xchg8();
-                op.params = self.rm8_r8(op.segment);
+                op.params = self.rm8_r8(op.segment_prefix);
             }
             0x87 => {
                 // xchg r/m16, r16
                 op.command = Op::Xchg16();
-                op.params = self.rm16_r16(op.segment);
+                op.params = self.rm16_r16(op.segment_prefix);
             }
             0x88 => {
                 // mov r/m8, r8
                 op.command = Op::Mov8();
-                op.params = self.rm8_r8(op.segment);
+                op.params = self.rm8_r8(op.segment_prefix);
             }
             0x89 => {
                 // mov r/m16, r16
                 op.command = Op::Mov16();
-                op.params = self.rm16_r16(op.segment);
+                op.params = self.rm16_r16(op.segment_prefix);
             }
             0x8A => {
                 // mov r8, r/m8
                 op.command = Op::Mov8();
-                op.params = self.r8_rm8(op.segment);
+                op.params = self.r8_rm8(op.segment_prefix);
             }
             0x8B => {
                 // mov r16, r/m16
                 op.command = Op::Mov16();
-                op.params = self.r16_rm16(op.segment);
+                op.params = self.r16_rm16(op.segment_prefix);
             }
             0x8C => {
                 // mov r/m16, sreg
                 op.command = Op::Mov16();
-                op.params = self.rm16_sreg(op.segment);
+                op.params = self.rm16_sreg(op.segment_prefix);
             }
             0x8D => {
                 // lea r16, m
                 op.command = Op::Lea16();
-                op.params = self.r16_m16(op.segment);
+                op.params = self.r16_m16(op.segment_prefix);
             }
             0x8E => {
                 // mov sreg, r/m16
                 op.command = Op::Mov16();
-                op.params = self.sreg_rm16(op.segment);
+                op.params = self.sreg_rm16(op.segment_prefix);
             }
             0x8F => {
                 let x = self.read_mod_reg_rm();
-                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.dst = self.rm16(op.segment_prefix, x.rm, x.md);
                 match x.reg {
                     0 => {
                         // pop r/m16
@@ -830,24 +830,24 @@ impl Decoder {
                 // mov AL, moffs8
                 op.command = Op::Mov8();
                 op.params.dst = Parameter::Reg8(AL);
-                op.params.src = Parameter::Ptr8(op.segment, self.read_u16());
+                op.params.src = Parameter::Ptr8(op.segment_prefix, self.read_u16());
             }
             0xA1 => {
                 // mov AX, moffs16
                 op.command = Op::Mov16();
                 op.params.dst = Parameter::Reg16(AX);
-                op.params.src = Parameter::Ptr16(op.segment, self.read_u16());
+                op.params.src = Parameter::Ptr16(op.segment_prefix, self.read_u16());
             }
             0xA2 => {
                 // mov moffs8, AL
                 op.command = Op::Mov8();
-                op.params.dst = Parameter::Ptr8(op.segment, self.read_u16());
+                op.params.dst = Parameter::Ptr8(op.segment_prefix, self.read_u16());
                 op.params.src = Parameter::Reg8(AL);
             }
             0xA3 => {
                 // mov moffs16, AX
                 op.command = Op::Mov16();
-                op.params.dst = Parameter::Ptr16(op.segment, self.read_u16());
+                op.params.dst = Parameter::Ptr16(op.segment_prefix, self.read_u16());
                 op.params.src = Parameter::Reg16(AX);
             }
             0xA4 => {
@@ -920,7 +920,7 @@ impl Decoder {
                         Op::Invalid(invalid)
                     }
                 };
-                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                op.params.dst = self.rm8(op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
             0xC1 => {
@@ -939,7 +939,7 @@ impl Decoder {
                         Op::Invalid(invalid)
                     }
                 };
-                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.dst = self.rm16(op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
             0xC2 => {
@@ -954,16 +954,16 @@ impl Decoder {
             0xC4 => {
                 // les r16, m16
                 op.command = Op::Les();
-                op.params = self.r16_m16(op.segment);
+                op.params = self.r16_m16(op.segment_prefix);
             }
             0xC5 => {
                 // lds r16, m16
                 op.command = Op::Lds();
-                op.params = self.r16_m16(op.segment);
+                op.params = self.r16_m16(op.segment_prefix);
             }
             0xC6 => {
                 let x = self.read_mod_reg_rm();
-                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                op.params.dst = self.rm8(op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8());
                 match x.reg {
                     0 => {
@@ -978,7 +978,7 @@ impl Decoder {
             }
             0xC7 => {
                 let x = self.read_mod_reg_rm();
-                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.dst = self.rm16(op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Imm16(self.read_u16());
                 match x.reg {
                     0 => {
@@ -1036,7 +1036,7 @@ impl Decoder {
                         Op::Invalid(invalid)
                     }
                 };
-                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                op.params.dst = self.rm8(op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Imm8(1);
             }
             0xD1 => {
@@ -1055,7 +1055,7 @@ impl Decoder {
                         Op::Invalid(invalid)
                     }
                 };
-                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.dst = self.rm16(op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Imm16(1);
             }
             0xD2 => {
@@ -1074,7 +1074,7 @@ impl Decoder {
                         Op::Invalid(invalid)
                     }
                 };
-                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                op.params.dst = self.rm8(op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Reg8(CL);
             }
             0xD3 => {
@@ -1093,7 +1093,7 @@ impl Decoder {
                         Op::Invalid(invalid)
                     }
                 };
-                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.dst = self.rm16(op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Reg8(CL);
             }
             0xD4 => {
@@ -1258,7 +1258,7 @@ impl Decoder {
             0xF6 => {
                 // <math> r/m8
                 let x = self.read_mod_reg_rm();
-                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                op.params.dst = self.rm8(op.segment_prefix, x.rm, x.md);
                 match x.reg {
                     0 | 1 => {
                         // test r/m8, imm8
@@ -1277,7 +1277,7 @@ impl Decoder {
             0xF7 => {
                 // <math> r/m16
                 let x = self.read_mod_reg_rm();
-                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.dst = self.rm16(op.segment_prefix, x.rm, x.md);
                 match x.reg {
                     0 | 1 => {
                         // test r/m16, imm16
@@ -1320,7 +1320,7 @@ impl Decoder {
             0xFE => {
                 // byte size
                 let x = self.read_mod_reg_rm();
-                op.params.dst = self.rm8(op.segment, x.rm, x.md);
+                op.params.dst = self.rm8(op.segment_prefix, x.rm, x.md);
                 match x.reg {
                     // NOTE: 2 is a deprecated but valid encoding, example:
                     // https://www.pouet.net/prod.php?which=65203
@@ -1336,7 +1336,7 @@ impl Decoder {
             0xFF => {
                 // word size
                 let x = self.read_mod_reg_rm();
-                op.params.dst = self.rm16(op.segment, x.rm, x.md);
+                op.params.dst = self.rm16(op.segment_prefix, x.rm, x.md);
                 match x.reg {
                     0 => op.command = Op::Inc16(), // inc r/m16
                     1 => op.command = Op::Dec16(), // dec r/m16
