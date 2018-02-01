@@ -9,8 +9,9 @@ path = "src/lib.rs"
 [dependencies]
 time = "0.1"
 rand = "0.4"
-tera = "0.11"
+tempdir = "0.3"
 image = "0.18"
+tera = "0.11"
 
 [dev-dependencies]
 bencher = "0.1"

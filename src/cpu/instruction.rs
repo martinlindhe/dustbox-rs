@@ -45,6 +45,21 @@ impl fmt::Display for Instruction {
 }
 
 impl Instruction {
+    pub fn new(op: Op, dst: Parameter) -> Self {
+        Instruction {
+            command: op,
+            segment_prefix: Segment::Default,
+            lock: false,
+            repeat: RepeatMode::None,
+            params: ParameterPair {
+                dst: dst,
+                src: Parameter::None(),
+                src2: Parameter::None(),
+            },
+            length: 0, // XXX remove length here, cannot be known
+        }
+    }
+
     fn hide_segment_prefix(&self) -> bool {
         self.command == Op::Mov8() ||
         self.command == Op::Mov16()

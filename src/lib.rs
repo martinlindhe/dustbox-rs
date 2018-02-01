@@ -5,6 +5,7 @@ extern crate image;
 #[macro_use]
 extern crate tera;
 extern crate time;
+extern crate tempdir;
 
 pub mod cpu;
 pub mod memory;
