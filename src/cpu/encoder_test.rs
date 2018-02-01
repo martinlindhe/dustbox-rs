@@ -5,6 +5,7 @@ use std::str;
 use std::collections::HashMap;
 
 use tempdir::TempDir;
+use tera::Context;
 
 use cpu::Encoder;
 use cpu::CPU;
@@ -12,22 +13,30 @@ use cpu::RepeatMode;
 use cpu::Segment;
 use cpu::{Parameter, ParameterPair};
 use cpu::instruction::{Instruction, InstructionInfo, Op};
-use cpu::register::SR;
+use cpu::register::{BX, CS};
 use memory::mmu::MMU;
-
 
 #[test]
 fn can_encode_instr() {
-    let op = Instruction::new(Op::Int(), Parameter::Imm8(0x21));
 
-    let encoder = Encoder::new();
-    assert_eq!(vec!(0xCD, 0x21), encoder.encode(&op));
+    //let encoder = Encoder::new();
+    //assert_eq!(vec!(0xCD, 0x21), encoder.encode(&op));
 
+    let op = Instruction::new1(Op::Int(), Parameter::Imm8(0x21));
     assert_eq!("int 0x21".to_owned(), ndisasm(&op).unwrap());
 
-    // XXX TODO: assemble custom prober.com
+    let op = Instruction::new2(Op::Mov8(), Parameter::Reg16(BX), Parameter::Imm16(0xFF21));
+    assert_eq!("mov bx, 0xFF21".to_owned(), ndisasm(&op).unwrap());
+}
+
+#[test]
+fn vmware_fuzz() {
+    let op = Instruction::new2(Op::Mov8(), Parameter::Reg16(BX), Parameter::Imm16(0xFF21));
+    assert_eq!("mov bx, 0xff21".to_owned(), ndisasm(&op).unwrap());
 
     let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
+
+    assemble_prober(&op, prober_com);
     let output = stdout_from_winxp_vmware(prober_com);
 
     println!("{}", output);
@@ -35,6 +44,46 @@ fn can_encode_instr() {
     let m = prober_reg_map(&output);
 
     println!("map: {:?}", m);
+}
+
+fn assemble_prober(op: &Instruction, prober_com: &str) {
+    let mut tera = compile_templates!("utils/prober/*.tpl.asm");
+
+    // disable autoescaping
+    tera.autoescape_on(vec![]);
+
+    let mut context = Context::new();
+    context.add("snippet", &op_as_db_bytes(&op));
+    // add stuff to context
+    match tera.render("prober.tpl.asm", &context) {
+        Ok(res) => {
+            use std::fs::File;
+            use std::io::Write;
+            let mut f = File::create("utils/prober/prober.asm").expect("Unable to create file");
+            f.write_all(res.as_bytes()).expect("Unable to write data");
+        }
+        Err(why) => println!("ERROR = {}", why),
+    }
+
+    // assemble generated prober.asm
+    let output = Command::new("nasm")
+        .current_dir("/Users/m/dev/rs/dustbox-rs/utils/prober") // XXX get path name from prober_com
+        .args(&["-f", "bin", "-o", "prober.com", "prober.asm"])
+        .output()
+        .expect("failed to execute process");
+}
+
+// creates a "db 0x1,0x2..." representation of the encoded instruction
+fn op_as_db_bytes(op: &Instruction) -> String {
+    let encoder = Encoder::new();
+    let enc = encoder.encode(&op);
+
+    let mut v = Vec::new();
+    for c in enc {
+        v.push(format!("0x{:02X}", c));
+    }
+    let s = v.join(",");
+    format!("db {}", s)
 }
 
 // parse prober.com output into a map

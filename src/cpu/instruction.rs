@@ -45,7 +45,7 @@ impl fmt::Display for Instruction {
 }
 
 impl Instruction {
-    pub fn new(op: Op, dst: Parameter) -> Self {
+    pub fn new1(op: Op, dst: Parameter) -> Self {
         Instruction {
             command: op,
             segment_prefix: Segment::Default,
@@ -54,6 +54,21 @@ impl Instruction {
             params: ParameterPair {
                 dst: dst,
                 src: Parameter::None(),
+                src2: Parameter::None(),
+            },
+            length: 0, // XXX remove length here, cannot be known
+        }
+    }
+
+    pub fn new2(op: Op, dst: Parameter, src: Parameter) -> Self {
+        Instruction {
+            command: op,
+            segment_prefix: Segment::Default,
+            lock: false,
+            repeat: RepeatMode::None,
+            params: ParameterPair {
+                dst: dst,
+                src: src,
                 src2: Parameter::None(),
             },
             length: 0, // XXX remove length here, cannot be known
@@ -207,6 +222,45 @@ impl fmt::Display for Parameter {
             &Parameter::SReg16(ref v) => write!(f, "{}", v.as_str()),
             &Parameter::None() => write!(f, ""),
         }
+    }
+}
+
+impl Parameter {
+    pub fn is_imm(&self) -> bool {
+        match *self {
+            Parameter::Imm8(_) => true,
+            Parameter::Imm16(_) => true,
+            Parameter::ImmS8(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_ptr(&self) -> bool {
+        match *self {
+            Parameter::Ptr8(_, _) => true,
+            Parameter::Ptr16(_, _) => true,
+            Parameter::Ptr16Imm(_, _) => true,
+            Parameter::Ptr8Amode(_, _) => true,
+            Parameter::Ptr8AmodeS8(_, _, _) => true,
+            Parameter::Ptr8AmodeS16(_, _, _) => true,
+            Parameter::Ptr16Amode(_, _) => true,
+            Parameter::Ptr16AmodeS8(_, _, _) => true,
+            Parameter::Ptr16AmodeS16(_, _, _) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_reg(&self) -> bool {
+        match *self {
+            Parameter::Reg8(_) => true,
+            Parameter::Reg16(_) => true,
+            Parameter::SReg16(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_none(&self) -> bool {
+        return *self == Parameter::None()
     }
 }
 
