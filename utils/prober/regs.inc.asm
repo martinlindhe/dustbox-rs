@@ -188,7 +188,7 @@ section .data
     dsIs     db 'ds=$'
     fsIs     db 'fs=$'
     gsIs     db 'gs=$'
-    flagsIs  db 'flg=$'
+    flagsIs  db 'flag=$'
     _ax dw 0
     _bx dw 0
     _cx dw 0

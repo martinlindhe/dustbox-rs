@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{self, Read, Write};
 use std::process::Command;
 use std::str;
+use std::collections::HashMap;
 
 use tempdir::TempDir;
 
@@ -24,12 +25,33 @@ fn can_encode_instr() {
 
     assert_eq!("int 0x21".to_owned(), ndisasm(&op).unwrap());
 
-    // XXX TODO: assemble custom prober.com (with knowledge of "affected" registers???)
+    // XXX TODO: assemble custom prober.com
 
     let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
     let output = stdout_from_winxp_vmware(prober_com);
 
     println!("{}", output);
+
+    let m = prober_reg_map(&output);
+
+    println!("map: {:?}", m);
+}
+
+// parse prober.com output into a map
+fn prober_reg_map(stdout: &str) -> HashMap<String, u16>{
+    let mut map = HashMap::new();
+    let lines: Vec<String> = stdout.split("\r\n").map(|s| s.to_string()).collect();
+
+    for line in lines {
+        if let Some(pos) = line.find('=') {
+            let p1 = &line[0..pos];
+            let p2 = &line[pos+1..];
+            let val = u16::from_str_radix(p2, 16).unwrap();
+            map.insert(p1.to_owned(), val);
+        }
+    }
+
+    map
 }
 
 // run .com in vm, parse result
