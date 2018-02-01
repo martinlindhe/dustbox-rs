@@ -35,7 +35,7 @@ call clear_flags
     call print_regs
 
 
-    mov  ah, 0x4c       ; exit to dos
+    mov  ax, 0x4c00       ; exit to dos
     int  0x21
 
 %include "regs.inc.asm"

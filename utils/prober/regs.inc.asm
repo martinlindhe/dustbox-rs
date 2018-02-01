@@ -174,21 +174,21 @@ print_regs:
 
 
 section .data
-    axIs     db 'ax = $'
-    bxIs     db 'bx = $'
-    cxIs     db 'cx = $'
-    dxIs     db 'dx = $'
-    bpIs     db 'bp = $'
-    spIs     db 'sp = $'
-    siIs     db 'si = $'
-    diIs     db 'di = $'
-    esIs     db 'es = $'
-    csIs     db 'cs = $'
-    ssIs     db 'ss = $'
-    dsIs     db 'ds = $'
-    fsIs     db 'fs = $'
-    gsIs     db 'gs = $'
-    flagsIs  db 'flg= $'
+    axIs     db 'ax=$'
+    bxIs     db 'bx=$'
+    cxIs     db 'cx=$'
+    dxIs     db 'dx=$'
+    bpIs     db 'bp=$'
+    spIs     db 'sp=$'
+    siIs     db 'si=$'
+    diIs     db 'di=$'
+    esIs     db 'es=$'
+    csIs     db 'cs=$'
+    ssIs     db 'ss=$'
+    dsIs     db 'ds=$'
+    fsIs     db 'fs=$'
+    gsIs     db 'gs=$'
+    flagsIs  db 'flg=$'
     _ax dw 0
     _bx dw 0
     _cx dw 0

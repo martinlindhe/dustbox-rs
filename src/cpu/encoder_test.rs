@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::process::Command;
 use std::str;
 
@@ -23,6 +23,65 @@ fn can_encode_instr() {
     assert_eq!(vec!(0xCD, 0x21), encoder.encode(&op));
 
     assert_eq!("int 0x21".to_owned(), ndisasm(&op).unwrap());
+
+    // XXX TODO: assemble custom prober.com (with knowledge of "affected" registers???)
+
+    let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
+    let output = stdout_from_winxp_vmware(prober_com);
+
+    println!("{}", output);
+}
+
+// run .com in vm, parse result
+fn stdout_from_winxp_vmware(prober_com: &str) -> String {
+    let vmx = "/Users/m/Documents/Virtual Machines.localized/Windows XP Professional.vmwarevm/Windows XP Professional.vmx";
+
+    let vm_user = "vmware";
+    let vm_password = "vmware";
+
+    // copy file to guest
+    Command::new("vmrun")
+        .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
+            "copyFileFromHostToGuest", vmx, prober_com, "C:\\prober.com"])
+        .output()
+        .expect("failed to execute process");
+
+    // run prober.bat, where prober.bat is "c:\prober.com > c:\prober.out" (XXX create this file in vm once)
+    Command::new("vmrun")
+        .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
+            "runProgramInGuest", vmx, "C:\\prober.bat"])
+        .output()
+        .expect("failed to execute process");
+
+    let tmp_dir = TempDir::new("vmware").unwrap();
+    let file_path = tmp_dir.path().join("prober.out");
+    let file_str = file_path.to_str().unwrap();
+
+    // copy back result
+    Command::new("vmrun")
+        .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
+            "copyFileFromGuestToHost", vmx, "C:\\prober.out", file_str])
+        .output()
+        .expect("failed to execute process");
+
+    let mut buffer = String::new();
+    let mut f = match File::open(&file_path) {
+        Ok(x) => x,
+        Err(why) => {
+            panic!("Could not open file {:?}: {}", file_path, why);
+        }
+    };
+    match f.read_to_string(&mut buffer) {
+        Ok(x) => x,
+        Err(why) => {
+            panic!("could not read contents of file: {}", why);
+        }
+    };
+
+    drop(f);
+    tmp_dir.close().unwrap();
+
+    buffer
 }
 
 /// disasm the encoded instruction with ndisasm
@@ -38,9 +97,9 @@ fn ndisasm(op: &Instruction) -> Result<String, io::Error> {
     tmp_file.write(&data)?;
 
     let output = Command::new("ndisasm")
-            .args(&[file_str])
-            .output()
-            .expect("failed to execute process");
+        .args(&[file_str])
+        .output()
+        .expect("failed to execute process");
 
     drop(tmp_file);
     tmp_dir.close()?;
