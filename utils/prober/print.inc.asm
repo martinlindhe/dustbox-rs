@@ -1,3 +1,4 @@
+section .text
 
 ; in: dx
 print_dollar_dx:
@@ -6,7 +7,7 @@ print_dollar_dx:
     ret
 
 ; in: ax
-print_hex_ax:
+print_hex_at_ax:
 ;-----------------------
 ; convert the value in AX to hexadecimal ASCIIs
 ;-----------------------
@@ -29,3 +30,6 @@ P2: mov [di], bl            ; store ASCII in buffer
     mov dx, hexTemp
     call print_dollar_dx
     ret
+
+section .data
+    hexTemp  db '0000',0xD,0xA,'$' ; buffer for ASCII string
