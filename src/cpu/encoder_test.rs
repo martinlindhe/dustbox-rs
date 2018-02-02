@@ -18,7 +18,6 @@ use memory::mmu::MMU;
 
 #[test]
 fn can_encode_instr() {
-
     let encoder = Encoder::new();
     let op = Instruction::new1(Op::Int(), Parameter::Imm8(0x21));
     assert_eq!(vec!(0xCD, 0x21), encoder.encode(&op));
@@ -60,7 +59,7 @@ fn can_encode_instr() {
     assert_eq!(vec!(0x88, 0x3F), encoder.encode(&op));
 }
 
-#[test]
+#[test] #[ignore] // expensive test
 fn vmware_fuzz() {
     let op = Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
 
