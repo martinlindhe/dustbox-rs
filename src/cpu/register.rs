@@ -112,3 +112,39 @@ pub const SS: usize = 2;
 pub const DS: usize = 3;
 pub const FS: usize = 4;
 pub const GS: usize = 5;
+
+#[derive(Debug, PartialEq)]
+pub enum AMode {
+    BXSI, BXDI, BPSI, BPDI, SI, DI, BP, BX
+}
+
+impl AMode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            &AMode::BXSI => "bx+si",
+            &AMode::BXDI => "bx+di",
+            &AMode::BPSI => "bp+si",
+            &AMode::BPDI => "bp+di",
+            &AMode::SI => "si",
+            &AMode::DI => "di",
+            &AMode::BP => "bp",
+            &AMode::BX => "bx",
+        }
+    }
+}
+
+impl Into<AMode> for u8 {
+    fn into(self) -> AMode {
+        match self {
+            0 => AMode::BXSI,
+            1 => AMode::BXDI,
+            2 => AMode::BPSI,
+            3 => AMode::BPDI,
+            4 => AMode::SI,
+            5 => AMode::DI,
+            6 => AMode::BP,
+            7 => AMode::BX,
+            _ => unreachable!(),
+        }
+    }
+}

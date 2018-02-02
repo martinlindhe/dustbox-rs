@@ -1372,13 +1372,13 @@ impl Decoder {
                     Parameter::Ptr8(seg, self.read_u16())
                 } else {
                     // [amode]
-                    Parameter::Ptr8Amode(seg, rm as usize)
+                    Parameter::Ptr8Amode(seg, Into::into(rm))
                 }
             }
             // [amode+s8]
-            1 => Parameter::Ptr8AmodeS8(seg, rm as usize, self.read_s8()),
+            1 => Parameter::Ptr8AmodeS8(seg, Into::into(rm), self.read_s8()),
             // [amode+s16]
-            2 => Parameter::Ptr8AmodeS16(seg, rm as usize, self.read_s16()),
+            2 => Parameter::Ptr8AmodeS16(seg, Into::into(rm), self.read_s16()),
             // [reg]
             _ => Parameter::Reg8(Into::into(rm)),
         }
@@ -1393,13 +1393,13 @@ impl Decoder {
                     Parameter::Ptr16(seg, self.read_u16())
                 } else {
                     // [amode]
-                    Parameter::Ptr16Amode(seg, rm as usize)
+                    Parameter::Ptr16Amode(seg, Into::into(rm))
                 }
             }
             // [amode+s8]
-            1 => Parameter::Ptr16AmodeS8(seg, rm as usize, self.read_s8()),
+            1 => Parameter::Ptr16AmodeS8(seg, Into::into(rm), self.read_s8()),
             // [amode+s16]
-            2 => Parameter::Ptr16AmodeS16(seg, rm as usize, self.read_s16()),
+            2 => Parameter::Ptr16AmodeS16(seg, Into::into(rm), self.read_s16()),
             // [reg]
             _ => Parameter::Reg16(Into::into(rm)),
         }
