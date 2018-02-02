@@ -1,12 +1,14 @@
-#[macro_use] extern crate bencher;
+#[macro_use]
+extern crate criterion;
+
 extern crate dustbox;
 
-use bencher::Bencher;
+use criterion::Criterion;
 
 use dustbox::cpu::CPU;
 use dustbox::memory::mmu::MMU;
 
-fn simple_loop(b: &mut Bencher) {
+fn exec_simple_loop(c: &mut Criterion) {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
@@ -17,10 +19,10 @@ fn simple_loop(b: &mut Bencher) {
 
     cpu.load_com(&code);
 
-    b.iter(|| cpu.execute_instruction())
+    c.bench_function("execute small jmp short loop", |b| b.iter(|| cpu.execute_instruction()));
 }
 
-fn disasm_small_prog(b: &mut Bencher) {
+fn disasm_small_prog(c: &mut Criterion) {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
@@ -35,8 +37,8 @@ fn disasm_small_prog(b: &mut Bencher) {
     ];
     cpu.load_com(&code);
 
-    b.iter(|| cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 8))
+    c.bench_function("disasm small prog", |b| b.iter(|| cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 8)));
 }
 
-benchmark_group!(benches, simple_loop, disasm_small_prog);
-benchmark_main!(benches);
+criterion_group!(benches, exec_simple_loop, disasm_small_prog);
+criterion_main!(benches);

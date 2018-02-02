@@ -1,3 +1,4 @@
 /target/
+/.criterion/
 *.rs.bk
 *.glade~
