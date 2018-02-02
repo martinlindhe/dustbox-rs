@@ -1,6 +1,6 @@
 use std::convert::From;
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Register16 {
     pub val: u16,
 }

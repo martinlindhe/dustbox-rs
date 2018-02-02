@@ -30,6 +30,39 @@ fn can_encode_bitshift_instructions() {
     assert_eq!("shl ah,byte 0xff".to_owned(), ndisasm(&op).unwrap());
 }
 
+
+#[test]
+fn can_fuzz_shr() {
+    let encoder = Encoder::new();
+    let ops = vec!(
+        Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::AH), Parameter::Imm8(0xFF)),
+        Instruction::new2(Op::Shr8, Parameter::Reg8(R8::AH), Parameter::Imm8(0xFF)),
+    );
+    let data = encoder.encode_vec(&ops);
+    assert_eq!(vec!(0xB4, 0xFF, 0xC0, 0xEC, 0xFF), data);
+    // assert_eq!("shr ah,byte 0xff".to_owned(), ndisasm(&op).unwrap()); // XXX disasm all
+
+    // execute the ops in dustbox
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    cpu.load_com(&data);
+
+    cpu.execute_instructions(ops.len());
+    // XXX save regs
+    println!("{:?}", cpu.r16);
+
+    // XXX 2. run in vmware, compare regs
+    let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
+
+    assemble_prober(&ops, prober_com);
+    let output = stdout_from_winxp_vmware(prober_com);
+
+    let m = prober_reg_map(&output);
+    println!("vmware result: {:?}", m);
+
+}
+
+
 #[test]
 fn can_encode_int() {
     let encoder = Encoder::new();
@@ -81,11 +114,13 @@ fn can_encode_mov_addressing_modes() {
 
 #[test] #[ignore] // expensive test
 fn vmware_fuzz() {
-    let op = Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
+    let ops = vec!(
+        Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF)),
+    );
 
     let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
 
-    assemble_prober(&op, prober_com);
+    assemble_prober(&ops, prober_com);
     let output = stdout_from_winxp_vmware(prober_com);
 
     let m = prober_reg_map(&output);
@@ -94,14 +129,14 @@ fn vmware_fuzz() {
     // TODO: run the program in dustbox too, capture stdout and compare results
 }
 
-fn assemble_prober(op: &Instruction, prober_com: &str) {
+fn assemble_prober(ops: &Vec<Instruction>, prober_com: &str) {
     let mut tera = compile_templates!("utils/prober/*.tpl.asm");
 
     // disable autoescaping
     tera.autoescape_on(vec![]);
 
     let mut context = Context::new();
-    context.add("snippet", &op_as_db_bytes(&op));
+    context.add("snippet", &ops_as_db_bytes(&ops));
     // add stuff to context
     match tera.render("prober.tpl.asm", &context) {
         Ok(res) => {
@@ -121,10 +156,10 @@ fn assemble_prober(op: &Instruction, prober_com: &str) {
         .expect("failed to execute process");
 }
 
-// creates a "db 0x1,0x2..." representation of the encoded instruction
-fn op_as_db_bytes(op: &Instruction) -> String {
+// creates a "db 0x1,0x2..." representation of the encoded instructions
+fn ops_as_db_bytes(ops: &Vec<Instruction>) -> String {
     let encoder = Encoder::new();
-    let enc = encoder.encode(&op);
+    let enc = encoder.encode_vec(&ops);
 
     let mut v = Vec::new();
     for c in enc {

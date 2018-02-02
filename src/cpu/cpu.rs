@@ -203,6 +203,13 @@ impl CPU {
         }
     }
 
+    // executes n instructions of the cpu. only used in tests
+    pub fn execute_instructions(&mut self, count: usize) {
+        for _ in 0..count {
+            self.execute_instruction()
+        }
+    }
+
     pub fn execute_instruction(&mut self) {
         let cs = self.get_sr(&SR::CS);
         let ip = self.ip;

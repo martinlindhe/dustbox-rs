@@ -15,13 +15,21 @@ impl Encoder {
         }
     }
 
+    pub fn encode_vec(&self, ops: &Vec<Instruction>) -> Vec<u8> {
+        let mut out = vec!();
+        for op in ops {
+            out.extend(self.encode(op));
+        }
+        out
+    }
+
     /// encodes Instruction to a valid byte sequence
     pub fn encode(&self, op: &Instruction) -> Vec<u8> {
         let mut out = vec!();
         match op.command {
             Op::Int() => {
                 out.push(0xCD);
-                out.extend(self.encode_imm8(&op.params.dst).iter().cloned());
+                out.extend(self.encode_imm8(&op.params.dst));
             }
             Op::Mov8() => {
                 if op.params.dst.is_reg() && op.params.src.is_imm() {
@@ -36,17 +44,17 @@ impl Encoder {
                 } else if op.params.src.is_ptr() {
                     // 0x8A: mov r8, r/m8
                     out.push(0x8A);
-                    out.extend(self.encode_r8_rm8(&op.params).iter().cloned());
+                    out.extend(self.encode_r8_rm8(&op.params));
                 } else {
                     // 0x88: mov r/m8, r8
                     out.push(0x88);
-                    out.extend(self.encode_rm8_r8(&op.params).iter().cloned());
+                    out.extend(self.encode_rm8_r8(&op.params));
                 }
             }
 
             Op::Rol8 | Op::Ror8 | Op::Rcl8 | Op::Rcr8 |
             Op::Shl8 | Op::Shr8 | Op::Sar8 => {
-                out.extend(self.bitshift_instr8(&op).iter().cloned());
+                out.extend(self.bitshift_instr8(&op));
             }
             _ => {
                 panic!("encode: unhandled op {}", op);
@@ -59,21 +67,27 @@ impl Encoder {
         let mut out = vec!();
         if ins.params.dst.is_reg() && ins.params.src.is_imm() {
             if let Parameter::Imm8(i) = ins.params.src {
-                // 0xC0: r8, byte imm8
-                out.push(0xC0);
                 if let Parameter::Reg8(r) = ins.params.dst {
-                    // md 3 = register adressing, rm = the register value
-                    let mut mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.bitshift_get_index(&ins.command)};
-                    out.push(mrr.u8());
+                    // md 3 = register adressing
+                    // XXX ModRegRm.rm really should use enum AMode, not like AMode is now. naming there is wrong
+                    let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.bitshift_get_index(&ins.command)};
+                    if i == 1 {
+                        // 0xD0: bit shift byte by 1
+                        out.push(0xD0);
+                        out.push(mrr.u8());
+                    } else {
+                        // 0xC0: r8, byte imm8
+                        out.push(0xC0);
+                        out.push(mrr.u8());
+                        out.push(i as u8);
+                    }
                 } else {
                     unreachable!();
                 }
-                out.push(i as u8);
             } else {
                 unreachable!();
             }
         } else {
-            // 0xD0: bit shift byte by 1
             // 0xD2: bit shift byte by CL
             panic!("bitshift_instr8 {:?}", ins);
         }
