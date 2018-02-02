@@ -25,6 +25,21 @@ pub enum R8 {
     AL, CL, DL, BL, AH, CH, DH, BH
 }
 
+impl R8 {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            &R8::AL => "al",
+            &R8::CL => "cl",
+            &R8::DL => "dl",
+            &R8::BL => "bl",
+            &R8::AH => "ah",
+            &R8::CH => "ch",
+            &R8::DH => "dh",
+            &R8::BH => "bh",
+        }
+    }
+}
+
 impl Into<R8> for u8 {
     fn into(self) -> R8 {
         match self {
@@ -57,6 +72,19 @@ impl R16 {
             &R16::BP => 5,
             &R16::SI => 6,
             &R16::DI => 7,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            &R16::AX => "ax",
+            &R16::CX => "cx",
+            &R16::DX => "dx",
+            &R16::BX => "bx",
+            &R16::SP => "sp",
+            &R16::BP => "bp",
+            &R16::SI => "si",
+            &R16::DI => "di",
         }
     }
 }

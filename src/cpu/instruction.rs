@@ -187,8 +187,8 @@ impl fmt::Display for Parameter {
                     imm
                 }
             ),
-            &Parameter::Reg8(ref v) => write!(f, "{}", r8(v)),
-            &Parameter::Reg16(ref v) => write!(f, "{}", r16(v)),
+            &Parameter::Reg8(ref v) => write!(f, "{}", v.as_str()),
+            &Parameter::Reg16(ref v) => write!(f, "{}", v.as_str()),
             &Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
             &Parameter::None() => write!(f, ""),
         }
@@ -382,32 +382,6 @@ pub struct ModRegRm {
     pub md: u8, // NOTE: "mod" is reserved in rust
     pub reg: u8,
     pub rm: u8,
-}
-
-fn r8(reg: &R8) -> &'static str {
-    match *reg {
-        R8::AL => "al",
-        R8::CL => "cl",
-        R8::DL => "dl",
-        R8::BL => "bl",
-        R8::AH => "ah",
-        R8::CH => "ch",
-        R8::DH => "dh",
-        R8::BH => "bh",
-    }
-}
-
-fn r16(reg: &R16) -> &'static str {
-    match *reg {
-        R16::AX => "ax",
-        R16::CX => "cx",
-        R16::DX => "dx",
-        R16::BX => "bx",
-        R16::SP => "sp",
-        R16::BP => "bp",
-        R16::SI => "si",
-        R16::DI => "di",
-    }
 }
 
 fn sr16(reg: u8) -> &'static str {
