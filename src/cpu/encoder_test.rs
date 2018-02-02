@@ -16,6 +16,20 @@ use cpu::op::Op;
 use cpu::register::{R8, AMode};
 use memory::mmu::MMU;
 
+
+#[test]
+fn can_encode_bitshift_instructions() {
+    let encoder = Encoder::new();
+
+    let op = Instruction::new2(Op::Shr8, Parameter::Reg8(R8::AH), Parameter::Imm8(0xFF));
+    assert_eq!(vec!(0xC0, 0xEC, 0xFF), encoder.encode(&op));
+    assert_eq!("shr ah,byte 0xff".to_owned(), ndisasm(&op).unwrap());
+
+    let op = Instruction::new2(Op::Shl8, Parameter::Reg8(R8::AH), Parameter::Imm8(0xFF));
+    assert_eq!(vec!(0xC0, 0xE4, 0xFF), encoder.encode(&op));
+    assert_eq!("shl ah,byte 0xff".to_owned(), ndisasm(&op).unwrap());
+}
+
 #[test]
 fn can_encode_int() {
     let encoder = Encoder::new();

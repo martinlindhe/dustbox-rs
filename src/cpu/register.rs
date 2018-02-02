@@ -26,6 +26,19 @@ pub enum R8 {
 }
 
 impl R8 {
+    pub fn index(&self) -> usize {
+          match self {
+            &R8::AL => 0,
+            &R8::CL => 1,
+            &R8::DL => 2,
+            &R8::BL => 3,
+            &R8::AH => 4,
+            &R8::CH => 5,
+            &R8::DH => 6,
+            &R8::BH => 7,
+        }
+    }
+
     pub fn as_str(&self) -> &'static str {
         match self {
             &R8::AL => "al",

@@ -1375,8 +1375,9 @@ impl Decoder {
             1 => Parameter::Ptr8AmodeS8(seg, Into::into(rm), self.read_s8()),
             // [amode+s16]
             2 => Parameter::Ptr8AmodeS16(seg, Into::into(rm), self.read_s16()),
-            // [reg]
-            _ => Parameter::Reg8(Into::into(rm)),
+            // reg
+            3 => Parameter::Reg8(Into::into(rm)),
+            _ => unreachable!(),
         }
     }
 
