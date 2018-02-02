@@ -1,4 +1,4 @@
-use cpu::{ModRegRm, Instruction, Parameter, ParameterPair, Op};
+use cpu::{ModRegRm, Instruction, Parameter, ParameterSet, Op};
 
 #[cfg(test)]
 #[path = "./encoder_test.rs"]
@@ -48,11 +48,11 @@ impl Encoder {
         out
     }
 
-    fn encode_r8_rm8(&self, params: &ParameterPair) -> Vec<u8> {
+    fn encode_r8_rm8(&self, params: &ParameterSet) -> Vec<u8> {
         self.encode_rm8(&params.src, &params.dst)
     }
 
-    fn encode_rm8_r8(&self, params: &ParameterPair) -> Vec<u8> {
+    fn encode_rm8_r8(&self, params: &ParameterSet) -> Vec<u8> {
         self.encode_rm8(&params.dst, &params.src)
     }
 

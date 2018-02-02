@@ -5,7 +5,7 @@ use std::num::Wrapping;
 
 use cpu::Register16;
 use cpu::Flags;
-use cpu::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm, InvalidOp, RepeatMode};
+use cpu::{Instruction, InstructionInfo, Parameter, ParameterSet, Op, ModRegRm, InvalidOp, RepeatMode};
 use cpu::{R8, R16, SR, AMode};
 use cpu::Decoder;
 use cpu::Segment;

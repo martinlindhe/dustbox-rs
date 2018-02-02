@@ -4,14 +4,15 @@ use std::num::Wrapping;
 use cpu::segment::Segment;
 use cpu::register::{R8, R16, SR, AMode};
 
+/// A set of Parameters for an Instruction
 #[derive(Debug, PartialEq)]
-pub struct ParameterPair {
+pub struct ParameterSet {
     pub dst: Parameter,
     pub src: Parameter,
     pub src2: Parameter,
 }
 
-impl ParameterPair {
+impl ParameterSet {
     // returns the number of parameters
     pub fn count(&self) -> usize {
         match self.dst {

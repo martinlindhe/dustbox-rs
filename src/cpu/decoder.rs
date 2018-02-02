@@ -1,16 +1,8 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use cpu::{
-    Instruction,
-    InstructionInfo,
-    ParameterPair,
-    Op,
-    Parameter,
-    ModRegRm,
-    InvalidOp,
-    RepeatMode,
-};
+use cpu::{Instruction, InstructionInfo, Op};
+use cpu::{ParameterSet, Parameter, ModRegRm, InvalidOp, RepeatMode};
 use cpu::{R8, R16, SR};
 use cpu::Segment;
 use memory::mmu::MMU;
@@ -78,7 +70,7 @@ impl Decoder {
 
         let mut op = Instruction {
             command: Op::Unknown(),
-            params: ParameterPair {
+            params: ParameterSet {
                 dst: Parameter::None,
                 src: Parameter::None,
                 src2: Parameter::None,
@@ -1405,9 +1397,9 @@ impl Decoder {
     }
 
     // decode r8, r/m8
-    fn r8_rm8(&mut self, seg: Segment) -> ParameterPair {
+    fn r8_rm8(&mut self, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm();
-        ParameterPair {
+        ParameterSet {
             dst: Parameter::Reg8(Into::into(x.reg)),
             src: self.rm8(seg, x.rm, x.md),
             src2: Parameter::None,
@@ -1415,9 +1407,9 @@ impl Decoder {
     }
 
     // decode r/m8, r8
-    fn rm8_r8(&mut self, seg: Segment) -> ParameterPair {
+    fn rm8_r8(&mut self, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm();
-        ParameterPair {
+        ParameterSet {
             dst: self.rm8(seg, x.rm, x.md),
             src: Parameter::Reg8(Into::into(x.reg)),
             src2: Parameter::None,
@@ -1425,9 +1417,9 @@ impl Decoder {
     }
 
     // decode Sreg, r/m16
-    fn sreg_rm16(&mut self, seg: Segment) -> ParameterPair {
+    fn sreg_rm16(&mut self, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm();
-        ParameterPair {
+        ParameterSet {
             dst: Parameter::SReg16(Into::into(x.reg)),
             src: self.rm16(seg, x.rm, x.md),
             src2: Parameter::None,
@@ -1435,9 +1427,9 @@ impl Decoder {
     }
 
     // decode r/m16, Sreg
-    fn rm16_sreg(&mut self, seg: Segment) -> ParameterPair {
+    fn rm16_sreg(&mut self, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm();
-        ParameterPair {
+        ParameterSet {
             dst: self.rm16(seg, x.rm, x.md),
             src: Parameter::SReg16(Into::into(x.reg)),
             src2: Parameter::None,
@@ -1445,9 +1437,9 @@ impl Decoder {
     }
 
     // decode r16, r/m8 (movzx)
-    fn r16_rm8(&mut self, seg: Segment) -> ParameterPair {
+    fn r16_rm8(&mut self, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm();
-        ParameterPair {
+        ParameterSet {
             dst: Parameter::Reg16(Into::into(x.reg)),
             src: self.rm8(seg, x.rm, x.md),
             src2: Parameter::None,
@@ -1455,9 +1447,9 @@ impl Decoder {
     }
 
     // decode r16, r/m16
-    fn r16_rm16(&mut self, seg: Segment) -> ParameterPair {
+    fn r16_rm16(&mut self, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm();
-        ParameterPair {
+        ParameterSet {
             dst: Parameter::Reg16(Into::into(x.reg)),
             src: self.rm16(seg, x.rm, x.md),
             src2: Parameter::None,
@@ -1465,9 +1457,9 @@ impl Decoder {
     }
 
     // decode r/m16, r16
-    fn rm16_r16(&mut self, seg: Segment) -> ParameterPair {
+    fn rm16_r16(&mut self, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm();
-        ParameterPair {
+        ParameterSet {
             dst: self.rm16(seg, x.rm, x.md),
             src: Parameter::Reg16(Into::into(x.reg)),
             src2: Parameter::None,
@@ -1475,12 +1467,12 @@ impl Decoder {
     }
 
     // decode r16, m16
-    fn r16_m16(&mut self, seg: Segment) -> ParameterPair {
+    fn r16_m16(&mut self, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm();
         if x.md == 3 {
             println!("r16_m16 error: invalid encoding, ip={:04X}", self.c_offset);
         }
-        ParameterPair {
+        ParameterSet {
             dst: Parameter::Reg16(Into::into(x.reg)),
             src: self.rm16(seg, x.rm, x.md),
             src2: Parameter::None,

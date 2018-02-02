@@ -4,31 +4,12 @@ use std::num::Wrapping;
 use cpu::segment::Segment;
 use cpu::register::{R8, R16, SR, AMode};
 use cpu::op::Op;
-use cpu::parameter::{Parameter, ParameterPair};
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum RepeatMode {
-    None,
-    Rep,
-    Repe, // alias repz
-    Repne, // alias repnz
-}
-
-impl RepeatMode {
-    fn as_str(&self) -> &str {
-        match *self {
-            RepeatMode::None => "",
-            RepeatMode::Rep => "Rep ",
-            RepeatMode::Repe => "Repe ",
-            RepeatMode::Repne => "Repne ",
-        }
-    }
-}
+use cpu::parameter::{Parameter, ParameterSet};
 
 #[derive(Debug, PartialEq)]
 pub struct Instruction {
     pub command: Op,
-    pub params: ParameterPair,
+    pub params: ParameterSet,
     pub segment_prefix: Segment,
     pub length: u8,
     pub repeat: RepeatMode, // REPcc prefix
@@ -53,7 +34,7 @@ impl Instruction {
             segment_prefix: Segment::Default,
             lock: false,
             repeat: RepeatMode::None,
-            params: ParameterPair {
+            params: ParameterSet {
                 dst: dst,
                 src: Parameter::None,
                 src2: Parameter::None,
@@ -68,7 +49,7 @@ impl Instruction {
             segment_prefix: Segment::Default,
             lock: false,
             repeat: RepeatMode::None,
-            params: ParameterPair {
+            params: ParameterSet {
                 dst: dst,
                 src: src,
                 src2: Parameter::None,
@@ -135,6 +116,25 @@ impl InstructionInfo {
     fn to_hex_string(&self, bytes: &[u8]) -> String {
         let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
         strs.join("")
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum RepeatMode {
+    None,
+    Rep,
+    Repe, // alias repz
+    Repne, // alias repnz
+}
+
+impl RepeatMode {
+    fn as_str(&self) -> &str {
+        match *self {
+            RepeatMode::None => "",
+            RepeatMode::Rep => "Rep ",
+            RepeatMode::Repe => "Repe ",
+            RepeatMode::Repne => "Repne ",
+        }
     }
 }
 
