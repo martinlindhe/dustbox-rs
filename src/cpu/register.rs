@@ -154,6 +154,19 @@ pub enum AMode {
 }
 
 impl AMode {
+   pub fn index(&self) -> usize {
+        match self {
+            &AMode::BXSI => 0,
+            &AMode::BXDI => 1,
+            &AMode::BPSI => 2,
+            &AMode::BPDI => 3,
+            &AMode::SI => 4,
+            &AMode::DI => 5,
+            &AMode::BP => 6,
+            &AMode::BX => 7,
+        }
+    }
+
     pub fn as_str(&self) -> &'static str {
         match self {
             &AMode::BXSI => "bx+si",

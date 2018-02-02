@@ -13,37 +13,66 @@ use cpu::RepeatMode;
 use cpu::Segment;
 use cpu::{Parameter, ParameterPair};
 use cpu::instruction::{Instruction, InstructionInfo, Op};
-use cpu::register::{BX, CS};
+use cpu::register::{R8, AMode};
 use memory::mmu::MMU;
 
 #[test]
 fn can_encode_instr() {
 
-    //let encoder = Encoder::new();
-    //assert_eq!(vec!(0xCD, 0x21), encoder.encode(&op));
-
+    let encoder = Encoder::new();
     let op = Instruction::new1(Op::Int(), Parameter::Imm8(0x21));
+    assert_eq!(vec!(0xCD, 0x21), encoder.encode(&op));
     assert_eq!("int 0x21".to_owned(), ndisasm(&op).unwrap());
 
-    let op = Instruction::new2(Op::Mov8(), Parameter::Reg16(BX), Parameter::Imm16(0xFF21));
-    assert_eq!("mov bx, 0xFF21".to_owned(), ndisasm(&op).unwrap());
+    // r8, imm8
+    let op = Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
+    assert_eq!("mov bh,0xff".to_owned(), ndisasm(&op).unwrap());
+    assert_eq!(vec!(0xB7, 0xFF), encoder.encode(&op));
+
+    // r/m8, r8  (dst is r8)
+    let op = Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
+    assert_eq!("mov bh,dl".to_owned(), ndisasm(&op).unwrap());
+    assert_eq!(vec!(0x88, 0xD7), encoder.encode(&op));
+
+    // r/m8, r8  (dst is AMode::BP + imm8)
+    let op = Instruction::new2(Op::Mov8(), Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10), Parameter::Reg8(R8::BH));
+    assert_eq!("mov [bp+0x10],bh".to_owned(), ndisasm(&op).unwrap());
+    assert_eq!(vec!(0x88, 0x7E, 0x10), encoder.encode(&op));
+
+    // r/m8, r8  (dst is AMode::BP + imm8)    - reversed
+    let op = Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::BH), Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10));
+    assert_eq!(vec!(0x8A, 0x7E, 0x10), encoder.encode(&op));
+    assert_eq!("mov bh,[bp+0x10]".to_owned(), ndisasm(&op).unwrap());
+
+    // r/m8, r8  (dst is AMode::BP + imm8)
+    let op = Instruction::new2(Op::Mov8(), Parameter::Ptr8AmodeS16(Segment::Default, AMode::BP, -0x800), Parameter::Reg8(R8::BH));
+    assert_eq!("mov [bp-0x800],bh".to_owned(), ndisasm(&op).unwrap());
+    assert_eq!(vec!(0x88, 0xBE, 0x00, 0xF8), encoder.encode(&op));
+
+    // r/m8, r8  (dst is [imm16])
+    let op = Instruction::new2(Op::Mov8(), Parameter::Ptr8(Segment::Default, 0x8000), Parameter::Reg8(R8::BH));
+    assert_eq!("mov [0x8000],bh".to_owned(), ndisasm(&op).unwrap());
+    assert_eq!(vec!(0x88, 0x3E, 0x00, 0x80), encoder.encode(&op));
+
+    // r/m8, r8  (dst is [bx])
+    let op = Instruction::new2(Op::Mov8(), Parameter::Ptr8Amode(Segment::Default, AMode::BX), Parameter::Reg8(R8::BH));
+    assert_eq!("mov [bx],bh".to_owned(), ndisasm(&op).unwrap());
+    assert_eq!(vec!(0x88, 0x3F), encoder.encode(&op));
 }
 
 #[test]
 fn vmware_fuzz() {
-    let op = Instruction::new2(Op::Mov8(), Parameter::Reg16(BX), Parameter::Imm16(0xFF21));
-    assert_eq!("mov bx, 0xff21".to_owned(), ndisasm(&op).unwrap());
+    let op = Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
 
     let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
 
     assemble_prober(&op, prober_com);
     let output = stdout_from_winxp_vmware(prober_com);
 
-    println!("{}", output);
-
     let m = prober_reg_map(&output);
+    println!("vmware result: {:?}", m);
 
-    println!("map: {:?}", m);
+    // TODO: run the program in dustbox too, capture stdout and compare results
 }
 
 fn assemble_prober(op: &Instruction, prober_com: &str) {
@@ -66,7 +95,7 @@ fn assemble_prober(op: &Instruction, prober_com: &str) {
     }
 
     // assemble generated prober.asm
-    let output = Command::new("nasm")
+    Command::new("nasm")
         .current_dir("/Users/m/dev/rs/dustbox-rs/utils/prober") // XXX get path name from prober_com
         .args(&["-f", "bin", "-o", "prober.com", "prober.asm"])
         .output()
@@ -106,7 +135,6 @@ fn prober_reg_map(stdout: &str) -> HashMap<String, u16>{
 // run .com in vm, parse result
 fn stdout_from_winxp_vmware(prober_com: &str) -> String {
     let vmx = "/Users/m/Documents/Virtual Machines.localized/Windows XP Professional.vmwarevm/Windows XP Professional.vmx";
-
     let vm_user = "vmware";
     let vm_password = "vmware";
 

@@ -447,10 +447,19 @@ impl InstructionInfo {
     }
 }
 
+#[derive(Debug)]
 pub struct ModRegRm {
-    pub md: u8, // NOTE: "mod" is reserved in rust
+    pub md: u8,  /// "mod" is correct name, but is reserved keyword
     pub reg: u8,
     pub rm: u8,
+}
+
+impl ModRegRm {
+    pub fn u8(&self) -> u8 {
+        (self.md << 6) |  // high 2 bits
+        (self.reg << 3) | // mid 3 bits
+        self.rm           // low 3 bits
+    }
 }
 
 fn right_pad(s: &str, len: usize) -> String {
