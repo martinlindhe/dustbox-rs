@@ -1,5 +1,6 @@
 use cpu::CPU;
-use cpu::register::{AX, BX, CX, DX, AL, ES};
+use cpu::register::{AX, BX, CX, DX, ES};
+use cpu::register::R8;
 
 // video related interrupts
 pub fn handle(cpu: &mut CPU) {
@@ -105,7 +106,7 @@ pub fn handle(cpu: &mut CPU) {
             //
             // Note: Affects only the currently active page (see AH=05h)
             println!("XXX scroll window up: lines={},attrib={},topleft={},{},btmright={},{}",
-                     cpu.r16[AL].lo_u8(),
+                     cpu.r16[AX].lo_u8(),
                      cpu.r16[BX].hi_u8(),
                      cpu.r16[CX].hi_u8(),
                      cpu.r16[CX].lo_u8(),

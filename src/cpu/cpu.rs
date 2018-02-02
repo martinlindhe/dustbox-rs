@@ -6,7 +6,8 @@ use std::num::Wrapping;
 use cpu::Register16;
 use cpu::Flags;
 use cpu::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm, InvalidOp, RepeatMode};
-use cpu::{AX, BX, CX, DX, SI, DI, BP, SP, AL, CL, CS, DS, ES, FS, GS, SS};
+use cpu::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES, FS, GS, SS};
+use cpu::R8;
 use cpu::Decoder;
 use cpu::Segment;
 use memory::Memory;
@@ -1778,6 +1779,7 @@ impl CPU {
                 self.mmu.read_u16(seg, offset) as usize
             }
             Parameter::Reg8(r) => {
+                let r = r as usize;
                 let lor = r & 3;
                 if r & 4 == 0 {
                     self.r16[lor].lo_u8() as usize
@@ -1809,6 +1811,7 @@ impl CPU {
     fn write_parameter_u8(&mut self, p: &Parameter, data: u8) {
         match *p {
             Parameter::Reg8(r) => {
+                let r = r as usize;
                 let lor = r & 3;
                 if r & 4 == 0 {
                     self.r16[lor].set_lo(data);

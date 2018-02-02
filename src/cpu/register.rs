@@ -1,3 +1,5 @@
+use std::convert::From;
+
 #[derive(Copy, Clone, Default)]
 pub struct Register16 {
     pub val: u16,
@@ -18,15 +20,76 @@ impl Register16 {
     }
 }
 
-// r8 (4 low of r16)
-pub const AL: usize = 0;
-pub const CL: usize = 1;
-pub const DL: usize = 2;
-pub const BL: usize = 3;
-pub const AH: usize = 4;
-pub const CH: usize = 5;
-pub const DH: usize = 6;
-pub const BH: usize = 7;
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum R8 {
+    AL, CL, DL, BL, AH, CH, DH, BH
+}
+
+impl From<R8> for u8 {
+    fn from(r: R8) -> u8 {
+        match r {
+            R8::AL => 0,
+            R8::CL => 1,
+            R8::DL => 2,
+            R8::BL => 3,
+            R8::AH => 4,
+            R8::CH => 5,
+            R8::DH => 6,
+            R8::BH => 7,
+        }
+    }
+}
+
+impl Into<R8> for u8 {
+    fn into(self) -> R8 {
+        match self {
+            0 => R8::AL,
+            1 => R8::CL,
+            2 => R8::DL,
+            3 => R8::BL,
+            4 => R8::AH,
+            5 => R8::CH,
+            6 => R8::DH,
+            7 => R8::BH,
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub enum R16 {
+    AX, CX, DX, BX, SP, BP, SI, DI
+}
+
+impl From<R16> for u8 {
+    fn from(r: R16) -> u8 {
+        match r {
+            R16::AX => 0,
+            R16::CX => 1,
+            R16::DX => 2,
+            R16::BX => 3,
+            R16::SP => 4,
+            R16::BP => 5,
+            R16::SI => 6,
+            R16::DI => 7,
+        }
+    }
+}
+
+impl Into<R16> for u8 {
+    fn into(self) -> R16 {
+        match self {
+            0 => R16::AX,
+            1 => R16::CX,
+            2 => R16::DX,
+            3 => R16::BX,
+            4 => R16::SP,
+            5 => R16::BP,
+            6 => R16::SI,
+            7 => R16::DI,
+            _ => unreachable!(),
+        }
+    }
+}
 
 // r16
 pub const AX: usize = 0;

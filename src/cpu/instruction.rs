@@ -2,6 +2,7 @@ use std::fmt;
 use std::num::Wrapping;
 
 use cpu::Segment;
+use cpu::R8;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RepeatMode {
@@ -112,7 +113,7 @@ pub enum Parameter {
     Ptr16Amode(Segment, usize),         // word [amode], like "word [bx]"
     Ptr16AmodeS8(Segment, usize, i8),   // word [amode+s8], like "word [bp-0x20]"
     Ptr16AmodeS16(Segment, usize, i16), // word [amode+s16], like "word [bp-0x2020]"
-    Reg8(usize),                        // index into the low 4 of CPU.r16
+    Reg8(R8),                           // index into the low 4 of CPU.r16
     Reg16(usize),                       // index into CPU.r16
     SReg16(usize),                      // index into cpu.sreg16
     None(),
