@@ -1,11 +1,16 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use cpu::{Instruction, InstructionInfo, Op};
-use cpu::{ParameterSet, Parameter, ModRegRm, InvalidOp, RepeatMode};
-use cpu::{R8, R16, SR};
-use cpu::Segment;
+use cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
+use cpu::parameter::{Parameter, ParameterSet};
+use cpu::op::{Op, InvalidOp};
+use cpu::register::{R8, R16, SR};
+use cpu::segment::Segment;
 use memory::mmu::MMU;
+
+#[cfg(test)]
+#[path = "./decoder_test.rs"]
+mod decoder_test;
 
 #[derive(Clone, Default)]
 pub struct Decoder {

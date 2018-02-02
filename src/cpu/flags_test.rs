@@ -1,4 +1,4 @@
-use cpu::Flags;
+use cpu::flags::Flags;
 
 #[test]
 fn can_pack_unpack_flags() {

@@ -7,12 +7,11 @@ use std::collections::HashMap;
 use tempdir::TempDir;
 use tera::Context;
 
-use cpu::encoder::Encoder;
 use cpu::CPU;
-use cpu::RepeatMode;
+use cpu::encoder::Encoder;
 use cpu::segment::Segment;
 use cpu::parameter::Parameter;
-use cpu::instruction::{Instruction, InstructionInfo};
+use cpu::instruction::{Instruction, InstructionInfo, RepeatMode};
 use cpu::op::Op;
 use cpu::register::{R8, AMode};
 use memory::mmu::MMU;

@@ -1,4 +1,6 @@
-use cpu::{ModRegRm, Instruction, Parameter, ParameterSet, Op};
+use cpu::instruction::{Instruction, ModRegRm};
+use cpu::parameter::{Parameter, ParameterSet};
+use cpu::op::{Op};
 
 #[cfg(test)]
 #[path = "./encoder_test.rs"]
