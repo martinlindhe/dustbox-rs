@@ -4,7 +4,7 @@ extern crate dustbox;
 use bencher::Bencher;
 
 use dustbox::cpu::CPU;
-use dustbox::mmu::MMU;
+use dustbox::memory::mmu::MMU;
 
 fn simple_loop(b: &mut Bencher) {
     let mmu = MMU::new();
