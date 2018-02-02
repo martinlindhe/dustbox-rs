@@ -5,8 +5,7 @@ use std::process::exit;
 
 use dustbox::cpu::CPU;
 use dustbox::cpu::register;
-use dustbox::cpu::register::{CS, DS, ES, FS, GS, SS};
-use dustbox::cpu::register::R16;
+use dustbox::cpu::register::{R16, SR};
 use dustbox::cpu::flags;
 use dustbox::cpu::segment;
 use dustbox::cpu::decoder::Decoder;
@@ -67,7 +66,7 @@ impl Debugger {
         if self.is_ip_at_breakpoint() {
             println!(
                 "Breakpoint reached, ip = {:04X}:{:04X}",
-                self.cpu.sreg16[CS],
+                self.cpu.get_sr(&SR::CS),
                 self.cpu.ip
             );
             return true;
@@ -104,7 +103,7 @@ impl Debugger {
 
     pub fn step_over(&mut self) {
         let mut decoder = Decoder::new(self.cpu.mmu.clone());
-        let op = decoder.disasm_instruction(self.cpu.sreg16[CS], self.cpu.ip);
+        let op = decoder.disasm_instruction(self.cpu.get_sr(&SR::CS), self.cpu.ip);
 
         let dst_ip = self.cpu.ip + op.instruction.length as u16;
         println!("Step-over running to {:04X}", dst_ip);
@@ -130,7 +129,7 @@ impl Debugger {
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
         let mut decoder = Decoder::new(self.cpu.mmu.clone());
-        decoder.disassemble_block_to_str(self.cpu.sreg16[CS], self.cpu.ip, n as u16)
+        decoder.disassemble_block_to_str(self.cpu.get_sr(&SR::CS), self.cpu.ip, n as u16)
     }
 
     pub fn dump_memory(&self, filename: &str, base: usize, len: usize) -> Result<usize, IoError> {
@@ -333,18 +332,15 @@ impl Debugger {
             }
             "d" | "disasm" => {
                 let mut decoder = Decoder::new(self.cpu.mmu.clone());
-                let op = decoder.disasm_instruction(
-                    self.cpu.sreg16[CS],
-                    self.cpu.ip
-                );
+                let op = decoder.disasm_instruction(self.cpu.get_sr(&SR::CS), self.cpu.ip);
                 println!("{:?}", op);
                 println!("{}", op);
             }
             "load" => {
                 if parts.len() < 2 {
                     match self.last_program.clone() {
-                        None        => println!("Filename not provided."),
-                        Some(path)  => self.load_binary(&path),
+                        None       => println!("Filename not provided."),
+                        Some(path) => self.load_binary(&path),
                     }
                 } else {
                     let path = parts[1..].join(" ").trim().to_string();
@@ -448,7 +444,7 @@ impl Debugger {
         let rom_offset = offset - self.cpu.get_rom_base() + 0x100;
         println!(
             "{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
-            self.cpu.sreg16[CS],
+            self.cpu.get_sr(&SR::CS),
             self.cpu.ip,
             offset,
             rom_offset
@@ -496,12 +492,12 @@ impl Debugger {
                 "bp" => Ok(self.cpu.get_r16(&R16::BP) as usize),
                 "si" => Ok(self.cpu.get_r16(&R16::SI) as usize),
                 "di" => Ok(self.cpu.get_r16(&R16::DI) as usize),
-                "es" => Ok(self.cpu.sreg16[ES] as usize),
-                "cs" => Ok(self.cpu.sreg16[CS] as usize),
-                "ss" => Ok(self.cpu.sreg16[SS] as usize),
-                "ds" => Ok(self.cpu.sreg16[DS] as usize),
-                "fs" => Ok(self.cpu.sreg16[FS] as usize),
-                "gs" => Ok(self.cpu.sreg16[GS] as usize),
+                "es" => Ok(self.cpu.get_sr(&SR::ES) as usize),
+                "cs" => Ok(self.cpu.get_sr(&SR::CS) as usize),
+                "ss" => Ok(self.cpu.get_sr(&SR::SS) as usize),
+                "ds" => Ok(self.cpu.get_sr(&SR::DS) as usize),
+                "fs" => Ok(self.cpu.get_sr(&SR::FS) as usize),
+                "gs" => Ok(self.cpu.get_sr(&SR::GS) as usize),
                 _ => usize::from_str_radix(&x, 16)
             }
         }
@@ -513,27 +509,27 @@ impl Debugger {
         res += format!("AX:{:04X}  SI:{:04X}  DS:{:04X}  IP:{:04X}  cnt:{}\n",
                        self.cpu.get_r16(&R16::AX),
                        self.cpu.get_r16(&R16::SI),
-                       self.cpu.sreg16[DS],
+                       self.cpu.get_sr(&SR::DS),
                        self.cpu.ip,
                        self.cpu.instruction_count)
                 .as_ref();
         res += format!("BX:{:04X}  DI:{:04X}  CS:{:04X}  fl:{:04X}\n",
                        self.cpu.get_r16(&R16::BX),
                        self.cpu.get_r16(&R16::DI),
-                       self.cpu.sreg16[CS],
+                       self.cpu.get_sr(&SR::CS),
                        self.cpu.flags.u16())
                 .as_ref();
         res += format!("CX:{:04X}  BP:{:04X}  ES:{:04X}  GS:{:04X}\n",
                        self.cpu.get_r16(&R16::CX),
                        self.cpu.get_r16(&R16::BP),
-                       self.cpu.sreg16[ES],
-                       self.cpu.sreg16[GS])
+                       self.cpu.get_sr(&SR::ES),
+                       self.cpu.get_sr(&SR::GS))
                 .as_ref();
         res += format!("DX:{:04X}  SP:{:04X}  FS:{:04X}  SS:{:04X}\n",
                        self.cpu.get_r16(&R16::DX),
                        self.cpu.get_r16(&R16::SP),
-                       self.cpu.sreg16[FS],
-                       self.cpu.sreg16[SS])
+                       self.cpu.get_sr(&SR::FS),
+                       self.cpu.get_sr(&SR::SS))
                 .as_ref();
         res += format!("C{} Z{} S{} O{} A{} P{} D{} I{}",
                        self.cpu.flags.carry_numeric(),

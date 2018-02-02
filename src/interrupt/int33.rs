@@ -1,6 +1,5 @@
 use cpu::CPU;
-use cpu::register::{CS};
-use cpu::register::R16;
+use cpu::register::{R16, SR};
 
 // mouse related interrupts
 pub fn handle(cpu: &mut CPU) {
@@ -17,7 +16,7 @@ pub fn handle(cpu: &mut CPU) {
         _ => {
             println!("int33 error: unknown ax={:04X}, ip={:04X}:{:04X}",
                      cpu.get_r16(&R16::AX),
-                     cpu.sreg16[CS],
+                     cpu.get_sr(&SR::CS),
                      cpu.ip);
         }
     }

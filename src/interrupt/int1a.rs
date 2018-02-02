@@ -1,7 +1,6 @@
 use time;
 
 use cpu::CPU;
-use cpu::register::{ES};
 use cpu::register::{R8, R16};
 
 // time related interrupts

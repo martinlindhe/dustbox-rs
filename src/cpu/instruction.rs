@@ -2,7 +2,7 @@ use std::fmt;
 use std::num::Wrapping;
 
 use cpu::segment::Segment;
-use cpu::register::{R8, R16, AMode};
+use cpu::register::{R8, R16, SR, AMode};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RepeatMode {
@@ -115,7 +115,7 @@ pub enum Parameter {
     Ptr16AmodeS16(Segment, AMode, i16), // word [amode+s16], like "word [bp-0x2020]"
     Reg8(R8),                           // index into the low 4 of CPU.r16
     Reg16(R16),                         // index into CPU.r16
-    SReg16(usize),                      // index into cpu.sreg16
+    SReg16(SR),                         // index into cpu.sreg16
     None(),
 }
 
@@ -189,7 +189,7 @@ impl fmt::Display for Parameter {
             ),
             &Parameter::Reg8(ref v) => write!(f, "{}", v.as_str()),
             &Parameter::Reg16(ref v) => write!(f, "{}", v.as_str()),
-            &Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
+            &Parameter::SReg16(ref v) => write!(f, "{}", v.as_str()),
             &Parameter::None() => write!(f, ""),
         }
     }
@@ -382,33 +382,6 @@ pub struct ModRegRm {
     pub md: u8, // NOTE: "mod" is reserved in rust
     pub reg: u8,
     pub rm: u8,
-}
-
-fn sr16(reg: u8) -> &'static str {
-    match reg {
-        0 => "es",
-        1 => "cs",
-        2 => "ss",
-        3 => "ds",
-        4 => "fs",
-        5 => "gs",
-        _ => unreachable!(),
-    }
-}
-
-// 16 bit addressing modes
-fn amode(reg: u8) -> &'static str {
-    match reg {
-        0 => "bx+si",
-        1 => "bx+di",
-        2 => "bp+si",
-        3 => "bp+di",
-        4 => "si",
-        5 => "di",
-        6 => "bp",
-        7 => "bx",
-        _ => unreachable!(),
-    }
 }
 
 fn right_pad(s: &str, len: usize) -> String {

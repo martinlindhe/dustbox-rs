@@ -1,6 +1,5 @@
 use cpu::CPU;
-use cpu::register::{ES};
-use cpu::register::{R8, R16};
+use cpu::register::{R8, R16, SR};
 
 // video related interrupts
 pub fn handle(cpu: &mut CPU) {
@@ -233,10 +232,11 @@ pub fn handle(cpu: &mut CPU) {
 
                     for i in start..(start+count) {
                         let next = (i*3) as u16;
+                        let es = cpu.get_sr(&SR::ES);
                         let dx = cpu.get_r16(&R16::DX);
-                        let r = cpu.mmu.read_u8(cpu.sreg16[ES], dx + next) as usize;
-                        let g = cpu.mmu.read_u8(cpu.sreg16[ES], dx + next + 1) as usize;
-                        let b = cpu.mmu.read_u8(cpu.sreg16[ES], dx + next + 2) as usize;
+                        let r = cpu.mmu.read_u8(es, dx + next) as usize;
+                        let g = cpu.mmu.read_u8(es, dx + next + 1) as usize;
+                        let b = cpu.mmu.read_u8(es, dx + next + 2) as usize;
 
                         // each value is 6 bits (0-63), scale them to 8 bits
                         let r = ((r << 2) & 0xFF) as u8;

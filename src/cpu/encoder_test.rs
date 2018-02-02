@@ -4,7 +4,7 @@ use cpu::RepeatMode;
 use cpu::Segment;
 use cpu::{Parameter, ParameterPair};
 use cpu::instruction::{Instruction, InstructionInfo, Op};
-use cpu::register::CS;
+use cpu::register::SR;
 use memory::mmu::MMU;
 
 
@@ -18,7 +18,7 @@ fn can_encode_instr() {
     ];
     cpu.load_com(&code);
 
-    let cs = cpu.sreg16[CS];
+    let cs = cpu.get_sr(&SR::CS);
     let ops = cpu.decoder.decode_to_block(cs, 0x100, 1);
     assert_eq!(vec!(
         InstructionInfo{

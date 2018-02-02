@@ -1,8 +1,7 @@
 use time;
 
 use cpu::CPU;
-use cpu::register::{DS, ES};
-use cpu::register::{R8, R16};
+use cpu::register::{R8, R16, SR};
 use codepage::cp437;
 
 // dos related interrupts
@@ -54,10 +53,7 @@ pub fn handle(cpu: &mut CPU) {
             // the pointer is in DS:EDX
             let mut count = 0;
             loop {
-                let b = cpu.mmu.read_u8(
-                    cpu.sreg16[DS],
-                    cpu.get_r16(&R16::DX) + count
-                );
+                let b = cpu.mmu.read_u8(cpu.get_sr(&SR::DS), cpu.get_r16(&R16::DX) + count);
                 count += 1;
                 if b as char == '$' {
                     break;
@@ -152,7 +148,7 @@ pub fn handle(cpu: &mut CPU) {
             println!("XXX DOS - WRITE TO FILE OR DEVICE, handle={:04X}, count={:04X}, data from {:04X}:{:04X}",
                      cpu.get_r16(&R16::BX),
                      cpu.get_r16(&R16::CX),
-                     cpu.sreg16[DS],
+                     cpu.get_sr(&SR::DS),
                      cpu.get_r16(&R16::DX));
         }
         0x48 => {
@@ -178,7 +174,7 @@ pub fn handle(cpu: &mut CPU) {
             // BX = maximum paragraphs available for specified memory block
             println!("XXX impl DOS 2+ - RESIZE MEMORY BLOCK. bx={:04X}, es={:04X}",
                      cpu.get_r16(&R16::BX),
-                     cpu.sreg16[ES]);
+                     cpu.get_sr(&SR::ES));
         }
         0x4C => {
             // DOS 2+ - EXIT - TERMINATE WITH RETURN CODE

@@ -19,8 +19,7 @@ use cairo;
 use dustbox::memory::Memory;
 use dustbox::cpu::CPU;
 use dustbox::cpu;
-use dustbox::cpu::register::{CS, DS, ES, FS, GS, SS};
-use dustbox::cpu::register::{R8, R16};
+use dustbox::cpu::register::{R8, R16, SR};
 use dustbox::gpu::palette::DACPalette;
 
 use debugger;
@@ -391,20 +390,20 @@ fn update_registers(
     let fs_value: gtk::Label = builder.get_object("fs_value").unwrap();
 
     ds_value.set_markup(&u16_as_register_str(
-        app.cpu.sreg16[DS],
-        app.prev_regs.sreg16[DS],
+        app.cpu.get_sr(&SR::DS),
+        app.prev_regs.sreg16[SR::DS.index()],
     ));
     cs_value.set_markup(&u16_as_register_str(
-        app.cpu.sreg16[CS],
-        app.prev_regs.sreg16[CS],
+        app.cpu.get_sr(&SR::CS),
+        app.prev_regs.sreg16[SR::CS.index()],
     ));
     es_value.set_markup(&u16_as_register_str(
-        app.cpu.sreg16[ES],
-        app.prev_regs.sreg16[ES],
+        app.cpu.get_sr(&SR::ES),
+        app.prev_regs.sreg16[SR::ES.index()],
     ));
     fs_value.set_markup(&u16_as_register_str(
-        app.cpu.sreg16[FS],
-        app.prev_regs.sreg16[FS],
+        app.cpu.get_sr(&SR::FS),
+        app.prev_regs.sreg16[SR::FS.index()],
     ));
 
     let gs_value: gtk::Label = builder.get_object("gs_value").unwrap();
@@ -412,12 +411,12 @@ fn update_registers(
     let ip_value: gtk::Label = builder.get_object("ip_value").unwrap();
 
     gs_value.set_markup(&u16_as_register_str(
-        app.cpu.sreg16[GS],
-        app.prev_regs.sreg16[GS],
+        app.cpu.get_sr(&SR::GS),
+        app.prev_regs.sreg16[SR::GS.index()],
     ));
     ss_value.set_markup(&u16_as_register_str(
-        app.cpu.sreg16[SS],
-        app.prev_regs.sreg16[SS],
+        app.cpu.get_sr(&SR::SS),
+        app.prev_regs.sreg16[SR::SS.index()],
     ));
     ip_value.set_markup(&u16_as_register_str(app.cpu.ip, app.prev_regs.ip));
 

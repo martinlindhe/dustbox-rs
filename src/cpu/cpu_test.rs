@@ -1,8 +1,7 @@
 use std::num::Wrapping;
 
 use cpu::CPU;
-use cpu::{CS, DS, ES, FS};
-use cpu::register::{R8, R16};
+use cpu::register::{R8, R16, SR};
 use cpu::segment::Segment;
 use memory::mmu::MMU;
 
@@ -29,8 +28,8 @@ fn can_handle_stack() {
 
     assert_eq!(0x107, cpu.ip);
     assert_eq!(0x8888, cpu.get_r16(&R16::AX));
-    assert_eq!(0x8888, cpu.sreg16[DS]);
-    assert_eq!(0x8888, cpu.sreg16[ES]);
+    assert_eq!(0x8888, cpu.get_sr(&SR::DS));
+    assert_eq!(0x8888, cpu.get_sr(&SR::ES));
 }
 
 #[test]
@@ -218,7 +217,7 @@ fn can_execute_mov_r16_rm16() {
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x123, cpu.sreg16[ES]);
+    assert_eq!(0x123, cpu.get_sr(&SR::ES));
 }
 
 #[test]
@@ -238,11 +237,11 @@ fn can_execute_mov_rm16_sreg() {
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x1234, cpu.sreg16[ES]);
+    assert_eq!(0x1234, cpu.get_sr(&SR::ES));
 
     cpu.execute_instruction();
     assert_eq!(0x109, cpu.ip);
-    let cs = cpu.sreg16[CS];
+    let cs = cpu.get_sr(&SR::CS);
     assert_eq!(0x1234, cpu.mmu.read_u16(cs, 0x0109));
 }
 
@@ -257,7 +256,7 @@ fn can_execute_mov_data() {
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    let cs = cpu.sreg16[CS];
+    let cs = cpu.get_sr(&SR::CS);
     assert_eq!(0x38, cpu.mmu.read_u8(cs, 0x1031));
 }
 
@@ -280,7 +279,7 @@ fn can_execute_mov_es_segment() {
 
     let es = 0x4040;
     let di = 0x0200;
-    cpu.sreg16[ES] = es;
+    cpu.set_sr(&SR::ES, es);
     cpu.set_r16(&R16::DI, di);
     cpu.set_r8(R8::AH, 0x88);
 
@@ -316,7 +315,7 @@ fn can_execute_mov_fs_segment() {
     cpu.load_com(&code);
     let fs = 0x4040;
     let di = 0x0200;
-    cpu.sreg16[FS] = fs;
+    cpu.set_sr(&SR::FS, fs);
     cpu.set_r16(&R16::DI, di);
     cpu.set_r8(R8::AL, 0xFF);
     cpu.execute_instruction(); // mov [fs:di],al
@@ -452,8 +451,8 @@ fn can_execute_rep_movsb() {
     let max = min + 4;
     for i in min..max {
         assert_eq!(
-            cpu.mmu.read_u8(cpu.sreg16[ES], i),
-            cpu.mmu.read_u8(cpu.sreg16[ES], i+0x100));
+            cpu.mmu.read_u8(cpu.get_sr(&SR::ES), i),
+            cpu.mmu.read_u8(cpu.get_sr(&SR::ES), i+0x100));
     }
 }
 
@@ -534,7 +533,7 @@ fn can_execute_addressing() {
     assert_eq!(0x200, cpu.get_r16(&R16::BX));
 
     cpu.execute_instruction();
-    let ds = cpu.sreg16[DS];
+    let ds = cpu.get_sr(&SR::DS);
     assert_eq!(0xFF, cpu.mmu.read_u8(ds, 0x22C));
 
     cpu.execute_instruction();
@@ -795,7 +794,7 @@ fn can_execute_les() {
     cpu.load_com(&code);
     cpu.execute_instruction();
     assert_eq!(0x06C4, cpu.get_r16(&R16::AX));
-    assert_eq!(0x0100, cpu.sreg16[ES]);
+    assert_eq!(0x0100, cpu.get_sr(&SR::ES));
 }
 
 #[test]
@@ -1070,7 +1069,7 @@ fn can_execute_jmp_far() {
                res);
 
     cpu.execute_instruction();
-    assert_eq!(0x0000, cpu.sreg16[CS]);
+    assert_eq!(0x0000, cpu.get_sr(&SR::CS));
     assert_eq!(0x0600, cpu.ip);
 }
 
@@ -1775,7 +1774,7 @@ fn can_execute_xlatb() {
     ];
     cpu.load_com(&code);
     // prepare ds:bx with expected value
-    let ds = cpu.sreg16[DS];
+    let ds = cpu.get_sr(&SR::DS);
     cpu.mmu.write_u16(ds, 0x0240, 0x80);
 
     execute_instructions(&mut cpu, 2); // xlatb: al = [ds:bx]
@@ -1802,17 +1801,19 @@ fn can_execute_mov_ds_addressing() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xBB, 0x10, 0x00, // mov bx,0x10
-        0xBE, 0x01, 0x00, // mov si,0x1
-        0xBA, 0x99, 0x99, // mov dx,0x9999
-        0x89, 0x10,       // mov [bx+si],dx
+        0x68, 0x00, 0x80,   // push word 0x8000
+        0x1F,               // pop ds
+        0xBB, 0x10, 0x00,   // mov bx,0x10
+        0xBE, 0x01, 0x00,   // mov si,0x1
+        0xBA, 0x99, 0x99,   // mov dx,0x9999
+        0x89, 0x10,         // mov [bx+si],dx
     ];
     cpu.load_com(&code);
-    cpu.sreg16[DS] = 0x8000;
-    execute_instructions(&mut cpu, 4);
+    
+    execute_instructions(&mut cpu, 6);
 
-    let cs = cpu.sreg16[CS];
-    let ds = cpu.sreg16[DS];
+    let cs = cpu.get_sr(&SR::CS);
+    let ds = cpu.get_sr(&SR::DS);
     assert_eq!(0x0000, cpu.mmu.read_u16(cs, 0x10 + 0x1));
     assert_eq!(0x9999, cpu.mmu.read_u16(ds, 0x10 + 0x1));
 }

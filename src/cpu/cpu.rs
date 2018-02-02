@@ -6,8 +6,7 @@ use std::num::Wrapping;
 use cpu::Register16;
 use cpu::Flags;
 use cpu::{Instruction, InstructionInfo, Parameter, ParameterPair, Op, ModRegRm, InvalidOp, RepeatMode};
-use cpu::{CS, DS, ES, FS, GS, SS};
-use cpu::{R8, R16, AMode};
+use cpu::{R8, R16, SR, AMode};
 use cpu::Decoder;
 use cpu::Segment;
 use memory::Memory;
@@ -98,10 +97,10 @@ impl CPU {
     pub fn load_com(&mut self, data: &[u8]) {
         // CS,DS,ES,SS = PSP segment
         let psp_segment = 0x085F; // is what dosbox used
-        self.sreg16[CS] = psp_segment;
-        self.sreg16[DS] = psp_segment;
-        self.sreg16[ES] = psp_segment;
-        self.sreg16[SS] = psp_segment;
+        self.set_sr(&SR::CS, psp_segment);
+        self.set_sr(&SR::DS, psp_segment);
+        self.set_sr(&SR::ES, psp_segment);
+        self.set_sr(&SR::SS, psp_segment);
 
         // offset of last word available in first 64k segment
         self.set_r16(&R16::SP, 0xFFFE);
@@ -118,24 +117,40 @@ impl CPU {
         let min = self.get_address();
         self.rom_base = min;
 
-        self.mmu.write(self.sreg16[CS], self.ip, data);
+        let cs = self.get_sr(&SR::CS);
+        self.mmu.write(cs, self.ip, data);
     }
 
     pub fn get_r16(&self, r: &R16) -> u16 {
-        match *r {
-            R16::AX => self.r16[0].val,
-            R16::CX => self.r16[1].val,
-            R16::DX => self.r16[2].val,
-            R16::BX => self.r16[3].val,
-            R16::SP => self.r16[4].val,
-            R16::BP => self.r16[5].val,
-            R16::SI => self.r16[6].val,
-            R16::DI => self.r16[7].val,
+        match r {
+            &R16::AX => self.r16[0].val,
+            &R16::CX => self.r16[1].val,
+            &R16::DX => self.r16[2].val,
+            &R16::BX => self.r16[3].val,
+            &R16::SP => self.r16[4].val,
+            &R16::BP => self.r16[5].val,
+            &R16::SI => self.r16[6].val,
+            &R16::DI => self.r16[7].val,
         }
     }
 
     pub fn set_r16(&mut self, r: &R16, val: u16) {
         self.r16[r.index()].val = val;
+    }
+
+    pub fn set_sr(&mut self, sr: &SR, val: u16) {
+        self.sreg16[sr.index()] = val;
+    }
+
+    pub fn get_sr(&self, sr: &SR) -> u16 {
+         match sr {
+            &SR::ES => self.sreg16[0],
+            &SR::CS => self.sreg16[1],
+            &SR::SS => self.sreg16[2],
+            &SR::DS => self.sreg16[3],
+            &SR::FS => self.sreg16[4],
+            &SR::GS => self.sreg16[5],
+        }
     }
 
     pub fn get_r8(&self, r: R8) -> u8 {
@@ -188,7 +203,7 @@ impl CPU {
     }
 
     pub fn execute_instruction(&mut self) {
-        let cs = self.sreg16[CS];
+        let cs = self.get_sr(&SR::CS);
         let ip = self.ip;
         let op = self.decoder.get_instruction(Segment::DS, cs, ip);
 
@@ -450,7 +465,7 @@ impl CPU {
                 // Compare word at address DS:(E)SI with word at address ES:(E)DI
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
                 let src = self.mmu.read_u16(self.segment(op.segment_prefix), self.get_r16(&R16::SI)) as usize;
-                let dst = self.mmu.read_u16(self.sreg16[ES], self.get_r16(&R16::DI)) as usize;
+                let dst = self.mmu.read_u16(self.get_sr(&SR::ES), self.get_r16(&R16::DI)) as usize;
                 self.cmp16(dst, src);
                 println!("XXX Cmpsw - verify implementation");
             }
@@ -537,8 +552,8 @@ impl CPU {
                 if nesting_level != 0 {
                     for i in 0..nesting_level {
                         let bp = self.get_r16(&R16::BP) - 2;
-                         self.set_r16(&R16::BP, bp);
-                        let val = self.mmu.read_u16(self.sreg16[SS], self.get_r16(&R16::BP));
+                        self.set_r16(&R16::BP, bp);
+                        let val = self.mmu.read_u16(self.get_sr(&SR::SS), self.get_r16(&R16::BP));
                         println!("XXX ENTER: pushing {} = {:04X}", i, val);
                         self.push16(val);
                     }
@@ -711,7 +726,7 @@ impl CPU {
             Op::JmpFar() => {
                 match op.params.dst {
                     Parameter::Ptr16Imm(seg, imm) => {
-                        self.sreg16[CS] = seg;
+                        self.set_sr(&SR::CS, seg);
                         self.ip = imm;
                     }
                     _ => panic!("jmp far with unexpected type {:?}", op.params.dst),
@@ -801,7 +816,7 @@ impl CPU {
                 // Load DS:r16 with far pointer from memory.
                 let seg = self.read_parameter_address(&op.params.src) as u16;
                 let val = self.read_parameter_value(&op.params.src) as u16;
-                self.sreg16[DS] = seg;
+                self.set_sr(&SR::DS, seg);
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, val);
             }
             Op::Leave => {
@@ -818,7 +833,7 @@ impl CPU {
                 // Load ES:r16 with far pointer from memory.
                 let seg = self.read_parameter_address(&op.params.src) as u16;
                 let val = self.read_parameter_value(&op.params.src) as u16;
-                self.sreg16[ES] = seg;
+                self.set_sr(&SR::ES, seg);
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, val);
             }
             Op::Lodsb() => {
@@ -896,8 +911,9 @@ impl CPU {
                     (Wrapping(self.get_r16(&R16::SI)) - Wrapping(1)).0
                 };
                 self.set_r16(&R16::SI, si);
+                let es = self.get_sr(&SR::ES);
                 let di = self.get_r16(&R16::DI);
-                self.mmu.write_u8(self.sreg16[ES], di, b);
+                self.mmu.write_u8(es, di, b);
                 let di = if !self.flags.direction {
                     (Wrapping(self.get_r16(&R16::DI)) + Wrapping(1)).0
                 } else {
@@ -915,8 +931,9 @@ impl CPU {
                     (Wrapping(self.get_r16(&R16::SI)) - Wrapping(2)).0
                 };
                 self.set_r16(&R16::SI, si);
+                let es = self.get_sr(&SR::ES);
                 let di = self.get_r16(&R16::DI);
-                self.mmu.write_u16(self.sreg16[ES], di, b);
+                self.mmu.write_u16(es, di, b);
                 let di = if !self.flags.direction {
                     (Wrapping(self.get_r16(&R16::DI)) + Wrapping(2)).0
                 } else {
@@ -1235,7 +1252,8 @@ impl CPU {
                     self.set_r16(&R16::SP, sp);
                 }
                 self.ip = self.pop16();
-                self.sreg16[CS] = self.pop16();
+                let cs = self.pop16();
+                self.set_sr(&SR::CS, cs);
             }
             Op::Retn => {
                 if op.params.count() == 1 {
@@ -1553,8 +1571,9 @@ impl CPU {
                 // store AL at ES:(E)DI
                 // The ES segment cannot be overridden with a segment override prefix.
                 let al = self.get_r8(R8::AL);
+                let es = self.get_sr(&SR::ES);
                 let di = self.get_r16(&R16::DI);
-                self.mmu.write_u8(self.sreg16[ES], di, al);
+                self.mmu.write_u8(es, di, al);
                 let di = if !self.flags.direction {
                     (Wrapping(self.get_r16(&R16::DI)) + Wrapping(1)).0
                 } else {
@@ -1567,8 +1586,9 @@ impl CPU {
                 // store AX at address ES:(E)DI
                 // The ES segment cannot be overridden with a segment override prefix.
                 let ax = self.get_r16(&R16::AX);
+                let es = self.get_sr(&SR::ES);
                 let di = self.get_r16(&R16::DI);
-                self.mmu.write_u16(self.sreg16[ES], di, ax);
+                self.mmu.write_u16(es, di, ax);
                 let di = if !self.flags.direction {
                     (Wrapping(self.get_r16(&R16::DI)) + Wrapping(2)).0
                 } else {
@@ -1686,7 +1706,7 @@ impl CPU {
             _ => {
                 println!("execute error: unhandled '{}' at {:04X}:{:04X} (flat {:06X})",
                          op,
-                         self.sreg16[CS],
+                         self.get_sr(&SR::CS),
                          self.ip,
                          self.get_address());
             }
@@ -1750,11 +1770,12 @@ impl CPU {
     fn push16(&mut self, data: u16) {
         let sp = (Wrapping(self.get_r16(&R16::SP)) - Wrapping(2)).0;
         self.set_r16(&R16::SP, sp);
-        self.mmu.write_u16(self.sreg16[SS], sp, data);
+        let ss = self.get_sr(&SR::SS);
+        self.mmu.write_u16(ss, sp, data);
     }
 
     fn pop16(&mut self) -> u16 {
-        let data = self.mmu.read_u16(self.sreg16[SS], self.get_r16(&R16::SP));
+        let data = self.mmu.read_u16(self.get_sr(&SR::SS), self.get_r16(&R16::SP));
         let sp = (Wrapping(self.get_r16(&R16::SP)) + Wrapping(2)).0;
         self.set_r16(&R16::SP, sp);
         data
@@ -1762,11 +1783,11 @@ impl CPU {
 
     // returns the absoute address of CS:IP
     pub fn get_address(&self) -> usize {
-        self.mmu.s_translate(self.sreg16[CS], self.ip)
+        self.mmu.s_translate(self.get_sr(&SR::CS), self.ip)
     }
 
     fn read_u8(&mut self) -> u8 {
-        let b = self.mmu.read_u8(self.sreg16[CS], self.ip);
+        let b = self.mmu.read_u8(self.get_sr(&SR::CS), self.ip);
         self.ip += 1;
         b
     }
@@ -1864,16 +1885,8 @@ impl CPU {
             &Parameter::Reg16(ref r) => {
                 self.get_r16(r) as usize
             }
-            &Parameter::SReg16(r) => {
-                if r >= 6 {
-                    // NOTE: this should not be possible
-                    let cs = self.sreg16[CS];
-                    println!("FATAL ERROR invalid encoding: r = {} at {:04X}:{:04X}", r, cs, self.ip);
-                    self.fatal_error = true;
-                    0
-                } else {
-                    self.sreg16[r] as usize
-                }
+            &Parameter::SReg16(ref sr) => {
+                self.get_sr(sr) as usize
             },
             _ => {
                 println!("read_parameter_value error: unhandled parameter: {:?} at {:06X}",
@@ -1927,8 +1940,8 @@ impl CPU {
             &Parameter::Reg16(ref r) => {
                 self.set_r16(r, data);
             }
-            &Parameter::SReg16(r) => {
-                self.sreg16[r] = data;
+            &Parameter::SReg16(ref sr) => {
+                self.set_sr(sr, data);
             }
             &Parameter::Imm16(imm) => {
                 let seg = self.segment(segment);
@@ -1964,12 +1977,12 @@ impl CPU {
     fn segment(&self, seg: Segment) -> u16 {
         match seg {
             Segment::Default |
-            Segment::DS => self.sreg16[DS],
-            Segment::CS => self.sreg16[CS],
-            Segment::ES => self.sreg16[ES],
-            Segment::FS => self.sreg16[FS],
-            Segment::GS => self.sreg16[GS],
-            Segment::SS => self.sreg16[SS],
+            Segment::DS => self.get_sr(&SR::DS),
+            Segment::CS => self.get_sr(&SR::CS),
+            Segment::ES => self.get_sr(&SR::ES),
+            Segment::FS => self.get_sr(&SR::FS),
+            Segment::GS => self.get_sr(&SR::GS),
+            Segment::SS => self.get_sr(&SR::SS),
         }
     }
 

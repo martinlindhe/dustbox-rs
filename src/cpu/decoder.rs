@@ -11,8 +11,7 @@ use cpu::{
     InvalidOp,
     RepeatMode,
 };
-use cpu::{CS, DS, ES, FS, GS, SS};
-use cpu::{R8, R16};
+use cpu::{R8, R16, SR};
 use cpu::Segment;
 use memory::mmu::MMU;
 
@@ -126,12 +125,12 @@ impl Decoder {
             0x06 => {
                 // push es
                 op.command = Op::Push16();
-                op.params.dst = Parameter::SReg16(ES);
+                op.params.dst = Parameter::SReg16(SR::ES);
             }
             0x07 => {
                 // pop es
                 op.command = Op::Pop16();
-                op.params.dst = Parameter::SReg16(ES);
+                op.params.dst = Parameter::SReg16(SR::ES);
             }
             0x08 => {
                 // or r/m8, r8
@@ -168,7 +167,7 @@ impl Decoder {
             0x0E => {
                 // push cs
                 op.command = Op::Push16();
-                op.params.dst = Parameter::SReg16(CS);
+                op.params.dst = Parameter::SReg16(SR::CS);
             }
             0x0F => {
                 let b = self.read_u8();
@@ -213,12 +212,12 @@ impl Decoder {
                     0xA0 => {
                         // push fs
                         op.command = Op::Push16();
-                        op.params.dst = Parameter::SReg16(FS);
+                        op.params.dst = Parameter::SReg16(SR::FS);
                     }
                     0xA1 => {
                         // pop fs
                         op.command = Op::Pop16();
-                        op.params.dst = Parameter::SReg16(FS);
+                        op.params.dst = Parameter::SReg16(SR::FS);
                     }
                     0xA3 => {
                         // bt r/m16, r16
@@ -234,12 +233,12 @@ impl Decoder {
                     0xA8 => {
                         // push gs
                         op.command = Op::Push16();
-                        op.params.dst = Parameter::SReg16(GS);
+                        op.params.dst = Parameter::SReg16(SR::GS);
                     }
                     0xA9 => {
                         // pop gs
                         op.command = Op::Pop16();
-                        op.params.dst = Parameter::SReg16(GS);
+                        op.params.dst = Parameter::SReg16(SR::GS);
                     }
                     0xAC => {
                         // shrd r/m16, r16, imm8
@@ -314,12 +313,12 @@ impl Decoder {
             0x16 => {
                 // push ss
                 op.command = Op::Push16();
-                op.params.dst = Parameter::SReg16(SS);
+                op.params.dst = Parameter::SReg16(SR::SS);
             }
             0x17 => {
                 // pop ss
                 op.command = Op::Pop16();
-                op.params.dst = Parameter::SReg16(SS);
+                op.params.dst = Parameter::SReg16(SR::SS);
             }
             0x1A => {
                 // sbb r8, r/m8
@@ -341,12 +340,12 @@ impl Decoder {
             0x1E => {
                 // push ds
                 op.command = Op::Push16();
-                op.params.dst = Parameter::SReg16(DS);
+                op.params.dst = Parameter::SReg16(SR::DS);
             }
             0x1F => {
                 // pop ds
                 op.command = Op::Pop16();
-                op.params.dst = Parameter::SReg16(DS);
+                op.params.dst = Parameter::SReg16(SR::DS);
             }
             0x20 => {
                 // and r/m8, r8
@@ -1429,7 +1428,7 @@ impl Decoder {
     fn sreg_rm16(&mut self, seg: Segment) -> ParameterPair {
         let x = self.read_mod_reg_rm();
         ParameterPair {
-            dst: Parameter::SReg16(x.reg as usize),
+            dst: Parameter::SReg16(Into::into(x.reg)),
             src: self.rm16(seg, x.rm, x.md),
             src2: Parameter::None(),
         }
@@ -1440,7 +1439,7 @@ impl Decoder {
         let x = self.read_mod_reg_rm();
         ParameterPair {
             dst: self.rm16(seg, x.rm, x.md),
-            src: Parameter::SReg16(x.reg as usize),
+            src: Parameter::SReg16(Into::into(x.reg)),
             src2: Parameter::None(),
         }
     }

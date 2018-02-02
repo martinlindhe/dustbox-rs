@@ -105,13 +105,48 @@ impl Into<R16> for u8 {
     }
 }
 
-// sreg16
-pub const ES: usize = 0;
-pub const CS: usize = 1;
-pub const SS: usize = 2;
-pub const DS: usize = 3;
-pub const FS: usize = 4;
-pub const GS: usize = 5;
+#[derive(Debug, PartialEq)]
+pub enum SR {
+    ES, CS, SS, DS, FS, GS
+}
+
+impl SR {
+   pub fn index(&self) -> usize {
+        match self {
+            &SR::ES => 0,
+            &SR::CS => 1,
+            &SR::SS => 2,
+            &SR::DS => 3,
+            &SR::FS => 4,
+            &SR::GS => 5,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            &SR::ES => "es",
+            &SR::CS => "cs",
+            &SR::SS => "ss",
+            &SR::DS => "ds",
+            &SR::FS => "fs",
+            &SR::GS => "gs",
+        }
+    }
+}
+
+impl Into<SR> for u8 {
+    fn into(self) -> SR {
+        match self {
+            0 => SR::ES,
+            1 => SR::CS,
+            2 => SR::SS,
+            3 => SR::DS,
+            4 => SR::FS,
+            5 => SR::GS,
+            _ => unreachable!(),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum AMode {
