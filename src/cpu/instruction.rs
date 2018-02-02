@@ -2,7 +2,7 @@ use std::fmt;
 use std::num::Wrapping;
 
 use cpu::Segment;
-use cpu::R8;
+use cpu::{R8, R16};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RepeatMode {
@@ -114,17 +114,17 @@ pub enum Parameter {
     Ptr16AmodeS8(Segment, usize, i8),   // word [amode+s8], like "word [bp-0x20]"
     Ptr16AmodeS16(Segment, usize, i16), // word [amode+s16], like "word [bp-0x2020]"
     Reg8(R8),                           // index into the low 4 of CPU.r16
-    Reg16(usize),                       // index into CPU.r16
+    Reg16(R16),                         // index into CPU.r16
     SReg16(usize),                      // index into cpu.sreg16
     None(),
 }
 
 impl fmt::Display for Parameter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Parameter::Imm8(imm) => write!(f, "0x{:02X}", imm),
-            Parameter::Imm16(imm) => write!(f, "0x{:04X}", imm),
-            Parameter::ImmS8(imm) => write!(
+        match self {
+            &Parameter::Imm8(imm) => write!(f, "0x{:02X}", imm),
+            &Parameter::Imm16(imm) => write!(f, "0x{:04X}", imm),
+            &Parameter::ImmS8(imm) => write!(
                 f,
                 "byte {}0x{:02X}",
                 if imm < 0 { "-" } else { "+" },
@@ -134,11 +134,11 @@ impl fmt::Display for Parameter {
                     imm
                 }
             ),
-            Parameter::Ptr8(seg, v) => write!(f, "byte [{}:0x{:04X}]", seg, v),
-            Parameter::Ptr16(seg, v) => write!(f, "word [{}:0x{:04X}]", seg, v),
-            Parameter::Ptr16Imm(seg, v) => write!(f, "{:04X}:{:04X}", seg, v),
-            Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}:{}]", seg, amode(v as u8)),
-            Parameter::Ptr8AmodeS8(seg, v, imm) => write!(
+            &Parameter::Ptr8(seg, v) => write!(f, "byte [{}:0x{:04X}]", seg, v),
+            &Parameter::Ptr16(seg, v) => write!(f, "word [{}:0x{:04X}]", seg, v),
+            &Parameter::Ptr16Imm(seg, v) => write!(f, "{:04X}:{:04X}", seg, v),
+            &Parameter::Ptr8Amode(seg, v) => write!(f, "byte [{}:{}]", seg, amode(v as u8)),
+            &Parameter::Ptr8AmodeS8(seg, v, imm) => write!(
                 f,
                 "byte [{}:{}{}0x{:02X}]",
                 seg,
@@ -150,7 +150,7 @@ impl fmt::Display for Parameter {
                     imm
                 }
             ),
-            Parameter::Ptr8AmodeS16(seg, v, imm) => write!(
+            &Parameter::Ptr8AmodeS16(seg, v, imm) => write!(
                 f,
                 "byte [{}:{}{}0x{:04X}]",
                 seg,
@@ -162,8 +162,8 @@ impl fmt::Display for Parameter {
                     imm
                 }
             ),
-            Parameter::Ptr16Amode(seg, v) => write!(f, "word [{}:{}]", seg, amode(v as u8)),
-            Parameter::Ptr16AmodeS8(seg, v, imm) => write!(
+            &Parameter::Ptr16Amode(seg, v) => write!(f, "word [{}:{}]", seg, amode(v as u8)),
+            &Parameter::Ptr16AmodeS8(seg, v, imm) => write!(
                 f,
                 "word [{}:{}{}0x{:02X}]",
                 seg,
@@ -175,7 +175,7 @@ impl fmt::Display for Parameter {
                     imm
                 }
             ),
-            Parameter::Ptr16AmodeS16(seg, v, imm) => write!(
+            &Parameter::Ptr16AmodeS16(seg, v, imm) => write!(
                 f,
                 "word [{}:{}{}0x{:04X}]",
                 seg,
@@ -187,10 +187,10 @@ impl fmt::Display for Parameter {
                     imm
                 }
             ),
-            Parameter::Reg8(v) => write!(f, "{}", r8(v as u8)),
-            Parameter::Reg16(v) => write!(f, "{}", r16(v as u8)),
-            Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
-            Parameter::None() => write!(f, ""),
+            &Parameter::Reg8(ref v) => write!(f, "{}", r8(v)),
+            &Parameter::Reg16(ref v) => write!(f, "{}", r16(v)),
+            &Parameter::SReg16(v) => write!(f, "{}", sr16(v as u8)),
+            &Parameter::None() => write!(f, ""),
         }
     }
 }
@@ -384,31 +384,29 @@ pub struct ModRegRm {
     pub rm: u8,
 }
 
-fn r8(reg: u8) -> &'static str {
-    match reg {
-        0 => "al",
-        1 => "cl",
-        2 => "dl",
-        3 => "bl",
-        4 => "ah",
-        5 => "ch",
-        6 => "dh",
-        7 => "bh",
-        _ => unreachable!(),
+fn r8(reg: &R8) -> &'static str {
+    match *reg {
+        R8::AL => "al",
+        R8::CL => "cl",
+        R8::DL => "dl",
+        R8::BL => "bl",
+        R8::AH => "ah",
+        R8::CH => "ch",
+        R8::DH => "dh",
+        R8::BH => "bh",
     }
 }
 
-fn r16(reg: u8) -> &'static str {
-    match reg {
-        0 => "ax",
-        1 => "cx",
-        2 => "dx",
-        3 => "bx",
-        4 => "sp",
-        5 => "bp",
-        6 => "si",
-        7 => "di",
-        _ => unreachable!(),
+fn r16(reg: &R16) -> &'static str {
+    match *reg {
+        R16::AX => "ax",
+        R16::CX => "cx",
+        R16::DX => "dx",
+        R16::BX => "bx",
+        R16::SP => "sp",
+        R16::BP => "bp",
+        R16::SI => "si",
+        R16::DI => "di",
     }
 }
 

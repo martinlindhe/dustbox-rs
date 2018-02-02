@@ -1,31 +1,32 @@
 use time;
 
 use cpu::CPU;
-use cpu::register::{AX, BX, CX, DX, ES};
-use cpu::register::R8;
+use cpu::register::{ES};
+use cpu::register::{R8, R16};
 
 // time related interrupts
 pub fn handle(cpu: &mut CPU) {
-    match cpu.r16[AX].hi_u8() {
+    match cpu.get_r8(R8::AH) {
         0x00 => {
             // TIME - GET SYSTEM TIME
             // Return:
             // CX:DX = number of clock ticks since midnight
             // AL = midnight flag, nonzero if midnight passed since time last read
             if cpu.deterministic {
-                cpu.r16[CX].val = 0;
-                cpu.r16[DX].val = 0;
-                cpu.r16[AX].set_lo(0);
+                cpu.set_r16(&R16::CX, 0);
+                cpu.set_r16(&R16::DX, 0);
+                cpu.set_r8(R8::AL, 0);
             } else {
                 println!("XXX FIXME - INT 1A GET TIME: return number of clock ticks since midnight");
-                cpu.r16[CX].val = 1;
-                cpu.r16[DX].val = 1;
+                cpu.set_r16(&R16::CX, 1);
+                cpu.set_r16(&R16::DX, 1);
+                cpu.set_r8(R8::AL, 0);
             }
         }
         _ => {
-            println!("int1a error: unknown AH={:02X}, AX={:04X}",
-                     cpu.r16[AX].hi_u8(),
-                     cpu.r16[AX].val);
+            println!("int1a error: unknown ah={:02X}, ax={:04X}",
+                     cpu.get_r8(R8::AH),
+                     cpu.get_r16(&R16::AX));
         }
     }
 }

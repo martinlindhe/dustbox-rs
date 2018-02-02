@@ -5,7 +5,8 @@ use std::process::exit;
 
 use dustbox::cpu::CPU;
 use dustbox::cpu::register;
-use dustbox::cpu::register::{AX, BX, CX, DX, SI, DI, BP, SP, CS, DS, ES, FS, GS, SS};
+use dustbox::cpu::register::{CS, DS, ES, FS, GS, SS};
+use dustbox::cpu::register::R16;
 use dustbox::cpu::flags;
 use dustbox::cpu::segment;
 use dustbox::cpu::decoder::Decoder;
@@ -487,14 +488,14 @@ impl Debugger {
             usize::from_str_radix(&x[2..], 16)
         } else {
             match x.as_ref() {
-                "ax" => Ok(self.cpu.r16[AX].val as usize),
-                "bx" => Ok(self.cpu.r16[BX].val as usize),
-                "cx" => Ok(self.cpu.r16[CX].val as usize),
-                "dx" => Ok(self.cpu.r16[DX].val as usize),
-                "sp" => Ok(self.cpu.r16[SP].val as usize),
-                "bp" => Ok(self.cpu.r16[BP].val as usize),
-                "si" => Ok(self.cpu.r16[SI].val as usize),
-                "di" => Ok(self.cpu.r16[DI].val as usize),
+                "ax" => Ok(self.cpu.get_r16(&R16::AX) as usize),
+                "bx" => Ok(self.cpu.get_r16(&R16::BX) as usize),
+                "cx" => Ok(self.cpu.get_r16(&R16::CX) as usize),
+                "dx" => Ok(self.cpu.get_r16(&R16::DX) as usize),
+                "sp" => Ok(self.cpu.get_r16(&R16::SP) as usize),
+                "bp" => Ok(self.cpu.get_r16(&R16::BP) as usize),
+                "si" => Ok(self.cpu.get_r16(&R16::SI) as usize),
+                "di" => Ok(self.cpu.get_r16(&R16::DI) as usize),
                 "es" => Ok(self.cpu.sreg16[ES] as usize),
                 "cs" => Ok(self.cpu.sreg16[CS] as usize),
                 "ss" => Ok(self.cpu.sreg16[SS] as usize),
@@ -510,27 +511,27 @@ impl Debugger {
         let mut res = String::new();
 
         res += format!("AX:{:04X}  SI:{:04X}  DS:{:04X}  IP:{:04X}  cnt:{}\n",
-                       self.cpu.r16[AX].val,
-                       self.cpu.r16[SI].val,
+                       self.cpu.get_r16(&R16::AX),
+                       self.cpu.get_r16(&R16::SI),
                        self.cpu.sreg16[DS],
                        self.cpu.ip,
                        self.cpu.instruction_count)
                 .as_ref();
         res += format!("BX:{:04X}  DI:{:04X}  CS:{:04X}  fl:{:04X}\n",
-                       self.cpu.r16[BX].val,
-                       self.cpu.r16[DI].val,
+                       self.cpu.get_r16(&R16::BX),
+                       self.cpu.get_r16(&R16::DI),
                        self.cpu.sreg16[CS],
                        self.cpu.flags.u16())
                 .as_ref();
         res += format!("CX:{:04X}  BP:{:04X}  ES:{:04X}  GS:{:04X}\n",
-                       self.cpu.r16[CX].val,
-                       self.cpu.r16[BP].val,
+                       self.cpu.get_r16(&R16::CX),
+                       self.cpu.get_r16(&R16::BP),
                        self.cpu.sreg16[ES],
                        self.cpu.sreg16[GS])
                 .as_ref();
         res += format!("DX:{:04X}  SP:{:04X}  FS:{:04X}  SS:{:04X}\n",
-                       self.cpu.r16[DX].val,
-                       self.cpu.r16[SP].val,
+                       self.cpu.get_r16(&R16::DX),
+                       self.cpu.get_r16(&R16::SP),
                        self.cpu.sreg16[FS],
                        self.cpu.sreg16[SS])
                 .as_ref();

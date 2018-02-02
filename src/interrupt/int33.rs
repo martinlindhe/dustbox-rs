@@ -1,9 +1,10 @@
 use cpu::CPU;
-use cpu::register::{CS, AX};
+use cpu::register::{CS};
+use cpu::register::R16;
 
 // mouse related interrupts
 pub fn handle(cpu: &mut CPU) {
-    match cpu.r16[AX].val {
+    match cpu.get_r16(&R16::AX) {
         0x0003 => {
             // MS MOUSE v1.0+ - RETURN POSITION AND BUTTON STATUS
             // Return:
@@ -14,8 +15,8 @@ pub fn handle(cpu: &mut CPU) {
             println!("XXX impl MOUSE - RETURN POSITION AND BUTTON STATUS");
         }
         _ => {
-            println!("int33 error: unknown AX={:04X}. ip={:04X}:{:04X}",
-                     cpu.r16[AX].val,
+            println!("int33 error: unknown ax={:04X}, ip={:04X}:{:04X}",
+                     cpu.get_r16(&R16::AX),
                      cpu.sreg16[CS],
                      cpu.ip);
         }

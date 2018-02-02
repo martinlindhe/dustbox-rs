@@ -18,6 +18,15 @@ start:
     ; -------------------------
 call clear_flags
 
+
+
+
+    mov si, 0x100;
+    mov di, 0x200;
+    mov cx, 4;
+
+
+
         mov ax,0xff0
         imul ax, ax, 0xf0
 

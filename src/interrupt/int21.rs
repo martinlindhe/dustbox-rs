@@ -1,38 +1,38 @@
 use time;
 
 use cpu::CPU;
-use cpu::register::{AX, BX, CX, DX, DS, ES};
+use cpu::register::{DS, ES};
+use cpu::register::{R8, R16};
 use codepage::cp437;
 
 // dos related interrupts
 pub fn handle(cpu: &mut CPU) {
-    match cpu.r16[AX].hi_u8() {
+    match cpu.get_r8(R8::AH) {
         0x02 => {
             // DOS 1+ - WRITE CHARACTER TO STANDARD OUTPUT
             // DL = character to write
-            let dl = cpu.r16[DX].lo_u8();
+            let dl = cpu.get_r8(R8::DL);
             print!("{}", cp437::u8_as_char(dl));
             // Return:
             // AL = last character output (despite the official docs which state
             // nothing is returned) (at least DOS 2.1-7.0)
-            cpu.r16[AX].set_lo(dl);
+            cpu.set_r8(R8::AL, dl);
         }
         0x06 => {
             // DOS 1+ - DIRECT CONSOLE OUTPUT
-            //
             // DL = character (except FFh)
             //
             // Notes: Does not check ^C/^Break. Writes to standard output,
             // which is always the screen under DOS 1.x, but may be redirected
             // under DOS 2+
-            let dl = cpu.r16[DX].lo_u8();
+            let dl = cpu.get_r8(R8::DL);
             if dl != 0xFF {
                 print!("{}", cp437::u8_as_char(dl));
             }
             // Return:
             // AL = character output (despite official docs which
             // state nothing is returned) (at least DOS 2.1-7.0)
-            cpu.r16[AX].set_lo(dl);
+            cpu.set_r8(R8::AL, dl);
         }
         0x07 => {
             // DOS 1+ - DIRECT CHARACTER INPUT, WITHOUT ECHO
@@ -42,7 +42,6 @@ pub fn handle(cpu: &mut CPU) {
         }
         0x09 => {
             // DOS 1+ - WRITE STRING TO STANDARD OUTPUT
-            //
             // DS:DX -> '$'-terminated string
             //
             // Return:
@@ -57,7 +56,7 @@ pub fn handle(cpu: &mut CPU) {
             loop {
                 let b = cpu.mmu.read_u8(
                     cpu.sreg16[DS],
-                    cpu.r16[DX].val+count
+                    cpu.get_r16(&R16::DX) + count
                 );
                 count += 1;
                 if b as char == '$' {
@@ -65,7 +64,7 @@ pub fn handle(cpu: &mut CPU) {
                 }
                 print!("{}", cp437::u8_as_char(b));
             }
-            cpu.r16[AX].set_lo(b'$');
+            cpu.set_r8(R8::AL, b'$');
         }
         0x0B => {
             // DOS 1+ - GET STDIN STATUS
@@ -88,15 +87,15 @@ pub fn handle(cpu: &mut CPU) {
         0x2C => {
             // DOS 1+ - GET SYSTEM TIME
             if cpu.deterministic {
-                cpu.r16[CX].val = 0;
-                cpu.r16[DX].val = 0;
+                cpu.set_r16(&R16::CX, 0);
+                cpu.set_r16(&R16::DX, 0);
             } else {
                 let now = time::now();
                 let centi_sec = now.tm_nsec / 1000_0000; // nanosecond to 1/100 sec
-                cpu.r16[CX].set_hi(now.tm_hour as u8); // CH = hour
-                cpu.r16[CX].set_lo(now.tm_min as u8); // CL = minute
-                cpu.r16[DX].set_hi(now.tm_sec as u8); // DH = second
-                cpu.r16[DX].set_lo(centi_sec as u8); // DL = 1/100 second
+                cpu.set_r8(R8::CH, now.tm_hour as u8); // hour
+                cpu.set_r8(R8::CL, now.tm_min as u8);  // minute
+                cpu.set_r8(R8::DH, now.tm_sec as u8);  // second
+                cpu.set_r8(R8::DL, centi_sec as u8);   // 1/100 second
             }
         }
         0x30 => {
@@ -128,8 +127,8 @@ pub fn handle(cpu: &mut CPU) {
             // 05h *  ZDS (Zenith Electronics, Zenith Electronics).
 
             // fake MS-DOS 3.10, as needed by msdos32/APPEND.COM
-            cpu.r16[AX].set_lo(3); // AL = major version number (00h if DOS 1.x)
-            cpu.r16[AX].set_hi(10); // AH = minor version number
+            cpu.set_r8(R8::AL, 3); // AL = major version number (00h if DOS 1.x)
+            cpu.set_r8(R8::AH, 10); // AH = minor version number
         }
         0x40 => {
             // DOS 2+ - WRITE - WRITE TO FILE OR DEVICE
@@ -151,10 +150,10 @@ pub fn handle(cpu: &mut CPU) {
             // to expand the file beyond 2GB; otherwise the write will fail with error code
             // 0005h (access denied). The usual cause for AX < CX on return is a full disk
             println!("XXX DOS - WRITE TO FILE OR DEVICE, handle={:04X}, count={:04X}, data from {:04X}:{:04X}",
-                     cpu.r16[BX].val,
-                     cpu.r16[CX].val,
+                     cpu.get_r16(&R16::BX),
+                     cpu.get_r16(&R16::CX),
                      cpu.sreg16[DS],
-                     cpu.r16[DX].val);
+                     cpu.get_r16(&R16::DX));
         }
         0x48 => {
             // DOS 2+ - ALLOCATE MEMORY
@@ -165,8 +164,8 @@ pub fn handle(cpu: &mut CPU) {
             // CF set on error
             // AX = error code (07h,08h) (see #01680 at AH=59h/BX=0000h)
             // BX = size of largest available block
-            println!("XXX impl DOS 2+ - ALLOCATE MEMORY. BX={:04X}",
-                     cpu.r16[BX].val);
+            println!("XXX impl DOS 2+ - ALLOCATE MEMORY. bx={:04X}",
+                     cpu.get_r16(&R16::BX));
         }
         0x4A => {
             // DOS 2+ - RESIZE MEMORY BLOCK
@@ -177,8 +176,8 @@ pub fn handle(cpu: &mut CPU) {
             // CF set on error
             // AX = error code (07h,08h,09h) (see #01680 at AH=59h/BX=0000h)
             // BX = maximum paragraphs available for specified memory block
-            println!("XXX impl DOS 2+ - RESIZE MEMORY BLOCK. BX={:04X}, ES={:04X}",
-                     cpu.r16[BX].val,
+            println!("XXX impl DOS 2+ - RESIZE MEMORY BLOCK. bx={:04X}, es={:04X}",
+                     cpu.get_r16(&R16::BX),
                      cpu.sreg16[ES]);
         }
         0x4C => {
@@ -188,14 +187,14 @@ pub fn handle(cpu: &mut CPU) {
             // Notes: Unless the process is its own parent (see #01378 [offset 16h] at AH=26h),
             // all open files are closed and all memory belonging to the process is freed. All
             // network file locks should be removed before calling this function
-            let code = cpu.r16[AX].lo_u8();
-            println!("DOS - TERMINATE WITH RETURN CODE {:02X}", code);
+            let al = cpu.get_r8(R8::AL);
+            println!("DOS - TERMINATE WITH RETURN CODE {:02X}", al);
             cpu.fatal_error = true; // XXX just to stop debugger.run() function
         }
         _ => {
-            println!("int21 error: unknown AH={:02X}, AX={:04X}",
-                     cpu.r16[AX].hi_u8(),
-                     cpu.r16[AX].val);
+            println!("int21 error: unknown ah={:02X}, ax={:04X}",
+                     cpu.get_r8(R8::AH),
+                     cpu.get_r16(&R16::AX));
         }
     }
 }

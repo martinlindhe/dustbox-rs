@@ -19,7 +19,8 @@ use cairo;
 use dustbox::memory::Memory;
 use dustbox::cpu::CPU;
 use dustbox::cpu;
-use dustbox::cpu::register::{AX, BP, BX, CS, CX, DI, DS, DX, ES, FS, GS, SI, SP, SS};
+use dustbox::cpu::register::{CS, DS, ES, FS, GS, SS};
+use dustbox::cpu::register::{R8, R16};
 use dustbox::gpu::palette::DACPalette;
 
 use debugger;
@@ -346,20 +347,20 @@ fn update_registers(
     let dx_value: gtk::Label = builder.get_object("dx_value").unwrap();
 
     ax_value.set_markup(&u16_as_register_str(
-        app.cpu.r16[AX].val,
-        app.prev_regs.r16[AX].val,
+        app.cpu.get_r16(&R16::AX),
+        app.prev_regs.r16[R16::AX.index()].val,
     ));
     bx_value.set_markup(&u16_as_register_str(
-        app.cpu.r16[BX].val,
-        app.prev_regs.r16[BX].val,
+        app.cpu.get_r16(&R16::BX),
+        app.prev_regs.r16[R16::BX.index()].val,
     ));
     cx_value.set_markup(&u16_as_register_str(
-        app.cpu.r16[CX].val,
-        app.prev_regs.r16[CX].val,
+        app.cpu.get_r16(&R16::CX),
+        app.prev_regs.r16[R16::CX.index()].val,
     ));
     dx_value.set_markup(&u16_as_register_str(
-        app.cpu.r16[DX].val,
-        app.prev_regs.r16[DX].val,
+        app.cpu.get_r16(&R16::DX),
+        app.prev_regs.r16[R16::DX.index()].val,
     ));
 
     let si_value: gtk::Label = builder.get_object("si_value").unwrap();
@@ -368,20 +369,20 @@ fn update_registers(
     let sp_value: gtk::Label = builder.get_object("sp_value").unwrap();
 
     si_value.set_markup(&u16_as_register_str(
-        app.cpu.r16[SI].val,
-        app.prev_regs.r16[SI].val,
+        app.cpu.get_r16(&R16::SI),
+        app.prev_regs.r16[R16::SI.index()].val,
     ));
     di_value.set_markup(&u16_as_register_str(
-        app.cpu.r16[DI].val,
-        app.prev_regs.r16[DI].val,
+        app.cpu.get_r16(&R16::DI),
+        app.prev_regs.r16[R16::DI.index()].val,
     ));
     bp_value.set_markup(&u16_as_register_str(
-        app.cpu.r16[BP].val,
-        app.prev_regs.r16[BP].val,
+        app.cpu.get_r16(&R16::BP),
+        app.prev_regs.r16[R16::BP.index()].val,
     ));
     sp_value.set_markup(&u16_as_register_str(
-        app.cpu.r16[SP].val,
-        app.prev_regs.r16[SP].val,
+        app.cpu.get_r16(&R16::SP),
+        app.prev_regs.r16[R16::SP.index()].val,
     ));
 
     let ds_value: gtk::Label = builder.get_object("ds_value").unwrap();
