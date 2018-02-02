@@ -1,4 +1,4 @@
-// mentally close to cpu.rs, this is a collection of graphic tests using classic 256 / 512 byte demos
+// this is a collection of graphic tests using classic 256 / 512 byte demos
 
 // TODO: copy all demo binaries that tests rely on to this repo
 

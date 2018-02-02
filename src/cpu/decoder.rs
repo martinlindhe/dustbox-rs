@@ -79,9 +79,9 @@ impl Decoder {
         let mut op = Instruction {
             command: Op::Unknown(),
             params: ParameterPair {
-                dst: Parameter::None(),
-                src: Parameter::None(),
-                src2: Parameter::None(),
+                dst: Parameter::None,
+                src: Parameter::None,
+                src2: Parameter::None,
             },
             segment_prefix: seg,
             repeat: RepeatMode::None,
@@ -1410,7 +1410,7 @@ impl Decoder {
         ParameterPair {
             dst: Parameter::Reg8(Into::into(x.reg)),
             src: self.rm8(seg, x.rm, x.md),
-            src2: Parameter::None(),
+            src2: Parameter::None,
         }
     }
 
@@ -1420,7 +1420,7 @@ impl Decoder {
         ParameterPair {
             dst: self.rm8(seg, x.rm, x.md),
             src: Parameter::Reg8(Into::into(x.reg)),
-            src2: Parameter::None(),
+            src2: Parameter::None,
         }
     }
 
@@ -1430,7 +1430,7 @@ impl Decoder {
         ParameterPair {
             dst: Parameter::SReg16(Into::into(x.reg)),
             src: self.rm16(seg, x.rm, x.md),
-            src2: Parameter::None(),
+            src2: Parameter::None,
         }
     }
 
@@ -1440,7 +1440,7 @@ impl Decoder {
         ParameterPair {
             dst: self.rm16(seg, x.rm, x.md),
             src: Parameter::SReg16(Into::into(x.reg)),
-            src2: Parameter::None(),
+            src2: Parameter::None,
         }
     }
 
@@ -1450,7 +1450,7 @@ impl Decoder {
         ParameterPair {
             dst: Parameter::Reg16(Into::into(x.reg)),
             src: self.rm8(seg, x.rm, x.md),
-            src2: Parameter::None(),
+            src2: Parameter::None,
         }
     }
 
@@ -1460,7 +1460,7 @@ impl Decoder {
         ParameterPair {
             dst: Parameter::Reg16(Into::into(x.reg)),
             src: self.rm16(seg, x.rm, x.md),
-            src2: Parameter::None(),
+            src2: Parameter::None,
         }
     }
 
@@ -1470,7 +1470,7 @@ impl Decoder {
         ParameterPair {
             dst: self.rm16(seg, x.rm, x.md),
             src: Parameter::Reg16(Into::into(x.reg)),
-            src2: Parameter::None(),
+            src2: Parameter::None,
         }
     }
 
@@ -1483,7 +1483,7 @@ impl Decoder {
         ParameterPair {
             dst: Parameter::Reg16(Into::into(x.reg)),
             src: self.rm16(seg, x.rm, x.md),
-            src2: Parameter::None(),
+            src2: Parameter::None,
         }
     }
 

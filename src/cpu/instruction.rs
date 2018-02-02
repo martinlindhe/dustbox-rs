@@ -53,8 +53,8 @@ impl Instruction {
             repeat: RepeatMode::None,
             params: ParameterPair {
                 dst: dst,
-                src: Parameter::None(),
-                src2: Parameter::None(),
+                src: Parameter::None,
+                src2: Parameter::None,
             },
             length: 0, // XXX remove length here, cannot be known
         }
@@ -69,7 +69,7 @@ impl Instruction {
             params: ParameterPair {
                 dst: dst,
                 src: src,
-                src2: Parameter::None(),
+                src2: Parameter::None,
             },
             length: 0, // XXX remove length here, cannot be known
         }
@@ -84,13 +84,13 @@ impl Instruction {
         let prefix = self.repeat.as_str();
 
         match self.params.dst {
-            Parameter::None() => format!("{}{:?}", prefix, self.command),
+            Parameter::None => format!("{}{:?}", prefix, self.command),
             _ => {
                 let cmd = right_pad(&format!("{}{:?}", prefix, self.command), 9);
 
                 match self.params.src2 {
-                    Parameter::None() => match self.params.src {
-                        Parameter::None() => format!("{}{}", cmd, self.params.dst),
+                    Parameter::None => match self.params.src {
+                        Parameter::None => format!("{}{}", cmd, self.params.dst),
                         _ => format!("{}{}, {}", cmd, self.params.dst, self.params.src),
                     },
                     _ => format!(
@@ -117,11 +117,11 @@ impl ParameterPair {
     // returns the number of parameters
     pub fn count(&self) -> usize {
         match self.dst {
-            Parameter::None() => 0,
+            Parameter::None => 0,
             _ => match self.src {
-                Parameter::None() => 1,
+                Parameter::None => 1,
                 _ => match self.src2 {
-                    Parameter::None() => 2,
+                    Parameter::None => 2,
                     _ => 3,
                 },
             },
@@ -131,8 +131,8 @@ impl ParameterPair {
 
 #[derive(Debug, PartialEq)]
 pub enum Parameter {
-    Imm8(u8),
-    Imm16(u16),
+    Imm8(u8),                           // byte 0x80
+    Imm16(u16),                         // word 0x8000
     ImmS8(i8),                          // byte +0x3f
     Ptr8(Segment, u16),                 // byte [u16]
     Ptr16(Segment, u16),                // word [u16]
@@ -146,7 +146,7 @@ pub enum Parameter {
     Reg8(R8),                           // index into the low 4 of CPU.r16
     Reg16(R16),                         // index into CPU.r16
     SReg16(SR),                         // index into cpu.sreg16
-    None(),
+    None,
 }
 
 impl fmt::Display for Parameter {
@@ -220,7 +220,7 @@ impl fmt::Display for Parameter {
             &Parameter::Reg8(ref v) => write!(f, "{}", v.as_str()),
             &Parameter::Reg16(ref v) => write!(f, "{}", v.as_str()),
             &Parameter::SReg16(ref v) => write!(f, "{}", v.as_str()),
-            &Parameter::None() => write!(f, ""),
+            &Parameter::None => write!(f, ""),
         }
     }
 }
@@ -260,7 +260,7 @@ impl Parameter {
     }
 
     pub fn is_none(&self) -> bool {
-        return *self == Parameter::None()
+        return *self == Parameter::None
     }
 }
 

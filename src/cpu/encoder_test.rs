@@ -17,11 +17,17 @@ use cpu::register::{R8, AMode};
 use memory::mmu::MMU;
 
 #[test]
-fn can_encode_instr() {
+fn can_encode_int() {
     let encoder = Encoder::new();
+
     let op = Instruction::new1(Op::Int(), Parameter::Imm8(0x21));
     assert_eq!(vec!(0xCD, 0x21), encoder.encode(&op));
     assert_eq!("int 0x21".to_owned(), ndisasm(&op).unwrap());
+}
+
+#[test]
+fn can_encode_mov_addressing_modes() {
+    let encoder = Encoder::new();
 
     // r8, imm8
     let op = Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
@@ -48,7 +54,7 @@ fn can_encode_instr() {
     assert_eq!("mov [bp-0x800],bh".to_owned(), ndisasm(&op).unwrap());
     assert_eq!(vec!(0x88, 0xBE, 0x00, 0xF8), encoder.encode(&op));
 
-    // r/m8, r8  (dst is [imm16])
+    // r/m8, r8  (dst is [imm16]) // XXX no direct amode mapping in resulting Instruction. can we implement a "Instruction.AMode() -> AMode" ?
     let op = Instruction::new2(Op::Mov8(), Parameter::Ptr8(Segment::Default, 0x8000), Parameter::Reg8(R8::BH));
     assert_eq!("mov [0x8000],bh".to_owned(), ndisasm(&op).unwrap());
     assert_eq!(vec!(0x88, 0x3E, 0x00, 0x80), encoder.encode(&op));
