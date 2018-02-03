@@ -4,6 +4,7 @@ use std::process::Command;
 use std::str;
 use std::collections::HashMap;
 use std::time::Instant;
+use std::path::{Path, PathBuf};
 
 use tempdir::TempDir;
 use tera::Context;
@@ -113,9 +114,10 @@ fn can_fuzz_shr() {
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::DX), Parameter::Imm16(0)),
             // mutate parameters
             Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(n1 as u8)),
-            Instruction::new2(Op::Shl8, Parameter::Reg8(R8::AH), Parameter::Imm8(n2 as u8)),
+            Instruction::new2(Op::Sar8, Parameter::Reg8(R8::AH), Parameter::Imm8(n2 as u8)),
         );
-        // XXX verified: Shr8,
+        // XXX verified with winXP: Shr8,
+        // XXX differs from winXP: Shl8 (OF), Sar8 (wrong result, )
 
         let data = encoder.encode_vec(&ops);
 
@@ -130,7 +132,8 @@ fn can_fuzz_shr() {
 
         let now = Instant::now();
         //let output = stdout_from_vmx_vmrun(prober_com); // ~2.3 seconds per call
-        let output = stdout_from_vm_http(prober_com); // ~0.05 seconds
+        //let output = stdout_from_vm_http(prober_com); // ~0.05 seconds
+        let output = stdout_from_dosbox(prober_com); // ~2.3 seconds
 
         let elapsed = now.elapsed();
         let sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
@@ -138,10 +141,11 @@ fn can_fuzz_shr() {
         if i % 100 == 0 {
             println!("avg vm time after {} iterations: {:.*}s", i, 4, tot_sec / i as f64);
         }
+        let dustbox_ah = cpu.get_r8(R8::AH);
 
         let vm_regs = prober_reg_map(&output);
         if compare_regs(&cpu, &vm_regs, &affected_registers) {
-            println!("n1 {:x}, n2 {:x}: regs differ       (vm time {}s)", n1, n2, sec);
+            println!("it {} ah={:02x} {{{:02x}, {:02x}}}: regs differ       (vm time {}s)", i, dustbox_ah, n1, n2, sec);
         }
 
         let vm_flags = vm_regs["flag"];
@@ -150,8 +154,28 @@ fn can_fuzz_shr() {
         let dustbox_masked_flags = dustbox_flags & affected_flag_mask;
         if vm_masked_flags != dustbox_masked_flags {
             let xored = vm_masked_flags ^ dustbox_masked_flags;
-            println!("n1 {:x}, n2 {:x}: flags differ: vm {:04x}, dustbox {:04x} = diff {:08b}", n1, n2, vm_masked_flags, dustbox_masked_flags, xored);
+            print!("it {} ah={:02x} {{{:02x}, {:02x}}}: flags differ: vm {:04x}, dustbox {:04x} = diff b{:016b}: ", i, dustbox_ah, n1, n2, vm_masked_flags, dustbox_masked_flags, xored);
             // XXX show differing flag names
+            if xored & 0x0000_0001 != 0 {
+                print!("C ");
+            }
+            if xored & 0x0000_0004 != 0 {
+                print!("P ");
+            }
+            if xored & 0x0000_0010 != 0 {
+                print!("A ");
+            }
+            if xored & 0x0000_0040 != 0 {
+                print!("Z ");
+            }
+            if xored & 0x0000_0080 != 0 {
+                print!("S ");
+            }
+            if xored & 0x0000_0800 != 0 {
+                print!("O ");
+            }
+            println!();
+            // io::stdout().flush().ok().expect("Could not flush stdout");
         }
 
     }
@@ -339,6 +363,25 @@ fn stdout_from_vm_http(prober_com: &str) -> String {
     str::from_utf8(&dst).unwrap().to_owned()
 }
 
+fn stdout_from_dosbox(prober_com: &str) -> String {
+
+    // copy prober_com to ~/dosbox-x
+    use std::fs;
+    fs::copy(prober_com, "/Users/m/dosbox-x/prober.com").unwrap();
+
+    Command::new("dosbox-x")
+        .args(&["-noautoexec", "-c", "prober.com > prober.out", "--exit"])
+        .current_dir("/Users/m/dosbox-x")
+        .output()
+        .expect("failed to execute process");
+
+    let cwd = Path::new("/Users/m/dosbox-x");
+    let file_path = cwd.join("prober.out");
+    let buffer = read_text_file(&file_path);
+
+    buffer
+}
+
 // run .com with vmrun (vmware), parse result
 fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
     let vmx = "/Users/m/Documents/Virtual Machines.localized/Windows XP Professional.vmwarevm/Windows XP Professional.vmx";
@@ -383,11 +426,23 @@ fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
     let elapsed = now.elapsed();
     let download_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
 
+    let buffer = read_text_file(&file_path);
+
+    println!("vmrun: upload {}s, run {}s, download {}s", upload_sec, run_sec, download_sec);
+
+    let f = File::open(&file_path);
+    drop(f);
+    tmp_dir.close().unwrap();
+
+    buffer
+}
+
+fn read_text_file(filename: &PathBuf) -> String {
     let mut buffer = String::new();
-    let mut f = match File::open(&file_path) {
+    let mut f = match File::open(&filename) {
         Ok(x) => x,
         Err(why) => {
-            panic!("Could not open file {:?}: {}", file_path, why);
+            panic!("Could not open file {:?}: {}", filename, why);
         }
     };
     match f.read_to_string(&mut buffer) {
@@ -396,12 +451,6 @@ fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
             panic!("could not read contents of file: {}", why);
         }
     };
-
-    println!("vmrun: upload {}s, run {}s, download {}s", upload_sec, run_sec, download_sec);
-
-    drop(f);
-    tmp_dir.close().unwrap();
-
     buffer
 }
 

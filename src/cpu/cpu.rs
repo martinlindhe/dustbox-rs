@@ -1359,23 +1359,26 @@ impl CPU {
             Op::Sar8 => {
                 // Signed divide* r/m8 by 2, imm8 times.
                 // two arguments
-                let dst = self.read_parameter_value(&op.params.dst);
-                let count = self.read_parameter_value(&op.params.src) & 0x7;
+                let op1 = self.read_parameter_value(&op.params.dst);
+                let count = self.read_parameter_value(&op.params.src) & 0x1F;
                 if count > 0 {
-                    let res = if dst & 0x80 != 0 {
+                    let res: u8 = ((op1 as i8) >> count as isize) as u8;
+                    /*
+                    let res = if op1 & 0x80 != 0 {
                         let x = 0xFF as usize;
-                        dst.rotate_right(count as u32) | x.rotate_left(8 - count as u32)
+                        op1.rotate_right(count as u32) | x.rotate_left(8 - count as u32)
                     } else {
-                        dst.rotate_right(count as u32)
+                        op1.rotate_right(count as u32)
                     };
+                    */
                     self.write_parameter_u8(&op.params.dst, res as u8);
-                    self.flags.carry = (dst as u8 >> (count - 1)) & 0x1 != 0;
+                    self.flags.carry = (op1 as u8 >> (count - 1)) & 0x1 != 0;
                     if count == 1 {
                         self.flags.overflow = false;
                     }
-                    self.flags.set_sign_u8(res);
-                    self.flags.set_zero_u8(res);
-                    self.flags.set_parity(res);
+                    self.flags.set_sign_u8(res as usize);
+                    self.flags.set_zero_u8(res as usize);
+                    self.flags.set_parity(res as usize);
                 }
             }
             Op::Sar16 => {
@@ -1458,18 +1461,28 @@ impl CPU {
             Op::Shl8 => {
                 // Multiply `dst` by 2, `src` times.
                 // two arguments    (alias: sal)
-                let dst = self.read_parameter_value(&op.params.dst);
+                let op1 = self.read_parameter_value(&op.params.dst) as u8;
                 let count = self.read_parameter_value(&op.params.src) & 0x1F;
+                self.flags.carry = false;
+                self.flags.overflow = false;
+
                 if count > 0 {
-                    let res = dst.wrapping_shl(count as u32);
-                    self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
-                    self.flags.carry = (res & 0x80) != 0;
-                    if count == 1 {
-                        self.flags.overflow = self.flags.carry_val() ^ ((res & 0x80) >> 7) != 0;
+                    let mut res: u8 = 0;
+                    if count < 8 { // NOTE: <= 8 in bochs. < 8 in winXP.
+                        res = op1 << count;
+                        let cf = op1 >> (8 - count) & 0x1;
+                        self.flags.carry = cf != 0;
+                        // NOTE: count == 1 to update overflow in winXP. intel docs says "count < 8"
+                        if count == 1 {
+                            //self.flags.overflow = cf ^ (res >> 7) != 0; // bochs
+                            self.flags.overflow = (op1 ^ res) & 0x80 != 0; // dosbox. identical to bochs
+                            // self.flags.overflow = ((op1 ^ res) >> (12 - 8)) & 0x800 != 0; // qemu
+                        }
                     }
-                    self.flags.set_sign_u8(res);
-                    self.flags.set_zero_u8(res);
-                    self.flags.set_parity(res);
+                    self.write_parameter_u8(&op.params.dst, res);
+                    self.flags.set_sign_u8(res as usize);
+                    self.flags.set_zero_u8(res as usize);
+                    self.flags.set_parity(res as usize);
                 }
             }
             Op::Shl16 => {
