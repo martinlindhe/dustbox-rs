@@ -7,7 +7,6 @@ use std::time::Instant;
 
 use tempdir::TempDir;
 use tera::Context;
-use reqwest;
 
 use cpu::CPU;
 use cpu::encoder::Encoder;
@@ -39,14 +38,16 @@ fn can_fuzz_shr() {
     let mut cpu = CPU::new(mmu);
     let encoder = Encoder::new();
 
-    for i in 0..255 {
+    for i in 0..65535 as usize {
+        let n1 = ((i + 1) & 0xFF) ^ 0xFF;
+        let n2 = i & 0xFF;
         let ops = vec!(
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::AX), Parameter::Imm16(0)),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::BX), Parameter::Imm16(0)),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::CX), Parameter::Imm16(0)),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::DX), Parameter::Imm16(0)),
-            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(i ^ 0xFF)), // mutate input
-            Instruction::new2(Op::Shr8, Parameter::Reg8(R8::AH), Parameter::Imm8(i)), // testing shr
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(n1 as u8)), // mutate input
+            Instruction::new2(Op::Shr8, Parameter::Reg8(R8::AH), Parameter::Imm8(n2 as u8)), // testing shr
         );
         let data = encoder.encode_vec(&ops);
 
@@ -61,11 +62,11 @@ fn can_fuzz_shr() {
 
         let now = Instant::now();
         //let output = stdout_from_vmx_vmrun(prober_com); // XXX ~2.3 seconds per call
-        let output = stdout_from_vm_http(prober_com); // XXX ~0.25 seconds
+        let output = stdout_from_vm_http(prober_com); // XXX ~0.05 seconds
 
         let elapsed = now.elapsed();
         let sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
-        println!("shr 0x{:x}, 0x{:x}       (vm time {}s)", i ^ 0xFF, i, sec);
+        println!("shr 0x{:x}, 0x{:x}       (vm time {}s)", n1, n2, sec);
 
         let vm_regs = prober_reg_map(&output);
         compare_regs(&cpu, &vm_regs, vec!("ax"));
@@ -223,16 +224,26 @@ fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
 
 // upload data as http post to supersafe http server running in VM
 fn stdout_from_vm_http(prober_com: &str) -> String {
-    let client = reqwest::Client::new();
+    use curl::easy::{Easy, Form};
 
-    let form = reqwest::multipart::Form::new()
-        .file("com", prober_com).unwrap();
+    let mut dst = Vec::new();
+    let mut easy = Easy::new();
+    easy.url("http://10.10.30.63:28111/run").unwrap();
 
-    let mut res = client.post("http://10.10.30.63:28111/run")
-        .multipart(form)
-        .send().unwrap();
+    let mut form = Form::new();
+    form.part("com").file(prober_com).add().unwrap();
+    easy.httppost(form).unwrap();
 
-    res.text().unwrap()
+    {
+        let mut transfer = easy.transfer();
+        transfer.write_function(|data| {
+            dst.extend_from_slice(data);
+            Ok(data.len())
+        }).unwrap();
+        transfer.perform().unwrap();
+    }
+
+    str::from_utf8(&dst).unwrap().to_owned()
 }
 
 // run .com with vmrun (vmware), parse result

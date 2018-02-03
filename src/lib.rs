@@ -8,7 +8,7 @@ extern crate time;
 extern crate tempdir;
 
 #[cfg(test)]
-extern crate reqwest;
+extern crate curl;
 
 pub mod cpu;
 pub mod memory;
