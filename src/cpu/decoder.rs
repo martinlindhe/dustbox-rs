@@ -28,7 +28,7 @@ impl Decoder {
         }
     }
 
-    pub fn decode_to_block(&mut self, seg: u16, offset: u16, n: u16) -> Vec<InstructionInfo> {
+    pub fn decode_to_block(&mut self, seg: u16, offset: u16, n: usize) -> Vec<InstructionInfo> {
         let mut ops: Vec<InstructionInfo> = Vec::new();
         let mut inst_offset = 0;
         for _ in 0..n {
@@ -39,7 +39,7 @@ impl Decoder {
         ops
     }
 
-    pub fn disassemble_block_to_str(&mut self, seg: u16, offset: u16, n: u16) -> String {
+    pub fn disassemble_block_to_str(&mut self, seg: u16, offset: u16, n: usize) -> String {
         let ops = self.decode_to_block(seg, offset, n);
         self.instructions_to_str(ops)
     }
@@ -744,27 +744,27 @@ impl Decoder {
             }
             0x88 => {
                 // mov r/m8, r8
-                op.command = Op::Mov8();
+                op.command = Op::Mov8;
                 op.params = self.rm8_r8(op.segment_prefix);
             }
             0x89 => {
                 // mov r/m16, r16
-                op.command = Op::Mov16();
+                op.command = Op::Mov16;
                 op.params = self.rm16_r16(op.segment_prefix);
             }
             0x8A => {
                 // mov r8, r/m8
-                op.command = Op::Mov8();
+                op.command = Op::Mov8;
                 op.params = self.r8_rm8(op.segment_prefix);
             }
             0x8B => {
                 // mov r16, r/m16
-                op.command = Op::Mov16();
+                op.command = Op::Mov16;
                 op.params = self.r16_rm16(op.segment_prefix);
             }
             0x8C => {
                 // mov r/m16, sreg
-                op.command = Op::Mov16();
+                op.command = Op::Mov16;
                 op.params = self.rm16_sreg(op.segment_prefix);
             }
             0x8D => {
@@ -774,7 +774,7 @@ impl Decoder {
             }
             0x8E => {
                 // mov sreg, r/m16
-                op.command = Op::Mov16();
+                op.command = Op::Mov16;
                 op.params = self.sreg_rm16(op.segment_prefix);
             }
             0x8F => {
@@ -824,26 +824,26 @@ impl Decoder {
                 op.command = Op::Lahf();
             }
             0xA0 => {
-                // mov AL, moffs8
-                op.command = Op::Mov8();
+                // mov AL, [moffs8]
+                op.command = Op::Mov8;
                 op.params.dst = Parameter::Reg8(R8::AL);
                 op.params.src = Parameter::Ptr8(op.segment_prefix, self.read_u16());
             }
             0xA1 => {
-                // mov AX, moffs16
-                op.command = Op::Mov16();
+                // mov AX, [moffs16]
+                op.command = Op::Mov16;
                 op.params.dst = Parameter::Reg16(R16::AX);
                 op.params.src = Parameter::Ptr16(op.segment_prefix, self.read_u16());
             }
             0xA2 => {
-                // mov moffs8, AL
-                op.command = Op::Mov8();
+                // mov [moffs8], AL
+                op.command = Op::Mov8;
                 op.params.dst = Parameter::Ptr8(op.segment_prefix, self.read_u16());
                 op.params.src = Parameter::Reg8(R8::AL);
             }
             0xA3 => {
-                // mov moffs16, AX
-                op.command = Op::Mov16();
+                // mov [moffs16], AX
+                op.command = Op::Mov16;
                 op.params.dst = Parameter::Ptr16(op.segment_prefix, self.read_u16());
                 op.params.src = Parameter::Reg16(R16::AX);
             }
@@ -891,13 +891,13 @@ impl Decoder {
             }
             0xB0...0xB7 => {
                 // mov r8, u8
-                op.command = Op::Mov8();
+                op.command = Op::Mov8;
                 op.params.dst = Parameter::Reg8(Into::into(b & 7));
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
             0xB8...0xBF => {
                 // mov r16, u16
-                op.command = Op::Mov16();
+                op.command = Op::Mov16;
                 op.params.dst = Parameter::Reg16(Into::into(b & 7));
                 op.params.src = Parameter::Imm16(self.read_u16());
             }
@@ -965,7 +965,7 @@ impl Decoder {
                 match x.reg {
                     0 => {
                         // mov r/m8, imm8
-                        op.command = Op::Mov8();
+                        op.command = Op::Mov8;
                     }
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
@@ -980,7 +980,7 @@ impl Decoder {
                 match x.reg {
                     0 => {
                         // mov r/m16, imm16
-                        op.command = Op::Mov16();
+                        op.command = Op::Mov16;
                     }
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);

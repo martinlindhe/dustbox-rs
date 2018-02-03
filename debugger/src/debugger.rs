@@ -129,7 +129,7 @@ impl Debugger {
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
         let mut decoder = Decoder::new(self.cpu.mmu.clone());
-        decoder.disassemble_block_to_str(self.cpu.get_sr(&SR::CS), self.cpu.ip, n as u16)
+        decoder.disassemble_block_to_str(self.cpu.get_sr(&SR::CS), self.cpu.ip, n)
     }
 
     pub fn dump_memory(&self, filename: &str, base: usize, len: usize) -> Result<usize, IoError> {

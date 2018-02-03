@@ -31,15 +31,18 @@ impl Encoder {
                 out.push(0xCD);
                 out.extend(self.encode_imm8(&op.params.dst));
             }
-            Op::Mov8() => {
+            Op::Mov8 => {
                 if op.params.dst.is_reg() && op.params.src.is_imm() {
-                    // 0xB0...0xB7
-                    // mov r8, u8
+                    // 0xB0...0xB7: mov r8, u8
                     if let Parameter::Reg8(r) = op.params.dst {
                         out.push(0xB0 | r as u8);
+                    } else {
+                        panic!("XXX {:?}", op.params.dst);
                     }
                     if let Parameter::Imm8(i) = op.params.src {
                         out.push(i as u8);
+                    } else {
+                        panic!("XXX {:?}", op.params.src);
                     }
                 } else if op.params.src.is_ptr() {
                     // 0x8A: mov r8, r/m8
@@ -49,6 +52,40 @@ impl Encoder {
                     // 0x88: mov r/m8, r8
                     out.push(0x88);
                     out.extend(self.encode_rm8_r8(&op.params));
+                }
+            }
+            Op::Mov16 => {
+                
+                //0x89: mov r/m16, r16
+                //0x8B: mov r16, r/m16
+                //0x8C: mov r/m16, sreg
+                //0x8E: mov sreg, r/m16
+
+                if op.params.dst.is_reg() && op.params.src.is_imm() {
+                    //0xB8...0xBF: mov r16, u16
+                    if let Parameter::Reg16(ref r) = op.params.dst {
+                        out.push(0xB8 | r.index() as u8);
+                    } else {
+                        panic!("XXX {:?}", op.params.dst);
+                    }
+                    if let Parameter::Imm16(imm16) = op.params.src {
+                        out.push((imm16 & 0xFF) as u8);
+                        out.push((imm16 >> 8) as u8);
+                    } else {
+                        panic!("XXX {:?}", op.params.src);
+                    }
+                    /*
+                } else if op.params.src.is_ptr() {
+                    // 0x8A: mov r8, r/m8
+                    out.push(0x8A);
+                    out.extend(self.encode_r8_rm8(&op.params));
+                } else {
+                    // 0x88: mov r/m8, r8
+                    out.push(0x88);
+                    out.extend(self.encode_rm8_r8(&op.params));
+                }*/
+                } else {
+                    panic!();
                 }
             }
 

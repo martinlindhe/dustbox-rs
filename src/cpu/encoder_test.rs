@@ -3,6 +3,7 @@ use std::io::{self, Read, Write};
 use std::process::Command;
 use std::str;
 use std::collections::HashMap;
+use std::time::Instant;
 
 use tempdir::TempDir;
 use tera::Context;
@@ -13,7 +14,7 @@ use cpu::segment::Segment;
 use cpu::parameter::Parameter;
 use cpu::instruction::{Instruction, InstructionInfo, RepeatMode};
 use cpu::op::Op;
-use cpu::register::{R8, AMode};
+use cpu::register::{R8, AMode, R16};
 use memory::mmu::MMU;
 
 
@@ -31,37 +32,81 @@ fn can_encode_bitshift_instructions() {
 }
 
 
-#[test]
+#[test] #[ignore] // expensive test
 fn can_fuzz_shr() {
-    let encoder = Encoder::new();
-    let ops = vec!(
-        Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::AH), Parameter::Imm8(0xFF)),
-        Instruction::new2(Op::Shr8, Parameter::Reg8(R8::AH), Parameter::Imm8(0xFF)),
-    );
-    let data = encoder.encode_vec(&ops);
-    assert_eq!(vec!(0xB4, 0xFF, 0xC0, 0xEC, 0xFF), data);
-    // assert_eq!("shr ah,byte 0xff".to_owned(), ndisasm(&op).unwrap()); // XXX disasm all
-
-    // execute the ops in dustbox
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
-    cpu.load_com(&data);
+    let encoder = Encoder::new();
 
-    cpu.execute_instructions(ops.len());
-    // XXX save regs
-    println!("{:?}", cpu.r16);
+    for i in 0..255 {
+        let ops = vec!(
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::AX), Parameter::Imm16(0)),
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::BX), Parameter::Imm16(0)),
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::CX), Parameter::Imm16(0)),
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::DX), Parameter::Imm16(0)),
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(i ^ 0xFF)), // mutate input
+            Instruction::new2(Op::Shr8, Parameter::Reg8(R8::AH), Parameter::Imm8(i)), // testing shr
+        );
+        let data = encoder.encode_vec(&ops);
 
-    // XXX 2. run in vmware, compare regs
-    let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
+        // execute the ops in dustbox
+        cpu.load_com(&data);
 
-    assemble_prober(&ops, prober_com);
-    let output = stdout_from_winxp_vmware(prober_com);
+        cpu.execute_instructions(ops.len());
 
-    let m = prober_reg_map(&output);
-    println!("vmware result: {:?}", m);
+        // run in vm, compare regs
+        let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
+        assemble_prober(&ops, prober_com);
 
+        let now = Instant::now();
+        let output = stdout_from_vmx_vmrun(prober_com); // XXX ~2.3 seconds per call
+
+        let elapsed = now.elapsed();
+        let sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
+        println!("shr 0x{:x}, 0x{:x}       (vm time {}s)", i ^ 0xFF, i, sec);
+
+        let vm_regs = prober_reg_map(&output);
+        compare_regs(&cpu, &vm_regs, vec!("ax"));
+    }
 }
 
+fn compare_regs(cpu: &CPU, vm_regs: &HashMap<String, u16>, reg_names: Vec<&str>) {
+    for s in reg_names {
+        compare_reg(s, cpu, vm_regs[s]);
+    }
+}
+
+fn compare_reg(reg_name: &str, cpu: &CPU, vm_val: u16) {
+    let idx = reg_str_to_index(reg_name);
+    let reg: R16 = Into::into(idx as u8);
+    let dustbox_val = cpu.get_r16(&reg);
+    if dustbox_val != vm_val {
+        println!("{} differs. dustbox {:04x}, vm {:04x}", reg_name, dustbox_val, vm_val);
+   }
+}
+
+fn reg_str_to_index(s: &str) -> usize {
+    match s {
+        "al" => 0,
+        "cl" => 1,
+        "dl" => 2,
+        "bl" => 3,
+        "ah" => 4,
+        "ch" => 5,
+        "dh" => 6,
+        "bh" => 7,
+
+        "ax" => 0,
+        "cx" => 1,
+        "dx" => 2,
+        "bx" => 3,
+        "sp" => 4,
+        "bp" => 5,
+        "si" => 6,
+        "di" => 7,
+        _ => panic!("{}", s),
+    }
+}
 
 #[test]
 fn can_encode_int() {
@@ -77,56 +122,44 @@ fn can_encode_mov_addressing_modes() {
     let encoder = Encoder::new();
 
     // r8, imm8
-    let op = Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
+    let op = Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
     assert_eq!("mov bh,0xff".to_owned(), ndisasm(&op).unwrap());
     assert_eq!(vec!(0xB7, 0xFF), encoder.encode(&op));
 
+    // r16, imm8
+    let op = Instruction::new2(Op::Mov16, Parameter::Reg16(R16::BX), Parameter::Imm16(0x8844));
+    assert_eq!("mov bx,0x8844".to_owned(), ndisasm(&op).unwrap());
+    assert_eq!(vec!(0xBB, 0x44, 0x88), encoder.encode(&op));
+
     // r/m8, r8  (dst is r8)
-    let op = Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
+    let op = Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
     assert_eq!("mov bh,dl".to_owned(), ndisasm(&op).unwrap());
     assert_eq!(vec!(0x88, 0xD7), encoder.encode(&op));
 
     // r/m8, r8  (dst is AMode::BP + imm8)
-    let op = Instruction::new2(Op::Mov8(), Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10), Parameter::Reg8(R8::BH));
+    let op = Instruction::new2(Op::Mov8, Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10), Parameter::Reg8(R8::BH));
     assert_eq!("mov [bp+0x10],bh".to_owned(), ndisasm(&op).unwrap());
     assert_eq!(vec!(0x88, 0x7E, 0x10), encoder.encode(&op));
 
     // r/m8, r8  (dst is AMode::BP + imm8)    - reversed
-    let op = Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::BH), Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10));
+    let op = Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10));
     assert_eq!(vec!(0x8A, 0x7E, 0x10), encoder.encode(&op));
     assert_eq!("mov bh,[bp+0x10]".to_owned(), ndisasm(&op).unwrap());
 
     // r/m8, r8  (dst is AMode::BP + imm8)
-    let op = Instruction::new2(Op::Mov8(), Parameter::Ptr8AmodeS16(Segment::Default, AMode::BP, -0x800), Parameter::Reg8(R8::BH));
+    let op = Instruction::new2(Op::Mov8, Parameter::Ptr8AmodeS16(Segment::Default, AMode::BP, -0x800), Parameter::Reg8(R8::BH));
     assert_eq!("mov [bp-0x800],bh".to_owned(), ndisasm(&op).unwrap());
     assert_eq!(vec!(0x88, 0xBE, 0x00, 0xF8), encoder.encode(&op));
 
     // r/m8, r8  (dst is [imm16]) // XXX no direct amode mapping in resulting Instruction. can we implement a "Instruction.AMode() -> AMode" ?
-    let op = Instruction::new2(Op::Mov8(), Parameter::Ptr8(Segment::Default, 0x8000), Parameter::Reg8(R8::BH));
+    let op = Instruction::new2(Op::Mov8, Parameter::Ptr8(Segment::Default, 0x8000), Parameter::Reg8(R8::BH));
     assert_eq!("mov [0x8000],bh".to_owned(), ndisasm(&op).unwrap());
     assert_eq!(vec!(0x88, 0x3E, 0x00, 0x80), encoder.encode(&op));
 
     // r/m8, r8  (dst is [bx])
-    let op = Instruction::new2(Op::Mov8(), Parameter::Ptr8Amode(Segment::Default, AMode::BX), Parameter::Reg8(R8::BH));
+    let op = Instruction::new2(Op::Mov8, Parameter::Ptr8Amode(Segment::Default, AMode::BX), Parameter::Reg8(R8::BH));
     assert_eq!("mov [bx],bh".to_owned(), ndisasm(&op).unwrap());
     assert_eq!(vec!(0x88, 0x3F), encoder.encode(&op));
-}
-
-#[test] #[ignore] // expensive test
-fn vmware_fuzz() {
-    let ops = vec!(
-        Instruction::new2(Op::Mov8(), Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF)),
-    );
-
-    let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
-
-    assemble_prober(&ops, prober_com);
-    let output = stdout_from_winxp_vmware(prober_com);
-
-    let m = prober_reg_map(&output);
-    println!("vmware result: {:?}", m);
-
-    // TODO: run the program in dustbox too, capture stdout and compare results
 }
 
 fn assemble_prober(ops: &Vec<Instruction>, prober_com: &str) {
@@ -170,7 +203,7 @@ fn ops_as_db_bytes(ops: &Vec<Instruction>) -> String {
 }
 
 // parse prober.com output into a map
-fn prober_reg_map(stdout: &str) -> HashMap<String, u16>{
+fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
     let mut map = HashMap::new();
     let lines: Vec<String> = stdout.split("\r\n").map(|s| s.to_string()).collect();
 
@@ -186,11 +219,13 @@ fn prober_reg_map(stdout: &str) -> HashMap<String, u16>{
     map
 }
 
-// run .com in vm, parse result
-fn stdout_from_winxp_vmware(prober_com: &str) -> String {
+// run .com with vmrun (vmware), parse result
+fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
     let vmx = "/Users/m/Documents/Virtual Machines.localized/Windows XP Professional.vmwarevm/Windows XP Professional.vmx";
     let vm_user = "vmware";
     let vm_password = "vmware";
+
+    let now = Instant::now();
 
     // copy file to guest
     Command::new("vmrun")
@@ -199,6 +234,10 @@ fn stdout_from_winxp_vmware(prober_com: &str) -> String {
         .output()
         .expect("failed to execute process");
 
+    let elapsed = now.elapsed();
+    let upload_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
+
+    let now = Instant::now();
     // run prober.bat, where prober.bat is "c:\prober.com > c:\prober.out" (XXX create this file in vm once)
     Command::new("vmrun")
         .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
@@ -206,16 +245,23 @@ fn stdout_from_winxp_vmware(prober_com: &str) -> String {
         .output()
         .expect("failed to execute process");
 
+    let elapsed = now.elapsed();
+    let run_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
+
     let tmp_dir = TempDir::new("vmware").unwrap();
     let file_path = tmp_dir.path().join("prober.out");
     let file_str = file_path.to_str().unwrap();
 
+    let now = Instant::now();
     // copy back result
     Command::new("vmrun")
         .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
             "copyFileFromGuestToHost", vmx, "C:\\prober.out", file_str])
         .output()
         .expect("failed to execute process");
+
+    let elapsed = now.elapsed();
+    let download_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
 
     let mut buffer = String::new();
     let mut f = match File::open(&file_path) {
@@ -230,6 +276,8 @@ fn stdout_from_winxp_vmware(prober_com: &str) -> String {
             panic!("could not read contents of file: {}", why);
         }
     };
+
+    println!("vmrun: upload {}s, run {}s, download {}s", upload_sec, run_sec, download_sec);
 
     drop(f);
     tmp_dir.close().unwrap();

@@ -899,12 +899,12 @@ impl CPU {
                     self.ip = dst;
                 }
             } 
-            Op::Mov8() => {
+            Op::Mov8 => {
                 // two arguments (dst=reg)
                 let data = self.read_parameter_value(&op.params.src) as u8;
                 self.write_parameter_u8(&op.params.dst, data);
             }
-            Op::Mov16() => {
+            Op::Mov16 => {
                 // two arguments (dst=reg)
                 let data = self.read_parameter_value(&op.params.src) as u16;
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, data);
