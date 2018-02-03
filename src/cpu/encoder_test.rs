@@ -48,6 +48,40 @@ fn can_encode_bitshift_instructions() {
     assert_eq!("shl ah,byte 0xff".to_owned(), ndisasm(&op).unwrap());
 }
 
+struct AffectedFlags {
+    // ____ O___ SZ_A _P_C
+    pub c: u8, // 0: carry flag
+    pub p: u8, // 2: parity flag
+    pub a: u8, // 4: auxiliary carry flag (AF)
+    pub z: u8, // 6: zero flag
+    pub s: u8, // 7: sign flag
+    pub o: u8, // 11: overflow flag
+}
+
+impl AffectedFlags {
+    pub fn mask(&self) -> u16 {
+        let mut out = 0;
+        if self.c != 0 {
+            out |= 0x0000_0001;
+        }
+        if self.p != 0 {
+            out |= 0x0000_0004;
+        }
+        if self.a != 0 {
+            out |= 0x0000_0010;
+        }
+        if self.z != 0 {
+            out |= 0x0000_0040;
+        }
+        if self.s != 0 {
+            out |= 0x0000_0080;
+        }
+        if self.o != 0 {
+            out |= 0x0000_0800;
+        }
+        out
+    }
+}
 
 #[test] #[ignore] // expensive test
 fn can_fuzz_shr() {
@@ -56,6 +90,14 @@ fn can_fuzz_shr() {
     let encoder = Encoder::new();
 
     let mut tot_sec = 0.;
+
+    let affected_registers = vec!("ax");
+
+    //The CF flag contains the value of the last bit shifted out of the destination operand; it is undefined for SHL and SHR instructions where the count is greater than or equal to the size (in bits) of the destination operand. 
+    //The OF flag is affected only for 1-bit shifts (see “Description” above); otherwise, it is undefined.
+    //The SF, ZF, and PF flags are set according to the result. If the count is 0, the flags are not affected.
+    //For a non-zero count, the AF flag is undefined.
+    let affected_flag_mask = AffectedFlags{c:1, o:1, s:1, z:1, p:1, a:1}.mask();
 
     for i in 1..65535 as usize {
         let n1 = ((i + 1) & 0xFF) ^ 0xFF;
@@ -71,8 +113,10 @@ fn can_fuzz_shr() {
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::DX), Parameter::Imm16(0)),
             // mutate parameters
             Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(n1 as u8)),
-            Instruction::new2(Op::Shr8, Parameter::Reg8(R8::AH), Parameter::Imm8(n2 as u8)),
+            Instruction::new2(Op::Shl8, Parameter::Reg8(R8::AH), Parameter::Imm8(n2 as u8)),
         );
+        // XXX verified: Shr8,
+
         let data = encoder.encode_vec(&ops);
 
         // execute the ops in dustbox
@@ -96,15 +140,27 @@ fn can_fuzz_shr() {
         }
 
         let vm_regs = prober_reg_map(&output);
-        if compare_regs(&cpu, &vm_regs, vec!("ax")) {
-            println!("shr 0x{:x}, 0x{:x}       (vm time {}s)", n1, n2, sec);
+        if compare_regs(&cpu, &vm_regs, &affected_registers) {
+            println!("n1 {:x}, n2 {:x}: regs differ       (vm time {}s)", n1, n2, sec);
         }
+
+        let vm_flags = vm_regs["flag"];
+        let vm_masked_flags = vm_flags & affected_flag_mask;
+        let dustbox_flags = cpu.flags.u16();
+        let dustbox_masked_flags = dustbox_flags & affected_flag_mask;
+        if vm_masked_flags != dustbox_masked_flags {
+            let xored = vm_masked_flags ^ dustbox_masked_flags;
+            println!("n1 {:x}, n2 {:x}: flags differ: vm {:04x}, dustbox {:04x} = diff {:08b}", n1, n2, vm_masked_flags, dustbox_masked_flags, xored);
+            // XXX show differing flag names
+        }
+
     }
 }
 
-fn compare_regs(cpu: &CPU, vm_regs: &HashMap<String, u16>, reg_names: Vec<&str>) -> bool {
+fn compare_regs<'a>(cpu: &CPU, vm_regs: &HashMap<String, u16>, reg_names: &Vec<&'a str>) -> bool {
     let mut ret = false;
     for s in reg_names {
+        let s = s.to_owned();
         if compare_reg(s, cpu, vm_regs[s]) {
             ret = true;
         }
