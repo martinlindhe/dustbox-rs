@@ -66,26 +66,38 @@ fn can_fuzz_shr() {
 
         let elapsed = now.elapsed();
         let sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
-        println!("shr 0x{:x}, 0x{:x}       (vm time {}s)", n1, n2, sec);
 
         let vm_regs = prober_reg_map(&output);
-        compare_regs(&cpu, &vm_regs, vec!("ax"));
+        if compare_regs(&cpu, &vm_regs, vec!("ax")) {
+            println!("shr 0x{:x}, 0x{:x}       (vm time {}s)", n1, n2, sec);
+        } else {
+            print!(".");
+            io::stdout().flush().ok().expect("Could not flush stdout");
+        }
     }
 }
 
-fn compare_regs(cpu: &CPU, vm_regs: &HashMap<String, u16>, reg_names: Vec<&str>) {
+fn compare_regs(cpu: &CPU, vm_regs: &HashMap<String, u16>, reg_names: Vec<&str>) -> bool {
+    let mut ret = false;
     for s in reg_names {
-        compare_reg(s, cpu, vm_regs[s]);
+        if compare_reg(s, cpu, vm_regs[s]) {
+            ret = true;
+        }
     }
+    ret
 }
 
-fn compare_reg(reg_name: &str, cpu: &CPU, vm_val: u16) {
+// returns true if registers dont match
+fn compare_reg(reg_name: &str, cpu: &CPU, vm_val: u16) -> bool {
     let idx = reg_str_to_index(reg_name);
     let reg: R16 = Into::into(idx as u8);
     let dustbox_val = cpu.get_r16(&reg);
     if dustbox_val != vm_val {
         println!("{} differs. dustbox {:04x}, vm {:04x}", reg_name, dustbox_val, vm_val);
-   }
+        true
+    } else {
+        false
+    }
 }
 
 fn reg_str_to_index(s: &str) -> usize {
