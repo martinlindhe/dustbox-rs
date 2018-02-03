@@ -7,6 +7,9 @@ extern crate tera;
 extern crate time;
 extern crate tempdir;
 
+#[cfg(test)]
+extern crate reqwest;
+
 pub mod cpu;
 pub mod memory;
 pub mod gpu;

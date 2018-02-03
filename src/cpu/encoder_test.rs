@@ -7,6 +7,7 @@ use std::time::Instant;
 
 use tempdir::TempDir;
 use tera::Context;
+use reqwest;
 
 use cpu::CPU;
 use cpu::encoder::Encoder;
@@ -59,7 +60,8 @@ fn can_fuzz_shr() {
         assemble_prober(&ops, prober_com);
 
         let now = Instant::now();
-        let output = stdout_from_vmx_vmrun(prober_com); // XXX ~2.3 seconds per call
+        //let output = stdout_from_vmx_vmrun(prober_com); // XXX ~2.3 seconds per call
+        let output = stdout_from_vm_http(prober_com); // XXX ~0.25 seconds
 
         let elapsed = now.elapsed();
         let sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
@@ -217,6 +219,20 @@ fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
     }
 
     map
+}
+
+// upload data as http post to supersafe http server running in VM
+fn stdout_from_vm_http(prober_com: &str) -> String {
+    let client = reqwest::Client::new();
+
+    let form = reqwest::multipart::Form::new()
+        .file("com", prober_com).unwrap();
+
+    let mut res = client.post("http://10.10.30.63:28111/run")
+        .multipart(form)
+        .send().unwrap();
+
+    res.text().unwrap()
 }
 
 // run .com with vmrun (vmware), parse result
