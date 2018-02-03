@@ -10,6 +10,9 @@ expensive-256:
 expensive-512:
 	cargo test demo_512 --release -- --color always --nocapture --ignored
 
+expensive-fuzz:
+	cargo test fuzz --release -- --color always --nocapture --ignored
+
 bench:
 	cargo bench --all
 

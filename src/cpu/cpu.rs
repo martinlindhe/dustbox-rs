@@ -1123,12 +1123,12 @@ impl CPU {
                 };
                 self.set_r16(&R16::SI, si);
             }
-            Op::Pop16() => {
+            Op::Pop16 => {
                 // one arguments (dst)
                 let data = self.pop16();
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, data);
             }
-            Op::Popa() => {
+            Op::Popa => {
                 // Pop All General-Purpose Registers
                 let di = self.pop16();
                 self.set_r16(&R16::DI, di);
@@ -1147,17 +1147,17 @@ impl CPU {
                 let ax = self.pop16();
                 self.set_r16(&R16::AX, ax);
             }
-            Op::Popf() => {
+            Op::Popf => {
                 // Pop top of stack into lower 16 bits of EFLAGS.
                 let data = self.pop16();
                 self.flags.set_u16(data);
             }
-            Op::Push16() => {
+            Op::Push16 => {
                 // single parameter (dst)
                 let data = self.read_parameter_value(&op.params.dst) as u16;
                 self.push16(data);
             }
-            Op::Pusha() => {
+            Op::Pusha => {
                 // Push All General-Purpose Registers
                 let ax = self.get_r16(&R16::AX);
                 let cx = self.get_r16(&R16::CX);
@@ -1177,7 +1177,7 @@ impl CPU {
                 self.push16(si);
                 self.push16(di);
             }
-            Op::Pushf() => {
+            Op::Pushf => {
                 // push FLAGS register onto stack
                 let data = self.flags.u16();
                 self.push16(data);

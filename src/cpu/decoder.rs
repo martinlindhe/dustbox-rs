@@ -121,12 +121,12 @@ impl Decoder {
             }
             0x06 => {
                 // push es
-                op.command = Op::Push16();
+                op.command = Op::Push16;
                 op.params.dst = Parameter::SReg16(SR::ES);
             }
             0x07 => {
                 // pop es
-                op.command = Op::Pop16();
+                op.command = Op::Pop16;
                 op.params.dst = Parameter::SReg16(SR::ES);
             }
             0x08 => {
@@ -163,7 +163,7 @@ impl Decoder {
             }
             0x0E => {
                 // push cs
-                op.command = Op::Push16();
+                op.command = Op::Push16;
                 op.params.dst = Parameter::SReg16(SR::CS);
             }
             0x0F => {
@@ -208,12 +208,12 @@ impl Decoder {
                     }
                     0xA0 => {
                         // push fs
-                        op.command = Op::Push16();
+                        op.command = Op::Push16;
                         op.params.dst = Parameter::SReg16(SR::FS);
                     }
                     0xA1 => {
                         // pop fs
-                        op.command = Op::Pop16();
+                        op.command = Op::Pop16;
                         op.params.dst = Parameter::SReg16(SR::FS);
                     }
                     0xA3 => {
@@ -229,12 +229,12 @@ impl Decoder {
                     }
                     0xA8 => {
                         // push gs
-                        op.command = Op::Push16();
+                        op.command = Op::Push16;
                         op.params.dst = Parameter::SReg16(SR::GS);
                     }
                     0xA9 => {
                         // pop gs
-                        op.command = Op::Pop16();
+                        op.command = Op::Pop16;
                         op.params.dst = Parameter::SReg16(SR::GS);
                     }
                     0xAC => {
@@ -309,12 +309,12 @@ impl Decoder {
             }
             0x16 => {
                 // push ss
-                op.command = Op::Push16();
+                op.command = Op::Push16;
                 op.params.dst = Parameter::SReg16(SR::SS);
             }
             0x17 => {
                 // pop ss
-                op.command = Op::Pop16();
+                op.command = Op::Pop16;
                 op.params.dst = Parameter::SReg16(SR::SS);
             }
             0x1A => {
@@ -336,12 +336,12 @@ impl Decoder {
             }
             0x1E => {
                 // push ds
-                op.command = Op::Push16();
+                op.command = Op::Push16;
                 op.params.dst = Parameter::SReg16(SR::DS);
             }
             0x1F => {
                 // pop ds
-                op.command = Op::Pop16();
+                op.command = Op::Pop16;
                 op.params.dst = Parameter::SReg16(SR::DS);
             }
             0x20 => {
@@ -514,21 +514,21 @@ impl Decoder {
             }
             0x50...0x57 => {
                 // push r16
-                op.command = Op::Push16();
+                op.command = Op::Push16;
                 op.params.dst = Parameter::Reg16(Into::into(b & 7));
             }
             0x58...0x5F => {
                 // pop r16
-                op.command = Op::Pop16();
+                op.command = Op::Pop16;
                 op.params.dst = Parameter::Reg16(Into::into(b & 7));
             }
             0x60 => {
                 // pusha
-                op.command = Op::Pusha();
+                op.command = Op::Pusha;
             }
             0x61 => {
                 // popa
-                op.command = Op::Popa();
+                op.command = Op::Popa;
             }
             // 0x62 = "bound"
             0x63 => {
@@ -558,7 +558,7 @@ impl Decoder {
             }
             0x68 => {
                 // push imm16
-                op.command = Op::Push16();
+                op.command = Op::Push16;
                 op.params.dst = Parameter::Imm16(self.read_u16());
             }
             0x69 => {
@@ -569,7 +569,7 @@ impl Decoder {
             }
             0x6A => {
                 // push imm8
-                op.command = Op::Push16();
+                op.command = Op::Push16;
                 op.params.dst = Parameter::ImmS8(self.read_s8());
             }
             0x6B => {
@@ -783,7 +783,7 @@ impl Decoder {
                 match x.reg {
                     0 => {
                         // pop r/m16
-                        op.command = Op::Pop16();
+                        op.command = Op::Pop16;
                     }
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
@@ -812,10 +812,10 @@ impl Decoder {
             // 0x9A = "call word imm16:imm16"
             // 0x9B = "wait"
             0x9C => {
-                op.command = Op::Pushf();
+                op.command = Op::Pushf;
             }
             0x9D => {
-                op.command = Op::Popf();
+                op.command = Op::Popf;
             }
             0x9E => {
                 op.command = Op::Sahf();
@@ -1341,7 +1341,7 @@ impl Decoder {
                     // 3 => call far
                     4 => op.command = Op::JmpNear(), // jmp r/m16
                     // 5 => jmp far
-                    6 => op.command = Op::Push16(), // push r/m16
+                    6 => op.command = Op::Push16, // push r/m16
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);

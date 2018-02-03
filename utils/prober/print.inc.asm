@@ -32,4 +32,4 @@ P2: mov [di], bl            ; store ASCII in buffer
     ret
 
 section .data
-    hexTemp  db '0000',0xD,0xA,'$' ; buffer for ASCII string
+    hexTemp  db '0000',0xA,'$' ; buffer for ASCII string

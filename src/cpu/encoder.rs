@@ -1,5 +1,6 @@
 use cpu::instruction::{Instruction, ModRegRm};
 use cpu::parameter::{Parameter, ParameterSet};
+use cpu::register::R16;
 use cpu::op::{Op};
 
 #[cfg(test)]
@@ -93,6 +94,17 @@ impl Encoder {
             Op::Shl8 | Op::Shr8 | Op::Sar8 => {
                 out.extend(self.bitshift_instr8(&op));
             }
+            Op::Push16 => {
+                if let Parameter::Imm16(imm16) = op.params.dst {
+                    // 0x68: push imm16
+                    out.push(0x68);
+                    out.push((imm16 & 0xFF) as u8);
+                    out.push((imm16 >> 8) as u8);
+                } else {
+                    panic!("XXX {:?}", op.params.dst);
+                }
+            }
+            Op::Popf => out.push(0x9D),
             _ => {
                 panic!("encode: unhandled op {}", op);
             }

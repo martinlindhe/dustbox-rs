@@ -17,6 +17,23 @@ use cpu::op::Op;
 use cpu::register::{R8, AMode, R16};
 use memory::mmu::MMU;
 
+#[test]
+fn can_encode_push() {
+    let encoder = Encoder::new();
+
+    let op = Instruction::new1(Op::Push16, Parameter::Imm16(0x8088));
+    assert_eq!(vec!(0x68, 0x88, 0x80), encoder.encode(&op));
+    assert_eq!("push word 0x8088".to_owned(), ndisasm(&op).unwrap());
+}
+
+#[test]
+fn can_encode_pop() {
+    let encoder = Encoder::new();
+
+    let op = Instruction::new(Op::Popf);
+    assert_eq!(vec!(0x9D), encoder.encode(&op));
+    assert_eq!("popf".to_owned(), ndisasm(&op).unwrap());
+}
 
 #[test]
 fn can_encode_bitshift_instructions() {
@@ -38,16 +55,23 @@ fn can_fuzz_shr() {
     let mut cpu = CPU::new(mmu);
     let encoder = Encoder::new();
 
-    for i in 0..65535 as usize {
+    let mut tot_sec = 0.;
+
+    for i in 1..65535 as usize {
         let n1 = ((i + 1) & 0xFF) ^ 0xFF;
         let n2 = i & 0xFF;
         let ops = vec!(
+            // clear flags
+            Instruction::new1(Op::Push16, Parameter::Imm16(0)),
+            Instruction::new(Op::Popf),
+            // clear ax,bx,cx,dx
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::AX), Parameter::Imm16(0)),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::BX), Parameter::Imm16(0)),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::CX), Parameter::Imm16(0)),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::DX), Parameter::Imm16(0)),
-            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(n1 as u8)), // mutate input
-            Instruction::new2(Op::Shr8, Parameter::Reg8(R8::AH), Parameter::Imm8(n2 as u8)), // testing shr
+            // mutate parameters
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(n1 as u8)),
+            Instruction::new2(Op::Shr8, Parameter::Reg8(R8::AH), Parameter::Imm8(n2 as u8)),
         );
         let data = encoder.encode_vec(&ops);
 
@@ -61,18 +85,19 @@ fn can_fuzz_shr() {
         assemble_prober(&ops, prober_com);
 
         let now = Instant::now();
-        //let output = stdout_from_vmx_vmrun(prober_com); // XXX ~2.3 seconds per call
-        let output = stdout_from_vm_http(prober_com); // XXX ~0.05 seconds
+        //let output = stdout_from_vmx_vmrun(prober_com); // ~2.3 seconds per call
+        let output = stdout_from_vm_http(prober_com); // ~0.05 seconds
 
         let elapsed = now.elapsed();
         let sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
+        tot_sec += sec;
+        if i % 100 == 0 {
+            println!("avg vm time after {} iterations: {:.*}s", i, 4, tot_sec / i as f64);
+        }
 
         let vm_regs = prober_reg_map(&output);
         if compare_regs(&cpu, &vm_regs, vec!("ax")) {
             println!("shr 0x{:x}, 0x{:x}       (vm time {}s)", n1, n2, sec);
-        } else {
-            print!(".");
-            io::stdout().flush().ok().expect("Could not flush stdout");
         }
     }
 }
@@ -220,7 +245,7 @@ fn ops_as_db_bytes(ops: &Vec<Instruction>) -> String {
 // parse prober.com output into a map
 fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
     let mut map = HashMap::new();
-    let lines: Vec<String> = stdout.split("\r\n").map(|s| s.to_string()).collect();
+    let lines: Vec<String> = stdout.split("\n").map(|s| s.to_string()).collect();
 
     for line in lines {
         if let Some(pos) = line.find('=') {
