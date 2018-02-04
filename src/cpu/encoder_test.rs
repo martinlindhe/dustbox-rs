@@ -464,13 +464,13 @@ fn ndisasm(op: &Instruction) -> Result<String, io::Error> {
 
     let tmp_dir = TempDir::new("ndisasm")?;
     let file_path = tmp_dir.path().join("binary.bin");
-    let file_str = file_path.to_owned();
-    let mut tmp_file = File::create(file_path)?;
+    let file_str = file_path.to_str().unwrap();
+    let mut tmp_file = File::create(&file_path)?;
 
     tmp_file.write(&data)?;
 
     let output = Command::new("ndisasm")
-        .args(&[file_str])
+        .args(&["-b", "16", file_str])
         .output()
         .expect("failed to execute process");
 
