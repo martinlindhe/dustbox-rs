@@ -49,7 +49,8 @@ fn can_encode_random_seq() {
                 Ok(enc) => {
                     let code_part = Vec::from_iter(code[0..enc.len()].iter().cloned());
                     if enc != code_part {
-                        panic!("encoding resulted in wrong sequence. input {:?}, output {:?}. instr {:?}", code_part, enc, op.instruction);
+                        let ndisasm = ndisasm(&op.instruction).unwrap();
+                        panic!("encoding resulted in wrong sequence. input {:?}, output {:?}. instr {:?}. ndisasm says: {}", code_part, enc, op.instruction, ndisasm);
                     }
 
                     // - if encode was successful, try to decode that seq again and make sure the resulting
@@ -67,7 +68,7 @@ fn can_encode_random_seq() {
                 }
             }
         } else {
-            println!("NOTICE: skipping invalid sequence: {:?}: {}", code, op);
+            // println!("NOTICE: skipping invalid sequence: {:?}: {}", code, op);
         }
     }
 }
@@ -121,7 +122,7 @@ fn can_encode_mov_addressing_modes() {
     assert_eq!("mov bh,0xff".to_owned(), ndisasm(&op).unwrap());
     assert_eq!(vec!(0xB7, 0xFF), encoder.encode(&op).unwrap());
 
-    // r16, imm8
+    // r16, imm16
     let op = Instruction::new2(Op::Mov16, Parameter::Reg16(R16::BX), Parameter::Imm16(0x8844));
     assert_eq!("mov bx,0x8844".to_owned(), ndisasm(&op).unwrap());
     assert_eq!(vec!(0xBB, 0x44, 0x88), encoder.encode(&op).unwrap());
@@ -140,6 +141,11 @@ fn can_encode_mov_addressing_modes() {
     let op = Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10));
     assert_eq!(vec!(0x8A, 0x7E, 0x10), encoder.encode(&op).unwrap());
     assert_eq!("mov bh,[bp+0x10]".to_owned(), ndisasm(&op).unwrap());
+
+    // r8, r/m8
+    let op = Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_eq!("mov bh,[0xc365]".to_owned(), ndisasm(&op).unwrap());
+    assert_eq!(vec!(0x8A, 0x3E, 0x65, 0xC3), encoder.encode(&op).unwrap());
 
     // r/m8, r8  (dst is AMode::BP + imm8)
     let op = Instruction::new2(Op::Mov8, Parameter::Ptr8AmodeS16(Segment::Default, AMode::BP, -0x800), Parameter::Reg8(R8::BH));

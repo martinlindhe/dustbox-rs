@@ -2,6 +2,7 @@ use cpu::instruction::{Instruction, ModRegRm};
 use cpu::parameter::{Parameter, ParameterSet};
 use cpu::register::R16;
 use cpu::op::{Op};
+use cpu::fuzzer::ndisasm;
 
 #[cfg(test)]
 #[path = "./encoder_test.rs"]
@@ -148,33 +149,35 @@ impl Encoder {
 
     fn bitshift_instr8(&self, ins: &Instruction) -> Vec<u8> {
         let mut out = vec!();
-        if ins.params.dst.is_reg() && ins.params.src.is_imm() {
-            if let Parameter::Imm8(i) = ins.params.src {
-                if let Parameter::Reg8(r) = ins.params.dst {
-                    // md 3 = register adressing
-                    // XXX ModRegRm.rm really should use enum AMode, not like AMode is now. naming there is wrong
-                    let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.bitshift_get_index(&ins.command)};
-                    if i == 1 {
-                        // 0xD0: bit shift byte by 1
-                        out.push(0xD0);
-                        out.push(mrr.u8());
-                    } else {
-                        // 0xC0: r8, byte imm8
-                        out.push(0xC0);
-                        out.push(mrr.u8());
-                        out.push(i as u8);
+        match ins.params.dst {
+            Parameter::Reg8(r) => {
+                match ins.params.src {
+                    Parameter::Imm8(i) => {
+                        // md 3 = register adressing
+                        // XXX ModRegRm.rm really should use enum AMode, not like AMode is now. naming there is wrong
+                        let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.bitshift_get_index(&ins.command)};
+                        if i == 1 {
+                            // 0xD0: bit shift byte by 1
+                            out.push(0xD0);
+                            out.push(mrr.u8());
+                        } else {
+                            // 0xC0: r8, byte imm8
+                            out.push(0xC0);
+                            out.push(mrr.u8());
+                            out.push(i as u8);
+                        }
                     }
-                } else {
-                    unreachable!();
+                    _ => {
+                        // 0xD2: bit shift byte by CL
+                        panic!("bitshift_instr8 {:?}", ins);
+                    }
                 }
-            } else {
-                unreachable!();
             }
-        } else {
-            // 0xD2: bit shift byte by CL
-            panic!("bitshift_instr8 {:?}", ins);
+            _ => {
+                let ndisasm = ndisasm(ins).unwrap();
+                panic!("unexpected dst type: {:?}. ndisasm says '{}'", ins, ndisasm);
+            }
         }
-
         out
     }
 

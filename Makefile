@@ -14,7 +14,7 @@ expensive-fuzz:
 	cargo test fuzz --release -- --color always --nocapture --ignored
 
 expensive-encode:
-	cargo test encode --release -- --color always --nocapture --ignored
+	cargo test encode -- --color always --nocapture --ignored
 
 bench:
 	cargo bench --all

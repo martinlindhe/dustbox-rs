@@ -2,7 +2,7 @@ use cpu::fuzzer::*;
 use memory::mmu::MMU;
 
 #[test] #[ignore] // expensive test
-fn can_fuzz_shr() {
+fn fuzz_instruction() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let encoder = Encoder::new();

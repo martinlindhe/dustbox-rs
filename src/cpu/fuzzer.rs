@@ -209,8 +209,7 @@ fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
     let vmx = "/Users/m/Documents/Virtual Machines.localized/Windows XP Professional.vmwarevm/Windows XP Professional.vmx";
     let vm_user = "vmware";
     let vm_password = "vmware";
-
-    let now = Instant::now();
+    //let now = Instant::now();
 
     // copy file to guest
     Command::new("vmrun")
@@ -219,10 +218,10 @@ fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
         .output()
         .expect("failed to execute process");
 
-    let elapsed = now.elapsed();
-    let upload_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
+    //let elapsed = now.elapsed();
+    //let upload_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
+    //let now = Instant::now();
 
-    let now = Instant::now();
     // run prober.bat, where prober.bat is "c:\prober.com > c:\prober.out" (XXX create this file in vm once)
     Command::new("vmrun")
         .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
@@ -230,14 +229,14 @@ fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
         .output()
         .expect("failed to execute process");
 
-    let elapsed = now.elapsed();
-    let run_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
+    //let elapsed = now.elapsed();
+    //let run_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
 
     let tmp_dir = TempDir::new("vmware").unwrap();
     let file_path = tmp_dir.path().join("prober.out");
     let file_str = file_path.to_str().unwrap();
 
-    let now = Instant::now();
+    //let now = Instant::now();
     // copy back result
     Command::new("vmrun")
         .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
@@ -245,12 +244,11 @@ fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
         .output()
         .expect("failed to execute process");
 
-    let elapsed = now.elapsed();
-    let download_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
+    //let elapsed = now.elapsed();
+    //let download_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
+    //println!("vmrun: upload {}s, run {}s, download {}s", upload_sec, run_sec, download_sec);
 
     let buffer = read_text_file(&file_path);
-
-    // println!("vmrun: upload {}s, run {}s, download {}s", upload_sec, run_sec, download_sec);
 
     let f = File::open(&file_path);
     drop(f);
