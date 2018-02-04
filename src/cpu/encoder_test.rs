@@ -75,42 +75,29 @@ fn can_encode_random_seq() {
 
 #[test]
 fn can_encode_push() {
-    let encoder = Encoder::new();
-
     let op = Instruction::new1(Op::Push16, Parameter::Imm16(0x8088));
-    assert_eq!(vec!(0x68, 0x88, 0x80), encoder.encode(&op).unwrap());
-    assert_eq!("push word 0x8088".to_owned(), ndisasm(&op).unwrap());
+    assert_encdec(&op, "push word 0x8088", vec!(0x68, 0x88, 0x80));
 }
 
 #[test]
 fn can_encode_pop() {
-    let encoder = Encoder::new();
-
     let op = Instruction::new(Op::Popf);
-    assert_eq!(vec!(0x9D), encoder.encode(&op).unwrap());
-    assert_eq!("popf".to_owned(), ndisasm(&op).unwrap());
+    assert_encdec(&op, "popf", vec!(0x9D));
 }
 
 #[test]
 fn can_encode_bitshift_instructions() {
-    let encoder = Encoder::new();
-
     let op = Instruction::new2(Op::Shr8, Parameter::Reg8(R8::AH), Parameter::Imm8(0xFF));
-    assert_eq!(vec!(0xC0, 0xEC, 0xFF), encoder.encode(&op).unwrap());
-    assert_eq!("shr ah,byte 0xff".to_owned(), ndisasm(&op).unwrap());
+    assert_encdec(&op, "shr ah,byte 0xff", vec!(0xC0, 0xEC, 0xFF));
 
     let op = Instruction::new2(Op::Shl8, Parameter::Reg8(R8::AH), Parameter::Imm8(0xFF));
-    assert_eq!(vec!(0xC0, 0xE4, 0xFF), encoder.encode(&op).unwrap());
-    assert_eq!("shl ah,byte 0xff".to_owned(), ndisasm(&op).unwrap());
+    assert_encdec(&op, "shl ah,byte 0xff", vec!(0xC0, 0xE4, 0xFF));
 }
 
 #[test]
 fn can_encode_int() {
-    let encoder = Encoder::new();
-
     let op = Instruction::new1(Op::Int(), Parameter::Imm8(0x21));
-    assert_eq!(vec!(0xCD, 0x21), encoder.encode(&op).unwrap());
-    assert_eq!("int 0x21".to_owned(), ndisasm(&op).unwrap());
+    assert_encdec(&op, "int 0x21", vec!(0xCD, 0x21));
 }
 
 #[test]
@@ -119,46 +106,54 @@ fn can_encode_mov_addressing_modes() {
 
     // r8, imm8
     let op = Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
-    assert_eq!("mov bh,0xff".to_owned(), ndisasm(&op).unwrap());
-    assert_eq!(vec!(0xB7, 0xFF), encoder.encode(&op).unwrap());
+    assert_encdec(&op, "mov bh,0xff", vec!(0xB7, 0xFF));
 
     // r16, imm16
     let op = Instruction::new2(Op::Mov16, Parameter::Reg16(R16::BX), Parameter::Imm16(0x8844));
-    assert_eq!("mov bx,0x8844".to_owned(), ndisasm(&op).unwrap());
-    assert_eq!(vec!(0xBB, 0x44, 0x88), encoder.encode(&op).unwrap());
+    assert_encdec(&op, "mov bx,0x8844", vec!(0xBB, 0x44, 0x88));
 
     // r/m8, r8  (dst is r8)
     let op = Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
-    assert_eq!("mov bh,dl".to_owned(), ndisasm(&op).unwrap());
-    assert_eq!(vec!(0x88, 0xD7), encoder.encode(&op).unwrap());
+    assert_encdec(&op, "mov bh,dl", vec!(0x88, 0xD7));
 
     // r/m8, r8  (dst is AMode::BP + imm8)
     let op = Instruction::new2(Op::Mov8, Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10), Parameter::Reg8(R8::BH));
-    assert_eq!("mov [bp+0x10],bh".to_owned(), ndisasm(&op).unwrap());
-    assert_eq!(vec!(0x88, 0x7E, 0x10), encoder.encode(&op).unwrap());
+    assert_encdec(&op, "mov [bp+0x10],bh", vec!(0x88, 0x7E, 0x10));
 
     // r/m8, r8  (dst is AMode::BP + imm8)    - reversed
     let op = Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10));
-    assert_eq!(vec!(0x8A, 0x7E, 0x10), encoder.encode(&op).unwrap());
-    assert_eq!("mov bh,[bp+0x10]".to_owned(), ndisasm(&op).unwrap());
+    assert_encdec(&op, "mov bh,[bp+0x10]", vec!(0x8A, 0x7E, 0x10));
 
     // r8, r/m8
     let op = Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Ptr8(Segment::Default, 0xC365));
-    assert_eq!("mov bh,[0xc365]".to_owned(), ndisasm(&op).unwrap());
-    assert_eq!(vec!(0x8A, 0x3E, 0x65, 0xC3), encoder.encode(&op).unwrap());
+    assert_encdec(&op, "mov bh,[0xc365]", vec!(0x8A, 0x3E, 0x65, 0xC3));
 
     // r/m8, r8  (dst is AMode::BP + imm8)
     let op = Instruction::new2(Op::Mov8, Parameter::Ptr8AmodeS16(Segment::Default, AMode::BP, -0x800), Parameter::Reg8(R8::BH));
-    assert_eq!("mov [bp-0x800],bh".to_owned(), ndisasm(&op).unwrap());
-    assert_eq!(vec!(0x88, 0xBE, 0x00, 0xF8), encoder.encode(&op).unwrap());
+    assert_encdec(&op, "mov [bp-0x800],bh", vec!(0x88, 0xBE, 0x00, 0xF8));
 
     // r/m8, r8  (dst is [imm16]) // XXX no direct amode mapping in resulting Instruction. can we implement a "Instruction.AMode() -> AMode" ?
     let op = Instruction::new2(Op::Mov8, Parameter::Ptr8(Segment::Default, 0x8000), Parameter::Reg8(R8::BH));
-    assert_eq!("mov [0x8000],bh".to_owned(), ndisasm(&op).unwrap());
-    assert_eq!(vec!(0x88, 0x3E, 0x00, 0x80), encoder.encode(&op).unwrap());
+    assert_encdec(&op, "mov [0x8000],bh", vec!(0x88, 0x3E, 0x00, 0x80));
 
     // r/m8, r8  (dst is [bx])
     let op = Instruction::new2(Op::Mov8, Parameter::Ptr8Amode(Segment::Default, AMode::BX), Parameter::Reg8(R8::BH));
-    assert_eq!("mov [bx],bh".to_owned(), ndisasm(&op).unwrap());
-    assert_eq!(vec!(0x88, 0x3F), encoder.encode(&op).unwrap());
+    assert_encdec(&op, "mov [bx],bh", vec!(0x88, 0x3F));
+}
+
+fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u8>) {
+    let encoder = Encoder::new();
+    let code = encoder.encode(&op).unwrap();
+    assert_eq!(expected_bytes, code);
+/*
+    // decode result and verify with input op
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    cpu.load_com(&code);
+    let cs = cpu.get_sr(&SR::CS);
+    let ops = cpu.decoder.decode_to_block(cs, 0x100, 1);
+    let decoded_op = &ops[0].instruction;
+    assert_eq!(op, decoded_op);
+*/
+    assert_eq!(expected_ndisasm.to_owned(), ndisasm(&op).unwrap());
 }
