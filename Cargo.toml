@@ -12,10 +12,10 @@ rand = "0.4"
 tempdir = "0.3"
 image = "0.18"
 tera = "0.11"
+curl = "0.4"
 
 [dev-dependencies]
 criterion = "0.1"
-curl = "0.4"
 
 [[bench]]
 name = "cpu"

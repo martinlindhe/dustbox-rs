@@ -6,6 +6,8 @@ pub mod instruction;
 pub mod segment;
 pub mod register;
 pub mod flags;
-pub mod encoder;
 pub mod parameter;
 pub mod op;
+
+pub mod encoder;
+pub mod fuzzer;

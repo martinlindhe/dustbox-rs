@@ -6,8 +6,6 @@ extern crate image;
 extern crate tera;
 extern crate time;
 extern crate tempdir;
-
-#[cfg(test)]
 extern crate curl;
 
 pub mod cpu;
