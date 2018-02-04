@@ -1366,7 +1366,7 @@ impl CPU {
                         count = 8;
                     }
                     let res = if op1 & 0x80 != 0 {
-                        (op1 >> count) | (0xff << (8 - count))
+                        (op1.wrapping_shr(count as u32)) | (0xff << (8 - count))
                     } else {
                         op1 >> count
                     };
