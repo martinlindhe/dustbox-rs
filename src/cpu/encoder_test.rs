@@ -114,10 +114,11 @@ fn can_fuzz_shr() {
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::DX), Parameter::Imm16(0)),
             // mutate parameters
             Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(n1 as u8)),
-            Instruction::new2(Op::Sar8, Parameter::Reg8(R8::AH), Parameter::Imm8(n2 as u8)),
+            Instruction::new2(Op::Ror8, Parameter::Reg8(R8::AH), Parameter::Imm8(n2 as u8)),
         );
-        // XXX verified with winXP: Shr8,
-        // XXX differs from winXP: Shl8 (OF), Sar8 (wrong result, )
+        // XXX verified with winXP: Shr8, Rol8
+        // XXX differs from winXP: Shl8 (OF), Sar8 (wrong result some times)
+        //          - Ror8 (CF)
 
         let data = encoder.encode_vec(&ops);
 
@@ -132,8 +133,8 @@ fn can_fuzz_shr() {
 
         let now = Instant::now();
         //let output = stdout_from_vmx_vmrun(prober_com); // ~2.3 seconds per call
-        //let output = stdout_from_vm_http(prober_com); // ~0.05 seconds
-        let output = stdout_from_dosbox(prober_com); // ~2.3 seconds
+        let output = stdout_from_vm_http(prober_com); // ~0.05 seconds
+        //let output = stdout_from_dosbox(prober_com); // ~2.3 seconds
 
         let elapsed = now.elapsed();
         let sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
@@ -175,7 +176,9 @@ fn can_fuzz_shr() {
                 print!("O ");
             }
             println!();
-            // io::stdout().flush().ok().expect("Could not flush stdout");
+        } else {
+            print!(".");
+            io::stdout().flush().ok().expect("Could not flush stdout");
         }
 
     }
@@ -428,7 +431,7 @@ fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
 
     let buffer = read_text_file(&file_path);
 
-    println!("vmrun: upload {}s, run {}s, download {}s", upload_sec, run_sec, download_sec);
+    // println!("vmrun: upload {}s, run {}s, download {}s", upload_sec, run_sec, download_sec);
 
     let f = File::open(&file_path);
     drop(f);

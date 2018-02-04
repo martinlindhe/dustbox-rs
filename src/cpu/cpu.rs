@@ -1359,19 +1359,18 @@ impl CPU {
             Op::Sar8 => {
                 // Signed divide* r/m8 by 2, imm8 times.
                 // two arguments
-                let op1 = self.read_parameter_value(&op.params.dst);
-                let count = self.read_parameter_value(&op.params.src) & 0x1F;
+                let op1 = self.read_parameter_value(&op.params.dst) as u8;
+                let mut count = self.read_parameter_value(&op.params.src) & 0x1F;
                 if count > 0 {
-                    let res: u8 = ((op1 as i8) >> count as isize) as u8;
-                    /*
+                    if count > 8 {
+                        count = 8;
+                    }
                     let res = if op1 & 0x80 != 0 {
-                        let x = 0xFF as usize;
-                        op1.rotate_right(count as u32) | x.rotate_left(8 - count as u32)
+                        (op1 >> count) | (0xff << (8 - count))
                     } else {
-                        op1.rotate_right(count as u32)
+                        op1 >> count
                     };
-                    */
-                    self.write_parameter_u8(&op.params.dst, res as u8);
+                    self.write_parameter_u8(&op.params.dst, res);
                     self.flags.carry = (op1 as u8 >> (count - 1)) & 0x1 != 0;
                     if count == 1 {
                         self.flags.overflow = false;
@@ -1479,10 +1478,10 @@ impl CPU {
                             // self.flags.overflow = ((op1 ^ res) >> (12 - 8)) & 0x800 != 0; // qemu
                         }
                     }
-                    self.write_parameter_u8(&op.params.dst, res);
                     self.flags.set_sign_u8(res as usize);
                     self.flags.set_zero_u8(res as usize);
                     self.flags.set_parity(res as usize);
+                    self.write_parameter_u8(&op.params.dst, res);
                 }
             }
             Op::Shl16 => {
