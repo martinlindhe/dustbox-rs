@@ -127,8 +127,8 @@ impl fmt::Display for Parameter {
 impl Parameter {
     pub fn is_imm(&self) -> bool {
         match *self {
-            Parameter::Imm8(_) => true,
-            Parameter::Imm16(_) => true,
+            Parameter::Imm8(_) |
+            Parameter::Imm16(_) |
             Parameter::ImmS8(_) => true,
             _ => false,
         }
@@ -136,14 +136,14 @@ impl Parameter {
 
     pub fn is_ptr(&self) -> bool {
         match *self {
-            Parameter::Ptr8(_, _) => true,
-            Parameter::Ptr16(_, _) => true,
-            Parameter::Ptr16Imm(_, _) => true,
-            Parameter::Ptr8Amode(_, _) => true,
-            Parameter::Ptr8AmodeS8(_, _, _) => true,
-            Parameter::Ptr8AmodeS16(_, _, _) => true,
-            Parameter::Ptr16Amode(_, _) => true,
-            Parameter::Ptr16AmodeS8(_, _, _) => true,
+            Parameter::Ptr8(_, _) |
+            Parameter::Ptr16(_, _) |
+            Parameter::Ptr16Imm(_, _) |
+            Parameter::Ptr8Amode(_, _) |
+            Parameter::Ptr8AmodeS8(_, _, _) |
+            Parameter::Ptr8AmodeS16(_, _, _) |
+            Parameter::Ptr16Amode(_, _) |
+            Parameter::Ptr16AmodeS8(_, _, _) |
             Parameter::Ptr16AmodeS16(_, _, _) => true,
             _ => false,
         }
@@ -151,14 +151,14 @@ impl Parameter {
 
     pub fn is_reg(&self) -> bool {
         match *self {
-            Parameter::Reg8(_) => true,
-            Parameter::Reg16(_) => true,
+            Parameter::Reg8(_) |
+            Parameter::Reg16(_) |
             Parameter::SReg16(_) => true,
             _ => false,
         }
     }
 
     pub fn is_none(&self) -> bool {
-        return *self == Parameter::None
+        *self == Parameter::None
     }
 }

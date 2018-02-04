@@ -105,7 +105,7 @@ impl Debugger {
         let mut decoder = Decoder::new(self.cpu.mmu.clone());
         let op = decoder.decode_instruction(self.cpu.get_sr(&SR::CS), self.cpu.ip);
 
-        let dst_ip = self.cpu.ip + op.instruction.length as u16;
+        let dst_ip = self.cpu.ip + op.bytes.len() as u16;
         println!("Step-over running to {:04X}", dst_ip);
 
         let mut cnt = 0;

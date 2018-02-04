@@ -1,5 +1,3 @@
-#[allow(unused_imports)]
-
 use std::{mem, u8};
 use std::num::Wrapping;
 
@@ -123,15 +121,15 @@ impl CPU {
     }
 
     pub fn get_r16(&self, r: &R16) -> u16 {
-        match r {
-            &R16::AX => self.r16[0].val,
-            &R16::CX => self.r16[1].val,
-            &R16::DX => self.r16[2].val,
-            &R16::BX => self.r16[3].val,
-            &R16::SP => self.r16[4].val,
-            &R16::BP => self.r16[5].val,
-            &R16::SI => self.r16[6].val,
-            &R16::DI => self.r16[7].val,
+        match *r {
+            R16::AX => self.r16[0].val,
+            R16::CX => self.r16[1].val,
+            R16::DX => self.r16[2].val,
+            R16::BX => self.r16[3].val,
+            R16::SP => self.r16[4].val,
+            R16::BP => self.r16[5].val,
+            R16::SI => self.r16[6].val,
+            R16::DI => self.r16[7].val,
         }
     }
 
@@ -144,13 +142,13 @@ impl CPU {
     }
 
     pub fn get_sr(&self, sr: &SR) -> u16 {
-         match sr {
-            &SR::ES => self.sreg16[0],
-            &SR::CS => self.sreg16[1],
-            &SR::SS => self.sreg16[2],
-            &SR::DS => self.sreg16[3],
-            &SR::FS => self.sreg16[4],
-            &SR::GS => self.sreg16[5],
+         match *sr {
+            SR::ES => self.sreg16[0],
+            SR::CS => self.sreg16[1],
+            SR::SS => self.sreg16[2],
+            SR::DS => self.sreg16[3],
+            SR::FS => self.sreg16[4],
+            SR::GS => self.sreg16[5],
         }
     }
 
@@ -1853,47 +1851,47 @@ impl CPU {
     }
 
     fn read_parameter_value(&mut self, p: &Parameter) -> usize {
-        match p {
-            &Parameter::Imm8(imm) => imm as usize,
-            &Parameter::Imm16(imm) => imm as usize,
-            &Parameter::ImmS8(imm) => imm as usize,
-            &Parameter::Ptr8(seg, imm) => {
+        match *p {
+            Parameter::Imm8(imm) => imm as usize,
+            Parameter::Imm16(imm) => imm as usize,
+            Parameter::ImmS8(imm) => imm as usize,
+            Parameter::Ptr8(seg, imm) => {
                 self.mmu.read_u8(self.segment(seg), imm) as usize
             }
-            &Parameter::Ptr16(seg, imm) => {
+            Parameter::Ptr16(seg, imm) => {
                 self.mmu.read_u16(self.segment(seg), imm) as usize
             }
-            &Parameter::Ptr8Amode(seg, ref amode) => {
+            Parameter::Ptr8Amode(seg, ref amode) => {
                 let seg = self.segment(seg);
                 let offset = self.amode16(amode);
                 self.mmu.read_u8(seg, offset) as usize
             }
-            &Parameter::Ptr8AmodeS8(seg, ref amode, imm) => {
+            Parameter::Ptr8AmodeS8(seg, ref amode, imm) => {
                 let offset = (Wrapping(self.amode16(amode)) + Wrapping(imm as u16)).0;
                 let seg = self.segment(seg);
                 self.mmu.read_u8(seg, offset) as usize
             }
-            &Parameter::Ptr8AmodeS16(seg, ref amode, imm) => {
+            Parameter::Ptr8AmodeS16(seg, ref amode, imm) => {
                 let offset = (Wrapping(self.amode16(amode)) + Wrapping(imm as u16)).0;
                 let seg = self.segment(seg);
                 self.mmu.read_u8(seg, offset) as usize
             }
-            &Parameter::Ptr16Amode(seg, ref amode) => {
+            Parameter::Ptr16Amode(seg, ref amode) => {
                 let seg = self.segment(seg);
                 let offset = self.amode16(amode);
                 self.mmu.read_u16(seg, offset) as usize
             }
-            &Parameter::Ptr16AmodeS8(seg, ref amode, imm) => {
+            Parameter::Ptr16AmodeS8(seg, ref amode, imm) => {
                 let offset = (Wrapping(self.amode16(amode)) + Wrapping(imm as u16)).0;
                 let seg = self.segment(seg);
                 self.mmu.read_u16(seg, offset) as usize
             }
-            &Parameter::Ptr16AmodeS16(seg, ref amode, imm) => {
+            Parameter::Ptr16AmodeS16(seg, ref amode, imm) => {
                 let offset = (Wrapping(self.amode16(amode)) + Wrapping(imm as u16)).0;
                 let seg = self.segment(seg);
                 self.mmu.read_u16(seg, offset) as usize
             }
-            &Parameter::Reg8(ref r) => {
+            Parameter::Reg8(ref r) => {
                 let r = *r as usize;
                 let lor = r & 3;
                 if r & 4 == 0 {
@@ -1902,10 +1900,10 @@ impl CPU {
                     self.r16[lor].hi_u8() as usize
                 }
             }
-            &Parameter::Reg16(ref r) => {
+            Parameter::Reg16(ref r) => {
                 self.get_r16(r) as usize
             }
-            &Parameter::SReg16(ref sr) => {
+            Parameter::SReg16(ref sr) => {
                 self.get_sr(sr) as usize
             },
             _ => {
@@ -1956,32 +1954,32 @@ impl CPU {
     }
 
     fn write_parameter_u16(&mut self, segment: Segment, p: &Parameter, data: u16) {
-        match p {
-            &Parameter::Reg16(ref r) => {
+        match *p {
+            Parameter::Reg16(ref r) => {
                 self.set_r16(r, data);
             }
-            &Parameter::SReg16(ref sr) => {
+            Parameter::SReg16(ref sr) => {
                 self.set_sr(sr, data);
             }
-            &Parameter::Imm16(imm) => {
+            Parameter::Imm16(imm) => {
                 let seg = self.segment(segment);
                 self.mmu.write_u16(seg, imm, data);
             }
-            &Parameter::Ptr16(seg, imm) => {
+            Parameter::Ptr16(seg, imm) => {
                 let seg = self.segment(seg);
                 self.mmu.write_u16(seg, imm, data);
             }
-            &Parameter::Ptr16Amode(seg, ref amode) => {
+            Parameter::Ptr16Amode(seg, ref amode) => {
                 let seg = self.segment(seg);
                 let offset = self.amode16(amode);
                 self.mmu.write_u16(seg, offset, data);
             }
-            &Parameter::Ptr16AmodeS8(seg, ref amode, imm) => {
+            Parameter::Ptr16AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
                 let offset = Wrapping(self.amode16(amode)) + Wrapping(imm as u16);
                 self.mmu.write_u16(seg, offset.0, data);
             }
-            &Parameter::Ptr16AmodeS16(seg, ref amode, imm) => {
+            Parameter::Ptr16AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
                 let offset = Wrapping(self.amode16(amode)) + Wrapping(imm as u16);
                 self.mmu.write_u16(seg, offset.0, data);
@@ -2007,15 +2005,15 @@ impl CPU {
     }
 
     fn amode16(&self, amode: &AMode) -> u16 {
-        match amode {
-            &AMode::BXSI => (Wrapping(self.get_r16(&R16::BX)) + Wrapping(self.get_r16(&R16::SI))).0,
-            &AMode::BXDI => (Wrapping(self.get_r16(&R16::BX)) + Wrapping(self.get_r16(&R16::DI))).0,
-            &AMode::BPSI => (Wrapping(self.get_r16(&R16::BP)) + Wrapping(self.get_r16(&R16::SI))).0,
-            &AMode::BPDI => (Wrapping(self.get_r16(&R16::BP)) + Wrapping(self.get_r16(&R16::DI))).0,
-            &AMode::SI => self.get_r16(&R16::SI),
-            &AMode::DI => self.get_r16(&R16::DI),
-            &AMode::BP => self.get_r16(&R16::BP),
-            &AMode::BX => self.get_r16(&R16::BX),
+        match *amode {
+            AMode::BXSI => (Wrapping(self.get_r16(&R16::BX)) + Wrapping(self.get_r16(&R16::SI))).0,
+            AMode::BXDI => (Wrapping(self.get_r16(&R16::BX)) + Wrapping(self.get_r16(&R16::DI))).0,
+            AMode::BPSI => (Wrapping(self.get_r16(&R16::BP)) + Wrapping(self.get_r16(&R16::SI))).0,
+            AMode::BPDI => (Wrapping(self.get_r16(&R16::BP)) + Wrapping(self.get_r16(&R16::DI))).0,
+            AMode::SI => self.get_r16(&R16::SI),
+            AMode::DI => self.get_r16(&R16::DI),
+            AMode::BP => self.get_r16(&R16::BP),
+            AMode::BX => self.get_r16(&R16::BX),
         }
     }
 

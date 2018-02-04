@@ -55,7 +55,7 @@ impl AffectedFlags {
     }
 }
 
-fn compare_regs<'a>(cpu: &CPU, vm_regs: &HashMap<String, u16>, reg_names: &Vec<&'a str>) -> bool {
+fn compare_regs<'a>(cpu: &CPU, vm_regs: &HashMap<String, u16>, reg_names: &[&'a str]) -> bool {
     let mut ret = false;
     for s in reg_names {
         let s = s.to_owned();
@@ -102,14 +102,14 @@ fn reg_str_to_index(s: &str) -> usize {
     }
 }
 
-fn assemble_prober(ops: &Vec<Instruction>, prober_com: &str) {
+fn assemble_prober(ops: &[Instruction], prober_com: &str) {
     let mut tera = compile_templates!("utils/prober/*.tpl.asm");
 
     // disable autoescaping
     tera.autoescape_on(vec![]);
 
     let mut context = Context::new();
-    context.add("snippet", &ops_as_db_bytes(&ops));
+    context.add("snippet", &ops_as_db_bytes(ops));
     // add stuff to context
     match tera.render("prober.tpl.asm", &context) {
         Ok(res) => {
@@ -130,9 +130,9 @@ fn assemble_prober(ops: &Vec<Instruction>, prober_com: &str) {
 }
 
 // creates a "db 0x1,0x2..." representation of the encoded instructions
-fn ops_as_db_bytes(ops: &Vec<Instruction>) -> String {
+fn ops_as_db_bytes(ops: &[Instruction]) -> String {
     let encoder = Encoder::new();
-    if let Ok(data) = encoder.encode_vec(&ops) {
+    if let Ok(data) = encoder.encode_vec(ops) {
         let mut v = Vec::new();
         for c in data {
             v.push(format!("0x{:02X}", c));
@@ -147,7 +147,7 @@ fn ops_as_db_bytes(ops: &Vec<Instruction>) -> String {
 // parse prober.com output into a map
 fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
     let mut map = HashMap::new();
-    let lines: Vec<String> = stdout.split("\n").map(|s| s.to_string()).collect();
+    let lines: Vec<String> = stdout.split('\n').map(|s| s.to_string()).collect();
 
     for line in lines {
         if let Some(pos) = line.find('=') {
@@ -199,9 +199,8 @@ fn stdout_from_dosbox(prober_com: &str) -> String {
 
     let cwd = Path::new("/Users/m/dosbox-x");
     let file_path = cwd.join("prober.out");
-    let buffer = read_text_file(&file_path);
 
-    buffer
+    read_text_file(&file_path)
 }
 
 // run .com with vmrun (vmware), parse result
@@ -283,7 +282,7 @@ pub fn ndisasm(op: &Instruction) -> Result<String, io::Error> {
 
     let encoder = Encoder::new();
     if let Ok(data) = encoder.encode(op) {
-        tmp_file.write(&data)?;
+        tmp_file.write_all(&data)?;
     } else {
         panic!("invalid byte sequence");
     }

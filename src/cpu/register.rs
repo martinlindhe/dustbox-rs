@@ -27,28 +27,28 @@ pub enum R8 {
 
 impl R8 {
     pub fn index(&self) -> usize {
-          match self {
-            &R8::AL => 0,
-            &R8::CL => 1,
-            &R8::DL => 2,
-            &R8::BL => 3,
-            &R8::AH => 4,
-            &R8::CH => 5,
-            &R8::DH => 6,
-            &R8::BH => 7,
+          match *self {
+            R8::AL => 0,
+            R8::CL => 1,
+            R8::DL => 2,
+            R8::BL => 3,
+            R8::AH => 4,
+            R8::CH => 5,
+            R8::DH => 6,
+            R8::BH => 7,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
-        match self {
-            &R8::AL => "al",
-            &R8::CL => "cl",
-            &R8::DL => "dl",
-            &R8::BL => "bl",
-            &R8::AH => "ah",
-            &R8::CH => "ch",
-            &R8::DH => "dh",
-            &R8::BH => "bh",
+        match *self {
+            R8::AL => "al",
+            R8::CL => "cl",
+            R8::DL => "dl",
+            R8::BL => "bl",
+            R8::AH => "ah",
+            R8::CH => "ch",
+            R8::DH => "dh",
+            R8::BH => "bh",
         }
     }
 }
@@ -76,28 +76,28 @@ pub enum R16 {
 
 impl R16 {
     pub fn index(&self) -> usize {
-        match self {
-            &R16::AX => 0,
-            &R16::CX => 1,
-            &R16::DX => 2,
-            &R16::BX => 3,
-            &R16::SP => 4,
-            &R16::BP => 5,
-            &R16::SI => 6,
-            &R16::DI => 7,
+        match *self {
+            R16::AX => 0,
+            R16::CX => 1,
+            R16::DX => 2,
+            R16::BX => 3,
+            R16::SP => 4,
+            R16::BP => 5,
+            R16::SI => 6,
+            R16::DI => 7,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
-        match self {
-            &R16::AX => "ax",
-            &R16::CX => "cx",
-            &R16::DX => "dx",
-            &R16::BX => "bx",
-            &R16::SP => "sp",
-            &R16::BP => "bp",
-            &R16::SI => "si",
-            &R16::DI => "di",
+        match *self {
+            R16::AX => "ax",
+            R16::CX => "cx",
+            R16::DX => "dx",
+            R16::BX => "bx",
+            R16::SP => "sp",
+            R16::BP => "bp",
+            R16::SI => "si",
+            R16::DI => "di",
         }
     }
 }
@@ -125,24 +125,24 @@ pub enum SR {
 
 impl SR {
    pub fn index(&self) -> usize {
-        match self {
-            &SR::ES => 0,
-            &SR::CS => 1,
-            &SR::SS => 2,
-            &SR::DS => 3,
-            &SR::FS => 4,
-            &SR::GS => 5,
+        match *self {
+            SR::ES => 0,
+            SR::CS => 1,
+            SR::SS => 2,
+            SR::DS => 3,
+            SR::FS => 4,
+            SR::GS => 5,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
-        match self {
-            &SR::ES => "es",
-            &SR::CS => "cs",
-            &SR::SS => "ss",
-            &SR::DS => "ds",
-            &SR::FS => "fs",
-            &SR::GS => "gs",
+        match *self {
+            SR::ES => "es",
+            SR::CS => "cs",
+            SR::SS => "ss",
+            SR::DS => "ds",
+            SR::FS => "fs",
+            SR::GS => "gs",
         }
     }
 }
@@ -168,28 +168,28 @@ pub enum AMode {
 
 impl AMode {
    pub fn index(&self) -> usize {
-        match self {
-            &AMode::BXSI => 0,
-            &AMode::BXDI => 1,
-            &AMode::BPSI => 2,
-            &AMode::BPDI => 3,
-            &AMode::SI => 4,
-            &AMode::DI => 5,
-            &AMode::BP => 6,
-            &AMode::BX => 7,
+        match *self {
+            AMode::BXSI => 0,
+            AMode::BXDI => 1,
+            AMode::BPSI => 2,
+            AMode::BPDI => 3,
+            AMode::SI => 4,
+            AMode::DI => 5,
+            AMode::BP => 6,
+            AMode::BX => 7,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
-        match self {
-            &AMode::BXSI => "bx+si",
-            &AMode::BXDI => "bx+di",
-            &AMode::BPSI => "bp+si",
-            &AMode::BPDI => "bp+di",
-            &AMode::SI => "si",
-            &AMode::DI => "di",
-            &AMode::BP => "bp",
-            &AMode::BX => "bx",
+        match *self {
+            AMode::BXSI => "bx+si",
+            AMode::BXDI => "bx+di",
+            AMode::BPSI => "bp+si",
+            AMode::BPDI => "bp+di",
+            AMode::SI => "si",
+            AMode::DI => "di",
+            AMode::BP => "bp",
+            AMode::BX => "bx",
         }
     }
 }

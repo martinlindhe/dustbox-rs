@@ -19,6 +19,9 @@ expensive-encode:
 bench:
 	cargo bench --all
 
+mips:
+	cargo test --release mips -- --nocapture
+
 run:
 	cargo run --package dustbox_gtk
 

@@ -36,7 +36,7 @@ impl Encoder {
         }
     }
 
-    pub fn encode_vec(&self, ops: &Vec<Instruction>) -> Result<Vec<u8>, EncodeError> {
+    pub fn encode_vec(&self, ops: &[Instruction]) -> Result<Vec<u8>, EncodeError> {
         let mut out = vec!();
         for op in ops {
             let enc = self.encode(op);
@@ -127,7 +127,7 @@ impl Encoder {
 
             Op::Rol8 | Op::Ror8 | Op::Rcl8 | Op::Rcr8 |
             Op::Shl8 | Op::Shr8 | Op::Sar8 => {
-                out.extend(self.bitshift_instr8(&op));
+                out.extend(self.bitshift_instr8(op));
             }
             Op::Push16 => {
                 if let Parameter::Imm16(imm16) = op.params.dst {
@@ -204,10 +204,10 @@ impl Encoder {
 
     fn encode_rm8(&self, dst: &Parameter, src: &Parameter) -> Vec<u8> {
         let mut out = Vec::new();
-        match dst {
-            &Parameter::Ptr8(_, imm16) => {
+        match *dst {
+            Parameter::Ptr8(_, imm16) => {
                 let mut mrr = ModRegRm{md: 0, rm: 6, reg: 0};
-                if let &Parameter::Reg8(src_r) = src {
+                if let Parameter::Reg8(src_r) = *src {
                     mrr.reg = src_r as u8
                 } else {
                     unreachable!();
@@ -216,19 +216,19 @@ impl Encoder {
                 out.push((imm16 & 0xFF) as u8);
                 out.push((imm16 >> 8) as u8);
             }
-            &Parameter::Ptr8Amode(_, ref amode) => {
+            Parameter::Ptr8Amode(_, ref amode) => {
                 // XXX how doe md:0, rm: 0 not collide with above one...
                 let mut mrr = ModRegRm{md: 0, rm: amode.index() as u8, reg: 0};
-                if let &Parameter::Reg8(src_r) = src {
+                if let Parameter::Reg8(src_r) = *src {
                     mrr.reg = src_r as u8
                 } else {
                     unreachable!();
                 }
                 out.push(mrr.u8());
             }
-            &Parameter::Ptr8AmodeS8(_, ref amode, imm) => {
+            Parameter::Ptr8AmodeS8(_, ref amode, imm) => {
                 let mut mrr = ModRegRm{md: 1, rm: amode.index() as u8, reg: 0};
-                if let &Parameter::Reg8(reg) = src {
+                if let Parameter::Reg8(reg) = *src {
                     mrr.reg = reg as u8;
                 } else {
                     unreachable!();
@@ -236,9 +236,9 @@ impl Encoder {
                 out.push(mrr.u8());
                 out.push(imm as u8);
             },
-            &Parameter::Ptr8AmodeS16(_, ref amode, imm16) => {
+            Parameter::Ptr8AmodeS16(_, ref amode, imm16) => {
                 let mut mrr = ModRegRm{md: 2, rm: amode.index() as u8, reg: 0};
-                if let &Parameter::Reg8(reg) = src {
+                if let Parameter::Reg8(reg) = *src {
                     mrr.reg = reg as u8;
                 } else {
                     unreachable!();
@@ -247,9 +247,9 @@ impl Encoder {
                 out.push((imm16 & 0xFF) as u8);
                 out.push((imm16 >> 8) as u8);
             }
-            &Parameter::Reg8(r) => {
+            Parameter::Reg8(r) => {
                 let mut mrr = ModRegRm{md: 3, rm: r as u8, reg: 0};
-                if let &Parameter::Reg8(src_r) = src {
+                if let Parameter::Reg8(src_r) = *src {
                     mrr.reg = src_r as u8
                 } else {
                     unreachable!();
@@ -266,7 +266,7 @@ impl Encoder {
 
     fn encode_imm8(&self, param: &Parameter) -> Vec<u8> {
         let mut out = Vec::new();
-        if let &Parameter::Imm8(imm) = param {
+        if let Parameter::Imm8(imm) = *param {
             out.push(imm as u8);
             return out;
         }
