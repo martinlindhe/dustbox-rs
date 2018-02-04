@@ -11,7 +11,6 @@ pub struct Instruction {
     pub command: Op,
     pub params: ParameterSet,
     pub segment_prefix: Segment,
-    pub length: u8,
     pub repeat: RepeatMode, // REPcc prefix
     pub lock: bool,         // LOCK prefix
 }
@@ -29,33 +28,11 @@ impl fmt::Display for Instruction {
 
 impl Instruction {
     pub fn new(op: Op) -> Self {
-        Instruction {
-            command: op,
-            segment_prefix: Segment::Default,
-            lock: false,
-            repeat: RepeatMode::None,
-            params: ParameterSet {
-                dst: Parameter::None,
-                src: Parameter::None,
-                src2: Parameter::None,
-            },
-            length: 0, // XXX remove length here, cannot be known
-        }
+        Instruction::new2(op, Parameter::None, Parameter::None)
     }
 
     pub fn new1(op: Op, dst: Parameter) -> Self {
-        Instruction {
-            command: op,
-            segment_prefix: Segment::Default,
-            lock: false,
-            repeat: RepeatMode::None,
-            params: ParameterSet {
-                dst: dst,
-                src: Parameter::None,
-                src2: Parameter::None,
-            },
-            length: 0,
-        }
+        Instruction::new2(op, dst, Parameter::None)
     }
 
     pub fn new2(op: Op, dst: Parameter, src: Parameter) -> Self {
@@ -69,7 +46,6 @@ impl Instruction {
                 src: src,
                 src2: Parameter::None,
             },
-            length: 0,
         }
     }
 

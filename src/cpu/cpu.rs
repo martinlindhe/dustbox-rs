@@ -213,7 +213,7 @@ impl CPU {
     pub fn execute_instruction(&mut self) {
         let cs = self.get_sr(&SR::CS);
         let ip = self.ip;
-        let op = self.decoder.get_instruction(Segment::DS, cs, ip);
+        let (op, length) = self.decoder.get_instruction(Segment::DS, cs, ip);
 
         match op.command {
             Op::Unknown() => {
@@ -238,7 +238,7 @@ impl CPU {
                 }
                 println!("{} Instructions executed", self.instruction_count);
             }
-            _ => self.execute(&op),
+            _ => self.execute(&op, length),
         }
 
         // XXX need instruction timing to do this properly
@@ -252,9 +252,9 @@ impl CPU {
         }
     }
 
-    fn execute(&mut self, op: &Instruction) {
+    fn execute(&mut self, op: &Instruction, length: usize) {
         let start_ip = self.ip;
-        self.ip += u16::from(op.length);
+        self.ip += length as u16;
         self.instruction_count += 1;
         self.cycle_count += 1; // XXX temp hack; we pretend each instruction takes 8 cycles due to lack of timing
         match op.command {

@@ -145,7 +145,7 @@ fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u
     let encoder = Encoder::new();
     let code = encoder.encode(&op).unwrap();
     assert_eq!(expected_bytes, code);
-/*
+
     // decode result and verify with input op
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
@@ -154,6 +154,6 @@ fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u
     let ops = cpu.decoder.decode_to_block(cs, 0x100, 1);
     let decoded_op = &ops[0].instruction;
     assert_eq!(op, decoded_op);
-*/
+
     assert_eq!(expected_ndisasm.to_owned(), ndisasm(&op).unwrap());
 }

@@ -33,7 +33,7 @@ impl Decoder {
         let mut inst_offset = 0;
         for _ in 0..n {
             let op = self.decode_instruction(seg, offset+inst_offset);
-            inst_offset += u16::from(op.instruction.length);
+            inst_offset += op.bytes.len() as u16;
             ops.push(op);
         }
         ops
@@ -53,23 +53,23 @@ impl Decoder {
     }
 
     pub fn decode_instruction(&mut self, iseg: u16, ioffset: u16) -> InstructionInfo {
-       let op = self.get_instruction(Segment::Default, iseg, ioffset);
+       let (op, length) = self.get_instruction(Segment::Default, iseg, ioffset);
        InstructionInfo {
            segment: iseg as usize,
            offset: ioffset as usize,
            text: format!("{}", op),
-           bytes: self.mmu.read(iseg, ioffset, op.length as usize),
+           bytes: self.mmu.read(iseg, ioffset, length),
            instruction: op
        }
     }
 
-    pub fn get_instruction(&mut self, seg: Segment, iseg: u16, ioffset: u16) -> Instruction {
+    pub fn get_instruction(&mut self, seg: Segment, iseg: u16, ioffset: u16) -> (Instruction, usize) {
         self.c_seg = iseg;
         self.c_offset = ioffset;
         self.decode(seg)
     }
 
-    fn decode(&mut self, seg: Segment) -> Instruction {
+    fn decode(&mut self, seg: Segment) -> (Instruction, usize) {
         let ioffset = self.c_offset;
         let b = self.read_u8();
 
@@ -83,7 +83,6 @@ impl Decoder {
             segment_prefix: seg,
             repeat: RepeatMode::None,
             lock: false,
-            length: 0,
         };
 
         match b {
@@ -378,7 +377,8 @@ impl Decoder {
             }
             0x26 => {
                 // es segment prefix
-                op = self.decode(Segment::ES);
+                let (mut op, length) = self.decode(Segment::ES);
+                return (op, length + 1);
             }
             0x27 => {
                 // daa
@@ -417,8 +417,9 @@ impl Decoder {
                 op.params.src = Parameter::Imm16(self.read_u16());
             }
             0x2E => {
-                // XXX if next op is a Jcc, then this is a "branch not taken" hint
-                op = self.decode(Segment::CS);
+                // cs segment prefix
+                let (mut op, length) = self.decode(Segment::CS);
+                return (op, length + 1);
             }
             0x2F => {
                 op.command = Op::Das();
@@ -457,7 +458,8 @@ impl Decoder {
             }
             0x36 => {
                 // ss segment prefix
-                op = self.decode(Segment::SS);
+                let (mut op, length) = self.decode(Segment::SS);
+                return (op, length + 1);
             }
             0x37 => {
                 op.command = Op::Aaa();
@@ -496,8 +498,8 @@ impl Decoder {
             }
             0x3E => {
                 // ds segment prefix
-                // XXX if next op is a Jcc, then this is a "branch taken" hint
-                op = self.decode(Segment::DS);
+                let (mut op, length) = self.decode(Segment::DS);
+                return (op, length + 1);
             }
             0x3F => {
                 op.command = Op::Aas();
@@ -538,11 +540,13 @@ impl Decoder {
             }
             0x64 => {
                 // fs segment prefix
-                op = self.decode(Segment::FS);
+                let (mut op, length) = self.decode(Segment::FS);
+                return (op, length + 1);
             }
             0x65 => {
                 // gs segment prefix
-                op = self.decode(Segment::GS);
+                let (mut op, length) = self.decode(Segment::GS);
+                return (op, length + 1);
             }
             0x66 => {
                 // 80386+ Operand-size override prefix
@@ -1203,8 +1207,9 @@ impl Decoder {
             }
             0xF0 => {
                 // lock prefix
-                op = self.decode(seg);
+                let (mut op, length) = self.decode(seg);
                 op.lock = true;
+                return (op, length + 1)
             }
             0xF1 => {
                 op.command = Op::Int();
@@ -1359,8 +1364,8 @@ impl Decoder {
         }
 
         // calculate instruction length
-        op.length = (self.c_offset - ioffset) as u8;
-        op
+        let length = (self.c_offset - ioffset) as usize;
+        (op, length)
     }
 
     // decode rm8
