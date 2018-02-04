@@ -1,12 +1,17 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-extern crate image;
-#[macro_use]
-extern crate tera;
 extern crate time;
+extern crate rand;
 extern crate tempdir;
 extern crate curl;
+extern crate image;
+
+#[macro_use]
+extern crate tera;
+
+#[macro_use]
+extern crate quick_error;
 
 pub mod cpu;
 pub mod memory;

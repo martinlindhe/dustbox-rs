@@ -32,7 +32,7 @@ impl Decoder {
         let mut ops: Vec<InstructionInfo> = Vec::new();
         let mut inst_offset = 0;
         for _ in 0..n {
-            let op = self.disasm_instruction(seg, offset+inst_offset);
+            let op = self.decode_instruction(seg, offset+inst_offset);
             inst_offset += u16::from(op.instruction.length);
             ops.push(op);
         }
@@ -52,7 +52,7 @@ impl Decoder {
         lines.join("\n")
     }
 
-    pub fn disasm_instruction(&mut self, iseg: u16, ioffset: u16) -> InstructionInfo {
+    pub fn decode_instruction(&mut self, iseg: u16, ioffset: u16) -> InstructionInfo {
        let op = self.get_instruction(Segment::Default, iseg, ioffset);
        InstructionInfo {
            segment: iseg as usize,
@@ -1214,7 +1214,9 @@ impl Decoder {
                 let b = self.read_u8();
                 match b {
                     _ => {
-                        panic!("unhandled op F2 {:02X}", b);
+                        println!("decoder: unhandled op F2 {:02X}", b);
+                        let invalid = InvalidOp::Op(vec![0xF2, b]);
+                        op.command = Op::Invalid(invalid);
                     }
                 }
             }
@@ -1242,7 +1244,9 @@ impl Decoder {
                         op.command = Op::Stosw();
                     }
                     _ => {
-                        panic!("unhandled op F3 {:02X}", b);
+                        println!("decoder: unhandled op F3 {:02X}", b);
+                        let invalid = InvalidOp::Op(vec![0xF3, b]);
+                        op.command = Op::Invalid(invalid);
                     }
                 }
             }

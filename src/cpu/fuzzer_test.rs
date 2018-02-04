@@ -37,10 +37,12 @@ fn can_fuzz_shr() {
         // XXX differs from winXP: Shl8 (OF), Sar8 (wrong result some times)
         //          - Ror8 (CF)
 
-        let data = encoder.encode_vec(&ops);
-
-        // execute the ops in dustbox
-        cpu.load_com(&data);
+        if let Ok(data) = encoder.encode_vec(&ops) {
+            // execute the ops in dustbox
+            cpu.load_com(&data);
+        } else {
+            panic!("invalid data sequence");
+        }
 
         cpu.execute_instructions(ops.len());
 

@@ -69,7 +69,7 @@ impl Into<R8> for u8 {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum R16 {
     AX, CX, DX, BX, SP, BP, SI, DI
 }
@@ -118,7 +118,7 @@ impl Into<R16> for u8 {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum SR {
     ES, CS, SS, DS, FS, GS
 }
@@ -161,7 +161,7 @@ impl Into<SR> for u8 {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum AMode {
     BXSI, BXDI, BPSI, BPDI, SI, DI, BP, BX
 }

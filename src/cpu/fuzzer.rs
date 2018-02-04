@@ -132,14 +132,16 @@ fn assemble_prober(ops: &Vec<Instruction>, prober_com: &str) {
 // creates a "db 0x1,0x2..." representation of the encoded instructions
 fn ops_as_db_bytes(ops: &Vec<Instruction>) -> String {
     let encoder = Encoder::new();
-    let enc = encoder.encode_vec(&ops);
-
-    let mut v = Vec::new();
-    for c in enc {
-        v.push(format!("0x{:02X}", c));
+    if let Ok(data) = encoder.encode_vec(&ops) {
+        let mut v = Vec::new();
+        for c in data {
+            v.push(format!("0x{:02X}", c));
+        }
+        let s = v.join(",");
+        format!("db {}", s)
+    } else {
+        panic!("invalid byte sequence");
     }
-    let s = v.join(",");
-    format!("db {}", s)
 }
 
 // parse prober.com output into a map
@@ -276,15 +278,17 @@ fn read_text_file(filename: &PathBuf) -> String {
 
 /// disasm the encoded instruction with external ndisasm command
 pub fn ndisasm(op: &Instruction) -> Result<String, io::Error> {
-    let encoder = Encoder::new();
-    let data = encoder.encode(op);
-
     let tmp_dir = TempDir::new("ndisasm")?;
     let file_path = tmp_dir.path().join("binary.bin");
     let file_str = file_path.to_str().unwrap();
     let mut tmp_file = File::create(&file_path)?;
 
-    tmp_file.write(&data)?;
+    let encoder = Encoder::new();
+    if let Ok(data) = encoder.encode(op) {
+        tmp_file.write(&data)?;
+    } else {
+        panic!("invalid byte sequence");
+    }
 
     let output = Command::new("ndisasm")
         .args(&["-b", "16", file_str])

@@ -28,7 +28,7 @@ impl ParameterSet {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Parameter {
     Imm8(u8),                           // byte 0x80
     Imm16(u16),                         // word 0x8000

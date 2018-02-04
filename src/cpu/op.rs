@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Op {
     // NOTE: currently removing paranthesis of enums to track if flags have been fully emulated & impl tested //martin, jan 2018
     Aaa(),
@@ -145,7 +145,16 @@ pub enum Op {
     Invalid(InvalidOp),
 }
 
-#[derive(Debug, PartialEq)]
+impl Op {
+    pub fn is_valid(&self) -> bool {
+        match *self {
+            Op::Unknown() | Op::Invalid(_) => false,
+            _ => true,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum InvalidOp {
     Reg(u8),
     Op(Vec<u8>),

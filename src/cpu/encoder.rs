@@ -7,6 +7,25 @@ use cpu::op::{Op};
 #[path = "./encoder_test.rs"]
 mod encoder_test;
 
+quick_error! {
+    #[derive(Debug)]
+    pub enum EncodeError {
+        UnhandledOp(op: Op) {
+            description("unhandled op")
+        }
+        UnhandledParameter(param: Parameter) {
+            description("unhandled param")
+        }
+        Gizmo {
+            description("Refrob the Gizmo")
+        }
+        WidgetNotFound(widget_name: String) {
+            description("The widget could not be found")
+            display(r#"The widget "{}" could not be found"#, widget_name)
+        }
+    }
+}
+
 pub struct Encoder {
 }
 
@@ -16,21 +35,36 @@ impl Encoder {
         }
     }
 
-    pub fn encode_vec(&self, ops: &Vec<Instruction>) -> Vec<u8> {
+    pub fn encode_vec(&self, ops: &Vec<Instruction>) -> Result<Vec<u8>, EncodeError> {
         let mut out = vec!();
         for op in ops {
-            out.extend(self.encode(op));
+            let enc = self.encode(op);
+            if let Ok(data) = enc {
+                out.extend(data);
+            } else {
+                return enc;
+            }
         }
-        out
+        Ok(out)
     }
 
     /// encodes Instruction to a valid byte sequence
-    pub fn encode(&self, op: &Instruction) -> Vec<u8> {
+    pub fn encode(&self, op: &Instruction) -> Result<Vec<u8>, EncodeError> {
         let mut out = vec!();
         match op.command {
             Op::Int() => {
-                out.push(0xCD);
-                out.extend(self.encode_imm8(&op.params.dst));
+                if let Parameter::Imm8(imm) = op.params.dst {
+                    if imm == 1 {
+                        out.push(0xF1);
+                    } else if imm == 3 {
+                        out.push(0xCC);
+                    } else {
+                        out.push(0xCD);
+                        out.push(imm);
+                    }
+                } else {
+                    return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
+                }
             }
             Op::Mov8 => {
                 if op.params.dst.is_reg() && op.params.src.is_imm() {
@@ -38,12 +72,12 @@ impl Encoder {
                     if let Parameter::Reg8(r) = op.params.dst {
                         out.push(0xB0 | r as u8);
                     } else {
-                        panic!("XXX {:?}", op.params.dst);
+                        return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                     }
                     if let Parameter::Imm8(i) = op.params.src {
                         out.push(i as u8);
                     } else {
-                        panic!("XXX {:?}", op.params.src);
+                        return Err(EncodeError::UnhandledParameter(op.params.src.clone()));
                     }
                 } else if op.params.src.is_ptr() {
                     // 0x8A: mov r8, r/m8
@@ -67,13 +101,13 @@ impl Encoder {
                     if let Parameter::Reg16(ref r) = op.params.dst {
                         out.push(0xB8 | r.index() as u8);
                     } else {
-                        panic!("XXX {:?}", op.params.dst);
+                        return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                     }
                     if let Parameter::Imm16(imm16) = op.params.src {
                         out.push((imm16 & 0xFF) as u8);
                         out.push((imm16 >> 8) as u8);
                     } else {
-                        panic!("XXX {:?}", op.params.src);
+                        return Err(EncodeError::UnhandledParameter(op.params.src.clone()));
                     }
                     /*
                 } else if op.params.src.is_ptr() {
@@ -86,7 +120,7 @@ impl Encoder {
                     out.extend(self.encode_rm8_r8(&op.params));
                 }*/
                 } else {
-                    panic!();
+                    return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                 }
             }
 
@@ -101,15 +135,15 @@ impl Encoder {
                     out.push((imm16 & 0xFF) as u8);
                     out.push((imm16 >> 8) as u8);
                 } else {
-                    panic!("XXX {:?}", op.params.dst);
+                    return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                 }
             }
             Op::Popf => out.push(0x9D),
             _ => {
-                panic!("encode: unhandled op {}", op);
+                return Err(EncodeError::UnhandledOp(op.command.clone()));
             }
         }
-        out
+        Ok(out)
     }
 
     fn bitshift_instr8(&self, ins: &Instruction) -> Vec<u8> {
