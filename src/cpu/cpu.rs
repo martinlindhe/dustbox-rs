@@ -493,7 +493,7 @@ impl CPU {
                 // Decimal Adjust AL after Subtraction
                 self.adj4(-6, -0x60);
             }
-            Op::Dec8() => {
+            Op::Dec8 => {
                 // single parameter (dst)
                 let dst = self.read_parameter_value(&op.params.dst);
                 let src = 1;
@@ -509,7 +509,7 @@ impl CPU {
 
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
-            Op::Dec16() => {
+            Op::Dec16 => {
                 // single parameter (dst)
                 let dst = self.read_parameter_value(&op.params.dst);
                 let src = 1;
@@ -664,7 +664,7 @@ impl CPU {
                 let data = self.in_port(src as u16);
                 self.write_parameter_u8(&op.params.dst, data);
             }
-            Op::Inc8() => {
+            Op::Inc8 => {
                 let dst = self.read_parameter_value(&op.params.dst);
                 let src = 1;
                 let res = (Wrapping(dst) + Wrapping(src)).0;
@@ -678,7 +678,7 @@ impl CPU {
 
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
-            Op::Inc16() => {
+            Op::Inc16 => {
                 let dst = self.read_parameter_value(&op.params.dst);
                 let src = 1;
                 let res = (Wrapping(dst) + Wrapping(src)).0;

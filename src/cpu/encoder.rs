@@ -67,6 +67,26 @@ impl Encoder {
         }
 
         match op.command {
+            Op::Dec8 | Op::Inc8 => {
+                // 0xFE: r/m8
+                out.push(0xFE);
+                out.extend(self.encode_rm(&op.params.dst, op.command.feff_index()));
+            }
+            Op::Dec16 | Op::Inc16 => {
+                if let Parameter::Reg16(ref r) = op.params.dst {
+                    match op.command {
+                        Op::Inc16 => out.push(0x40 | r.index() as u8), // 0x40...0x47: inc r16
+                        Op::Dec16 => out.push(0x48 | r.index() as u8), // 0x48...0x4F: dec r16
+                        // 0x50...0x57: push r16
+                        // 0x58...0x5F: pop r16
+                        _ => panic!("unhandled {:?}", op.command),
+                    }
+                } else {
+                    // 0xFF: // 0xFF: r/m16
+                    out.push(0xFF);
+                    out.extend(self.encode_rm(&op.params.dst, op.command.feff_index()));
+                }
+            }
             Op::Int() => {
                 if let Parameter::Imm8(imm) = op.params.dst {
                     if imm == 1 {
@@ -225,72 +245,55 @@ impl Encoder {
     }
 
     fn encode_r8_rm8(&self, params: &ParameterSet) -> Vec<u8> {
-        self.encode_rm8(&params.src, &params.dst)
+        if let Parameter::Reg8(r) = params.dst {
+            self.encode_rm(&params.src, r.index() as u8)
+        } else {
+            unreachable!();
+        }
     }
 
     fn encode_rm8_r8(&self, params: &ParameterSet) -> Vec<u8> {
-        self.encode_rm8(&params.dst, &params.src)
+        if let Parameter::Reg8(r) = params.src {
+            self.encode_rm(&params.dst, r.index() as u8)
+        } else {
+            unreachable!();
+        }
     }
 
-    fn encode_rm8(&self, dst: &Parameter, src: &Parameter) -> Vec<u8> {
+    fn encode_rm(&self, dst: &Parameter, reg: u8) -> Vec<u8> {
         let mut out = Vec::new();
         match *dst {
             Parameter::Ptr8(_, imm16) => {
-                let mut mrr = ModRegRm{md: 0, rm: 6, reg: 0};
-                if let Parameter::Reg8(src_r) = *src {
-                    mrr.reg = src_r as u8
-                } else {
-                    unreachable!();
-                }
+                let mut mrr = ModRegRm{md: 0, rm: 6, reg: reg};
                 out.push(mrr.u8());
                 out.push((imm16 & 0xFF) as u8);
                 out.push((imm16 >> 8) as u8);
             }
             Parameter::Ptr8Amode(_, ref amode) => {
                 // XXX how doe md:0, rm: 0 not collide with above one...
-                let mut mrr = ModRegRm{md: 0, rm: amode.index() as u8, reg: 0};
-                if let Parameter::Reg8(src_r) = *src {
-                    mrr.reg = src_r as u8
-                } else {
-                    unreachable!();
-                }
+                let mut mrr = ModRegRm{md: 0, rm: amode.index() as u8, reg: reg};
                 out.push(mrr.u8());
             }
-            Parameter::Ptr8AmodeS8(_, ref amode, imm) => {
-                let mut mrr = ModRegRm{md: 1, rm: amode.index() as u8, reg: 0};
-                if let Parameter::Reg8(reg) = *src {
-                    mrr.reg = reg as u8;
-                } else {
-                    unreachable!();
-                }
+            Parameter::Ptr8AmodeS8(_, ref amode, imm) |
+            Parameter::Ptr16AmodeS8(_, ref amode, imm) => {
+                let mut mrr = ModRegRm{md: 1, rm: amode.index() as u8, reg: reg};
                 out.push(mrr.u8());
                 out.push(imm as u8);
             },
             Parameter::Ptr8AmodeS16(_, ref amode, imm16) => {
-                let mut mrr = ModRegRm{md: 2, rm: amode.index() as u8, reg: 0};
-                if let Parameter::Reg8(reg) = *src {
-                    mrr.reg = reg as u8;
-                } else {
-                    unreachable!();
-                }
+                let mut mrr = ModRegRm{md: 2, rm: amode.index() as u8, reg: reg};
                 out.push(mrr.u8());
                 out.push((imm16 & 0xFF) as u8);
                 out.push((imm16 >> 8) as u8);
             }
             Parameter::Reg8(r) => {
-                let mut mrr = ModRegRm{md: 3, rm: r as u8, reg: 0};
-                if let Parameter::Reg8(src_r) = *src {
-                    mrr.reg = src_r as u8
-                } else {
-                    unreachable!();
-                }
+                let mut mrr = ModRegRm{md: 3, rm: r as u8, reg: reg};
                 out.push(mrr.u8());
             }
             _ => {
-                panic!("XXX unhandled md encoding {:?}", dst);
+                panic!("encode_rm: unhandled md {:?}", dst);
             }
         }
-
         out
     }
 

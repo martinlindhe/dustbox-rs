@@ -506,12 +506,12 @@ impl Decoder {
             }
             0x40...0x47 => {
                 // inc r16
-                op.command = Op::Inc16();
+                op.command = Op::Inc16;
                 op.params.dst = Parameter::Reg16(Into::into(b & 7));
             }
             0x48...0x4F => {
                 // dec r16
-                op.command = Op::Dec16();
+                op.command = Op::Dec16;
                 op.params.dst = Parameter::Reg16(Into::into(b & 7));
             }
             0x50...0x57 => {
@@ -1324,15 +1324,15 @@ impl Decoder {
                 op.command = Op::Std();
             }
             0xFE => {
-                // byte size
+                // r/m8
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm8(op.segment_prefix, x.rm, x.md);
                 match x.reg {
                     // NOTE: 2 is a deprecated but valid encoding, example:
                     // https://www.pouet.net/prod.php?which=65203
                     // 00000140  FEC5              inc ch
-                    0 | 2 => op.command = Op::Inc8(),
-                    1 => op.command = Op::Dec8(),
+                    0 | 2 => op.command = Op::Inc8,
+                    1 => op.command = Op::Dec8,
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);
@@ -1340,17 +1340,17 @@ impl Decoder {
                 }
             }
             0xFF => {
-                // word size
+                // r/m16
                 let x = self.read_mod_reg_rm();
                 op.params.dst = self.rm16(op.segment_prefix, x.rm, x.md);
                 match x.reg {
-                    0 => op.command = Op::Inc16(), // inc r/m16
-                    1 => op.command = Op::Dec16(), // dec r/m16
-                    2 => op.command = Op::CallNear(), // call r/m16
+                    0 => op.command = Op::Inc16,
+                    1 => op.command = Op::Dec16,
+                    2 => op.command = Op::CallNear(),
                     // 3 => call far
-                    4 => op.command = Op::JmpNear(), // jmp r/m16
+                    4 => op.command = Op::JmpNear(),
                     // 5 => jmp far
-                    6 => op.command = Op::Push16, // push r/m16
+                    6 => op.command = Op::Push16,
                     _ => {
                         let invalid = InvalidOp::Reg(x.reg);
                         op.command = Op::Invalid(invalid);

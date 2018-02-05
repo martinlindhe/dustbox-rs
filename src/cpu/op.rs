@@ -28,8 +28,8 @@ pub enum Op {
     Cwd(),
     Daa(),
     Das(),
-    Dec8(),
-    Dec16(),
+    Dec8,
+    Dec16,
     Div8(),
     Div16(),
     Enter,
@@ -40,8 +40,8 @@ pub enum Op {
     Imul16,
     In8(),
     In16(),
-    Inc8(),
-    Inc16(),
+    Inc8,
+    Inc16,
     Int(),
     Insb(),
     Insw(),
@@ -150,6 +150,20 @@ impl Op {
         match *self {
             Op::Unknown() | Op::Invalid(_) => false,
             _ => true,
+        }
+    }
+
+    // used by encoder
+    pub fn feff_index(&self) -> u8 {
+        match *self {
+            Op::Inc8 | Op::Inc16 => 0,
+            Op::Dec8 | Op::Dec16 => 1,
+            Op::CallNear() => 2,
+            // 3 => call far
+            Op::JmpNear() => 4,
+            // 5 => jmp far
+            Op::Push16 => 6,
+            _ => panic!("feff_index {:?}", self),
         }
     }
 }

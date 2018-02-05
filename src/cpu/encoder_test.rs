@@ -83,6 +83,33 @@ fn can_encode_random_seq() {
 }
 
 #[test]
+fn can_encode_inc() {
+    let op = Instruction::new1(Op::Inc8, Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "inc bh", vec!(0xFE, 0xC7));
+
+    let op = Instruction::new1(Op::Inc8, Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10));
+    assert_encdec(&op, "inc byte [bp+0x10]", vec!(0xFE, 0x46, 0x10));
+    
+    let op = Instruction::new1(Op::Inc16, Parameter::Reg16(R16::BX));
+    assert_encdec(&op, "inc bx", vec!(0x43));
+
+    let op = Instruction::new1(Op::Inc16, Parameter::Ptr16AmodeS8(Segment::Default, AMode::BP, 0x10));
+    assert_encdec(&op, "inc word [bp+0x10]", vec!(0xFF, 0x46, 0x10));
+}
+
+#[test]
+fn can_encode_dec() {
+    let op = Instruction::new1(Op::Dec8, Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "dec bh", vec!(0xFE, 0xCF));
+
+    let op = Instruction::new1(Op::Dec16, Parameter::Reg16(R16::BX));
+    assert_encdec(&op, "dec bx", vec!(0x4B));
+
+    let op = Instruction::new1(Op::Dec16, Parameter::Ptr16AmodeS8(Segment::Default, AMode::BP, 0x10));
+    assert_encdec(&op, "dec word [bp+0x10]", vec!(0xFF, 0x4E, 0x10));
+}
+
+#[test]
 fn can_encode_push() {
     let op = Instruction::new1(Op::Push16, Parameter::Imm16(0x8088));
     assert_encdec(&op, "push word 0x8088", vec!(0x68, 0x88, 0x80));
@@ -151,7 +178,6 @@ fn can_encode_mov_addressing_modes() {
 fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u8>) {
     let encoder = Encoder::new();
     let code = encoder.encode(&op).unwrap();
-    assert_eq!(expected_bytes, code);
 
     // decode result and verify with input op
     let mmu = MMU::new();
@@ -162,7 +188,11 @@ fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u
     let decoded_op = &ops[0].instruction;
     assert_eq!(op, decoded_op);
 
-    assert_eq!(expected_ndisasm.to_owned(), ndisasm_instruction(&op).unwrap());
+    // verify encoded byte sequence with expected bytes
+    assert_eq!(expected_bytes, code);
+
+    // disasm encoded byte sequence and verify with expected ndisasm output
+    assert_eq!(expected_ndisasm.to_owned(), ndisasm_bytes(&code).unwrap());
 }
 
 fn hex_bytes(data: &[u8]) -> String {
