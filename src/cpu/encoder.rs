@@ -102,7 +102,6 @@ impl Encoder {
                 }
             }
             Op::Mov8 => {
-                // XXX 0xA2: mov [moffs8], AL
                 match op.params.dst {
                     Parameter::Reg8(r) => {
                         if r == R8::AL {
@@ -111,6 +110,7 @@ impl Encoder {
                                 out.push(0xA0);
                                 out.push((imm16 & 0xFF) as u8);
                                 out.push((imm16 >> 8) as u8);
+                                return Ok(out);
                             }
                         }
                         if let Parameter::Imm8(i) = op.params.src {
@@ -131,6 +131,18 @@ impl Encoder {
                     Parameter::Ptr8Amode(_, _) |
                     Parameter::Ptr8AmodeS8(_, _, _) |
                     Parameter::Ptr8AmodeS16(_, _, _) => {
+                        if let Parameter::Ptr8(_, imm16) = op.params.dst {
+                            if let Parameter::Reg8(r) =  op.params.src {
+                                if r == R8::AL {
+                                    // 0xA2: mov [moffs8], AL
+                                    out.push(0xA2);
+                                    out.push((imm16 & 0xFF) as u8);
+                                    out.push((imm16 >> 8) as u8);
+                                    return Ok(out);
+                                }
+                            }
+                        }
+
                         // 0x88: mov r/m8, r8
                         out.push(0x88);
                         out.extend(self.encode_rm8_r8(&op.params));

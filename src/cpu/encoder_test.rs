@@ -53,7 +53,7 @@ fn can_encode_random_seq() {
                         let ndisasm_of_input = ndisasm_bytes(&in_bytes).unwrap();
                         let ndisasm_of_encode = ndisasm_bytes(&enc).unwrap();
                         if ndisasm_of_input != ndisasm_of_encode {
-                            panic!("encoding resulted in wrong sequence. input {:?}, output {:?}. instr {:?}. ndisasm of input '{}', encode '{}'",
+                            panic!("encoding resulted in wrong sequence.\n\ninput  {:?}\noutput {:?}\ninstr {:?}\nndisasm of\ninput '{}'\nencode '{}'",
                                 hex_bytes(&in_bytes),
                                 hex_bytes(&enc),
                                 op.instruction,
