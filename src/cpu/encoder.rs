@@ -1,8 +1,9 @@
 use cpu::instruction::{Instruction, ModRegRm};
 use cpu::parameter::{Parameter, ParameterSet};
-use cpu::register::R16;
+use cpu::register::{R8, R16};
+use cpu::segment::Segment;
 use cpu::op::{Op};
-use cpu::fuzzer::ndisasm;
+use cpu::fuzzer::ndisasm_instruction;
 
 #[cfg(test)]
 #[path = "./encoder_test.rs"]
@@ -52,6 +53,19 @@ impl Encoder {
     /// encodes Instruction to a valid byte sequence
     pub fn encode(&self, op: &Instruction) -> Result<Vec<u8>, EncodeError> {
         let mut out = vec!();
+        if op.lock {
+            out.push(0xF0);
+        }
+        match op.segment_prefix {
+            Segment::Default => {},
+            Segment::ES => out.push(0x26),
+            Segment::CS => out.push(0x2E),
+            Segment::SS => out.push(0x36),
+            Segment::DS => out.push(0x3E),
+            Segment::FS => out.push(0x64),
+            Segment::GS => out.push(0x65),
+        }
+
         match op.command {
             Op::Int() => {
                 if let Parameter::Imm8(imm) = op.params.dst {
@@ -68,26 +82,42 @@ impl Encoder {
                 }
             }
             Op::Mov8 => {
-                if op.params.dst.is_reg() && op.params.src.is_imm() {
-                    // 0xB0...0xB7: mov r8, u8
-                    if let Parameter::Reg8(r) = op.params.dst {
-                        out.push(0xB0 | r as u8);
-                    } else {
+                // XXX 0xA2: mov [moffs8], AL
+                match op.params.dst {
+                    Parameter::Reg8(r) => {
+                        if r == R8::AL {
+                            if let Parameter::Ptr8(_, imm16) = op.params.src {
+                                // 0xA0: mov AL, [moffs8]
+                                out.push(0xA0);
+                                out.push((imm16 & 0xFF) as u8);
+                                out.push((imm16 >> 8) as u8);
+                            }
+                        }
+                        if let Parameter::Imm8(i) = op.params.src {
+                            // 0xB0...0xB7: mov r8, u8
+                            out.push(0xB0 | r as u8);
+                            out.push(i as u8);
+                        } else if op.params.src.is_ptr() {
+                            // 0x8A: mov r8, r/m8
+                            out.push(0x8A);
+                            out.extend(self.encode_r8_rm8(&op.params));
+                        } else {
+                            // 0x88: mov r/m8, r8
+                            out.push(0x88);
+                            out.extend(self.encode_rm8_r8(&op.params));
+                        }
+                    }
+                    Parameter::Ptr8(_, _) |
+                    Parameter::Ptr8Amode(_, _) |
+                    Parameter::Ptr8AmodeS8(_, _, _) |
+                    Parameter::Ptr8AmodeS16(_, _, _) => {
+                        // 0x88: mov r/m8, r8
+                        out.push(0x88);
+                        out.extend(self.encode_rm8_r8(&op.params));
+                    }
+                    _ => {
                         return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                     }
-                    if let Parameter::Imm8(i) = op.params.src {
-                        out.push(i as u8);
-                    } else {
-                        return Err(EncodeError::UnhandledParameter(op.params.src.clone()));
-                    }
-                } else if op.params.src.is_ptr() {
-                    // 0x8A: mov r8, r/m8
-                    out.push(0x8A);
-                    out.extend(self.encode_r8_rm8(&op.params));
-                } else {
-                    // 0x88: mov r/m8, r8
-                    out.push(0x88);
-                    out.extend(self.encode_rm8_r8(&op.params));
                 }
             }
             Op::Mov16 => {
@@ -174,7 +204,7 @@ impl Encoder {
                 }
             }
             _ => {
-                let ndisasm = ndisasm(ins).unwrap();
+                let ndisasm = ndisasm_instruction(ins).unwrap();
                 panic!("unexpected dst type: {:?}. ndisasm says '{}'", ins, ndisasm);
             }
         }

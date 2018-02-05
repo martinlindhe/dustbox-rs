@@ -9,7 +9,7 @@ use std::iter::FromIterator;
 
 use tempdir::TempDir;
 use tera::Context;
-use rand::{Rng, thread_rng};
+use rand::{Rng, XorShiftRng};
 
 use cpu::CPU;
 use cpu::encoder::Encoder;
@@ -19,20 +19,21 @@ use cpu::instruction::{Instruction, InstructionInfo, RepeatMode};
 use cpu::op::Op;
 use cpu::register::{R8, R16, AMode, SR};
 use memory::mmu::MMU;
-use cpu::fuzzer::ndisasm;
+use cpu::fuzzer::{ndisasm_instruction, ndisasm_bytes};
 
 #[test] #[ignore] // expensive test
 fn can_encode_random_seq() {
-    let mut rng = thread_rng();
+    let mut rng = XorShiftRng::new_unseeded();
     let mut code = vec![0u8; 10];
 
-    for _ in 0..100 {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+
+    for _ in 0..1000 {
         for mut b in &mut code {
             *b = rng.gen();
         }
 
-        let mmu = MMU::new();
-        let mut cpu = CPU::new(mmu);
         cpu.load_com(&code);
 
         let encoder = Encoder::new();
@@ -47,10 +48,18 @@ fn can_encode_random_seq() {
             let try_enc = encoder.encode(&op.instruction);
             match try_enc {
                 Ok(enc) => {
-                    let code_part = Vec::from_iter(code[0..enc.len()].iter().cloned());
-                    if enc != code_part {
-                        let ndisasm = ndisasm(&op.instruction).unwrap();
-                        panic!("encoding resulted in wrong sequence. input {:?}, output {:?}. instr {:?}. ndisasm says: {}", code_part, enc, op.instruction, ndisasm);
+                    let in_bytes = Vec::from_iter(code[0..enc.len()].iter().cloned());
+                    if enc != in_bytes {
+                        let ndisasm_of_input = ndisasm_bytes(&in_bytes).unwrap();
+                        let ndisasm_of_encode = ndisasm_bytes(&enc).unwrap();
+                        if ndisasm_of_input != ndisasm_of_encode {
+                            panic!("encoding resulted in wrong sequence. input {:?}, output {:?}. instr {:?}. ndisasm of input '{}', encode '{}'",
+                                hex_bytes(&in_bytes),
+                                hex_bytes(&enc),
+                                op.instruction,
+                                ndisasm_of_input,
+                                ndisasm_of_encode);
+                        }
                     }
 
                     // - if encode was successful, try to decode that seq again and make sure the resulting
@@ -102,8 +111,6 @@ fn can_encode_int() {
 
 #[test]
 fn can_encode_mov_addressing_modes() {
-    let encoder = Encoder::new();
-
     // r8, imm8
     let op = Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
     assert_encdec(&op, "mov bh,0xff", vec!(0xB7, 0xFF));
@@ -155,5 +162,14 @@ fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u
     let decoded_op = &ops[0].instruction;
     assert_eq!(op, decoded_op);
 
-    assert_eq!(expected_ndisasm.to_owned(), ndisasm(&op).unwrap());
+    assert_eq!(expected_ndisasm.to_owned(), ndisasm_instruction(&op).unwrap());
+}
+
+fn hex_bytes(data: &[u8]) -> String {
+    use std::fmt::Write;
+    let mut s = String::new();
+    for &b in data {
+        write!(&mut s, "{:02x} ", b).expect("Unable to write");
+    }
+    s.trim().to_owned()
 }
