@@ -4,7 +4,6 @@
 extern crate time;
 extern crate rand;
 extern crate tempdir;
-extern crate curl;
 extern crate image;
 
 #[macro_use]

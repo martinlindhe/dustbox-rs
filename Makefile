@@ -11,7 +11,7 @@ expensive-512:
 	cargo test demo_512 --release -- --color always --nocapture --ignored
 
 expensive-fuzz:
-	cargo test fuzz --release -- --color always --nocapture --ignored
+	cargo test fuzz --package dustbox_fuzzer --release -- --color always --nocapture --ignored
 
 expensive-encode:
 	cargo test encode -- --color always --nocapture --ignored

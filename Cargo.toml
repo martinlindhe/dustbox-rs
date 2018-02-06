@@ -12,7 +12,6 @@ rand = "0.4"
 tempdir = "0.3"
 image = "0.18"
 tera = "0.11"
-curl = "0.4"
 quick-error = "1.2"
 
 [dev-dependencies]
@@ -23,4 +22,4 @@ name = "cpu"
 harness = false
 
 [workspace]
-members = [ "debugger" ]
+members = [ "debugger", "fuzzer" ]

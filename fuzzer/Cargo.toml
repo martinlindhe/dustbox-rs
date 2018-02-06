@@ -1,5 +1,5 @@
 [package]
-name = "dustbox_gtk"
+name = "dustbox_fuzzer"
 version = "0.1.0"
 authors = ["Martin Lindhe"]
 
@@ -7,11 +7,7 @@ authors = ["Martin Lindhe"]
 path = "src/lib.rs"
 
 [dependencies]
-gdk = "0.7"
-gdk-pixbuf = "0.3"
-cairo-rs = "0.3"
+curl = "0.4"
+tempdir = "0.3"
+tera = "0.11"
 dustbox = { path = "../" }
-
-[dependencies.gtk]
-version = "0.3"
-features = ["v3_10"]

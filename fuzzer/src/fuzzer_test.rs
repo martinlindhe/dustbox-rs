@@ -1,5 +1,5 @@
-use cpu::fuzzer::*;
-use memory::mmu::MMU;
+use fuzzer::*;
+use dustbox::memory::mmu::MMU;
 
 #[test] #[ignore] // expensive test
 fn fuzz_instruction() {

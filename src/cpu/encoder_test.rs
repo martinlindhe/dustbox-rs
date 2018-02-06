@@ -12,14 +12,13 @@ use tera::Context;
 use rand::{Rng, XorShiftRng};
 
 use cpu::CPU;
-use cpu::encoder::Encoder;
+use cpu::encoder::{Encoder, ndisasm_bytes};
 use cpu::segment::Segment;
 use cpu::parameter::Parameter;
 use cpu::instruction::{Instruction, InstructionInfo, RepeatMode};
 use cpu::op::Op;
 use cpu::register::{R8, R16, AMode, SR};
 use memory::mmu::MMU;
-use cpu::fuzzer::{ndisasm_instruction, ndisasm_bytes};
 
 #[test] #[ignore] // expensive test
 fn can_encode_random_seq() {
