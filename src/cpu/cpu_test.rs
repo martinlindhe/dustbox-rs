@@ -265,24 +265,26 @@ fn can_execute_mov_es_segment() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0x26, 0x88, 0x25, // mov [es:di],ah
-        0x26, 0x8A, 0x05, // mov al,[es:di]
+        0x68, 0x40, 0x40,               // push word 0x4040
+        0x07,                           // pop es
+        0xBF, 0x00, 0x02,               // mov di,0x200
+        0xB4, 0x88,                     // mov ah,0x88
 
-        0x26, 0x8A, 0x45, 0x01, // mov al,[es:di+0x1]
-        0x26, 0x8A, 0x5D, 0xFF, // mov bl,[es:di-0x1]
+        0x26, 0x88, 0x25,               // mov [es:di],ah
+        0x26, 0x8A, 0x05,               // mov al,[es:di]
 
-        0x26, 0x8A, 0x85, 0x40, 0x01, // mov al,[es:di+0x140]
-        0x26, 0x8A, 0x9D, 0xC0, 0xFE, // mov bl,[es:di-0x140]
+        0x26, 0x8A, 0x45, 0x01,         // mov al,[es:di+0x1]
+        0x26, 0x8A, 0x5D, 0xFF,         // mov bl,[es:di-0x1]
+
+        0x26, 0x8A, 0x85, 0x40, 0x01,   // mov al,[es:di+0x140]
+        0x26, 0x8A, 0x9D, 0xC0, 0xFE,   // mov bl,[es:di-0x140]
     ];
-
     cpu.load_com(&code);
 
-    let es = 0x4040;
-    let di = 0x0200;
-    cpu.set_sr(&SR::ES, es);
-    cpu.set_r16(&R16::DI, di);
-    cpu.set_r8(&R8::AH, 0x88);
+    cpu.execute_instructions(4);
 
+    let es = cpu.get_sr(&SR::ES);
+    let di = cpu.get_r16(&R16::DI);
     cpu.execute_instruction(); // mov [es:di],ah
     assert_eq!(0x88, cpu.mmu.read_u8(es, di));
 
