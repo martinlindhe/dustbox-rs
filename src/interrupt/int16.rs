@@ -3,7 +3,7 @@ use cpu::register::{R8, R16};
 
 // keyboard related interrupts
 pub fn handle(cpu: &mut CPU) {
-    match cpu.get_r8(R8::AH) {
+    match cpu.get_r8(&R8::AH) {
         0x00 => {
             // KEYBOARD - GET KEYSTROKE
             // Return:
@@ -35,7 +35,7 @@ pub fn handle(cpu: &mut CPU) {
         }
         _ => {
             println!("int16 error: unknown ah={:02X}, ax={:04X}",
-                     cpu.get_r8(R8::AH),
+                     cpu.get_r8(&R8::AH),
                      cpu.get_r16(&R16::AX));
         }
     }

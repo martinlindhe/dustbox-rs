@@ -3,7 +3,7 @@ use cpu::register::{R8, R16, SR};
 
 // video related interrupts
 pub fn handle(cpu: &mut CPU) {
-    match cpu.get_r8(R8::AH) {
+    match cpu.get_r8(&R8::AH) {
         0x00 => {
             // VIDEO - SET VIDEO MODE
             //
@@ -20,7 +20,7 @@ pub fn handle(cpu: &mut CPU) {
             // active display adapter
             //
             // more info and video modes: http://www.ctyme.com/intr/rb-0069.htm
-            match cpu.get_r8(R8::AL) {
+            match cpu.get_r8(&R8::AL) {
                 0x01 => {
                     // 01h = T  40x25  8x8   320x200   16       8   B800 CGA,PCjr,Tandy
                     //     = T  40x25  8x14  320x350   16       8   B800 EGA
@@ -61,7 +61,7 @@ pub fn handle(cpu: &mut CPU) {
                     println!("XXX video: set video mode to 320x200, 256 colors (VGA) after {} instr", cpu.instruction_count);
                 }
                 _ => {
-                    println!("video error: unknown video mode {:02X}", cpu.get_r8(R8::AL));
+                    println!("video error: unknown video mode {:02X}", cpu.get_r8(&R8::AL));
                 }
             }
         }
@@ -74,8 +74,8 @@ pub fn handle(cpu: &mut CPU) {
             // Return:
             // Nothing
             println!("XXX set text-mode cursor shape, start_options={:02X}, bottom_line={:02X}",
-                     cpu.get_r8(R8::CH),
-                     cpu.get_r8(R8::CL));
+                     cpu.get_r8(&R8::CH),
+                     cpu.get_r8(&R8::CL));
 
         }
         0x02 => {
@@ -89,9 +89,9 @@ pub fn handle(cpu: &mut CPU) {
             // DL = column (00h is left)
             // Return: Nothing
             println!("XXX set cursor position, page={}, row={}, column={}",
-                     cpu.get_r8(R8::BH),
-                     cpu.get_r8(R8::DH),
-                     cpu.get_r8(R8::DL));
+                     cpu.get_r8(&R8::BH),
+                     cpu.get_r8(&R8::DH),
+                     cpu.get_r8(&R8::DL));
         }
         0x06 => {
             // VIDEO - SCROLL UP WINDOW
@@ -104,12 +104,12 @@ pub fn handle(cpu: &mut CPU) {
             //
             // Note: Affects only the currently active page (see AH=05h)
             println!("XXX scroll window up: lines={},attrib={},topleft={},{},btmright={},{}",
-                     cpu.get_r8(R8::AL),
-                     cpu.get_r8(R8::BH),
-                     cpu.get_r8(R8::CH),
-                     cpu.get_r8(R8::CL),
-                     cpu.get_r8(R8::DH),
-                     cpu.get_r8(R8::DL));
+                     cpu.get_r8(&R8::AL),
+                     cpu.get_r8(&R8::BH),
+                     cpu.get_r8(&R8::CH),
+                     cpu.get_r8(&R8::CL),
+                     cpu.get_r8(&R8::DH),
+                     cpu.get_r8(&R8::DL));
         }
         0x09 => {
             // VIDEO - WRITE CHARACTER AND ATTRIBUTE AT CURSOR POSITION
@@ -129,9 +129,9 @@ pub fn handle(cpu: &mut CPU) {
             // remaining in the current row. With PhysTechSoft's PTS ROM-DOS
             // the BH, BL, and CX values are ignored on entry.
             println!("XXX impl VIDEO - WRITE CHARACTER AND ATTRIBUTE AT CURSOR POSITION. char={}, page={}, attrib={}, count={}",
-                     cpu.get_r8(R8::AL) as char,
-                     cpu.get_r8(R8::BH),
-                     cpu.get_r8(R8::BL),
+                     cpu.get_r8(&R8::AL) as char,
+                     cpu.get_r8(&R8::BH),
+                     cpu.get_r8(&R8::BL),
                      cpu.get_r16(&R16::CX));
         }
         0x0A => {
@@ -146,18 +146,18 @@ pub fn handle(cpu: &mut CPU) {
             // CX = number of times to write character
             // Return: Nothing
              println!("XXX impl VIDEO - WRITE CHARACTER ONLY AT CURSOR POSITION. char={}, page={}, attrib={}, count={}",
-                     cpu.get_r8(R8::AL) as char,
-                     cpu.get_r8(R8::BH),
-                     cpu.get_r8(R8::BL),
+                     cpu.get_r8(&R8::AL) as char,
+                     cpu.get_r8(&R8::BH),
+                     cpu.get_r8(&R8::BL),
                      cpu.get_r16(&R16::CX));
         }
         0x0B => {
-            match cpu.get_r8(R8::BH) {
+            match cpu.get_r8(&R8::BH) {
                 0x00 => {
                     // VIDEO - SET BACKGROUND/BORDER COLOR
                     // BL = background/border color (border only in text modes)
                     // Return: Nothing
-                    println!("XXX set bg/border color, bl={:02X}", cpu.get_r8(R8::BL));
+                    println!("XXX set bg/border color, bl={:02X}", cpu.get_r8(&R8::BL));
                 }
                 0x01 => {
                     // VIDEO - SET PALETTE
@@ -169,10 +169,10 @@ pub fn handle(cpu: &mut CPU) {
                     // Note: This call was only valid in 320x200 graphics on
                     // the CGA, but newer cards support it in many or all
                     // graphics modes
-                    println!("XXX TODO set palette id, bl={:02X}", cpu.get_r8(R8::BL));
+                    println!("XXX TODO set palette id, bl={:02X}", cpu.get_r8(&R8::BL));
                 }
                 _ => {
-                    println!("video error: unknown int 10, ah=0B, bh={:02X}", cpu.get_r8(R8::BH));
+                    println!("video error: unknown int 10, ah=0B, bh={:02X}", cpu.get_r8(&R8::BH));
                 }
             }
         }
@@ -193,7 +193,7 @@ pub fn handle(cpu: &mut CPU) {
             //
             // BUG: If the write causes the screen to scroll, BP is destroyed
             // by BIOSes for which AH=06h destroys BP
-            print!("{}", cpu.get_r8(R8::AL) as char);
+            print!("{}", cpu.get_r8(&R8::AL) as char);
         }
         0x0F => {
             // VIDEO - GET CURRENT VIDEO MODE
@@ -207,15 +207,15 @@ pub fn handle(cpu: &mut CPU) {
             println!("XXX int10,0F - get video mode impl");
         }
         0x10 => {
-            match cpu.get_r8(R8::AL) {
+            match cpu.get_r8(&R8::AL) {
                 0x00 => {
                     // VIDEO - SET SINGLE PALETTE REGISTER (PCjr,Tandy,EGA,MCGA,VGA)
                     // BL = palette register number (00h-0Fh)
                     //    = attribute register number (undocumented) (see #00017)
                     // BH = color or attribute register value
                     panic!("XXX VIDEO - SET SINGLE PALETTE REGISTER, bl={:02X}, bh={:02X}",
-                             cpu.get_r8(R8::BL),
-                             cpu.get_r8(R8::BH));
+                             cpu.get_r8(&R8::BL),
+                             cpu.get_r8(&R8::BH));
                 }
                 0x12 => {
                     // VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA)
@@ -258,12 +258,12 @@ pub fn handle(cpu: &mut CPU) {
                     println!("XXX VIDEO - READ BLOCK OF DAC REGISTERS (VGA/MCGA)");
                 }
                 _ => {
-                    println!("int10 error: unknown AH 10, al={:02X}", cpu.get_r8(R8::AL));
+                    println!("int10 error: unknown AH 10, al={:02X}", cpu.get_r8(&R8::AL));
                 }
             }
         }
         0x11 => {
-            match cpu.get_r8(R8::AL) {
+            match cpu.get_r8(&R8::AL) {
                 0x24 => {
                     // VIDEO - GRAPH-MODE CHARGEN - LOAD 8x16 GRAPHICS CHARS (VGA,MCGA)
                     // BL = row specifier (see AX=1121h)
@@ -291,7 +291,7 @@ pub fn handle(cpu: &mut CPU) {
                     println!("stub int10 - VIDEO - GET FONT INFORMATION (EGA, MCGA, VGA)");
                 }
                 _ => {
-                    println!("int10 error: unknown ah=11, al={:02X}", cpu.get_r8(R8::AL));
+                    println!("int10 error: unknown ah=11, al={:02X}", cpu.get_r8(&R8::AL));
                 }
             }
         }
@@ -312,7 +312,7 @@ pub fn handle(cpu: &mut CPU) {
         }
         0x4F => {
             // VESA
-            match cpu.get_r8(R8::AL) {
+            match cpu.get_r8(&R8::AL) {
                 0x01 => {
                     // VESA SuperVGA BIOS - GET SuperVGA MODE INFORMATION
                     // CX = SuperVGA video mode (see #04082 for bitfields)
@@ -347,16 +347,16 @@ pub fn handle(cpu: &mut CPU) {
                     //      00h window A
                     //      01h window B.
                     // ES = selector for memory-mapped registers (VBE 2.0+, when called from 32-bit protected mode)
-                    println!("XXX VESA SuperVGA BIOS - CPU VIDEO MEMORY CONTROL. bh={:02X}", cpu.get_r8(R8::BH));
+                    println!("XXX VESA SuperVGA BIOS - CPU VIDEO MEMORY CONTROL. bh={:02X}", cpu.get_r8(&R8::BH));
                 }
                  _ => {
-                    println!("int10 error: unknown AH 4F (VESA), al={:02X}", cpu.get_r8(R8::AL));
+                    println!("int10 error: unknown AH 4F (VESA), al={:02X}", cpu.get_r8(&R8::AL));
                 }
             }
         }
         _ => {
             println!("int10 error: unknown al={:02X}, ax={:04X}",
-                     cpu.get_r8(R8::AL),
+                     cpu.get_r8(&R8::AL),
                      cpu.get_r16(&R16::AX));
         }
     }

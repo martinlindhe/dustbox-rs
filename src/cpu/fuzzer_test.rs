@@ -61,7 +61,7 @@ fn fuzz_instruction() {
         if i % 100 == 0 {
             println!("avg vm time after {} iterations: {:.*}s", i, 4, tot_sec / i as f64);
         }
-        let dustbox_ah = cpu.get_r8(R8::AH);
+        let dustbox_ah = cpu.get_r8(&R8::AH);
 
         let vm_regs = prober_reg_map(&output);
         if compare_regs(&cpu, &vm_regs, &affected_registers) {

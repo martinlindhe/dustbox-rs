@@ -6,16 +6,16 @@ use codepage::cp437;
 
 // dos related interrupts
 pub fn handle(cpu: &mut CPU) {
-    match cpu.get_r8(R8::AH) {
+    match cpu.get_r8(&R8::AH) {
         0x02 => {
             // DOS 1+ - WRITE CHARACTER TO STANDARD OUTPUT
             // DL = character to write
-            let dl = cpu.get_r8(R8::DL);
+            let dl = cpu.get_r8(&R8::DL);
             print!("{}", cp437::u8_as_char(dl));
             // Return:
             // AL = last character output (despite the official docs which state
             // nothing is returned) (at least DOS 2.1-7.0)
-            cpu.set_r8(R8::AL, dl);
+            cpu.set_r8(&R8::AL, dl);
         }
         0x06 => {
             // DOS 1+ - DIRECT CONSOLE OUTPUT
@@ -24,14 +24,14 @@ pub fn handle(cpu: &mut CPU) {
             // Notes: Does not check ^C/^Break. Writes to standard output,
             // which is always the screen under DOS 1.x, but may be redirected
             // under DOS 2+
-            let dl = cpu.get_r8(R8::DL);
+            let dl = cpu.get_r8(&R8::DL);
             if dl != 0xFF {
                 print!("{}", cp437::u8_as_char(dl));
             }
             // Return:
             // AL = character output (despite official docs which
             // state nothing is returned) (at least DOS 2.1-7.0)
-            cpu.set_r8(R8::AL, dl);
+            cpu.set_r8(&R8::AL, dl);
         }
         0x07 => {
             // DOS 1+ - DIRECT CHARACTER INPUT, WITHOUT ECHO
@@ -60,7 +60,7 @@ pub fn handle(cpu: &mut CPU) {
                 }
                 print!("{}", cp437::u8_as_char(b));
             }
-            cpu.set_r8(R8::AL, b'$');
+            cpu.set_r8(&R8::AL, b'$');
         }
         0x0B => {
             // DOS 1+ - GET STDIN STATUS
@@ -88,10 +88,10 @@ pub fn handle(cpu: &mut CPU) {
             } else {
                 let now = time::now();
                 let centi_sec = now.tm_nsec / 1000_0000; // nanosecond to 1/100 sec
-                cpu.set_r8(R8::CH, now.tm_hour as u8); // hour
-                cpu.set_r8(R8::CL, now.tm_min as u8);  // minute
-                cpu.set_r8(R8::DH, now.tm_sec as u8);  // second
-                cpu.set_r8(R8::DL, centi_sec as u8);   // 1/100 second
+                cpu.set_r8(&R8::CH, now.tm_hour as u8); // hour
+                cpu.set_r8(&R8::CL, now.tm_min as u8);  // minute
+                cpu.set_r8(&R8::DH, now.tm_sec as u8);  // second
+                cpu.set_r8(&R8::DL, centi_sec as u8);   // 1/100 second
             }
         }
         0x30 => {
@@ -123,8 +123,8 @@ pub fn handle(cpu: &mut CPU) {
             // 05h *  ZDS (Zenith Electronics, Zenith Electronics).
 
             // fake MS-DOS 3.10, as needed by msdos32/APPEND.COM
-            cpu.set_r8(R8::AL, 3); // AL = major version number (00h if DOS 1.x)
-            cpu.set_r8(R8::AH, 10); // AH = minor version number
+            cpu.set_r8(&R8::AL, 3); // AL = major version number (00h if DOS 1.x)
+            cpu.set_r8(&R8::AH, 10); // AH = minor version number
         }
         0x40 => {
             // DOS 2+ - WRITE - WRITE TO FILE OR DEVICE
@@ -183,13 +183,13 @@ pub fn handle(cpu: &mut CPU) {
             // Notes: Unless the process is its own parent (see #01378 [offset 16h] at AH=26h),
             // all open files are closed and all memory belonging to the process is freed. All
             // network file locks should be removed before calling this function
-            let al = cpu.get_r8(R8::AL);
+            let al = cpu.get_r8(&R8::AL);
             println!("DOS - TERMINATE WITH RETURN CODE {:02X}", al);
             cpu.fatal_error = true; // XXX just to stop debugger.run() function
         }
         _ => {
             println!("int21 error: unknown ah={:02X}, ax={:04X}",
-                     cpu.get_r8(R8::AH),
+                     cpu.get_r8(&R8::AH),
                      cpu.get_r16(&R16::AX));
         }
     }

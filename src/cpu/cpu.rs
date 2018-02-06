@@ -152,8 +152,8 @@ impl CPU {
         }
     }
 
-    pub fn get_r8(&self, r: R8) -> u8 {
-        match r {
+    pub fn get_r8(&self, r: &R8) -> u8 {
+        match *r {
             R8::AL => self.r16[0].lo_u8(),
             R8::CL => self.r16[1].lo_u8(),
             R8::DL => self.r16[2].lo_u8(),
@@ -165,8 +165,8 @@ impl CPU {
         }
     }
 
-    pub fn set_r8(&mut self, r: R8, val: u8) {
-        match r {
+    pub fn set_r8(&mut self, r: &R8, val: u8) {
+        match *r {
             R8::AL => self.r16[0].set_lo(val),
             R8::CL => self.r16[1].set_lo(val),
             R8::DL => self.r16[2].set_lo(val),
@@ -258,7 +258,7 @@ impl CPU {
         match op.command {
             Op::Aaa() => {
                 // ASCII Adjust After Addition
-                let v = if self.get_r8(R8::AL) > 0xf9 {
+                let v = if self.get_r8(&R8::AL) > 0xf9 {
                     2
                  } else {
                     1
@@ -271,13 +271,13 @@ impl CPU {
                 // AH ← tempAL / imm8; (* imm8 is set to 0AH for the AAM mnemonic *)
                 // AL ← tempAL MOD imm8;
                 let imm8 = self.read_parameter_value(&op.params.dst) as u8;
-                let al = self.get_r8(R8::AL);
-                self.set_r8(R8::AH, al / imm8);
-                self.set_r8(R8::AL, al % imm8);
+                let al = self.get_r8(&R8::AL);
+                self.set_r8(&R8::AH, al / imm8);
+                self.set_r8(&R8::AL, al % imm8);
             }
             Op::Aas() => {
                 // ASCII Adjust AL After Subtraction
-                let v = if self.get_r8(R8::AL) < 6 {
+                let v = if self.get_r8(&R8::AL) < 6 {
                     -2
                 } else {
                     -1
@@ -421,12 +421,12 @@ impl CPU {
             }
             Op::Cbw() => {
                 // Convert Byte to Word
-                let ah = if self.get_r8(R8::AL) & 0x80 != 0 {
+                let ah = if self.get_r8(&R8::AL) & 0x80 != 0 {
                     0xFF
                 } else {
                     0x00
                 };
-                self.set_r8(R8::AH, ah);
+                self.set_r8(&R8::AH, ah);
             }
             Op::Clc() => {
                 // Clear Carry Flag
@@ -531,8 +531,8 @@ impl CPU {
                 let res = (Wrapping(dst) / Wrapping(src)).0;
                 let rem = (Wrapping(dst) % Wrapping(src)).0;
                 // The CF, OF, SF, ZF, AF, and PF flags are undefined.
-                self.set_r8(R8::AL, (res & 0xFF) as u8); // quotient
-                self.set_r8(R8::AH, (rem & 0xFF) as u8); // remainder
+                self.set_r8(&R8::AL, (res & 0xFF) as u8); // quotient
+                self.set_r8(&R8::AH, (rem & 0xFF) as u8); // remainder
             }
             Op::Div16() => {
                 let dst = ((self.get_r16(&R16::DX) as usize) << 16) + self.get_r16(&R16::AX) as usize; // DX:AX
@@ -578,26 +578,26 @@ impl CPU {
                 let dividend = self.get_r16(&R16::AX) as i16;
                 let op1 = self.read_parameter_value(&op.params.dst) as i16;
                 if op1 == 0 {
-                    self.exception(Exception::DIV0, 0);
+                    self.exception(&Exception::DIV0, 0);
                 }
                 let quo = dividend / op1;
                 let rem = dividend % op1;
                 if dividend > 0xFF {
-                    self.exception(Exception::DIV0, 0);
+                    self.exception(&Exception::DIV0, 0);
                 }
-                self.set_r8(R8::AL, (quo & 0xFF) as u8);
-                self.set_r8(R8::AH, (rem & 0xFF) as u8);
+                self.set_r8(&R8::AL, (quo & 0xFF) as u8);
+                self.set_r8(&R8::AH, (rem & 0xFF) as u8);
             }
             Op::Idiv16 => {
                 let dividend = (((self.get_r16(&R16::DX) as i32) << 16) | self.get_r16(&R16::AX) as i32) as isize; // DX:AX
                 let op1 = (self.read_parameter_value(&op.params.dst) as i16) as isize;
                 if op1 == 0 {
-                    self.exception(Exception::DIV0, 0);
+                    self.exception(&Exception::DIV0, 0);
                 }
                 let quo = dividend / op1;
                 let rem = dividend % op1;
                 if quo != quo & 0xFFFF {
-                    self.exception(Exception::DIV0, 0);
+                    self.exception(&Exception::DIV0, 0);
                 }
                 self.set_r16(&R16::AX, quo as u16);
                 self.set_r16(&R16::DX, rem as u16);
@@ -605,7 +605,7 @@ impl CPU {
             Op::Imul8 => {
                 // NOTE: only 1-parameter imul8 instruction exists
                 // IMUL r/m8               : AX← AL ∗ r/m byte.
-                let f1 = self.get_r8(R8::AL) as i8;
+                let f1 = self.get_r8(&R8::AL) as i8;
                 let f2 = self.read_parameter_value(&op.params.dst) as i8;
                 let product = f1 as i16 * f2 as i16;
                 self.set_r16(&R16::AX, product as u16);
@@ -848,7 +848,7 @@ impl CPU {
                 // The DS segment may be over-ridden with a segment override prefix.
                 let val = self.mmu.read_u8(self.segment(op.segment_prefix), self.get_r16(&R16::SI));
 
-                self.set_r8(R8::AL, val);
+                self.set_r8(&R8::AL, val);
                 let si = if !self.flags.direction {
                     (Wrapping(self.get_r16(&R16::SI)) + Wrapping(1)).0
                 } else {
@@ -975,7 +975,7 @@ impl CPU {
             }
             Op::Mul8() => {
                 // Unsigned multiply (AX ← AL ∗ r/m8).
-                let src = self.get_r8(R8::AL) as usize;
+                let src = self.get_r8(&R8::AL) as usize;
                 let dst = self.read_parameter_value(&op.params.dst);
                 let res = (Wrapping(dst) * Wrapping(src)).0;
 
@@ -1335,7 +1335,7 @@ impl CPU {
 
                 // Loads the SF, ZF, AF, PF, and CF flags of the EFLAGS register with values
                 // from the corresponding bits in the AH register (bits 7, 6, 4, 2, and 0, respectively).
-                let ah = self.get_r8(R8::AH);
+                let ah = self.get_r8(&R8::AH);
                 self.flags.carry = ah & 0x1 != 0; // bit 0
                 self.flags.parity = ah & 0x4 != 0; // bit 2
                 self.flags.auxiliary_carry = ah & 0x10 != 0; // bit 4
@@ -1352,7 +1352,7 @@ impl CPU {
                 } else {
                     0
                 };
-                self.set_r8(R8::AL, al);
+                self.set_r8(&R8::AL, al);
             }
             Op::Sar8 => {
                 // Signed divide* r/m8 by 2, imm8 times.
@@ -1588,7 +1588,7 @@ impl CPU {
                 // no parameters
                 // store AL at ES:(E)DI
                 // The ES segment cannot be overridden with a segment override prefix.
-                let al = self.get_r8(R8::AL);
+                let al = self.get_r8(&R8::AL);
                 let es = self.get_sr(&SR::ES);
                 let di = self.get_r16(&R16::DI);
                 self.mmu.write_u8(es, di, al);
@@ -1686,8 +1686,8 @@ impl CPU {
                 // no parameters
                 // Set AL to memory byte DS:[(E)BX + unsigned AL].
                 // The DS segment may be overridden with a segment override prefix.
-                let al = self.mmu.read_u8(self.segment(op.segment_prefix), self.get_r16(&R16::BX) + u16::from(self.get_r8(R8::AL)));
-                self.set_r8(R8::AL, al);
+                let al = self.mmu.read_u8(self.segment(op.segment_prefix), self.get_r16(&R16::BX) + u16::from(self.get_r8(&R8::AL)));
+                self.set_r8(&R8::AL, al);
             }
             Op::Xor8() => {
                 // two parameters (dst=reg)
@@ -1761,7 +1761,7 @@ impl CPU {
         }
     }
 
-    fn exception(&mut self, which: Exception, error: usize) {
+    fn exception(&mut self, which: &Exception, error: usize) {
         /*
         #define CPU_INT_SOFTWARE    0x1
         #define CPU_INT_EXCEPTION   0x2
@@ -2019,30 +2019,30 @@ impl CPU {
 
     // used by aaa, aas
     fn adjb(&mut self, param1: i8, param2: i8) {
-        if self.flags.auxiliary_carry || (self.get_r8(R8::AL) & 0xf) > 9 {
-            let al = self.get_r8(R8::AL);
-            let ah = self.get_r8(R8::AH);
-            self.set_r8(R8::AL, (u16::from(al) + param1 as u16) as u8);
-            self.set_r8(R8::AH, (u16::from(ah) + param2 as u16) as u8);
+        if self.flags.auxiliary_carry || (self.get_r8(&R8::AL) & 0xf) > 9 {
+            let al = self.get_r8(&R8::AL);
+            let ah = self.get_r8(&R8::AH);
+            self.set_r8(&R8::AL, (u16::from(al) + param1 as u16) as u8);
+            self.set_r8(&R8::AH, (u16::from(ah) + param2 as u16) as u8);
             self.flags.auxiliary_carry = true;
             self.flags.carry = true;
         } else {
             self.flags.auxiliary_carry = false;
             self.flags.carry = false;
         }
-        let al = self.get_r8(R8::AL);
-        self.set_r8(R8::AL, al & 0x0F);
+        let al = self.get_r8(&R8::AL);
+        self.set_r8(&R8::AL, al & 0x0F);
     }
 
     // used by daa, das
     fn adj4(&mut self, param1: i8, param2: i8) {
-        let old_al = self.get_r8(R8::AL);
+        let old_al = self.get_r8(&R8::AL);
         let old_cf = self.flags.carry;
         self.flags.carry = false;
 
         if (old_al & 0x0F) > 9 || self.flags.auxiliary_carry {
             let tmp = u16::from(old_al) + param1 as u16;
-            self.set_r8(R8::AL, tmp as u8);
+            self.set_r8(&R8::AL, tmp as u8);
             self.flags.carry = tmp & 0x100 != 0;
             self.flags.auxiliary_carry = true;
         } else {
@@ -2050,7 +2050,7 @@ impl CPU {
         }
 
         if old_al > 0x99 || old_cf {
-            self.set_r8(R8::AL, (u16::from(old_al) + param2 as u16) as u8);
+            self.set_r8(&R8::AL, (u16::from(old_al) + param2 as u16) as u8);
             self.flags.carry = true;
         }
     }

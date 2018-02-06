@@ -52,7 +52,7 @@ fn can_execute_add8() {
     cpu.load_com(&code);
 
     cpu.execute_instructions(2);
-    assert_eq!(0x00, cpu.get_r8(R8::AH));
+    assert_eq!(0x00, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
     assert_eq!(true, cpu.flags.auxiliary_carry);
@@ -61,7 +61,7 @@ fn can_execute_add8() {
     assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instructions(2);
-    assert_eq!(0x00, cpu.get_r8(R8::AH));
+    assert_eq!(0x00, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
     assert_eq!(true, cpu.flags.auxiliary_carry);
@@ -70,7 +70,7 @@ fn can_execute_add8() {
     assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instructions(2);
-    assert_eq!(0xFF, cpu.get_r8(R8::AH));
+    assert_eq!(0xFF, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
     assert_eq!(false, cpu.flags.auxiliary_carry);
@@ -79,7 +79,7 @@ fn can_execute_add8() {
     assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instructions(2);
-    assert_eq!(0xFE, cpu.get_r8(R8::AH));
+    assert_eq!(0xFE, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(false, cpu.flags.parity);
     assert_eq!(true, cpu.flags.auxiliary_carry);
@@ -155,10 +155,10 @@ fn can_execute_mov_r8() {
     cpu.load_com(&code);
 
     cpu.execute_instruction();
-    assert_eq!(0x13, cpu.get_r8(R8::DL));
+    assert_eq!(0x13, cpu.get_r8(&R8::DL));
 
     cpu.execute_instruction();
-    assert_eq!(0x13, cpu.get_r8(R8::AL));
+    assert_eq!(0x13, cpu.get_r8(&R8::AL));
 }
 
 #[test]
@@ -179,7 +179,7 @@ fn can_execute_mov_r8_rm8() {
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x99, cpu.get_r8(R8::AH));
+    assert_eq!(0x99, cpu.get_r8(&R8::AH));
 }
 
 #[test]
@@ -281,27 +281,27 @@ fn can_execute_mov_es_segment() {
     let di = 0x0200;
     cpu.set_sr(&SR::ES, es);
     cpu.set_r16(&R16::DI, di);
-    cpu.set_r8(R8::AH, 0x88);
+    cpu.set_r8(&R8::AH, 0x88);
 
     cpu.execute_instruction(); // mov [es:di],ah
     assert_eq!(0x88, cpu.mmu.read_u8(es, di));
 
     cpu.execute_instruction(); // mov al,[es:di]
-    assert_eq!(0x88, cpu.get_r8(R8::AL));
+    assert_eq!(0x88, cpu.get_r8(&R8::AL));
 
     cpu.mmu.write_u8(es, di + 1, 0x1);
     cpu.mmu.write_u8(es, di - 1, 0xFF);
     cpu.execute_instruction(); // mov al,[es:di+0x1]
-    assert_eq!(0x1, cpu.get_r8(R8::AL));
+    assert_eq!(0x1, cpu.get_r8(&R8::AL));
     cpu.execute_instruction(); // mov bl,[es:di-0x1]
-    assert_eq!(0xFF, cpu.get_r8(R8::BL));
+    assert_eq!(0xFF, cpu.get_r8(&R8::BL));
 
     cpu.mmu.write_u8(es, di + 0x140, 0x22);
     cpu.mmu.write_u8(es, di - 0x140, 0x88);
     cpu.execute_instruction(); // mov al,[es:di+0x140]
-    assert_eq!(0x22, cpu.get_r8(R8::AL));
+    assert_eq!(0x22, cpu.get_r8(&R8::AL));
     cpu.execute_instruction(); // mov bl,[es:di-0x140]
-    assert_eq!(0x88, cpu.get_r8(R8::BL));
+    assert_eq!(0x88, cpu.get_r8(&R8::BL));
 }
 
 #[test]
@@ -309,17 +309,17 @@ fn can_execute_mov_fs_segment() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0x64, 0x88, 0x05, // mov [fs:di],al
+        0x68, 0x40, 0x40,   // push word 0x4040
+        0x0F, 0xA1,         // pop fs
+        0xBF, 0x00, 0x02,   // mov di,0x200
+        0xB0, 0xFF,         // mov al,0xff
+
+        0x64, 0x88, 0x05,   // mov [fs:di],al
     ];
 
     cpu.load_com(&code);
-    let fs = 0x4040;
-    let di = 0x0200;
-    cpu.set_sr(&SR::FS, fs);
-    cpu.set_r16(&R16::DI, di);
-    cpu.set_r8(R8::AL, 0xFF);
-    cpu.execute_instruction(); // mov [fs:di],al
-    assert_eq!(0xFF, cpu.mmu.read_u8(fs, di));
+    cpu.execute_instructions(5); // mov [fs:di],al
+    assert_eq!(0xFF, cpu.mmu.read_u8(cpu.get_sr(&SR::FS), cpu.get_r16(&R16::DI)));
 }
 
 #[test]
@@ -360,7 +360,7 @@ fn can_execute_with_flags() {
 
     cpu.execute_instruction();
     assert_eq!(0x102, cpu.ip);
-    assert_eq!(0xFE, cpu.get_r8(R8::AH));
+    assert_eq!(0xFE, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(false, cpu.flags.sign);
@@ -370,7 +370,7 @@ fn can_execute_with_flags() {
 
     cpu.execute_instruction();
     assert_eq!(0x105, cpu.ip);
-    assert_eq!(0x00, cpu.get_r8(R8::AH));
+    assert_eq!(0x00, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(true, cpu.flags.zero);
     assert_eq!(false, cpu.flags.sign);
@@ -563,7 +563,7 @@ fn can_execute_addressing() {
 
     cpu.execute_instruction();
     // should have read byte from [di+0x06AE] to al
-    assert_eq!(0xFE, cpu.get_r8(R8::AL));
+    assert_eq!(0xFE, cpu.get_r8(&R8::AL));
 }
 
 #[test]
@@ -602,13 +602,13 @@ fn can_execute_and() {
                res);
 
     cpu.execute_instruction();
-    assert_eq!(0xF0, cpu.get_r8(R8::AL));
+    assert_eq!(0xF0, cpu.get_r8(&R8::AL));
 
     cpu.execute_instruction();
-    assert_eq!(0x1F, cpu.get_r8(R8::AH));
+    assert_eq!(0x1F, cpu.get_r8(&R8::AH));
 
     cpu.execute_instruction();
-    assert_eq!(0x10, cpu.get_r8(R8::AH));
+    assert_eq!(0x10, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.sign);
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(false, cpu.flags.parity);
@@ -665,14 +665,14 @@ fn can_execute_div8() {
                res);
 
     cpu.execute_instruction();
-    assert_eq!(0x40, cpu.get_r8(R8::AL));
+    assert_eq!(0x40, cpu.get_r8(&R8::AL));
 
     cpu.execute_instruction();
-    assert_eq!(0x10, cpu.get_r8(R8::BL));
+    assert_eq!(0x10, cpu.get_r8(&R8::BL));
 
     cpu.execute_instruction();
-    assert_eq!(0x04, cpu.get_r8(R8::AL)); // quotient
-    assert_eq!(0x00, cpu.get_r8(R8::AH)); // remainder
+    assert_eq!(0x04, cpu.get_r8(&R8::AL)); // quotient
+    assert_eq!(0x00, cpu.get_r8(&R8::AH)); // remainder
 }
 
 #[test]
@@ -728,16 +728,16 @@ fn can_execute_idiv8() {
     cpu.load_com(&code);
 
     cpu.execute_instructions(3);
-    assert_eq!(0x00, cpu.get_r8(R8::AL)); // quotient
-    assert_eq!(0x00, cpu.get_r8(R8::AH)); // remainder
+    assert_eq!(0x00, cpu.get_r8(&R8::AL)); // quotient
+    assert_eq!(0x00, cpu.get_r8(&R8::AH)); // remainder
 
     cpu.execute_instructions(3);
-    assert_eq!(0x00, cpu.get_r8(R8::AL));
-    assert_eq!(0xFF, cpu.get_r8(R8::AH));
+    assert_eq!(0x00, cpu.get_r8(&R8::AL));
+    assert_eq!(0xFF, cpu.get_r8(&R8::AH));
 
     cpu.execute_instructions(3);
-    assert_eq!(0x00, cpu.get_r8(R8::AL));
-    assert_eq!(0x01, cpu.get_r8(R8::AH));
+    assert_eq!(0x00, cpu.get_r8(&R8::AL));
+    assert_eq!(0x01, cpu.get_r8(&R8::AH));
 }
 
 #[test]
@@ -1084,12 +1084,12 @@ fn can_execute_setc() {
     cpu.load_com(&code);
     cpu.flags.carry = true;
     cpu.execute_instruction();
-    assert_eq!(0x01, cpu.get_r8(R8::AL));
+    assert_eq!(0x01, cpu.get_r8(&R8::AL));
 
     cpu.load_com(&code);
     cpu.flags.carry = false;
     cpu.execute_instruction();
-    assert_eq!(0x00, cpu.get_r8(R8::AL));
+    assert_eq!(0x00, cpu.get_r8(&R8::AL));
 }
 
 #[test]
@@ -1109,7 +1109,7 @@ fn can_execute_movzx() {
                res);
 
     cpu.execute_instruction();
-    assert_eq!(0xFF, cpu.get_r8(R8::AH));
+    assert_eq!(0xFF, cpu.get_r8(&R8::AH));
 
     cpu.execute_instruction();
     assert_eq!(0xFFFF, cpu.get_r16(&R16::BX));
@@ -1130,17 +1130,17 @@ fn can_execute_rol8() {
     cpu.load_com(&code);
 
     cpu.execute_instructions(2);
-    assert_eq!(0xFD, cpu.get_r8(R8::AH));
+    assert_eq!(0xFD, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instructions(2);
-    assert_eq!(0xFF, cpu.get_r8(R8::AH));
+    assert_eq!(0xFF, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     // overflow undefined with non-1 shift count
 
     cpu.execute_instructions(2);
-    assert_eq!(0x10,  cpu.get_r8(R8::AH));
+    assert_eq!(0x10,  cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     // overflow undefined with non-1 shift count
 }
@@ -1190,17 +1190,17 @@ fn can_execute_ror8() {
     cpu.load_com(&code);
 
     cpu.execute_instructions(2);
-    assert_eq!(0x7F, cpu.get_r8(R8::AH));
+    assert_eq!(0x7F, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(true, cpu.flags.overflow);
 
     cpu.execute_instructions(2);
-    assert_eq!(0xFF, cpu.get_r8(R8::AH));
+    assert_eq!(0xFF, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     // overflow undefined with non-1 shift count
 
     cpu.execute_instructions(2);
-    assert_eq!(0x10, cpu.get_r8(R8::AH));
+    assert_eq!(0x10, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     // overflow undefined with non-1 shift count
 }
@@ -1253,17 +1253,17 @@ fn can_execute_rcl8() {
     cpu.load_com(&code);
 
     cpu.execute_instructions(3);
-    assert_eq!(0xFD, cpu.get_r8(R8::AH));
+    assert_eq!(0xFD, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instructions(3);
-    assert_eq!(0xFF, cpu.get_r8(R8::AH));
+    assert_eq!(0xFF, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instructions(3);
-    assert_eq!(0x18, cpu.get_r8(R8::AH));
+    assert_eq!(0x18, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(false, cpu.flags.overflow);
 }
@@ -1325,28 +1325,28 @@ fn can_execute_rcr8() {
     cpu.load_com(&code);
 
     cpu.execute_instructions(3);
-    assert_eq!(0xFF,  cpu.get_r8(R8::AH));
+    assert_eq!(0xFF,  cpu.get_r8(&R8::AH));
     // 3002 = 0b11_0000_0000_0010 (xp)
     //        ____ O___ SZ_A _P_C
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instructions(3);
-    assert_eq!(0x7F,  cpu.get_r8(R8::AH));
+    assert_eq!(0x7F,  cpu.get_r8(&R8::AH));
     // 3802 = 0b11_1000_0000_0010 (xp)
     //        ____ O___ SZ_A _P_C
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(true, cpu.flags.overflow);
 
     cpu.execute_instructions(3);
-    assert_eq!(0xFF,  cpu.get_r8(R8::AH));
+    assert_eq!(0xFF,  cpu.get_r8(&R8::AH));
     // 3703 = 0b11_0111_0000_0011 (xp)
     //        ____ O___ SZ_A _P_C
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instructions(3);
-    assert_eq!(0x30,  cpu.get_r8(R8::AH));
+    assert_eq!(0x30,  cpu.get_r8(&R8::AH));
     // 3802 = 0b11_1000_0000_0010 (xp)
     //        ____ O___ SZ_A _P_C
     assert_eq!(false, cpu.flags.carry);
@@ -1420,7 +1420,7 @@ fn can_execute_shl8() {
     cpu.load_com(&code);
 
     cpu.execute_instructions(2);
-    assert_eq!(0xFE, cpu.get_r8(R8::AH));
+    assert_eq!(0xFE, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(false, cpu.flags.parity);
     assert_eq!(false, cpu.flags.zero);
@@ -1428,7 +1428,7 @@ fn can_execute_shl8() {
     assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instructions(2);
-    assert_eq!(0x00, cpu.get_r8(R8::AH));
+    assert_eq!(0x00, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
     assert_eq!(true, cpu.flags.zero);
@@ -1440,7 +1440,7 @@ fn can_execute_shl8() {
     //                           O       A
 
     cpu.execute_instructions(2);
-    assert_eq!(0x10, cpu.get_r8(R8::AH));
+    assert_eq!(0x10, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(false, cpu.flags.parity);
     assert_eq!(false, cpu.flags.zero);
@@ -1502,7 +1502,7 @@ fn can_execute_shr8() {
     cpu.load_com(&code);
 
     cpu.execute_instructions(2);
-    assert_eq!(0x7F, cpu.get_r8(R8::AH));
+    assert_eq!(0x7F, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(false, cpu.flags.parity);
     assert_eq!(false, cpu.flags.zero);
@@ -1510,7 +1510,7 @@ fn can_execute_shr8() {
     assert_eq!(true, cpu.flags.overflow);
 
     cpu.execute_instructions(2);
-    assert_eq!(0x00, cpu.get_r8(R8::AH));
+    assert_eq!(0x00, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
     assert_eq!(true, cpu.flags.zero);
@@ -1518,7 +1518,7 @@ fn can_execute_shr8() {
     assert_eq!(true, cpu.flags.overflow);
 
     cpu.execute_instructions(2);
-    assert_eq!(0x00, cpu.get_r8(R8::AH));
+    assert_eq!(0x00, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
     assert_eq!(true, cpu.flags.zero);
@@ -1580,7 +1580,7 @@ fn can_execute_sar8() {
     cpu.load_com(&code);
 
     cpu.execute_instructions(2);
-    assert_eq!(0xFF, cpu.get_r8(R8::AH));
+    assert_eq!(0xFF, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
     assert_eq!(false, cpu.flags.zero);
@@ -1588,7 +1588,7 @@ fn can_execute_sar8() {
     assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instructions(2);
-    assert_eq!(0xFF, cpu.get_r8(R8::AH));
+    assert_eq!(0xFF, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
     assert_eq!(false, cpu.flags.zero);
@@ -1596,7 +1596,7 @@ fn can_execute_sar8() {
     assert_eq!(false, cpu.flags.overflow);
 
     cpu.execute_instructions(2);
-    assert_eq!(0x00, cpu.get_r8(R8::AH));
+    assert_eq!(0x00, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
     assert_eq!(true, cpu.flags.zero);
@@ -1778,7 +1778,7 @@ fn can_execute_xlatb() {
     cpu.mmu.write_u16(ds, 0x0240, 0x80);
 
     cpu.execute_instructions(2); // xlatb: al = [ds:bx]
-    assert_eq!(0x80, cpu.get_r8(R8::AL));
+    assert_eq!(0x80, cpu.get_r8(&R8::AL));
 }
 
 #[test]

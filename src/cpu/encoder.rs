@@ -28,6 +28,7 @@ quick_error! {
     }
 }
 
+#[derive(Default)]
 pub struct Encoder {
 }
 
