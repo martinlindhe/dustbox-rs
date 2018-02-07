@@ -171,5 +171,5 @@ impl Op {
 #[derive(Clone, Debug, PartialEq)]
 pub enum InvalidOp {
     Reg(u8),
-    Op(Vec<u8>),
+    Op,
 }

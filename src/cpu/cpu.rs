@@ -222,13 +222,14 @@ impl CPU {
             Op::Invalid(reason) => {
                 self.fatal_error = true;
                 match reason {
-                    InvalidOp::Op(ops) => {
-                        let mut ops_str = String::new();
-                        for x in ops {
-                            let hex = format!("{:02X} ", x);
-                            ops_str.push_str(&hex);
+                    InvalidOp::Op => {
+                        let mut ops_str = Vec::new();
+                        for i in 0..16 {
+                            let x = self.mmu.read_u8(cs, ip + i);
+                            let hex = format!("0x{:02X}", x);
+                            ops_str.push(hex);
                         }
-                        println!("Error unhandled OP {}at {:04X}:{:04X}", ops_str, cs, ip);
+                        println!("Error unhandled OP {} at {:04X}:{:04X}", ops_str.join(", "), cs, ip);
                     }
                     InvalidOp::Reg(reg) => {
                         println!("Error invalid register {:02X} at {:04X}:{:04X}", reg, cs, ip);
