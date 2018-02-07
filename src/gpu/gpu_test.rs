@@ -68,7 +68,6 @@ fn demo_256() {
         "../dos-software-decoding/demo-256/x/x.com",
         "../dos-software-decoding/demo-256/zork/zork.com",
     ];
-
     run_and_save_video_frames(test_bins, "demo_256", "256");
 }
 
@@ -102,8 +101,49 @@ fn demo_512() {
         "../dos-software-decoding/demo-512/wamma/wamma.com",
         "../dos-software-decoding/demo-512/waves/waves.com",
     ];
-
     run_and_save_video_frames(test_bins, "demo_512", "512");
+}
+
+
+#[test] #[ignore] // expensive test
+fn games_com() {
+    let test_bins = vec![
+        "../dos-software-decoding/games-com/8088 Othello (1985)(Bayley)/8088_othello.com",
+        "../dos-software-decoding/games-com/Apple Panic (1982)(Broderbund Software Inc)/panic.com",
+        "../dos-software-decoding/games-com/Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com",
+        "../dos-software-decoding/games-com/Beast (1984)(Dan Baker)/beast.com",
+        "../dos-software-decoding/games-com/Blort (1987)(Hennsoft)/blort.com",
+        "../dos-software-decoding/games-com/Crossfire (1982)(Sierra Online)/cfire.com",
+        "../dos-software-decoding/games-com/Dig Dug (1982)(Namco)/digdug.com",
+        "../dos-software-decoding/games-com/F15 Strike Eagle I (1986)(Microprose Software Inc)/f15.com",
+        "../dos-software-decoding/games-com/Fire Fighter (1999)(Freeware)/firef.com",
+        "../dos-software-decoding/games-com/Galaxian (1983)(Atari Inc)/galaxian.com",
+        "../dos-software-decoding/games-com/Gnafu (1986)(Anonymous)/gnafu.com",
+        "../dos-software-decoding/games-com/Gooku (1987)(Anonymous)/go-moku.com",
+        "../dos-software-decoding/games-com/Hard Hat Mack (1984)(Electronic Arts Inc)/hhm.com",
+        "../dos-software-decoding/games-com/Hopper (1984)(Sega Entertainment Inc)/frogger.com",
+        "../dos-software-decoding/games-com/Invaders (1995)(Paul Reid)/invaders.com",
+        "../dos-software-decoding/games-com/Kenguru (1997)(Pig Games)/keng.com",
+        "../dos-software-decoding/games-com/Logical (1991)(Rainbow Arts)/logctrn1.com",
+        "../dos-software-decoding/games-com/Madball (1985)(Microtec)/madball.com",
+        "../dos-software-decoding/games-com/Megapede (1992)(Dom Early)/megapede.com",
+        "../dos-software-decoding/games-com/Mind Field (1985)(Everett Kaser)/mine.com",
+        "../dos-software-decoding/games-com/Ms Pacman (1983)(Atari Inc)/mspacman.com",
+        "../dos-software-decoding/games-com/Mummies (1985)(Iain Brown)/mummies.com",
+        "../dos-software-decoding/games-com/Paratrooper (1982)(Orion Software)/ptrooper.com",
+        "../dos-software-decoding/games-com/Pc Man (1982)(Orion Software)/pcmanv1.com",
+        "../dos-software-decoding/games-com/Pc Man (1982)(Orion Software)/pcmanv2.com",
+        "../dos-software-decoding/games-com/Pente (1984)(Michael Leach)/pente.com",
+        "../dos-software-decoding/games-com/Pipes (1983)(Creative Software)/pipes.com",
+        "../dos-software-decoding/games-com/Pong (1986)(Imagine)/pong21.com",
+        "../dos-software-decoding/games-com/Slow Mo (1990)(David Perrell)/moslo.com",
+        "../dos-software-decoding/games-com/Slow Mo (1990)(David Perrell)/varislow.com",
+        "../dos-software-decoding/games-com/Slow Mo Deluxe (1996)(David Perrell)/moslo.com",
+        "../dos-software-decoding/games-com/Space Commanders II (1985)(Columbia Data Products)/space2.com",
+        "../dos-software-decoding/games-com/Triskelion (1987)(Neil Rubenking)/triskel.com",
+        "../dos-software-decoding/games-com/Zaxxon (1984)(Sega)/zaxxon.com",
+    ];
+    run_and_save_video_frames(test_bins, "games_com", "game");
 }
 
 fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix: &str) {
@@ -115,8 +155,10 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
 
         let mut cpu = CPU::new(MMU::new());
         cpu.deterministic = true;
-        let code = tools::read_binary(bin).unwrap();
-        cpu.load_com(&code);
+        match tools::read_binary(bin) {
+            Ok(data) => cpu.load_com(&data),
+            Err(err) => panic!("failed to read {}: {}", bin, err),
+        }
 
         for _ in 0..7_000_000 {
             cpu.execute_instruction();

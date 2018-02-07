@@ -15,6 +15,7 @@ extern crate quick_error;
 pub mod cpu;
 pub mod memory;
 pub mod gpu;
+pub mod pic;
 pub mod pit;
 pub mod codepage;
 pub mod tools;

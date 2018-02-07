@@ -13,6 +13,7 @@ use memory::mmu::MMU;
 use interrupt;
 use gpu::GPU;
 use pit::PIT;
+use pic::PIC;
 
 #[cfg(test)]
 #[path = "./cpu_test.rs"]
@@ -42,6 +43,7 @@ pub struct CPU {
     pub flags: Flags,
     pub gpu: GPU,
     pub pit: PIT,
+    pub pic: PIC,
     rom_base: usize,
     pub fatal_error: bool, // for debugging: signals to debugger we hit an error
     pub deterministic: bool, // for testing: toggles non-deterministic behaviour
@@ -60,6 +62,7 @@ impl CPU {
             flags: Flags::new(),
             gpu: GPU::new(),
             pit: PIT::new(),
+            pic: PIC::new(),
             rom_base: 0,
             fatal_error: false,
             deterministic: false,
@@ -1436,6 +1439,9 @@ impl CPU {
 
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
+            Op::Scasb() => {
+                println!("XXX impl {}", op);
+            }
             Op::Setc => {
                 // setc: Set byte if carry (CF=1).
                 // setb (alias): Set byte if below (CF=1).
@@ -2059,9 +2065,25 @@ impl CPU {
     // write byte to I/O port
     fn out_u8(&mut self, dst: u16, data: u8) {
         match dst {
+            0x0021 => self.pic.write_0021(data),
+            0x0040 => self.pit.set_counter_divisor(data),
+            0x0042 => self.pit.counter2.write_next_part(data),
+            0x0043 => self.pit.set_mode_port(data),
+            0x0061 => {
+                // keyboard controller port b OR ppi programmable perihpial interface (XT only) - which mode are we in?
+            },
             0x03C7 => self.gpu.set_pel_address(data), // XXX unsure if understood correctly
             0x03C8 => self.gpu.set_pel_address(data),
             0x03C9 => self.gpu.set_pel_data(data),
+            0x03D4 => {
+                // CRT (6845) register index XXX
+            }
+            0x03D5 => {
+                // CRT (6845) data register XXX
+            }
+            0x03D9 => {
+                // XXX CGA palette register!!!
+            }
             _ => {
                 println!("ERROR: unhandled out_u8 to port {:04X}, data {:02X}", dst, data);
             }
@@ -2126,14 +2148,18 @@ impl CPU {
                 println!("XXX fixme in_port read DMA channel 1 current address");
                 0
             }
+            0x0021 => self.pic.read_ocw1(),
             0x0040 => self.pit.counter0.read_next_part(),
             0x0041 => self.pit.counter1.read_next_part(),
             0x0042 => self.pit.counter2.read_next_part(),
             0x0060 => {
-                // PS/2 Controller (keyboard & mice) data port
-                // http://wiki.osdev.org/%228042%22_PS/2_Controller
+                // keyboard controller data output buffer
                 0 // XXX
             },
+            0x0061 => {
+                // keyboard controller port b control register
+                0 // XXX
+            }
             0x03DA => self.gpu.read_cga_status_register(),
             _ => {
                 println!("in_port: unhandled in8 {:04X} at {:06X}",

@@ -33,6 +33,15 @@ impl Counter {
         self.hi = !self.hi;
         res
     }
+
+    pub fn write_next_part(&mut self, val: u8) {
+        self.counter = if self.hi {
+            (self.counter & 0x00FF) | ((val as u16) << 8)
+        } else {
+            (self.counter & 0xFF00) | val as u16
+        };
+        self.hi = !self.hi;
+    }
 }
 
 #[derive(Clone, Default)]
@@ -49,5 +58,14 @@ impl PIT {
             counter1: Counter::new(), // read of i/o port 0x0041
             counter2: Counter::new(), // read of i/o port 0x0042
         }
+    }
+
+    pub fn set_counter_divisor(&mut self, val: u8) {
+        // XXX impl
+    }
+
+    pub fn set_mode_port(&mut self, val: u8) {
+        // control word register for counters 0-2 (see #P0380)
+        // XXX impl
     }
 }
