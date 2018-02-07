@@ -371,10 +371,7 @@ impl Decoder {
                 let (mut op, length) = self.decode(Segment::ES);
                 return (op, length + 1);
             }
-            0x27 => {
-                // daa
-                op.command = Op::Daa();
-            }
+            0x27 => op.command = Op::Daa(),
             0x28 => {
                 // sub r/m8, r8
                 op.command = Op::Sub8();
@@ -412,9 +409,7 @@ impl Decoder {
                 let (mut op, length) = self.decode(Segment::CS);
                 return (op, length + 1);
             }
-            0x2F => {
-                op.command = Op::Das();
-            }
+            0x2F => op.command = Op::Das(),
             0x30 => {
                 // xor r/m8, r8
                 op.command = Op::Xor8();
@@ -452,9 +447,7 @@ impl Decoder {
                 let (mut op, length) = self.decode(Segment::SS);
                 return (op, length + 1);
             }
-            0x37 => {
-                op.command = Op::Aaa();
-            }
+            0x37 => op.command = Op::Aaa(),
             0x38 => {
                 // cmp r/m8, r8
                 op.command = Op::Cmp8();
@@ -492,9 +485,7 @@ impl Decoder {
                 let (mut op, length) = self.decode(Segment::DS);
                 return (op, length + 1);
             }
-            0x3F => {
-                op.command = Op::Aas();
-            }
+            0x3F => op.command = Op::Aas(),
             0x40...0x47 => {
                 // inc r16
                 op.command = Op::Inc16;
@@ -515,15 +506,14 @@ impl Decoder {
                 op.command = Op::Pop16;
                 op.params.dst = Parameter::Reg16(Into::into(b & 7));
             }
-            0x60 => {
-                // pusha
-                op.command = Op::Pusha;
+            0x60 => op.command = Op::Pusha,
+            0x61 => op.command = Op::Popa,
+            0x62 => {
+                // bound r16, m16&16
+                op.command = Op::Bound();
+                // XXX not all modes of 2nd argument is valid
+                op.params = self.r16_rm16(op.segment_prefix);
             }
-            0x61 => {
-                // popa
-                op.command = Op::Popa;
-            }
-            // 0x62 = "bound"
             0x63 => {
                 // arpl r/m16, r16
                 op.command = Op::Arpl();
@@ -571,18 +561,10 @@ impl Decoder {
                 op.params = self.r16_rm16(op.segment_prefix);
                 op.params.src2 = Parameter::Imm8(self.read_u8());
             }
-            0x6C => {
-                op.command = Op::Insb();
-            }
-            0x6D => {
-                op.command = Op::Insw();
-            }
-            0x6E => {
-                op.command = Op::Outsb();
-            }
-            0x6F => {
-                op.command = Op::Outsw();
-            }
+            0x6C => op.command = Op::Insb(),
+            0x6D => op.command = Op::Insw(),
+            0x6E => op.command = Op::Outsb(),
+            0x6F => op.command = Op::Outsw(),
             0x70 => {
                 // jo rel8
                 op.command = Op::Jo();
@@ -778,10 +760,7 @@ impl Decoder {
                     _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
                 }
             }
-            0x90 => {
-                // nop
-                op.command = Op::Nop();
-            }
+            0x90 => op.command = Op::Nop(),
             0x91...0x97 => {
                 // xchg AX, r16 | xchg r16, AX
                 // NOTE: "xchg ax,ax" is an alias of "nop"
@@ -789,27 +768,14 @@ impl Decoder {
                 op.params.dst = Parameter::Reg16(R16::AX);
                 op.params.src = Parameter::Reg16(Into::into(b & 7));
             }
-            0x98 => {
-                // cbw
-                op.command = Op::Cbw();
-            }
-            0x99 => {
-                op.command = Op::Cwd();
-            }
+            0x98 => op.command = Op::Cbw(),
+            0x99 => op.command = Op::Cwd(),
             // 0x9A = "call word imm16:imm16"
             // 0x9B = "wait"
-            0x9C => {
-                op.command = Op::Pushf;
-            }
-            0x9D => {
-                op.command = Op::Popf;
-            }
-            0x9E => {
-                op.command = Op::Sahf();
-            }
-            0x9F => {
-                op.command = Op::Lahf();
-            }
+            0x9C => op.command = Op::Pushf,
+            0x9D => op.command = Op::Popf,
+            0x9E => op.command = Op::Sahf(),
+            0x9F => op.command = Op::Lahf(),
             0xA0 => {
                 // mov AL, [moffs8]
                 op.command = Op::Mov8;
@@ -834,18 +800,10 @@ impl Decoder {
                 op.params.dst = Parameter::Ptr16(op.segment_prefix, self.read_u16());
                 op.params.src = Parameter::Reg16(R16::AX);
             }
-            0xA4 => {
-                op.command = Op::Movsb();
-            }
-            0xA5 => {
-                op.command = Op::Movsw();
-            }
-            0xA6 => {
-                op.command = Op::Cmpsb();
-            }
-            0xA7 => {
-		        op.command = Op::Cmpsw();
-            }
+            0xA4 => op.command = Op::Movsb(),
+            0xA5 => op.command = Op::Movsw(),
+            0xA6 => op.command = Op::Cmpsb(),
+            0xA7 => op.command = Op::Cmpsw(),
             0xA8 => {
                 // test AL, imm8
                 op.command = Op::Test8();
@@ -858,24 +816,12 @@ impl Decoder {
                 op.params.dst = Parameter::Reg16(R16::AX);
                 op.params.src = Parameter::Imm16(self.read_u16());
             }
-            0xAA => {
-                op.command = Op::Stosb();
-            }
-            0xAB => {
-                op.command = Op::Stosw();
-            }
-            0xAC => {
-                op.command = Op::Lodsb();
-            }
-            0xAD => {
-                op.command = Op::Lodsw();
-            }
-            0xAE => {
-		        op.command = Op::Scasb();
-            }
-	        0xAF => {
-		        op.command = Op::Scasw();
-            }
+            0xAA => op.command = Op::Stosb(),
+            0xAB => op.command = Op::Stosw(),
+            0xAC => op.command = Op::Lodsb(),
+            0xAD => op.command = Op::Lodsw(),
+            0xAE => op.command = Op::Scasb(),
+            0xAF => op.command = Op::Scasw(),
             0xB0...0xB7 => {
                 // mov r8, u8
                 op.command = Op::Mov8;
@@ -925,10 +871,7 @@ impl Decoder {
                 op.command = Op::Retn;
                 op.params.dst = Parameter::Imm16(self.read_u16());
             }
-            0xC3 => {
-                // ret [near]
-                op.command = Op::Retn;
-            }
+            0xC3 => op.command = Op::Retn, // ret [near]
             0xC4 => {
                 // les r16, m16
                 op.command = Op::Les();
@@ -963,18 +906,13 @@ impl Decoder {
                 op.params.dst = Parameter::Imm16(self.read_u16());
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
-            0xC9 => {
-                // leave
-                op.command = Op::Leave;
-            }
+            0xC9 => op.command = Op::Leave,
             0xCA => {
                 // ret [far] imm16
                 op.command = Op::Retf;
                 op.params.dst = Parameter::Imm16(self.read_u16());
             }
-            0xCB => {
-                op.command = Op::Retf;
-            }
+            0xCB => op.command = Op::Retf,
             0xCC => {
                 op.command = Op::Int();
                 op.params.dst = Parameter::Imm8(3);
@@ -984,8 +922,8 @@ impl Decoder {
                 op.command = Op::Int();
                 op.params.dst = Parameter::Imm8(self.read_u8());
             }
-            // 0xCE = "into"
-	        // 0xCF = "iretw"
+            0xCE => op.command = Op::Into(),
+	        0xCF => op.command = Op::Iret(),
             0xD0 => {
                 // bit shift byte by 1
                 let x = self.read_mod_reg_rm();
@@ -1059,12 +997,8 @@ impl Decoder {
                 op.command = Op::Aad();
                 op.params.dst = Parameter::Imm8(self.read_u8());
             }
-            0xD6 => {
-                op.command = Op::Salc();
-            }
-            0xD7 => {
-                op.command = Op::Xlatb();
-            }
+            0xD6 => op.command = Op::Salc(),
+            0xD7 => op.command = Op::Xlatb(),
             0xD8...0xDF => {
                 // fpu
                 println!("ERROR: unsupported FPU opcode {:02X}", b);
@@ -1247,30 +1181,12 @@ impl Decoder {
                     _ => unreachable!(),
                 }
             }
-            0xF8 => {
-                // clc
-                op.command = Op::Clc();
-            }
-            0xF9 => {
-                // stc
-                op.command = Op::Stc();
-            }
-            0xFA => {
-                // cli
-                op.command = Op::Cli();
-            }
-            0xFB => {
-                // sti
-                op.command = Op::Sti();
-            }
-            0xFC => {
-                // cld
-                op.command = Op::Cld();
-            }
-            0xFD => {
-                // std
-                op.command = Op::Std();
-            }
+            0xF8 => op.command = Op::Clc(),
+            0xF9 => op.command = Op::Stc(),
+            0xFA => op.command = Op::Cli(),
+            0xFB => op.command = Op::Sti(),
+            0xFC => op.command = Op::Cld(),
+            0xFD => op.command = Op::Std(),
             0xFE => {
                 // r/m8
                 let x = self.read_mod_reg_rm();
