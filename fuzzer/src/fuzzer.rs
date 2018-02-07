@@ -2,23 +2,83 @@ use std::collections::HashMap;
 use std::process::Command;
 use std::str;
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 use std::fs::File;
 use std::io::{self, Read, Write};
 
 use tera::Context;
 use tempdir::TempDir;
 
+use dustbox::cpu::instruction::Instruction;
 use dustbox::cpu::CPU;
 use dustbox::cpu::register::{R8, R16};
-use dustbox::cpu::instruction::Instruction;
-use dustbox::cpu::parameter::Parameter;
 use dustbox::cpu::encoder::Encoder;
-use dustbox::cpu::op::Op;
+use dustbox::memory::mmu::MMU;
 
 #[cfg(test)]
 #[path = "./fuzzer_test.rs"]
 mod fuzzer_test;
+
+fn fuzz(ops: &[Instruction], affected_registers: &[&str], affected_flag_mask: u16) {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let encoder = Encoder::new();
+
+    if let Ok(data) = encoder.encode_vec(&ops) {
+        // execute the ops in dustbox
+        cpu.load_com(&data);
+    } else {
+        panic!("invalid data sequence");
+    }
+
+    cpu.execute_instructions(ops.len());
+
+    // run in vm, compare regs
+    let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
+    assemble_prober(&ops, prober_com);
+
+    //let output = stdout_from_vmx_vmrun(prober_com); // ~2.3 seconds per call
+    let output = stdout_from_vm_http(prober_com); // ~0.05 seconds
+    //let output = stdout_from_dosbox(prober_com); // ~2.3 seconds
+
+    let dustbox_ah = cpu.get_r8(&R8::AH);
+
+    let vm_regs = prober_reg_map(&output);
+    if compare_regs(&cpu, &vm_regs, &affected_registers) {
+        println!("ah={:02x}: regs differ", dustbox_ah);
+    }
+
+    let vm_flags = vm_regs["flag"];
+    let vm_masked_flags = vm_flags & affected_flag_mask;
+    let dustbox_flags = cpu.flags.u16();
+    let dustbox_masked_flags = dustbox_flags & affected_flag_mask;
+    if vm_masked_flags != dustbox_masked_flags {
+        let xored = vm_masked_flags ^ dustbox_masked_flags;
+        print!("ah={:02x}: flags differ: vm {:04x}, dustbox {:04x} = diff b{:016b}: ", dustbox_ah, vm_masked_flags, dustbox_masked_flags, xored);
+        // XXX show differing flag names
+        if xored & 0x0000_0001 != 0 {
+            print!("C ");
+        }
+        if xored & 0x0000_0004 != 0 {
+            print!("P ");
+        }
+        if xored & 0x0000_0010 != 0 {
+            print!("A ");
+        }
+        if xored & 0x0000_0040 != 0 {
+            print!("Z ");
+        }
+        if xored & 0x0000_0080 != 0 {
+            print!("S ");
+        }
+        if xored & 0x0000_0800 != 0 {
+            print!("O ");
+        }
+        println!();
+    } else {
+        print!(".");
+        io::stdout().flush().ok().expect("Could not flush stdout");
+    }
+}
 
 struct AffectedFlags {
     // ____ O___ SZ_A _P_C
@@ -208,7 +268,6 @@ fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
     let vmx = "/Users/m/Documents/Virtual Machines.localized/Windows XP Professional.vmwarevm/Windows XP Professional.vmx";
     let vm_user = "vmware";
     let vm_password = "vmware";
-    //let now = Instant::now();
 
     // copy file to guest
     Command::new("vmrun")
@@ -217,10 +276,6 @@ fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
         .output()
         .expect("failed to execute process");
 
-    //let elapsed = now.elapsed();
-    //let upload_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
-    //let now = Instant::now();
-
     // run prober.bat, where prober.bat is "c:\prober.com > c:\prober.out" (XXX create this file in vm once)
     Command::new("vmrun")
         .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
@@ -228,24 +283,16 @@ fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
         .output()
         .expect("failed to execute process");
 
-    //let elapsed = now.elapsed();
-    //let run_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
-
     let tmp_dir = TempDir::new("vmware").unwrap();
     let file_path = tmp_dir.path().join("prober.out");
     let file_str = file_path.to_str().unwrap();
 
-    //let now = Instant::now();
     // copy back result
     Command::new("vmrun")
         .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
             "copyFileFromGuestToHost", vmx, "C:\\prober.out", file_str])
         .output()
         .expect("failed to execute process");
-
-    //let elapsed = now.elapsed();
-    //let download_sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
-    //println!("vmrun: upload {}s, run {}s, download {}s", upload_sec, run_sec, download_sec);
 
     let buffer = read_text_file(&file_path);
 
