@@ -19,7 +19,7 @@ fn exec_simple_loop(c: &mut Criterion) {
 
     cpu.load_com(&code);
 
-    c.bench_function("execute small jmp short loop", |b| b.iter(|| cpu.execute_instruction()));
+    c.bench_function("execute small jmp short loop", move |b| b.iter(|| cpu.execute_instruction()));
 }
 
 fn disasm_small_prog(c: &mut Criterion) {
@@ -37,7 +37,7 @@ fn disasm_small_prog(c: &mut Criterion) {
     ];
     cpu.load_com(&code);
 
-    c.bench_function("disasm small prog", |b| b.iter(|| cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 8)));
+    c.bench_function("disasm small prog", move |b| b.iter(|| cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 8)));
 }
 
 criterion_group!(benches, exec_simple_loop, disasm_small_prog);
