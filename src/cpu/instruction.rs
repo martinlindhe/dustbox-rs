@@ -84,7 +84,6 @@ impl Instruction {
 pub struct InstructionInfo {
     pub segment: usize,
     pub offset: usize,
-    pub text: String,
     pub bytes: Vec<u8>,
     pub instruction: Instruction,
 }
@@ -98,7 +97,7 @@ impl fmt::Display for InstructionInfo {
             self.segment,
             self.offset,
             right_pad(&hex, 16),
-            self.text
+            format!("{}", self.instruction),
         )
     }
 }
