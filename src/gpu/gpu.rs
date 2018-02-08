@@ -15,6 +15,7 @@ pub struct GPU {
     pub pal: Vec<DACPalette>,       // the palette in use
     pub pel_address: u8,            // set by write to 03c8
     pel_component: usize,           // color component for next out 03c9, 0 = red, 1 = green, 2 = blue
+    mode: u8,
 }
 
 impl GPU {
@@ -26,10 +27,21 @@ impl GPU {
             pal: default_vga_palette(), // XXX use array all the time
             pel_address: 0,
             pel_component: 0,
+            mode: 0x03, // default mode is 80x25 text
         }
     }
 
     pub fn render_frame(&self, memory: &[u8]) -> Vec<u8> {
+        match self.mode {
+            0x13 => self.render_vga_frame(memory),
+            _ => {
+                println!("XXX fixme render_frame for mode {:02x}", self.mode);
+                Vec::new()
+            }
+        }
+    }
+
+    fn render_vga_frame(&self, memory: &[u8]) -> Vec<u8> {
         let mut buf = vec![0u8; (self.width * self.height * 3) as usize];
         for y in 0..self.height {
             for x in 0..self.width {
@@ -43,6 +55,55 @@ impl GPU {
             }
         }
         buf
+    }
+
+    pub fn set_mode(&mut self, mode: u8) {
+        self.mode = mode;
+        // more info and video modes: http://www.ctyme.com/intr/rb-0069.htm
+        match mode {
+            0x01 => {
+                // 01h = T  40x25  8x8   320x200   16       8   B800 CGA,PCjr,Tandy
+                //     = T  40x25  8x14  320x350   16       8   B800 EGA
+                //     = T  40x25  8x16  320x400   16       8   B800 MCGA
+                //     = T  40x25  9x16  360x400   16       8   B800 VGA
+                println!("XXX video: set video mode to 320x200, 16 colors (text)");
+            }
+            0x03 => {
+                // 03h = T  80x25  8x8   640x200   16       4   B800 CGA,PCjr,Tandy
+                //     = T  80x25  8x14  640x350   16/64    8   B800 EGA
+                //     = T  80x25  8x16  640x400   16       8   B800 MCGA
+                //     = T  80x25  9x16  720x400   16       8   B800 VGA
+                //     = T  80x43  8x8   640x350   16       4   B800 EGA,VGA [17]
+                //     = T  80x50  8x8   640x400   16       4   B800 VGA [17]
+                println!("XXX video: set video mode to 640x200, 16 colors (text)");
+            }
+            0x04 => {
+                // 04h = G  40x25  8x8   320x200    4       .   B800 CGA,PCjr,EGA,MCGA,VGA
+                println!("XXX video: set video mode to 320x200, 4 colors");
+            }
+            0x06 => {
+                // 06h = G  80x25  8x8   640x200    2       .   B800 CGA,PCjr,EGA,MCGA,VGA
+                //     = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
+                println!("XXX video: set video mode to 640x200, 2 colors");
+            }
+            0x11 => {
+                // 11h = G  80x30  8x16  640x480  mono      .   A000 VGA,MCGA,ATI EGA,ATI VIP
+                println!("XXX video: set video mode to 640x480, mono");
+            }
+            0x12 => {
+                // 12h = G  80x30  8x16  640x480   16/256K  .   A000 VGA,ATI VIP
+                //     = G  80x30  8x16  640x480   16/64    .   A000 ATI EGA Wonder
+                //     = G    .     .    640x480   16       .     .  UltraVision+256K EGA
+                println!("XXX video: set video mode to 640x480, 16 colors");
+            }
+            0x13 => {
+                // 13h = G  40x25  8x8   320x200  256/256K  .   A000 VGA,MCGA,ATI VIP
+                println!("XXX video: set video mode to 320x200, 256 colors (VGA)");
+            }
+            _ => {
+                println!("video error: unknown video mode {:02X}", mode);
+            }
+        }
     }
 
     pub fn progress_scanline(&mut self) {

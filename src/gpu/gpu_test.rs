@@ -218,8 +218,12 @@ fn draw_image(frame: &[u8], width: u32, height: u32) -> ImageBuffer<Rgb<u8>, Vec
 fn write_video_frame_to_disk(cpu: &CPU, pngfile: &str) {
     let mem = cpu.mmu.dump_mem();
     let frame = cpu.gpu.render_frame(&mem);
-    let img = draw_image(&frame, cpu.gpu.width, cpu.gpu.height);
-    if let Err(why) = img.save(pngfile) {
-        println!("save err: {:?}", why);
+    if frame.len() == 0 {
+        println!("ERROR: no frame rendered");
+    } else {
+        let img = draw_image(&frame, cpu.gpu.width, cpu.gpu.height);
+        if let Err(why) = img.save(pngfile) {
+            println!("save err: {:?}", why);
+        }
     }
 }
