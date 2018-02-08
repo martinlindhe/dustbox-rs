@@ -174,13 +174,13 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
         filename.push(stem.to_os_string());
         filename.push(".png");
 
-        write_video_frame_to_disk(&cpu, filename.to_str().unwrap());
-
-        let mut pub_filename = String::new();
-        pub_filename.push_str(&format!("render/{}/{}_", group, name_prefix));
-        pub_filename.push_str(stem.to_str().unwrap());
-        pub_filename.push_str(".png");
-        out_images.push(pub_filename);
+        if write_video_frame_to_disk(&cpu, filename.to_str().unwrap()) {
+            let mut pub_filename = String::new();
+            pub_filename.push_str(&format!("render/{}/{}_", group, name_prefix));
+            pub_filename.push_str(stem.to_str().unwrap());
+            pub_filename.push_str(".png");
+            out_images.push(pub_filename);
+        }
     }
 
     let mut tera = compile_templates!("docs/templates/**/*");
@@ -215,15 +215,18 @@ fn draw_image(frame: &[u8], width: u32, height: u32) -> ImageBuffer<Rgb<u8>, Vec
     img
 }
 
-fn write_video_frame_to_disk(cpu: &CPU, pngfile: &str) {
+// returns true on success
+fn write_video_frame_to_disk(cpu: &CPU, pngfile: &str) -> bool {
     let mem = cpu.mmu.dump_mem();
     let frame = cpu.gpu.render_frame(&mem);
     if frame.len() == 0 {
         println!("ERROR: no frame rendered");
-    } else {
-        let img = draw_image(&frame, cpu.gpu.width, cpu.gpu.height);
-        if let Err(why) = img.save(pngfile) {
-            println!("save err: {:?}", why);
-        }
+        return false;
     }
+    let img = draw_image(&frame, cpu.gpu.width, cpu.gpu.height);
+    if let Err(why) = img.save(pngfile) {
+        println!("save err: {:?}", why);
+        return false;
+    }
+    return true;
 }
