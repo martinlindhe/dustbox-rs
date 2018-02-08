@@ -92,7 +92,8 @@ impl Interface {
                 //This makes a copy for every draw, maybe not a problem
                 //but it's stupid, and we shouldn't do this
                 let mem = app.cpu.mmu.dump_mem();
-                draw_canvas(ctx, &mem, app.cpu.gpu.width, app.cpu.gpu.height, &app.cpu.gpu.pal);
+                let frame = app.cpu.gpu.render_frame(&mem);
+                draw_canvas(ctx, frame, app.cpu.gpu.width, app.cpu.gpu.height);
                 ctx.paint();
                 Inhibit(false)
             });
@@ -290,20 +291,7 @@ impl Interface {
 }
 
 // render video frame to canvas `c`
-fn draw_canvas(c: &cairo::Context, memory: &[u8], width: u32, height: u32, pal: &[DACPalette]) {
-    let mut buf = vec![0u8; (width * height * 3) as usize];
-    for y in 0..height {
-        for x in 0..width {
-            let offset = 0xA_0000 + ((y * width) + x) as usize;
-            let byte = memory[offset];
-            let pal = &pal[byte as usize];
-            let i = ((y * width + x) * 3) as usize;
-            buf[i] = pal.r;
-            buf[i+1] = pal.g;
-            buf[i+2] = pal.b;
-        }
-    }
-
+fn draw_canvas(c: &cairo::Context, buf: Vec<u8>, width: u32, height: u32) {
     let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(
         buf,
         0,

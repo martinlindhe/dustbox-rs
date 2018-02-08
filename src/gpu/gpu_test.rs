@@ -174,14 +174,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
         filename.push(stem.to_os_string());
         filename.push(".png");
 
-        let mem_dump = cpu.mmu.dump_mem();
-        write_video_frame_to_disk(
-            &mem_dump,
-            filename.to_str().unwrap(),
-            cpu.gpu.width,
-            cpu.gpu.height,
-            &cpu.gpu.pal,
-        );
+        write_video_frame_to_disk(&cpu, filename.to_str().unwrap());
 
         let mut pub_filename = String::new();
         pub_filename.push_str(&format!("render/{}/{}_", group, name_prefix));
@@ -210,19 +203,22 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
     }
 }
 
-// render video frame, used for saving video frame to disk
-fn draw_image(memory: &[u8], width: u32, height: u32, pal: &[DACPalette]) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+// converts a video frame to a ImageBuffer, used for saving video frame to disk in gpu_test
+fn draw_image(frame: &[u8], width: u32, height: u32) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     let img = ImageBuffer::from_fn(width, height, |x, y| {
-        let offset = 0xA_0000 + ((y * width) + x) as usize;
-        let byte = memory[offset];
-        let p = &pal[byte as usize];
-        Rgb([p.r, p.g, p.b])
+        let offset = 3 * ((y * width) + x) as usize;
+        let r = frame[offset];
+        let g = frame[offset + 1];
+        let b = frame[offset + 2];
+        Rgb([r, g, b])
     });
     img
 }
 
-fn write_video_frame_to_disk(memory: &[u8], pngfile: &str, width: u32, height: u32, pal: &[DACPalette]) {
-    let img = draw_image(memory, width, height, pal);
+fn write_video_frame_to_disk(cpu: &CPU, pngfile: &str) {
+    let mem = cpu.mmu.dump_mem();
+    let frame = cpu.gpu.render_frame(&mem);
+    let img = draw_image(&frame, cpu.gpu.width, cpu.gpu.height);
     if let Err(why) = img.save(pngfile) {
         println!("save err: {:?}", why);
     }

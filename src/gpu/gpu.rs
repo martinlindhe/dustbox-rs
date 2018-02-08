@@ -29,6 +29,22 @@ impl GPU {
         }
     }
 
+    pub fn render_frame(&self, memory: &[u8]) -> Vec<u8> {
+        let mut buf = vec![0u8; (self.width * self.height * 3) as usize];
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let offset = 0xA_0000 + ((y * self.width) + x) as usize;
+                let byte = memory[offset];
+                let pal = &self.pal[byte as usize];
+                let i = ((y * self.width + x) * 3) as usize;
+                buf[i] = pal.r;
+                buf[i+1] = pal.g;
+                buf[i+2] = pal.b;
+            }
+        }
+        buf
+    }
+
     pub fn progress_scanline(&mut self) {
         // HACK to have a source of info to toggle CGA status register
         self.scanline += 1;
