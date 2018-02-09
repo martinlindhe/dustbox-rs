@@ -50,6 +50,8 @@ impl Instruction {
     }
 
     fn hide_segment_prefix(&self) -> bool {
+        self.command == Op::Add8 ||
+        self.command == Op::Add16 ||
         self.command == Op::Mov8 ||
         self.command == Op::Mov16
     }
