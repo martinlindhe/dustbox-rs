@@ -18,15 +18,17 @@ use dustbox::memory::mmu::MMU;
 #[path = "./fuzzer_test.rs"]
 mod fuzzer_test;
 
-fn fuzz(ops: &[Instruction], affected_registers: &[&str], affected_flag_mask: u16) {
+fn fuzz(it: usize, ops: &[Instruction], affected_registers: &[&str], affected_flag_mask: u16) {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let encoder = Encoder::new();
 
    match encoder.encode_vec(&ops) {
         Ok(data) => {
-            // use dustbox::cpu::encoder::ndisasm_bytes;
-            // println!("ndisasm of encoded seq: {}", ndisasm_bytes(&data).unwrap());
+            if it % 1000 == 0 {
+                use dustbox::cpu::encoder::ndisasm_bytes;
+                println!("ndisasm of encoded seq: {}", ndisasm_bytes(&data).unwrap());
+            }
             cpu.load_com(&data);
         }
         Err(why) => panic!("{}", why),

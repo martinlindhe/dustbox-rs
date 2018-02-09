@@ -12,10 +12,12 @@ fn fuzz_instruction() {
     let affected_registers = vec!("ax");
     // let affected_flags_mask = AffectedFlags{c:1, o:1, s:1, z:1, p:1, a:1}.mask();
     //let affected_flags_mask = AffectedFlags{c:1, o:1, s:1, z:1, a:1, p:1}.mask(); // cmp8
-    let affected_flags_mask = AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1}.mask(); // and8
+    //let affected_flags_mask = AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1}.mask(); // and8
+
+    let affected_flags_mask = AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0}.mask(); // aas
     //let affected_flags_mask = AffectedFlags::szp(); // test8
 
-    // verified register & flag operation with winXP: Shr8, Rol8, Cmp8, Test8, And8
+    // verified register & flag operation with winXP: Shr8, Rol8, Cmp8, Test8, And8, Xor8, Aas, Aaa
     // XXX differs from winXP: Shl8 (OF), Sar8 (wrong result some times)
     //          - Ror8 (CF)
 
@@ -32,10 +34,11 @@ fn fuzz_instruction() {
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::CX), Parameter::Imm16(0)),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R16::DX), Parameter::Imm16(0)),
             // mutate parameters
-            Instruction::new2(Op::And8, Parameter::Reg8(R8::AL), Parameter::Imm8(n1 as u8)),
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AL), Parameter::Imm8(n1 as u8)),
+            Instruction::new(Op::Aaa),
         );
 
-        fuzz(&ops, &affected_registers, affected_flags_mask);
+        fuzz(i, &ops, &affected_registers, affected_flags_mask);
         print!("{:02x} ", n1);
         io::stdout().flush().ok().expect("Could not flush stdout");
     }

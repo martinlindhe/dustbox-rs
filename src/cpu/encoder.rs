@@ -67,6 +67,8 @@ impl Encoder {
         }
 
         match op.command {
+            Op::Aaa => out.push(0x37),
+            Op::Aas => out.push(0x3F),
             Op::Dec8 | Op::Inc8 => {
                 // 0xFE: r/m8
                 out.push(0xFE);
@@ -101,7 +103,7 @@ impl Encoder {
                     return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                 }
             }
-            Op::And8 | Op::Cmp8 => {
+            Op::And8 | Op::Cmp8 | Op::Xor8 => {
                 match self.arith_instr8(op) {
                     Ok(data) => out.extend(data),
                     Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
@@ -236,6 +238,7 @@ impl Encoder {
         let mut out = vec!();
         let idx = match ins.command {
             Op::And8 => 0x20,
+            Op::Xor8 => 0x30,
             Op::Cmp8 => 0x38,
             _ => panic!("unhandled {:?}", ins.command),
         };
@@ -243,6 +246,7 @@ impl Encoder {
             if r == R8::AL {
                 if let Parameter::Imm8(imm) = ins.params.src {
                     // 0x24: and AL, imm8
+                    // 0x34: xor AL, imm8
                     // 0x3C: cmp AL, imm8
                     out.push(idx + 4);
                     out.push(imm);
@@ -261,11 +265,13 @@ impl Encoder {
                     out.push(i);
                 } else if ins.params.src.is_ptr() {
                     // 0x22: and r8, r/m8
+                    // 0x32: xor r8, r/m8
                     // 0x3A: cmp r8, r/m8
                     out.push(idx + 2);
                     out.extend(self.encode_r8_rm8(&ins.params));
                 } else {
                     // 0x20: and r/m8, r8
+                    // 0x30: xor r/m8, r8
                     // 0x38: cmp r/m8, r8
                     out.push(idx);
                     out.extend(self.encode_rm8_r8(&ins.params));
@@ -277,6 +283,7 @@ impl Encoder {
             Parameter::Ptr8AmodeS8(_, _, _) |
             Parameter::Ptr8AmodeS16(_, _, _) => {
                 // 0x20: and r/m8, r8
+                // 0x30: xor r/m8, r8
                 // 0x38: cmp r/m8, r8
                 out.push(idx);
                 out.extend(self.encode_rm8_r8(&ins.params));
@@ -370,7 +377,7 @@ impl Encoder {
             Op::Sbb8() => 3,
             Op::And8 => 4,
             Op::Sub8() => 5,
-            Op::Xor8() => 6,
+            Op::Xor8 => 6,
             Op::Cmp8 => 7,
             _ => panic!("arith_get_index {:?}", op),
         }

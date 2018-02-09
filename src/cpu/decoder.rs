@@ -411,33 +411,33 @@ impl Decoder {
             0x2F => op.command = Op::Das(),
             0x30 => {
                 // xor r/m8, r8
-                op.command = Op::Xor8();
+                op.command = Op::Xor8;
                 op.params = self.rm8_r8(op.segment_prefix);
             }
             0x31 => {
                 // xor r/m16, r16
-                op.command = Op::Xor16();
+                op.command = Op::Xor16;
                 op.params = self.rm16_r16(op.segment_prefix);
             }
             0x32 => {
                 // xor r8, r/m8
-                op.command = Op::Xor8();
+                op.command = Op::Xor8;
                 op.params = self.r8_rm8(op.segment_prefix);
             }
             0x33 => {
                 // xor r16, r/m16
-                op.command = Op::Xor16();
+                op.command = Op::Xor16;
                 op.params = self.r16_rm16(op.segment_prefix);
             }
             0x34 => {
                 // xor AL, imm8
-                op.command = Op::Xor8();
+                op.command = Op::Xor8;
                 op.params.dst = Parameter::Reg8(R8::AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
             0x35 => {
                 // xor AX, imm16
-                op.command = Op::Xor16();
+                op.command = Op::Xor16;
                 op.params.dst = Parameter::Reg16(R16::AX);
                 op.params.src = Parameter::Imm16(self.read_u16());
             }
@@ -446,7 +446,7 @@ impl Decoder {
                 let (mut op, length) = self.decode(Segment::SS);
                 return (op, length + 1);
             }
-            0x37 => op.command = Op::Aaa(),
+            0x37 => op.command = Op::Aaa,
             0x38 => {
                 // cmp r/m8, r8
                 op.command = Op::Cmp8;
@@ -484,7 +484,7 @@ impl Decoder {
                 let (mut op, length) = self.decode(Segment::DS);
                 return (op, length + 1);
             }
-            0x3F => op.command = Op::Aas(),
+            0x3F => op.command = Op::Aas,
             0x40...0x47 => {
                 // inc r16
                 op.command = Op::Inc16;
@@ -656,7 +656,7 @@ impl Decoder {
                     3 => op.command = Op::Sbb8(),
                     4 => op.command = Op::And8,
                     5 => op.command = Op::Sub8(),
-                    6 => op.command = Op::Xor8(),
+                    6 => op.command = Op::Xor8,
                     7 => op.command = Op::Cmp8,
                     _ => {}
                 }
@@ -673,7 +673,7 @@ impl Decoder {
                     3 => op.command = Op::Sbb16(),
                     4 => op.command = Op::And16,
                     5 => op.command = Op::Sub16(),
-                    6 => op.command = Op::Xor16(),
+                    6 => op.command = Op::Xor16,
                     7 => op.command = Op::Cmp16,
                     _ => {}
                 }
@@ -691,7 +691,7 @@ impl Decoder {
                     3 => op.command = Op::Sbb16(),
                     4 => op.command = Op::And16,
                     5 => op.command = Op::Sub16(),
-                    6 => op.command = Op::Xor16(),
+                    6 => op.command = Op::Xor16,
                     7 => op.command = Op::Cmp16,
                     _ => {}
                 }

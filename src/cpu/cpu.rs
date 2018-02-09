@@ -260,7 +260,7 @@ impl CPU {
         self.instruction_count += 1;
         self.cycle_count += 1; // XXX temp hack; we pretend each instruction takes 8 cycles due to lack of timing
         match op.command {
-            Op::Aaa() => {
+            Op::Aaa => {
                 // ASCII Adjust After Addition
                 let v = if self.get_r8(&R8::AL) > 0xf9 {
                     2
@@ -279,7 +279,7 @@ impl CPU {
                 self.set_r8(&R8::AH, al / imm8);
                 self.set_r8(&R8::AL, al % imm8);
             }
-            Op::Aas() => {
+            Op::Aas => {
                 // ASCII Adjust AL After Subtraction
                 let v = if self.get_r8(&R8::AL) < 6 {
                     -2
@@ -1732,7 +1732,7 @@ impl CPU {
                 let al = self.mmu.read_u8(self.segment(op.segment_prefix), self.get_r16(&R16::BX) + u16::from(self.get_r8(&R8::AL)));
                 self.set_r8(&R8::AL, al);
             }
-            Op::Xor8() => {
+            Op::Xor8 => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -1748,7 +1748,7 @@ impl CPU {
 
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
-            Op::Xor16() => {
+            Op::Xor16 => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);

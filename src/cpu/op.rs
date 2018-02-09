@@ -1,10 +1,10 @@
 #[derive(Clone, Debug, PartialEq)]
 pub enum Op {
     // NOTE: currently removing paranthesis of enums to track if flags have been fully emulated & impl tested //martin, jan 2018
-    Aaa(),
+    Aaa,
     Aad(),
     Aam(),
-    Aas(),
+    Aas,
     Adc8(),
     Adc16(),
     Add8,
@@ -141,8 +141,8 @@ pub enum Op {
     Xchg8(),
     Xchg16(),
     Xlatb(),
-    Xor8(),
-    Xor16(),
+    Xor8,
+    Xor16,
     Unknown(),
     Invalid(InvalidOp),
 }

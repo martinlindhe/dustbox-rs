@@ -113,6 +113,25 @@ fn can_encode_and8() {
 }
 
 #[test]
+fn can_encode_xor8() {
+    // AL, imm8
+    let op = Instruction::new2(Op::Xor8, Parameter::Reg8(R8::AL), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "xor al,0xff", vec!(0x34, 0xFF));
+
+    // r8, imm8
+    let op = Instruction::new2(Op::Xor8, Parameter::Reg8(R8::BL), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "xor bl,0xff", vec!(0x80, 0xF3, 0xFF));
+
+    // r/m8, r8  (dst is r8)
+    let op = Instruction::new2(Op::Xor8, Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
+    assert_encdec(&op, "xor bh,dl", vec!(0x30, 0xD7));
+
+    // r8, r/m8
+    let op = Instruction::new2(Op::Xor8, Parameter::Reg8(R8::BH), Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_encdec(&op, "xor bh,[0xc365]", vec!(0x32, 0x3E, 0x65, 0xC3));
+}
+
+#[test]
 fn can_encode_cmp8() {
     // r8, imm8
     let op = Instruction::new2(Op::Cmp8, Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
