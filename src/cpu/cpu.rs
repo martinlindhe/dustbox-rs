@@ -448,14 +448,14 @@ impl CPU {
                 // Complement Carry Flag
                 self.flags.carry = !self.flags.carry;
             }
-            Op::Cmp8() => {
+            Op::Cmp8 => {
                 // two parameters
                 // Modify status flags in the same manner as the SUB instruction
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
                 self.cmp8(dst, src);
             }
-            Op::Cmp16() => {
+            Op::Cmp16 => {
                 // two parameters
                 // Modify status flags in the same manner as the SUB instruction
                 let src = self.read_parameter_value(&op.params.src);

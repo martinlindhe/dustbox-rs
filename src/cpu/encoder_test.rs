@@ -66,8 +66,9 @@ fn can_encode_random_seq() {
                     cpu.load_com(&enc);
                     let decoded = cpu.decoder.decode_to_block(cs, 0x100, 1);
                     let reencoded_op = &decoded[0];
-                    if op != reencoded_op {
-                        panic!("re-encoding failed: expected {:?}, got {:?}", op, reencoded_op);
+                    if op.instruction != reencoded_op.instruction {
+                        panic!("re-encoding failed.\n\nexpected {:?},\noutput   {:?}",
+                        op.instruction, reencoded_op.instruction);
                     }
                 }
                 _ => {
@@ -79,6 +80,49 @@ fn can_encode_random_seq() {
             // println!("NOTICE: skipping invalid sequence: {:?}: {}", code, op);
         }
     }
+}
+
+#[test]
+fn can_encode_cmp8() {
+    // r8, imm8
+    let op = Instruction::new2(Op::Cmp8, Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "cmp bh,0xff", vec!(0x80, 0xFF, 0xFF));
+
+    // r/m8, r8  (dst is r8)
+    let op = Instruction::new2(Op::Cmp8, Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
+    assert_encdec(&op, "cmp bh,dl", vec!(0x38, 0xD7));
+
+    // r/m8, r8  (dst is AMode::BP + imm8)
+    let op = Instruction::new2(Op::Cmp8, Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10), Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "cmp [bp+0x10],bh", vec!(0x38, 0x7E, 0x10));
+
+    // r/m8, r8  (dst is AMode::BP + imm8)    - reversed
+    let op = Instruction::new2(Op::Cmp8, Parameter::Reg8(R8::BH), Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10));
+    assert_encdec(&op, "cmp bh,[bp+0x10]", vec!(0x3A, 0x7E, 0x10));
+
+    // r8, r/m8
+    let op = Instruction::new2(Op::Cmp8, Parameter::Reg8(R8::BH), Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_encdec(&op, "cmp bh,[0xc365]", vec!(0x3A, 0x3E, 0x65, 0xC3));
+
+    // r/m8, r8  (dst is AMode::BP + imm8)
+    let op = Instruction::new2(Op::Cmp8, Parameter::Ptr8AmodeS16(Segment::Default, AMode::BP, -0x800), Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "cmp [bp-0x800],bh", vec!(0x38, 0xBE, 0x00, 0xF8));
+
+    // r/m8, r8  (dst is [imm16]) 
+    let op = Instruction::new2(Op::Cmp8, Parameter::Ptr8(Segment::Default, 0x8000), Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "cmp [0x8000],bh", vec!(0x38, 0x3E, 0x00, 0x80));
+
+    // r/m8, r8  (dst is [bx])
+    let op = Instruction::new2(Op::Cmp8, Parameter::Ptr8Amode(Segment::Default, AMode::BX), Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "cmp [bx],bh", vec!(0x38, 0x3F));
+}
+
+#[test]
+fn can_encode_cmp16() {
+    // XXX cmp16
+    // r16, imm16
+    //let op = Instruction::new2(Op::Mov16, Parameter::Reg16(R16::BX), Parameter::Imm16(0x8844));
+    //assert_encdec(&op, "mov bx,0x8844", vec!(0xBB, 0x44, 0x88));
 }
 
 #[test]

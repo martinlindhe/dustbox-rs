@@ -23,13 +23,14 @@ fn fuzz(ops: &[Instruction], affected_registers: &[&str], affected_flag_mask: u1
     let mut cpu = CPU::new(mmu);
     let encoder = Encoder::new();
 
-    if let Ok(data) = encoder.encode_vec(&ops) {
-        // execute the ops in dustbox
-        cpu.load_com(&data);
-    } else {
-        panic!("invalid data sequence");
+   match encoder.encode_vec(&ops) {
+        Ok(data) => {
+            // use dustbox::cpu::encoder::ndisasm_bytes;
+            // println!("XXX ndisasm of encoded seq: {}", ndisasm_bytes(&data).unwrap());
+            cpu.load_com(&data);
+        }
+        Err(why) => panic!("{}", why),
     }
-
     cpu.execute_instructions(ops.len());
 
     // run in vm, compare regs
@@ -163,7 +164,7 @@ fn reg_str_to_index(s: &str) -> usize {
 }
 
 fn assemble_prober(ops: &[Instruction], prober_com: &str) {
-    let mut tera = compile_templates!("utils/prober/*.tpl.asm");
+    let mut tera = compile_templates!("../utils/prober/*.tpl.asm");
 
     // disable autoescaping
     tera.autoescape_on(vec![]);
@@ -175,10 +176,10 @@ fn assemble_prober(ops: &[Instruction], prober_com: &str) {
         Ok(res) => {
             use std::fs::File;
             use std::io::Write;
-            let mut f = File::create("utils/prober/prober.asm").expect("Unable to create file");
+            let mut f = File::create("../utils/prober/prober.asm").expect("Unable to create file");
             f.write_all(res.as_bytes()).expect("Unable to write data");
         }
-        Err(why) => println!("ERROR = {}", why),
+        Err(why) => panic!("fatal tera error: {}", why),
     }
 
     // assemble generated prober.asm
@@ -224,9 +225,11 @@ fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
 // upload data as http post to supersafe http server running in VM
 fn stdout_from_vm_http(prober_com: &str) -> String {
     use curl::easy::{Easy, Form};
-
+    use std::time::Duration;
     let mut dst = Vec::new();
     let mut easy = Easy::new();
+    let timeout = Duration::from_millis(1000);
+    easy.timeout(timeout).unwrap();
     easy.url("http://10.10.30.63:28111/run").unwrap();
 
     let mut form = Form::new();

@@ -449,33 +449,33 @@ impl Decoder {
             0x37 => op.command = Op::Aaa(),
             0x38 => {
                 // cmp r/m8, r8
-                op.command = Op::Cmp8();
+                op.command = Op::Cmp8;
                 op.params = self.rm8_r8(op.segment_prefix);
             }
             0x39 => {
                 // cmp r/m16, r16
-                op.command = Op::Cmp16();
+                op.command = Op::Cmp16;
                 op.params = self.rm16_r16(op.segment_prefix);
             }
             0x3A => {
                 // cmp r8, r/m8
-                op.command = Op::Cmp8();
+                op.command = Op::Cmp8;
                 op.params = self.r8_rm8(op.segment_prefix);
             }
             0x3B => {
                 // cmp r16, r/m16
-                op.command = Op::Cmp16();
+                op.command = Op::Cmp16;
                 op.params = self.r16_rm16(op.segment_prefix);
             }
             0x3C => {
                 // cmp AL, imm8
-                op.command = Op::Cmp8();
+                op.command = Op::Cmp8;
                 op.params.dst = Parameter::Reg8(R8::AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
             0x3D => {
                 // cmp AX, imm16
-                op.command = Op::Cmp16();
+                op.command = Op::Cmp16;
                 op.params.dst = Parameter::Reg16(R16::AX);
                 op.params.src = Parameter::Imm16(self.read_u16());
             }
@@ -657,7 +657,7 @@ impl Decoder {
                     4 => op.command = Op::And8(),
                     5 => op.command = Op::Sub8(),
                     6 => op.command = Op::Xor8(),
-                    7 => op.command = Op::Cmp8(),
+                    7 => op.command = Op::Cmp8,
                     _ => {}
                 }
             }
@@ -674,7 +674,7 @@ impl Decoder {
                     4 => op.command = Op::And16(),
                     5 => op.command = Op::Sub16(),
                     6 => op.command = Op::Xor16(),
-                    7 => op.command = Op::Cmp16(),
+                    7 => op.command = Op::Cmp16,
                     _ => {}
                 }
             }
@@ -692,7 +692,7 @@ impl Decoder {
                     4 => op.command = Op::And16(),
                     5 => op.command = Op::Sub16(),
                     6 => op.command = Op::Xor16(),
-                    7 => op.command = Op::Cmp16(),
+                    7 => op.command = Op::Cmp16,
                     _ => {}
                 }
             }

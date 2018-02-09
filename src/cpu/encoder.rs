@@ -1,3 +1,5 @@
+use simple_error::SimpleError;
+
 use cpu::instruction::{Instruction, ModRegRm};
 use cpu::parameter::{Parameter, ParameterSet};
 use cpu::register::{R8, R16};
@@ -13,16 +15,14 @@ quick_error! {
     pub enum EncodeError {
         UnhandledOp(op: Op) {
             description("unhandled op")
+            display("unhandled op: {:?}", op)
         }
         UnhandledParameter(param: Parameter) {
             description("unhandled param")
         }
-        Gizmo {
-            description("Refrob the Gizmo")
-        }
-        WidgetNotFound(widget_name: String) {
-            description("The widget could not be found")
-            display(r#"The widget "{}" could not be found"#, widget_name)
+        Text(s: String) {
+            description("text")
+            display("{}", s)
         }
     }
 }
@@ -101,6 +101,21 @@ impl Encoder {
                     return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                 }
             }
+            Op::Cmp8 => {
+                match self.arith_instr8(op) {
+                    Ok(data) => out.extend(data),
+                    Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
+                }
+            }
+            /*
+            Op::Cmp16 => {
+                // 0x39: cmp r/m16, r16
+                // 0x3B: cmp r16, r/m16
+                // 0x3D: cmp AX, imm16
+                // 0x81: <arithmetic> r/m16, imm16
+                // 0x83: <arithmetic> r/m16, imm8
+            }
+            */
             Op::Mov8 => {
                 match op.params.dst {
                     Parameter::Reg8(r) => {
@@ -189,7 +204,10 @@ impl Encoder {
 
             Op::Rol8 | Op::Ror8 | Op::Rcl8 | Op::Rcr8 |
             Op::Shl8 | Op::Shr8 | Op::Sar8 => {
-                out.extend(self.bitshift_instr8(op));
+                match self.bitshift_instr8(op) {
+                    Ok(data) => out.extend(data),
+                    Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
+                }
             }
             Op::Push16 => {
                 if let Parameter::Imm16(imm16) = op.params.dst {
@@ -209,7 +227,48 @@ impl Encoder {
         Ok(out)
     }
 
-    fn bitshift_instr8(&self, ins: &Instruction) -> Vec<u8> {
+    fn arith_instr8(&self, ins: &Instruction) -> Result<Vec<u8>, SimpleError> {
+        let mut out = vec!();
+        let idx = match ins.command {
+            Op::Cmp8 => 0x38,
+            _ => panic!("unhandled {:?}", ins.command),
+        };
+
+        // XXX 0x3C: cmp AL, imm8
+        match ins.params.dst {
+            Parameter::Reg8(r) => {
+                if let Parameter::Imm8(i) = ins.params.src {
+                    // 0x80: <arithmetic> r/m8, imm8
+                    out.push(0x80);
+                    // md 3 = register adressing
+                    let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.arith_get_index(&ins.command)};
+                    out.push(mrr.u8());
+                    out.push(i);
+                } else if ins.params.src.is_ptr() {
+                    // 0x3A: cmp r8, r/m8
+                    out.push(idx + 2); // cmp = 3a
+                    out.extend(self.encode_r8_rm8(&ins.params));
+                } else {
+                    //  0x38: cmp r/m8, r8
+                    out.push(idx);
+                    out.extend(self.encode_rm8_r8(&ins.params));
+                }
+                Ok(out)
+            }
+            Parameter::Ptr8(_, _) |
+            Parameter::Ptr8Amode(_, _) |
+            Parameter::Ptr8AmodeS8(_, _, _) |
+            Parameter::Ptr8AmodeS16(_, _, _) => {
+                //  0x38: cmp r/m8, r8
+                out.push(idx);
+                out.extend(self.encode_rm8_r8(&ins.params));
+                Ok(out)
+            }
+            _ => Err(SimpleError::new(format!("unhandled param {:?}", ins.params.dst))),
+        }
+    }
+
+    fn bitshift_instr8(&self, ins: &Instruction) -> Result<Vec<u8>, SimpleError> {
         let mut out = vec!();
         match ins.params.dst {
             Parameter::Reg8(r) => {
@@ -234,12 +293,10 @@ impl Encoder {
                         panic!("bitshift_instr8 {:?}", ins);
                     }
                 }
+                Ok(out)
             }
-            _ => {
-                panic!("unexpected dst type: {:?}", ins);
-            }
+            _ => Err(SimpleError::new(format!("unexpected dst type: {:?}", ins.params.dst))),
         }
-        out
     }
 
     fn bitshift_get_index(&self, op: &Op) -> u8 {
@@ -255,6 +312,20 @@ impl Encoder {
         }
     }
 
+    fn arith_get_index(&self, op: &Op) -> u8 {
+        match *op {
+            Op::Add8 => 0,
+            Op::Or8() => 1,
+            Op::Adc8() => 2,
+            Op::Sbb8() => 3,
+            Op::And8() => 4,
+            Op::Sub8() => 5,
+            Op::Xor8() => 6,
+            Op::Cmp8 => 7,
+            _ => panic!("arith_get_index {:?}", op),
+        }
+    }
+
     fn encode_r8_rm8(&self, params: &ParameterSet) -> Vec<u8> {
         if let Parameter::Reg8(r) = params.dst {
             self.encode_rm(&params.src, r.index() as u8)
@@ -267,7 +338,7 @@ impl Encoder {
         if let Parameter::Reg8(r) = params.src {
             self.encode_rm(&params.dst, r.index() as u8)
         } else {
-            unreachable!();
+            panic!("unexpected parameter type: {:?}", params.src);
         }
     }
 
@@ -319,7 +390,7 @@ impl Encoder {
 }
 
 use std::io::{self, Read, Write};
-fn ndisasm_bytes(bytes: &[u8]) -> Result<String, io::Error> {
+pub fn ndisasm_bytes(bytes: &[u8]) -> Result<String, io::Error> { // XXX own top-level module named ndisasm
     use std::str;
     use std::fs::File;
     use std::process::Command;

@@ -12,6 +12,9 @@ extern crate tera;
 #[macro_use]
 extern crate quick_error;
 
+#[macro_use]
+extern crate simple_error;
+
 pub mod cpu;
 pub mod memory;
 pub mod gpu;
