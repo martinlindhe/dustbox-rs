@@ -292,6 +292,10 @@ impl Interface {
 
 // render video frame to canvas `c`
 fn draw_canvas(c: &cairo::Context, buf: Vec<u8>, width: u32, height: u32) {
+    if buf.len() == 0 {
+        println!("draw_canvas: no buffer to draw!");
+        return;
+    }
     let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(
         buf,
         0,
