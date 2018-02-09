@@ -2111,7 +2111,7 @@ impl CPU {
     }
 
     // write byte to I/O port
-    fn out_u8(&mut self, dst: u16, data: u8) {
+    pub fn out_u8(&mut self, dst: u16, data: u8) {
         match dst {
             0x0021 => self.pic.write_0021(data),
             0x0040 => self.pit.set_counter_divisor(data),

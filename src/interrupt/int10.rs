@@ -178,26 +178,23 @@ pub fn handle(cpu: &mut CPU) {
                     // byte each of red, green and blue (0-63)
                     let start = cpu.get_r16(&R16::BX) as usize;
                     let count = cpu.get_r16(&R16::CX) as usize;
-                    println!("VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA) start={}, count={}",
-                             start,
-                             count);
+
+                    // #define VGAREG_DAC_WRITE_ADDRESS       0x3c8
+                    cpu.out_u8(0x3C8, start as u8);
+
+                    let es = cpu.get_sr(&SR::ES);
+                    let dx = cpu.get_r16(&R16::DX);
 
                     for i in start..(start+count) {
-                        let next = (i*3) as u16;
-                        let es = cpu.get_sr(&SR::ES);
-                        let dx = cpu.get_r16(&R16::DX);
-                        let r = cpu.mmu.read_u8(es, dx + next) as usize;
-                        let g = cpu.mmu.read_u8(es, dx + next + 1) as usize;
-                        let b = cpu.mmu.read_u8(es, dx + next + 2) as usize;
+                        let next = (i * 3) as u16;
+                        let r = cpu.mmu.read_u8(es, dx + next) ;
+                        let g = cpu.mmu.read_u8(es, dx + next + 1);
+                        let b = cpu.mmu.read_u8(es, dx + next + 2);
 
-                        // each value is 6 bits (0-63), scale them to 8 bits
-                        let r = ((r << 2) & 0xFF) as u8;
-                        let g = ((g << 2) & 0xFF) as u8;
-                        let b = ((b << 2) & 0xFF) as u8;
-
-                        cpu.gpu.set_palette_r(i, r);
-                        cpu.gpu.set_palette_g(i, g);
-                        cpu.gpu.set_palette_b(i, b);
+                        // #define VGAREG_DAC_DATA                0x3c9
+                        cpu.out_u8(0x3C9, r);
+                        cpu.out_u8(0x3C9, g);
+                        cpu.out_u8(0x3C9, b);
                     }
                 }
                 0x17 => {
