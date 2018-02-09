@@ -7,7 +7,7 @@ pub struct DACPalette {
 
 pub fn default_vga_palette() -> Vec<DACPalette> {
     let pal = [
-        // 0-15: EGA palette
+        // 0-15: CGA palette
         DACPalette {r: 0x00, g: 0x00, b: 0x00}, // 0. black
         DACPalette {r: 0x00, g: 0x00, b: 0xAA}, // 1. blue
         DACPalette {r: 0x00, g: 0xAA, b: 0x00}, // 2. green

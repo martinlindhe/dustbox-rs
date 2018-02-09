@@ -12,7 +12,7 @@ pub struct GPU {
     pub scanline: u32,
     pub width: u32,
     pub height: u32,
-    pub pal: Vec<DACPalette>,       // the palette in use
+    pub pal: Vec<DACPalette>,
     pub pel_address: u8,            // set by write to 03c8
     pel_component: usize,           // color component for next out 03c9, 0 = red, 1 = green, 2 = blue
     mode: u8,
@@ -22,9 +22,9 @@ impl GPU {
     pub fn new() -> Self {
         GPU {
             scanline: 0,
-            width: 320,
-            height: 200,
-            pal: default_vga_palette(), // XXX use array all the time
+            width: 80,
+            height: 25,
+            pal: default_vga_palette(),
             pel_address: 0,
             pel_component: 0,
             mode: 0x03, // default mode is 80x25 text
@@ -33,7 +33,25 @@ impl GPU {
 
     pub fn render_frame(&self, memory: &[u8]) -> Vec<u8> {
         match self.mode {
-            0x13 => self.render_vga_frame(memory),
+            // 00: 40x25 Black and White text (CGA,EGA,MCGA,VGA)
+            // 01: 40x25 16 color text (CGA,EGA,MCGA,VGA)
+            // 02: 80x25 16 shades of gray text (CGA,EGA,MCGA,VGA)
+            0x03 => self.render_mode03_frame(memory), // 80x25 16 color text (CGA,EGA,MCGA,VGA)
+            0x04 => self.render_mode04_frame(memory), // 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
+            // 05: 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
+            0x06 => self.render_mode06_frame(memory), // 640x200 B/W graphics (CGA,EGA,MCGA,VGA)
+            // 07: 80x25 Monochrome text (MDA,HERC,EGA,VGA)
+            // 08: 160x200 16 color graphics (PCjr)
+            // 09: 320x200 16 color graphics (PCjr)
+            // 0A: 640x200 4 color graphics (PCjr)
+            // 0D: 320x200 16 color graphics (EGA,VGA)
+            // 0E: 640x200 16 color graphics (EGA,VGA)
+            // 0F: 640x350 Monochrome graphics (EGA,VGA)
+            // 10: 640x350 16 color graphics (EGA or VGA with 128K)
+            //     640x350 4 color graphics (64K EGA)
+            0x11 => self.render_mode11_frame(memory), // 640x480 B/W graphics (MCGA,VGA)
+            0x12 => self.render_mode12_frame(memory), // 640x480 16 color graphics (VGA)
+            0x13 => self.render_mode13_frame(memory), // 320x200 256 color graphics (MCGA,VGA)
             _ => {
                 println!("XXX fixme render_frame for mode {:02x}", self.mode);
                 Vec::new()
@@ -41,7 +59,68 @@ impl GPU {
         }
     }
 
-    fn render_vga_frame(&self, memory: &[u8]) -> Vec<u8> {
+    fn render_mode03_frame(&self, memory: &[u8]) -> Vec<u8> {
+        // 03h = T  80x25  8x8   640x200   16       4   B800 CGA,PCjr,Tandy
+        //     = T  80x25  8x14  640x350   16/64    8   B800 EGA
+        //     = T  80x25  8x16  640x400   16       8   B800 MCGA
+        //     = T  80x25  9x16  720x400   16       8   B800 VGA
+        //     = T  80x43  8x8   640x350   16       4   B800 EGA,VGA [17]
+        //     = T  80x50  8x8   640x400   16       4   B800 VGA [17]
+        // XXX impl
+        Vec::new()
+    }
+
+    fn render_mode04_frame(&self, memory: &[u8]) -> Vec<u8> {
+        // XXX palette selection is done by writes to cga registers
+        // mappings to the cga palette
+        let pal1_map: [usize; 4] = [0, 3, 5, 7];
+        // let pal1_map: [u8; 3] = [11, 13, 15];
+        // let pal0_map: [u8; 4] = [0, 2, 4, 6];
+        // let pal0_map: [u8; 4] = [0, 10, 12, 14];
+
+        // 04h = G  40x25  8x8   320x200    4       .   B800 CGA,PCjr,EGA,MCGA,VGA
+        let mut buf = vec![0u8; (self.width * self.height * 3) as usize];
+        println!("cga draw {}x{}", self.width, self.height);
+        for y in 0..self.height {
+            for x in 0..self.width {
+                // divide Y by 2
+                // divide X by 4 (2 bits for each pixel)
+                // 80 bytes per line (80 * 4 = 320), 4 pixels per byte
+                let offset = (0xB_8000 + ((y%2) * 0x2000) + (80 * (y >> 1)) + (x >> 2)) as usize;
+                let bits = (memory[offset] >> ((3 - (x & 3)) * 2)) & 3; // 2 bits: cga palette to use
+                let pal = &self.pal[pal1_map[bits as usize]];
+
+                let dst = (((y * self.width) + x) * 3) as usize;
+                buf[dst] = pal.r;
+                buf[dst+1] = pal.g;
+                buf[dst+2] = pal.b;
+            }
+        }
+        buf
+    }
+
+    fn render_mode06_frame(&self, memory: &[u8]) -> Vec<u8> {
+        // 06h = G  80x25  8x8   640x200    2       .   B800 CGA,PCjr,EGA,MCGA,VGA
+        //     = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
+        // XXX impl
+        Vec::new()
+    }
+
+    fn render_mode11_frame(&self, memory: &[u8]) -> Vec<u8> {
+        // 11h = G  80x30  8x16  640x480  mono      .   A000 VGA,MCGA,ATI EGA,ATI VIP
+        // XXX impl
+        Vec::new()
+    }
+
+    fn render_mode12_frame(&self, memory: &[u8]) -> Vec<u8> {
+        // 12h = G  80x30  8x16  640x480   16/256K  .   A000 VGA,ATI VIP
+        //     = G  80x30  8x16  640x480   16/64    .   A000 ATI EGA Wonder
+        //     = G    .     .    640x480   16       .     .  UltraVision+256K EGA
+        // XXX impl, planar mode
+        Vec::new()
+    }
+
+    fn render_mode13_frame(&self, memory: &[u8]) -> Vec<u8> {
         let mut buf = vec![0u8; (self.width * self.height * 3) as usize];
         for y in 0..self.height {
             for x in 0..self.width {
@@ -69,36 +148,28 @@ impl GPU {
                 println!("XXX video: set video mode to 320x200, 16 colors (text)");
             }
             0x03 => {
-                // 03h = T  80x25  8x8   640x200   16       4   B800 CGA,PCjr,Tandy
-                //     = T  80x25  8x14  640x350   16/64    8   B800 EGA
-                //     = T  80x25  8x16  640x400   16       8   B800 MCGA
-                //     = T  80x25  9x16  720x400   16       8   B800 VGA
-                //     = T  80x43  8x8   640x350   16       4   B800 EGA,VGA [17]
-                //     = T  80x50  8x8   640x400   16       4   B800 VGA [17]
-                println!("XXX video: set video mode to 640x200, 16 colors (text)");
+                self.width = 640;
+                self.height = 200;
             }
             0x04 => {
-                // 04h = G  40x25  8x8   320x200    4       .   B800 CGA,PCjr,EGA,MCGA,VGA
-                println!("XXX video: set video mode to 320x200, 4 colors");
+                self.width = 320;
+                self.height = 200;
             }
             0x06 => {
-                // 06h = G  80x25  8x8   640x200    2       .   B800 CGA,PCjr,EGA,MCGA,VGA
-                //     = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
-                println!("XXX video: set video mode to 640x200, 2 colors");
+                self.width = 640;
+                self.height = 200;
             }
             0x11 => {
-                // 11h = G  80x30  8x16  640x480  mono      .   A000 VGA,MCGA,ATI EGA,ATI VIP
-                println!("XXX video: set video mode to 640x480, mono");
+                self.width = 640;
+                self.height = 480;
             }
             0x12 => {
-                // 12h = G  80x30  8x16  640x480   16/256K  .   A000 VGA,ATI VIP
-                //     = G  80x30  8x16  640x480   16/64    .   A000 ATI EGA Wonder
-                //     = G    .     .    640x480   16       .     .  UltraVision+256K EGA
-                println!("XXX video: set video mode to 640x480, 16 colors");
+                self.width = 640;
+                self.height = 480;
             }
             0x13 => {
-                // 13h = G  40x25  8x8   320x200  256/256K  .   A000 VGA,MCGA,ATI VIP
-                println!("XXX video: set video mode to 320x200, 256 colors (VGA)");
+                self.width = 320;
+                self.height = 200;
             }
             _ => {
                 println!("video error: unknown video mode {:02X}", mode);
