@@ -346,7 +346,7 @@ impl CPU {
                 self.flags.set_overflow_add_u16(res, src as usize, dst as usize);
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, res as u16);
             }
-            Op::And8() => {
+            Op::And8 => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -361,7 +361,7 @@ impl CPU {
                 self.flags.set_parity(res);
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
-            Op::And16() => {
+            Op::And16 => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -1689,7 +1689,7 @@ impl CPU {
 
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
-            Op::Test8() => {
+            Op::Test8 => {
                 // two parameters
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -1699,7 +1699,7 @@ impl CPU {
                 self.flags.set_zero_u8(res);
                 self.flags.set_parity(res);
             }
-            Op::Test16() => {
+            Op::Test16 => {
                 // two parameters
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);

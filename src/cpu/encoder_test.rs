@@ -83,6 +83,36 @@ fn can_encode_random_seq() {
 }
 
 #[test]
+fn can_encode_test8() {
+    // AL, imm8
+    let op = Instruction::new2(Op::Test8, Parameter::Reg8(R8::AL), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "test al,0xff", vec!(0xA8, 0xFF));
+    
+    // r8, imm8
+    let op = Instruction::new2(Op::Test8, Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "test bh,0xff", vec!(0xF6, 0xC7, 0xFF));
+}
+
+#[test]
+fn can_encode_and8() {
+    // AL, imm8
+    let op = Instruction::new2(Op::And8, Parameter::Reg8(R8::AL), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "and al,0xff", vec!(0x24, 0xFF));
+
+    // r8, imm8
+    let op = Instruction::new2(Op::And8, Parameter::Reg8(R8::BL), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "and bl,0xff", vec!(0x80, 0xE3, 0xFF));
+
+    // r/m8, r8  (dst is r8)
+    let op = Instruction::new2(Op::And8, Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
+    assert_encdec(&op, "and bh,dl", vec!(0x20, 0xD7));
+
+    // r8, r/m8
+    let op = Instruction::new2(Op::And8, Parameter::Reg8(R8::BH), Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_encdec(&op, "and bh,[0xc365]", vec!(0x22, 0x3E, 0x65, 0xC3));
+}
+
+#[test]
 fn can_encode_cmp8() {
     // r8, imm8
     let op = Instruction::new2(Op::Cmp8, Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
@@ -108,7 +138,7 @@ fn can_encode_cmp8() {
     let op = Instruction::new2(Op::Cmp8, Parameter::Ptr8AmodeS16(Segment::Default, AMode::BP, -0x800), Parameter::Reg8(R8::BH));
     assert_encdec(&op, "cmp [bp-0x800],bh", vec!(0x38, 0xBE, 0x00, 0xF8));
 
-    // r/m8, r8  (dst is [imm16]) 
+    // r/m8, r8  (dst is [imm16])
     let op = Instruction::new2(Op::Cmp8, Parameter::Ptr8(Segment::Default, 0x8000), Parameter::Reg8(R8::BH));
     assert_encdec(&op, "cmp [0x8000],bh", vec!(0x38, 0x3E, 0x00, 0x80));
 
@@ -221,21 +251,17 @@ fn can_encode_mov_addressing_modes() {
 fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u8>) {
     let encoder = Encoder::new();
     let code = encoder.encode(&op).unwrap();
+    assert_eq!(expected_bytes, code, "encoded byte sequence does not match expected bytes");
 
-    // decode result and verify with input op
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     cpu.load_com(&code);
     let cs = cpu.get_sr(&SR::CS);
     let ops = cpu.decoder.decode_to_block(cs, 0x100, 1);
     let decoded_op = &ops[0].instruction;
-    assert_eq!(op, decoded_op);
+    assert_eq!(op, decoded_op, "decoded resulting op from instruction encode does not match input op");
 
-    // verify encoded byte sequence with expected bytes
-    assert_eq!(expected_bytes, code);
-
-    // disasm encoded byte sequence and verify with expected ndisasm output
-    assert_eq!(expected_ndisasm.to_owned(), ndisasm_bytes(&code).unwrap());
+    assert_eq!(expected_ndisasm.to_owned(), ndisasm_bytes(&code).unwrap(), "disasm of encoded byte sequence does not match expected ndisasm output");
 }
 
 fn hex_bytes(data: &[u8]) -> String {

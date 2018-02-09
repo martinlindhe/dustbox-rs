@@ -101,7 +101,7 @@ impl Encoder {
                     return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                 }
             }
-            Op::Cmp8 => {
+            Op::And8 | Op::Cmp8 => {
                 match self.arith_instr8(op) {
                     Ok(data) => out.extend(data),
                     Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
@@ -201,7 +201,12 @@ impl Encoder {
                     return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                 }
             }
-
+            Op::Test8 => {
+                match self.math_instr8(op) {
+                    Ok(data) => out.extend(data),
+                    Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
+                }
+            }
             Op::Rol8 | Op::Ror8 | Op::Rcl8 | Op::Rcr8 |
             Op::Shl8 | Op::Shr8 | Op::Sar8 => {
                 match self.bitshift_instr8(op) {
@@ -230,11 +235,21 @@ impl Encoder {
     fn arith_instr8(&self, ins: &Instruction) -> Result<Vec<u8>, SimpleError> {
         let mut out = vec!();
         let idx = match ins.command {
+            Op::And8 => 0x20,
             Op::Cmp8 => 0x38,
             _ => panic!("unhandled {:?}", ins.command),
         };
-
-        // XXX 0x3C: cmp AL, imm8
+        if let Parameter::Reg8(r) = ins.params.dst {
+            if r == R8::AL {
+                if let Parameter::Imm8(imm) = ins.params.src {
+                    // 0x24: and AL, imm8
+                    // 0x3C: cmp AL, imm8
+                    out.push(idx + 4);
+                    out.push(imm);
+                    return Ok(out);
+                }
+            }
+        }
         match ins.params.dst {
             Parameter::Reg8(r) => {
                 if let Parameter::Imm8(i) = ins.params.src {
@@ -245,11 +260,13 @@ impl Encoder {
                     out.push(mrr.u8());
                     out.push(i);
                 } else if ins.params.src.is_ptr() {
+                    // 0x22: and r8, r/m8
                     // 0x3A: cmp r8, r/m8
-                    out.push(idx + 2); // cmp = 3a
+                    out.push(idx + 2);
                     out.extend(self.encode_r8_rm8(&ins.params));
                 } else {
-                    //  0x38: cmp r/m8, r8
+                    // 0x20: and r/m8, r8
+                    // 0x38: cmp r/m8, r8
                     out.push(idx);
                     out.extend(self.encode_rm8_r8(&ins.params));
                 }
@@ -259,12 +276,45 @@ impl Encoder {
             Parameter::Ptr8Amode(_, _) |
             Parameter::Ptr8AmodeS8(_, _, _) |
             Parameter::Ptr8AmodeS16(_, _, _) => {
-                //  0x38: cmp r/m8, r8
+                // 0x20: and r/m8, r8
+                // 0x38: cmp r/m8, r8
                 out.push(idx);
                 out.extend(self.encode_rm8_r8(&ins.params));
                 Ok(out)
             }
             _ => Err(SimpleError::new(format!("unhandled param {:?}", ins.params.dst))),
+        }
+    }
+
+    fn math_instr8(&self, ins: &Instruction) -> Result<Vec<u8>, SimpleError> {
+        // 0x84: test r/m8, r8
+
+        let mut out = vec!();
+        match ins.params.dst {
+            Parameter::Reg8(r) => {
+                match ins.params.src {
+                    Parameter::Imm8(i) => {
+                        if r == R8::AL {
+                            // 0xA8: test AL, imm8
+                            out.push(0xA8);
+                        } else {
+                            // 0xF6: <math> r/m8.  reg = 0 for test8 (1 also valid). only for test op: "test r/m8, imm8"
+                            // md 3 = register adressing
+                            // XXX ModRegRm.rm really should use enum AMode, not like AMode is now. naming there is wrong
+                            let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.math_get_index(&ins.command)};
+                            out.push(0xF6);
+                            out.push(mrr.u8());
+                        }
+                        out.push(i);
+                    }
+                    _ => {
+                        // 0xD2: bit shift byte by CL
+                        panic!("bitshift_instr8 {:?}", ins);
+                    }
+                }
+                Ok(out)
+            }
+            _ => Err(SimpleError::new(format!("unexpected dst type: {:?}", ins.params.dst))),
         }
     }
 
@@ -318,11 +368,24 @@ impl Encoder {
             Op::Or8() => 1,
             Op::Adc8() => 2,
             Op::Sbb8() => 3,
-            Op::And8() => 4,
+            Op::And8 => 4,
             Op::Sub8() => 5,
             Op::Xor8() => 6,
             Op::Cmp8 => 7,
             _ => panic!("arith_get_index {:?}", op),
+        }
+    }
+
+    fn math_get_index(&self, op: &Op) -> u8 {
+        match *op {
+            Op::Test8 => 0,
+            Op::Not8() => 2,
+            Op::Neg8() => 3,
+            Op::Mul8() => 4,
+            Op::Imul8 => 5,
+            Op::Div8() => 6,
+            Op::Idiv8 => 7,
+            _ => panic!("math_get_index {:?}", op),
         }
     }
 

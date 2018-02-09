@@ -26,7 +26,7 @@ fn fuzz(ops: &[Instruction], affected_registers: &[&str], affected_flag_mask: u1
    match encoder.encode_vec(&ops) {
         Ok(data) => {
             // use dustbox::cpu::encoder::ndisasm_bytes;
-            // println!("XXX ndisasm of encoded seq: {}", ndisasm_bytes(&data).unwrap());
+            // println!("ndisasm of encoded seq: {}", ndisasm_bytes(&data).unwrap());
             cpu.load_com(&data);
         }
         Err(why) => panic!("{}", why),
@@ -75,9 +75,6 @@ fn fuzz(ops: &[Instruction], affected_registers: &[&str], affected_flag_mask: u1
             print!("O ");
         }
         println!();
-    } else {
-        print!(".");
-        io::stdout().flush().ok().expect("Could not flush stdout");
     }
 }
 
@@ -92,6 +89,10 @@ struct AffectedFlags {
 }
 
 impl AffectedFlags {
+    pub fn szp() -> u16 {
+        AffectedFlags{s:1, z:1, p:1, c:0, a: 0, o: 0}.mask()
+    }
+
     pub fn mask(&self) -> u16 {
         let mut out = 0;
         if self.c != 0 {
