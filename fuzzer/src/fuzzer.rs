@@ -12,6 +12,7 @@ use dustbox::cpu::instruction::Instruction;
 use dustbox::cpu::CPU;
 use dustbox::cpu::register::{R8, R16};
 use dustbox::cpu::encoder::Encoder;
+use dustbox::cpu::op::Op;
 use dustbox::memory::mmu::MMU;
 
 #[cfg(test)]
@@ -91,11 +92,17 @@ struct AffectedFlags {
 }
 
 impl AffectedFlags {
-    pub fn szp() -> u16 {
-        AffectedFlags{s:1, z:1, p:1, c:0, a: 0, o: 0}.mask()
+    pub fn for_op(op: Op) -> u16 {
+        match op {
+            Op::Cmp8 | Op::Adc8 => AffectedFlags{c:1, o:1, s:1, z:1, a:1, p:1}.mask(),
+            Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1}.mask(),
+            Op::Aaa | Op::Aas => AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0}.mask(),
+            Op::Test8 => AffectedFlags{s:1, z:1, p:1, c:0, a: 0, o: 0}.mask(),
+            _ => panic!("AffectedFlags::for_op: unhandled {:?}", op),
+        }
     }
 
-    pub fn mask(&self) -> u16 {
+    fn mask(&self) -> u16 {
         let mut out = 0;
         if self.c != 0 {
             out |= 0x0000_0001;

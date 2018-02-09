@@ -129,33 +129,33 @@ impl Decoder {
             }
             0x08 => {
                 // or r/m8, r8
-                op.command = Op::Or8();
+                op.command = Op::Or8;
                 op.params = self.rm8_r8(op.segment_prefix);
             }
             0x09 => {
                 // or r/m16, r16
-                op.command = Op::Or16();
+                op.command = Op::Or16;
                 op.params = self.rm16_r16(op.segment_prefix);
             }
             0x0A => {
                 // or r8, r/m8
-                op.command = Op::Or8();
+                op.command = Op::Or8;
                 op.params = self.r8_rm8(op.segment_prefix);
             }
             0x0B => {
                 // or r16, r/m16
-                op.command = Op::Or16();
+                op.command = Op::Or16;
                 op.params = self.r16_rm16(op.segment_prefix);
             }
             0x0C => {
                 // or AL, imm8
-                op.command = Op::Or8();
+                op.command = Op::Or8;
                 op.params.dst = Parameter::Reg8(R8::AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
             0x0D => {
                 // or AX, imm16
-                op.command = Op::Or16();
+                op.command = Op::Or16;
                 op.params.dst = Parameter::Reg16(R16::AX);
                 op.params.src = Parameter::Imm16(self.read_u16());
             }
@@ -266,33 +266,33 @@ impl Decoder {
             }
             0x10 => {
                 // adc r/m8, r8
-                op.command = Op::Adc8();
+                op.command = Op::Adc8;
                 op.params = self.rm8_r8(op.segment_prefix);
             }
             0x11 => {
                 // adc r/m16, r16
-                op.command = Op::Adc16();
+                op.command = Op::Adc16;
                 op.params = self.rm16_r16(op.segment_prefix);
             }
             0x12 => {
                 // adc r8, r/m8
-                op.command = Op::Adc8();
+                op.command = Op::Adc8;
                 op.params = self.r8_rm8(op.segment_prefix);
             }
             0x13 => {
                 // adc r16, r/m16
-                op.command = Op::Adc16();
+                op.command = Op::Adc16;
                 op.params = self.r16_rm16(op.segment_prefix);
             }
             0x14 => {
                 // adc al, imm8
-                op.command = Op::Adc8();
+                op.command = Op::Adc8;
                 op.params.dst = Parameter::Reg8(R8::AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
             0x15 => {
                 // adc ax, imm16
-                op.command = Op::Adc16();
+                op.command = Op::Adc16;
                 op.params.dst = Parameter::Reg16(R16::AX);
                 op.params.src = Parameter::Imm16(self.read_u16());
             }
@@ -651,8 +651,8 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8());
                 match x.reg {
                     0 => op.command = Op::Add8,
-                    1 => op.command = Op::Or8(),
-                    2 => op.command = Op::Adc8(),
+                    1 => op.command = Op::Or8,
+                    2 => op.command = Op::Adc8,
                     3 => op.command = Op::Sbb8(),
                     4 => op.command = Op::And8,
                     5 => op.command = Op::Sub8(),
@@ -668,8 +668,8 @@ impl Decoder {
                 op.params.src = Parameter::Imm16(self.read_u16());
                 match x.reg {
                     0 => op.command = Op::Add16,
-                    1 => op.command = Op::Or16(),
-                    2 => op.command = Op::Adc16(),
+                    1 => op.command = Op::Or16,
+                    2 => op.command = Op::Adc16,
                     3 => op.command = Op::Sbb16(),
                     4 => op.command = Op::And16,
                     5 => op.command = Op::Sub16(),
@@ -686,8 +686,8 @@ impl Decoder {
                 op.params.src = Parameter::ImmS8(self.read_s8());
                 match x.reg {
                     0 => op.command = Op::Add16,
-                    1 => op.command = Op::Or16(),
-                    2 => op.command = Op::Adc16(),
+                    1 => op.command = Op::Or16,
+                    2 => op.command = Op::Adc16,
                     3 => op.command = Op::Sbb16(),
                     4 => op.command = Op::And16,
                     5 => op.command = Op::Sub16(),

@@ -288,7 +288,7 @@ impl CPU {
                 };
                 self.adjb(-6, v);
             }
-            Op::Adc8() => {
+            Op::Adc8 => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -304,7 +304,7 @@ impl CPU {
                 self.flags.set_carry_u8(res);
                 self.flags.set_parity(res);
             }
-            Op::Adc16() => {
+            Op::Adc16 => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -414,6 +414,8 @@ impl CPU {
                 self.flags.carry = bit_base & (1 << (bit_offset & 15)) != 0;
             }
             Op::Bound() => {
+                // Check Array Index Against Bounds
+                // XXX throw BR exception if out of bounds
                 println!("XXX impl {}", op);
             }
             Op::CallNear() => {
@@ -1085,7 +1087,7 @@ impl CPU {
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
                 // Flags Affected: None
             }
-            Op::Or8() => {
+            Op::Or8 => {
                 // two arguments (dst=AL)
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -1099,7 +1101,7 @@ impl CPU {
                 self.flags.set_parity(res);
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
-            Op::Or16() => {
+            Op::Or16 => {
                 // two arguments (dst=AX)
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
