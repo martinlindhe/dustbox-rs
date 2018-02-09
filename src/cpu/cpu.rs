@@ -2047,16 +2047,9 @@ impl CPU {
         }
     }
 
+    // returns the value of the given segment register
     fn segment(&self, seg: Segment) -> u16 {
-        match seg {
-            Segment::Default |
-            Segment::DS => self.get_sr(&SR::DS),
-            Segment::CS => self.get_sr(&SR::CS),
-            Segment::ES => self.get_sr(&SR::ES),
-            Segment::FS => self.get_sr(&SR::FS),
-            Segment::GS => self.get_sr(&SR::GS),
-            Segment::SS => self.get_sr(&SR::SS),
-        }
+        self.get_sr(&seg.as_register())
     }
 
     fn amode16(&self, amode: &AMode) -> u16 {
