@@ -453,15 +453,7 @@ impl CPU {
                 // Modify status flags in the same manner as the SUB instruction
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
-                let res = (Wrapping(dst) - Wrapping(src)).0;
-
-                // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
-                self.flags.set_carry_u8(res);
-                self.flags.set_overflow_sub_u8(res, src, dst);
-                self.flags.set_sign_u8(res);
-                self.flags.set_zero_u8(res);
-                self.flags.set_auxiliary(res, src, dst);
-                self.flags.set_parity(res);
+                self.cmp8(dst, src);
             }
             Op::Cmp16() => {
                 // two parameters
@@ -477,7 +469,19 @@ impl CPU {
                 let src = self.mmu.read_u16(self.segment(op.segment_prefix), self.get_r16(&R16::SI)) as usize;
                 let dst = self.mmu.read_u16(self.get_sr(&SR::ES), self.get_r16(&R16::DI)) as usize;
                 self.cmp16(dst, src);
-                println!("XXX Cmpsw - verify implementation");
+
+                let si = if !self.flags.direction {
+                    (Wrapping(self.get_r16(&R16::SI)) + Wrapping(2)).0
+                } else {
+                    (Wrapping(self.get_r16(&R16::SI)) - Wrapping(2)).0
+                };
+                self.set_r16(&R16::SI, si);
+                let di = if !self.flags.direction {
+                    (Wrapping(self.get_r16(&R16::DI)) + Wrapping(2)).0
+                } else {
+                    (Wrapping(self.get_r16(&R16::DI)) - Wrapping(2)).0
+                };
+                self.set_r16(&R16::DI, di);
             }
             Op::Cwd() => {
                 // Convert Word to Doubleword
@@ -1440,7 +1444,17 @@ impl CPU {
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
             Op::Scasb() => {
-                println!("XXX impl {}", op);
+                // Compare AL with byte at ES:(E)DI then set status flags.
+                let src = self.get_r8(&R8::AL);
+                let dst = self.mmu.read_u8(self.get_sr(&SR::ES), self.get_r16(&R16::DI));
+                self.cmp8(dst as usize, src as usize);
+
+                let di = if !self.flags.direction {
+                    (Wrapping(self.get_r16(&R16::DI)) + Wrapping(1)).0
+                } else {
+                    (Wrapping(self.get_r16(&R16::DI)) - Wrapping(1)).0
+                };
+                self.set_r16(&R16::DI, di);
             }
             Op::Setc => {
                 // setc: Set byte if carry (CF=1).
@@ -1778,6 +1792,18 @@ impl CPU {
         println!("Exception {:?}, error {}", which, error);
 
         // CPU_Interrupt(which,CPU_INT_EXCEPTION | ((which>=8) ? CPU_INT_HAS_ERROR : 0),reg_eip);
+    }
+
+    fn cmp8(&mut self, dst: usize, src: usize) {
+        let res = (Wrapping(dst) - Wrapping(src)).0;
+
+        // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
+        self.flags.set_carry_u8(res);
+        self.flags.set_overflow_sub_u8(res, src, dst);
+        self.flags.set_sign_u8(res);
+        self.flags.set_zero_u8(res);
+        self.flags.set_auxiliary(res, src, dst);
+        self.flags.set_parity(res);
     }
 
     fn cmp16(&mut self, dst: usize, src: usize) {
