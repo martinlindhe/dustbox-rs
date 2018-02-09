@@ -821,6 +821,28 @@ impl CPU {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
+            Op::Lahf() => {
+                // Load Status Flags into AH Register
+                // Load: AH ← EFLAGS(SF:ZF:0:AF:0:PF:1:CF).
+                let mut val = 0 as u8;
+                if self.flags.carry {
+                    val |= 1;
+                }
+                val |= 1 << 1;
+                if self.flags.parity {
+                    val |= 1 << 2;
+                }
+                if self.flags.auxiliary_carry {
+                    val |= 1 << 4;
+                }
+                if self.flags.zero {
+                    val |= 1 << 6;
+                }
+                if self.flags.sign {
+                    val |= 1 << 7;
+                }
+                self.set_r8(&R8::AH, val);
+            }
             Op::Lea16() => {
                 // Load Effective Address
                 let src = self.read_parameter_address(&op.params.src) as u16;
@@ -2098,6 +2120,9 @@ impl CPU {
             0x0061 => {
                 // keyboard controller port b OR ppi programmable perihpial interface (XT only) - which mode are we in?
             },
+            0x0201 => {
+                // W  fire joystick's four one-shots
+            }
             0x03C7 => self.gpu.set_pel_address(data), // XXX unsure if understood correctly
             0x03C8 => self.gpu.set_pel_address(data),
             0x03C9 => self.gpu.set_pel_data(data),
@@ -2107,8 +2132,24 @@ impl CPU {
             0x03D5 => {
                 // CRT (6845) data register XXX
             }
+            0x03D8 => {
+                // RW  CGA mode control register  (except PCjr) (see #P0817)
+	            // cannot be found on native color EGA, color VGA, but on most clones
+            }
             0x03D9 => {
                 // XXX CGA palette register!!!
+            }
+            0x03DA => {
+                // 03DA  -W  color EGA/color VGA feature control register (see #P0820)
+	            //  (at PORT 03BAh w in mono mode, VGA: 3CAh r)
+                // 03DA  -W  HZ309 (MDA/HGC/CGA clone) card from in Heath/Zenith HZ150 PC
+                //  bit7-1=0: unknown, zero is default and known to function
+                //            properly at least in CGA modes.
+                //  bit 0 = 1 override 3x8h bit3 control register that switches
+                //            CRT beam off if bit3 is cleared. So screens always
+                //            stays on.
+                //  bit 0 = 0 3x8h bit3 indicates if CRT beam is on or off.
+                //            No more info available. Might conflict with EGA/VGA.
             }
             _ => {
                 println!("ERROR: unhandled out_u8 to port {:04X}, data {:02X}", dst, data);
@@ -2184,6 +2225,19 @@ impl CPU {
             },
             0x0061 => {
                 // keyboard controller port b control register
+                0 // XXX
+            }
+            0x0201 => {
+                // read joystick position and status
+                // Bit(s)	Description	(Table P0542)
+                //  7	status B joystick button 2 / D paddle button
+                //  6	status B joystick button 1 / C paddle button
+                //  5	status A joystick button 2 / B paddle button
+                //  4	status A joystick button 1 / A paddle button
+                //  3	B joystick Y coordinate	   / D paddle coordinate
+                //  2	B joystick X coordinate	   / C paddle coordinate
+                //  1	A joystick Y coordinate	   / B paddle coordinate
+                //  0	A joystick X coordinate	   / A paddle coordinate
                 0 // XXX
             }
             0x03DA => self.gpu.read_cga_status_register(),
