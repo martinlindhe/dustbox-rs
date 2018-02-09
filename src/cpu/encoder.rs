@@ -103,12 +103,6 @@ impl Encoder {
                     return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                 }
             }
-            Op::And8 | Op::Or8 | Op::Adc8 | Op::Cmp8 | Op::Xor8 => {
-                match self.arith_instr8(op) {
-                    Ok(data) => out.extend(data),
-                    Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
-                }
-            }
             /*
             Op::Cmp16 => {
                 // 0x39: cmp r/m16, r16
@@ -170,7 +164,6 @@ impl Encoder {
                 }
             }
             Op::Mov16 => {
-                
                 //0x89: mov r/m16, r16
                 //0x8B: mov r16, r/m16
                 //0x8C: mov r/m16, sreg
@@ -201,6 +194,12 @@ impl Encoder {
                 }*/
                 } else {
                     return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
+                }
+            }
+            Op::And8 | Op::Or8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 | Op::Cmp8 | Op::Xor8 => {
+                match self.arith_instr8(op) {
+                    Ok(data) => out.extend(data),
+                    Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
                 }
             }
             Op::Test8 => {
@@ -237,17 +236,22 @@ impl Encoder {
     fn arith_instr8(&self, ins: &Instruction) -> Result<Vec<u8>, SimpleError> {
         let mut out = vec!();
         let idx = match ins.command {
+            Op::Add8 => 0x00,
             Op::Or8  => 0x08,
             Op::Adc8 => 0x10,
+            Op::Sbb8 => 0x18,
             Op::And8 => 0x20,
+            Op::Sub8 => 0x28,
             Op::Xor8 => 0x30,
             Op::Cmp8 => 0x38,
             _ => panic!("unhandled {:?}", ins.command),
         };
+
         if let Parameter::Reg8(r) = ins.params.dst {
             if r == R8::AL {
                 if let Parameter::Imm8(imm) = ins.params.src {
                     // 0x0C: or AL, imm8
+                    // 0x1C: sbb al, imm8
                     // 0x24: and AL, imm8
                     // 0x34: xor AL, imm8
                     // 0x3C: cmp AL, imm8
@@ -268,6 +272,7 @@ impl Encoder {
                     out.push(i);
                 } else if ins.params.src.is_ptr() {
                     // 0x0A: or r8, r/m8
+                    // 0x1A: sbb r8, r/m8
                     // 0x22: and r8, r/m8
                     // 0x32: xor r8, r/m8
                     // 0x3A: cmp r8, r/m8
@@ -276,7 +281,9 @@ impl Encoder {
                 } else {
                     // 0x08: or r/m8, r8
                     // 0x10: adc r/m8, r8
+                    // 0x18: sbb r/m8, r8
                     // 0x20: and r/m8, r8
+                    // 0x28: sub r/m8, r8
                     // 0x30: xor r/m8, r8
                     // 0x38: cmp r/m8, r8
                     out.push(idx);
@@ -382,9 +389,9 @@ impl Encoder {
             Op::Add8 => 0,
             Op::Or8  => 1,
             Op::Adc8 => 2,
-            Op::Sbb8() => 3,
+            Op::Sbb8 => 3,
             Op::And8 => 4,
-            Op::Sub8() => 5,
+            Op::Sub8 => 5,
             Op::Xor8 => 6,
             Op::Cmp8 => 7,
             _ => panic!("arith_get_index {:?}", op),

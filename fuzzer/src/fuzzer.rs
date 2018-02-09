@@ -92,13 +92,14 @@ struct AffectedFlags {
 }
 
 impl AffectedFlags {
+    // returns a flag mask for affected flag registers by op
     pub fn for_op(op: Op) -> u16 {
         match op {
-            Op::Cmp8 | Op::Adc8 => AffectedFlags{c:1, o:1, s:1, z:1, a:1, p:1}.mask(),
+            Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1}.mask(),
             Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1}.mask(),
             Op::Aaa | Op::Aas => AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0}.mask(),
             Op::Test8 => AffectedFlags{s:1, z:1, p:1, c:0, a: 0, o: 0}.mask(),
-            _ => panic!("AffectedFlags::for_op: unhandled {:?}", op),
+            _ => panic!("AffectedFlags: unhandled op {:?}", op),
         }
     }
 

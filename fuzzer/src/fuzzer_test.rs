@@ -10,13 +10,16 @@ use fuzzer::{fuzz, AffectedFlags};
 #[test] #[ignore] // expensive test
 fn fuzz_instruction() {
     let affected_registers = vec!("ax");
-    // verified register & flag operation with winXP: Shr8, Rol8, Cmp8, Test8, And8, Xor8, Or8, Adc8, Aas, Aaa
+    // verified register & flag operation with winXP:
+    // Shr8, Rol8,
+    // Cmp8, Test8, And8, Xor8, Or8, Add8, Adc8, Sub8, Sbb8
+    // Aas, Aaa
 
     // XXX differs from winXP: Shl8 (OF), Sar8 (wrong result some times)
     //          - Ror8 (CF)
 
     for i in 0..65535 as usize {
-        let op = Op::Adc8;
+        let op = Op::Sbb8;
         let affected_flags_mask = AffectedFlags::for_op(op.clone());
 
         let n1 = ((i + 1) & 0xFF) ^ 0xAA;

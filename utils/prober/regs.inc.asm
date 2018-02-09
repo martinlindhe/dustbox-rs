@@ -23,30 +23,6 @@ save_regs:
     mov [_flags], ax
     ret
 
-;clear_regs:
-;    ; init registers
-;    mov ax, 0
-;    mov bx, 0
-;    mov cx, 0
-;    mov dx, 0
-;    mov bp, 0
-;    mov si, 0
-;    mov di, 0
-;    ret
-
-;clear_flags:
-;    push ax
-;    popf                    ; clear flags
-;    ret
-
-;clear_mem:
-;    ; writes 0xFF to CS:0400...CS:FFFF
-;    mov di, 0x0400
-;    mov cx, 0x8000
-;    mov al, 0xff
-;    rep stosb
-;    ret
-
 print_ax:
     mov  dx, axIs
     call print_dollar_dx

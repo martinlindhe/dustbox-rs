@@ -306,20 +306,25 @@ impl Decoder {
                 op.command = Op::Pop16;
                 op.params.dst = Parameter::SReg16(SR::SS);
             }
+            0x18 => {
+                // sbb r/m8, r8
+                op.command = Op::Sbb8;
+                op.params = self.rm8_r8(op.segment_prefix);
+            }
             0x1A => {
                 // sbb r8, r/m8
-                op.command = Op::Sbb8();
+                op.command = Op::Sbb8;
                 op.params = self.r8_rm8(op.segment_prefix);
             }
             0x1C => {
                 // sbb al, imm8
-                op.command = Op::Sbb8();
+                op.command = Op::Sbb8;
                 op.params.dst = Parameter::Reg8(R8::AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
             0x1D => {
                 // sbb ax, imm16
-                op.command = Op::Sbb16();
+                op.command = Op::Sbb16;
                 op.params.dst = Parameter::Reg16(R16::AX);
                 op.params.src = Parameter::Imm16(self.read_u16());
             }
@@ -373,33 +378,33 @@ impl Decoder {
             0x27 => op.command = Op::Daa(),
             0x28 => {
                 // sub r/m8, r8
-                op.command = Op::Sub8();
+                op.command = Op::Sub8;
                 op.params = self.rm8_r8(op.segment_prefix);
             }
             0x29 => {
                 // sub r/m16, r16
-                op.command = Op::Sub16();
+                op.command = Op::Sub16;
                 op.params = self.rm16_r16(op.segment_prefix);
             }
             0x2A => {
                 // sub r8, r/m8
-                op.command = Op::Sub8();
+                op.command = Op::Sub8;
                 op.params = self.r8_rm8(op.segment_prefix);
             }
             0x2B => {
                 // sub r16, r/m16
-                op.command = Op::Sub16();
+                op.command = Op::Sub16;
                 op.params = self.r16_rm16(op.segment_prefix);
             }
             0x2C => {
                 // sub AL, imm8
-                op.command = Op::Sub8();
+                op.command = Op::Sub8;
                 op.params.dst = Parameter::Reg8(R8::AL);
                 op.params.src = Parameter::Imm8(self.read_u8());
             }
             0x2D => {
                 // sub AX, imm16
-                op.command = Op::Sub16();
+                op.command = Op::Sub16;
                 op.params.dst = Parameter::Reg16(R16::AX);
                 op.params.src = Parameter::Imm16(self.read_u16());
             }
@@ -653,9 +658,9 @@ impl Decoder {
                     0 => op.command = Op::Add8,
                     1 => op.command = Op::Or8,
                     2 => op.command = Op::Adc8,
-                    3 => op.command = Op::Sbb8(),
+                    3 => op.command = Op::Sbb8,
                     4 => op.command = Op::And8,
-                    5 => op.command = Op::Sub8(),
+                    5 => op.command = Op::Sub8,
                     6 => op.command = Op::Xor8,
                     7 => op.command = Op::Cmp8,
                     _ => {}
@@ -670,9 +675,9 @@ impl Decoder {
                     0 => op.command = Op::Add16,
                     1 => op.command = Op::Or16,
                     2 => op.command = Op::Adc16,
-                    3 => op.command = Op::Sbb16(),
+                    3 => op.command = Op::Sbb16,
                     4 => op.command = Op::And16,
-                    5 => op.command = Op::Sub16(),
+                    5 => op.command = Op::Sub16,
                     6 => op.command = Op::Xor16,
                     7 => op.command = Op::Cmp16,
                     _ => {}
@@ -688,9 +693,9 @@ impl Decoder {
                     0 => op.command = Op::Add16,
                     1 => op.command = Op::Or16,
                     2 => op.command = Op::Adc16,
-                    3 => op.command = Op::Sbb16(),
+                    3 => op.command = Op::Sbb16,
                     4 => op.command = Op::And16,
-                    5 => op.command = Op::Sub16(),
+                    5 => op.command = Op::Sub16,
                     6 => op.command = Op::Xor16,
                     7 => op.command = Op::Cmp16,
                     _ => {}

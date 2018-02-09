@@ -151,6 +151,63 @@ fn can_encode_or8() {
 }
 
 #[test]
+fn can_encode_add8() {
+    // AL, imm8
+    let op = Instruction::new2(Op::Add8, Parameter::Reg8(R8::AL), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "add al,0xff", vec!(0x04, 0xFF));
+
+    // r8, imm8
+    let op = Instruction::new2(Op::Add8, Parameter::Reg8(R8::BL), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "add bl,0xff", vec!(0x80, 0xC3, 0xFF));
+
+    // r/m8, r8  (dst is r8)
+    let op = Instruction::new2(Op::Add8, Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
+    assert_encdec(&op, "add bh,dl", vec!(0x00, 0xD7));
+
+    // r8, r/m8
+    let op = Instruction::new2(Op::Add8, Parameter::Reg8(R8::BH), Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_encdec(&op, "add bh,[0xc365]", vec!(0x02, 0x3E, 0x65, 0xC3));
+}
+
+#[test]
+fn can_encode_sub8() {
+    // AL, imm8
+    let op = Instruction::new2(Op::Sub8, Parameter::Reg8(R8::AL), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "sub al,0xff", vec!(0x2C, 0xFF));
+
+    // r8, imm8
+    let op = Instruction::new2(Op::Sub8, Parameter::Reg8(R8::BL), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "sub bl,0xff", vec!(0x80, 0xEB, 0xFF));
+
+    // r/m8, r8  (dst is r8)
+    let op = Instruction::new2(Op::Sub8, Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
+    assert_encdec(&op, "sub bh,dl", vec!(0x28, 0xD7));
+
+    // r8, r/m8
+    let op = Instruction::new2(Op::Sub8, Parameter::Reg8(R8::BH), Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_encdec(&op, "sub bh,[0xc365]", vec!(0x2A, 0x3E, 0x65, 0xC3));
+}
+
+#[test]
+fn can_encode_sbb8() {
+    // AL, imm8
+    let op = Instruction::new2(Op::Sbb8, Parameter::Reg8(R8::AL), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "sbb al,0xff", vec!(0x1C, 0xFF));
+
+    // r8, imm8
+    let op = Instruction::new2(Op::Sbb8, Parameter::Reg8(R8::BL), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "sbb bl,0xff", vec!(0x80, 0xDB, 0xFF));
+
+    // r/m8, r8  (dst is r8)
+    let op = Instruction::new2(Op::Sbb8, Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
+    assert_encdec(&op, "sbb bh,dl", vec!(0x18, 0xD7));
+
+    // r8, r/m8
+    let op = Instruction::new2(Op::Sbb8, Parameter::Reg8(R8::BH), Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_encdec(&op, "sbb bh,[0xc365]", vec!(0x1A, 0x3E, 0x65, 0xC3));
+}
+
+#[test]
 fn can_encode_adc8() {
     // AL, imm8
     let op = Instruction::new2(Op::Adc8, Parameter::Reg8(R8::AL), Parameter::Imm8(0xFF));
@@ -168,7 +225,6 @@ fn can_encode_adc8() {
     let op = Instruction::new2(Op::Adc8, Parameter::Reg8(R8::BH), Parameter::Ptr8(Segment::Default, 0xC365));
     assert_encdec(&op, "adc bh,[0xc365]", vec!(0x12, 0x3E, 0x65, 0xC3));
 }
-
 
 #[test]
 fn can_encode_cmp8() {
@@ -239,6 +295,8 @@ fn can_encode_dec() {
     let op = Instruction::new1(Op::Dec16, Parameter::Ptr16AmodeS8(Segment::Default, AMode::BP, 0x10));
     assert_encdec(&op, "dec word [bp+0x10]", vec!(0xFF, 0x4E, 0x10));
 }
+
+
 
 #[test]
 fn can_encode_push() {

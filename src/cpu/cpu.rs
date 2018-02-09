@@ -1432,7 +1432,7 @@ impl CPU {
                     self.flags.set_parity(res);
                 }
             }
-            Op::Sbb8() => {
+            Op::Sbb8 => {
                 // Integer Subtraction with Borrow
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -1449,9 +1449,8 @@ impl CPU {
 
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
-            Op::Sbb16() => {
+            Op::Sbb16 => {
                 // Integer Subtraction with Borrow
-
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
                 let cf = if self.flags.carry { 1 } else { 0 };
@@ -1659,7 +1658,7 @@ impl CPU {
                 };
                 self.set_r16(&R16::DI, di);
             }
-            Op::Sub8() => {
+            Op::Sub8 => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -1675,7 +1674,7 @@ impl CPU {
 
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
             }
-            Op::Sub16() => {
+            Op::Sub16 => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&op.params.src);
                 let dst = self.read_parameter_value(&op.params.dst);

@@ -2,12 +2,6 @@
 
 section .text
 start:
-    ; call clear_regs
-    ; call clear_mem
-
-    ; -------------------------
-    ; run a snippet to analyse:
-    ; -------------------------
     {{ snippet }}
 
     call save_regs
