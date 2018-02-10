@@ -1635,6 +1635,10 @@ impl CPU {
                     let cf = (temp_32 >> (32 - count)) & 0x1;
                     self.flags.carry = cf != 0;
                     self.flags.overflow = cf ^ (res16 as u32 >> 15) != 0;
+                    self.flags.set_zero_u16(res16 as usize);
+                    self.flags.set_sign_u16(res16 as usize);
+                    self.flags.set_auxiliary(res16 as usize, op1 as usize, op2 as usize);
+                    self.flags.set_parity(res16 as usize);
                 }
             }
             Op::Shr8 => {

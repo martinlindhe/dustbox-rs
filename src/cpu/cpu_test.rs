@@ -1806,13 +1806,12 @@ fn can_execute_shld() {
     cpu.load_com(&code);
     cpu.execute_instructions(3);
     assert_eq!(0x8822, cpu.get_r16(&R16::BX));
-    // XXX dosbox: C0 Z0 S1 O1 A0 P1
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(true, cpu.flags.overflow);
-    //assert_eq!(false, cpu.flags.zero);
-    //assert_eq!(true, cpu.flags.sign);
-    //assert_eq!(false, cpu.flags.auxiliary_carry);
-    //assert_eq!(true, cpu.flags.parity);
+    assert_eq!(false, cpu.flags.zero);
+    assert_eq!(true, cpu.flags.sign);
+    // assert_eq!(false, cpu.flags.auxiliary_carry); // XXX dosbox: C0 Z0 S1 O1 A0 P1
+    assert_eq!(true, cpu.flags.parity);
 }
 
 /*
