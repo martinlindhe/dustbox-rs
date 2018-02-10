@@ -9,10 +9,10 @@ mod flags_test;
 pub struct Flags {
     // ____ O___ SZ_A _P_C
     pub carry: bool, // 0: carry flag
-    reserved1: bool, // 1: Reserved, always 1 in EFLAGS
+    reserved1: bool, // 1: reserved, always 1 in EFLAGS
     pub parity: bool, // 2: parity flag
     reserved3: bool,
-    pub auxiliary_carry: bool, // 4: auxiliary carry flag (AF)
+    pub adjust: bool, // 4: adjust flag
     reserved5: bool,
     pub zero: bool, // 6: zero flag
     pub sign: bool, // 7: sign flag
@@ -63,7 +63,7 @@ impl Flags {
             reserved1: false,
             parity: false,
             reserved3: false,
-            auxiliary_carry: false,
+            adjust: false,
             reserved5: false,
             zero: false,
             sign: false, // bit 7
@@ -106,11 +106,11 @@ impl Flags {
     pub fn set_zero_u16(&mut self, v: usize) {
         self.zero = v.trailing_zeros() >= 16;
     }
-    pub fn set_auxiliary(&mut self, res: usize, v1: usize, v2: usize) {
+    pub fn set_adjust(&mut self, res: usize, v1: usize, v2: usize) {
         // Set if an arithmetic operation generates a carry or a borrow out
         // of bit 3 of the result; cleared otherwise. This flag is used in
         // binary-coded decimal (BCD) arithmetic.
-        self.auxiliary_carry = (res ^ (v1 ^ v2)) & 0x10 != 0;
+        self.adjust = (res ^ (v1 ^ v2)) & 0x10 != 0;
     }
     pub fn set_overflow_add_u8(&mut self, res: usize, v1: usize, v2: usize) {
         // Set if the integer result is too large a positive number or too
@@ -138,19 +138,19 @@ impl Flags {
         self.carry = res & 0x1_0000 != 0;
     }
     pub fn set_u16(&mut self, val: u16) {
-        self.carry           = val & 0x1 != 0;
-        self.reserved1       = val & 0x2 != 0;
-        self.parity          = val & 0x4 != 0;
-        self.auxiliary_carry = val & 0x10 != 0;
-        self.zero            = val & 0x40 != 0;
-        self.sign            = val & 0x80 != 0;
-        self.trap            = val & 0x100 != 0;
-        self.interrupt       = val & 0x200 != 0;
-        self.direction       = val & 0x400 != 0;
-        self.overflow        = val & 0x800 != 0;
-        self.iopl12          = val & 0x1000 != 0;
-        self.iopl13          = val & 0x2000 != 0;
-        self.nested_task     = val & 0x4000 != 0;
+        self.carry       = val & 0x1 != 0;
+        self.reserved1   = val & 0x2 != 0;
+        self.parity      = val & 0x4 != 0;
+        self.adjust      = val & 0x10 != 0;
+        self.zero        = val & 0x40 != 0;
+        self.sign        = val & 0x80 != 0;
+        self.trap        = val & 0x100 != 0;
+        self.interrupt   = val & 0x200 != 0;
+        self.direction   = val & 0x400 != 0;
+        self.overflow    = val & 0x800 != 0;
+        self.iopl12      = val & 0x1000 != 0;
+        self.iopl13      = val & 0x2000 != 0;
+        self.nested_task = val & 0x4000 != 0;
     }
     pub fn carry_val(&self) -> usize {
         if self.carry {
@@ -183,8 +183,8 @@ impl Flags {
             0
         })
     }
-    pub fn auxiliary_numeric(&self) -> String {
-        format!("{}", if self.auxiliary_carry {
+    pub fn adjust_numeric(&self) -> String {
+        format!("{}", if self.adjust {
             1
         } else {
             0
@@ -224,7 +224,7 @@ impl Flags {
         if self.parity {
             val |= 1 << 2;
         }
-        if self.auxiliary_carry {
+        if self.adjust {
             val |= 1 << 4;
         }
         if self.zero {

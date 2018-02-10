@@ -104,7 +104,7 @@ struct AffectedFlags {
     // ____ O___ SZ_A _P_C
     pub c: u8, // 0: carry flag
     pub p: u8, // 2: parity flag
-    pub a: u8, // 4: auxiliary carry flag (AF)
+    pub a: u8, // 4: adjust flag
     pub z: u8, // 6: zero flag
     pub s: u8, // 7: sign flag
     pub i: u8, // 9: interrupt flag

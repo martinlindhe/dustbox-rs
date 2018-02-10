@@ -536,7 +536,7 @@ impl Debugger {
                        self.cpu.flags.zero_numeric(),
                        self.cpu.flags.sign_numeric(),
                        self.cpu.flags.overflow_numeric(),
-                       self.cpu.flags.auxiliary_numeric(),
+                       self.cpu.flags.adjust_numeric(),
                        self.cpu.flags.parity_numeric(),
                        self.cpu.flags.direction_numeric(),
                        self.cpu.flags.interrupt_numeric())

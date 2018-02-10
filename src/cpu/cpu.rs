@@ -281,7 +281,7 @@ impl CPU {
                 // modification of flags A,C,O is undocumented
                 self.flags.carry = false;
                 self.flags.overflow = false;
-                self.flags.auxiliary_carry = false;
+                self.flags.adjust = false;
                 // The SF, ZF, and PF flags are set according to the resulting binary value in the AL register
                 self.flags.sign = al >= 0x80;
                 self.flags.zero = al == 0;
@@ -302,7 +302,7 @@ impl CPU {
                 // modification of flags A,C,O is undocumented
                 self.flags.carry = false;
                 self.flags.overflow = false;
-                self.flags.auxiliary_carry = false;
+                self.flags.adjust = false;
                 // The SF, ZF, and PF flags are set according to the resulting binary value in the AL register
                 self.flags.sign = al & 0x80 != 0; // XXX
                 self.flags.zero = al == 0;
@@ -329,7 +329,7 @@ impl CPU {
                 self.flags.set_overflow_add_u8(res, src + carry, dst);
                 self.flags.set_sign_u8(res);
                 self.flags.set_zero_u8(res);
-                self.flags.set_auxiliary(res, src + carry, dst);
+                self.flags.set_adjust(res, src + carry, dst);
                 self.flags.set_carry_u8(res);
                 self.flags.set_parity(res);
             }
@@ -345,7 +345,7 @@ impl CPU {
                 self.flags.set_overflow_add_u16(res, src + carry, dst);
                 self.flags.set_sign_u16(res);
                 self.flags.set_zero_u16(res);
-                self.flags.set_auxiliary(res, src + carry, dst);
+                self.flags.set_adjust(res, src + carry, dst);
                 self.flags.set_carry_u16(res);
                 self.flags.set_parity(res);
             }
@@ -356,7 +356,7 @@ impl CPU {
                 let res = src as usize + dst as usize;
                 self.flags.set_carry_u8(res);
                 self.flags.set_parity(res);
-                self.flags.set_auxiliary(res, src as usize, dst as usize);
+                self.flags.set_adjust(res, src as usize, dst as usize);
                 self.flags.set_zero_u8(res);
                 self.flags.set_sign_u8(res);
                 self.flags.set_overflow_add_u8(res, src as usize, dst as usize);
@@ -369,7 +369,7 @@ impl CPU {
                 let res = src as usize + dst as usize;
                 self.flags.set_carry_u16(res);
                 self.flags.set_parity(res);
-                self.flags.set_auxiliary(res, src as usize, dst as usize);
+                self.flags.set_adjust(res, src as usize, dst as usize);
                 self.flags.set_zero_u16(res);
                 self.flags.set_sign_u16(res);
                 self.flags.set_overflow_add_u16(res, src as usize, dst as usize);
@@ -543,7 +543,7 @@ impl CPU {
                 self.flags.set_overflow_sub_u8(res, src, dst);
                 self.flags.set_sign_u8(res);
                 self.flags.set_zero_u8(res);
-                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_adjust(res, src, dst);
                 self.flags.set_parity(res);
 
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
@@ -559,7 +559,7 @@ impl CPU {
                 self.flags.set_overflow_sub_u16(res, src, dst);
                 self.flags.set_sign_u16(res);
                 self.flags.set_zero_u16(res);
-                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_adjust(res, src, dst);
                 self.flags.set_parity(res);
 
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
@@ -731,7 +731,7 @@ impl CPU {
                 self.flags.set_overflow_add_u8(res, src, dst);
                 self.flags.set_sign_u8(res);
                 self.flags.set_zero_u8(res);
-                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_adjust(res, src, dst);
                 self.flags.set_parity(res);
 
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
@@ -745,7 +745,7 @@ impl CPU {
                 self.flags.set_overflow_add_u16(res, src, dst);
                 self.flags.set_sign_u16(res);
                 self.flags.set_zero_u16(res);
-                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_adjust(res, src, dst);
                 self.flags.set_parity(res);
 
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
@@ -882,7 +882,7 @@ impl CPU {
                 if self.flags.parity {
                     val |= 1 << 2;
                 }
-                if self.flags.auxiliary_carry {
+                if self.flags.adjust {
                     val |= 1 << 4;
                 }
                 if self.flags.zero {
@@ -1099,7 +1099,7 @@ impl CPU {
                 self.flags.overflow = res == 0x80;
                 self.flags.set_sign_u8(res);
                 self.flags.set_zero_u8(res);
-                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_adjust(res, src, dst);
                 self.flags.set_parity(res);
             }
             Op::Neg16 => {
@@ -1114,7 +1114,7 @@ impl CPU {
                 self.flags.overflow = res == 0x8000;
                 self.flags.set_sign_u16(res);
                 self.flags.set_zero_u16(res);
-                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_adjust(res, src, dst);
                 self.flags.set_parity(res);
             }
             Op::Nop => {}
@@ -1432,7 +1432,7 @@ impl CPU {
                 let ah = self.get_r8(&R8::AH);
                 self.flags.carry = ah & 0x1 != 0; // bit 0
                 self.flags.parity = ah & 0x4 != 0; // bit 2
-                self.flags.auxiliary_carry = ah & 0x10 != 0; // bit 4
+                self.flags.adjust = ah & 0x10 != 0; // bit 4
                 self.flags.zero = ah & 0x40 != 0; // bit 6
                 self.flags.sign = ah & 0x80 != 0; // bit 7
             }
@@ -1505,7 +1505,7 @@ impl CPU {
                 self.flags.set_overflow_sub_u8(res, src, dst);
                 self.flags.set_sign_u8(res);
                 self.flags.set_zero_u8(res);
-                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_adjust(res, src, dst);
                 self.flags.set_parity(res);
                 self.flags.set_carry_u8(res);
 
@@ -1522,7 +1522,7 @@ impl CPU {
                 self.flags.set_overflow_sub_u16(res, src, dst);
                 self.flags.set_sign_u16(res);
                 self.flags.set_zero_u16(res);
-                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_adjust(res, src, dst);
                 self.flags.set_parity(res);
                 self.flags.set_carry_u16(res);
 
@@ -1583,7 +1583,7 @@ impl CPU {
                     //self.flags.overflow = (op1 ^ res) & 0x80 != 0; // dosbox buggy
                     self.flags.overflow = res >> 7 ^ cf as u16 != 0; // MSB of result XOR CF. WARNING: This only works because FLAGS_CF == 1
                     //self.flags.overflow = ((op1 ^ res) >> (12 - 8)) & 0x800 != 0; // qemu
-                    //self.flags.auxiliary_carry = count & 0x1F != 0; // XXX dosbox. AF not set in winxp
+                    //self.flags.adjust = count & 0x1F != 0; // XXX dosbox. AF not set in winxp
                     self.flags.set_sign_u8(res as usize);
                     self.flags.set_zero_u8(res as usize);
                     self.flags.set_parity(res as usize);
@@ -1637,7 +1637,7 @@ impl CPU {
                     self.flags.overflow = cf ^ (res16 as u32 >> 15) != 0;
                     self.flags.set_zero_u16(res16 as usize);
                     self.flags.set_sign_u16(res16 as usize);
-                    self.flags.set_auxiliary(res16 as usize, op1 as usize, op2 as usize);
+                    self.flags.set_adjust(res16 as usize, op1 as usize, op2 as usize);
                     self.flags.set_parity(res16 as usize);
                 }
             }
@@ -1769,7 +1769,7 @@ impl CPU {
                 self.flags.set_overflow_sub_u8(res, src, dst);
                 self.flags.set_sign_u8(res);
                 self.flags.set_zero_u8(res);
-                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_adjust(res, src, dst);
                 self.flags.set_parity(res);
                 self.flags.set_carry_u8(res);
 
@@ -1785,7 +1785,7 @@ impl CPU {
                 self.flags.set_overflow_sub_u16(res, src, dst);
                 self.flags.set_sign_u16(res);
                 self.flags.set_zero_u16(res);
-                self.flags.set_auxiliary(res, src, dst);
+                self.flags.set_adjust(res, src, dst);
                 self.flags.set_parity(res);
                 self.flags.set_carry_u16(res);
 
@@ -1927,7 +1927,7 @@ impl CPU {
         self.flags.set_overflow_sub_u8(res, src, dst);
         self.flags.set_sign_u8(res);
         self.flags.set_zero_u8(res);
-        self.flags.set_auxiliary(res, src, dst);
+        self.flags.set_adjust(res, src, dst);
         self.flags.set_parity(res);
     }
 
@@ -1939,7 +1939,7 @@ impl CPU {
         self.flags.set_overflow_sub_u16(res, src, dst);
         self.flags.set_sign_u16(res);
         self.flags.set_zero_u16(res);
-        self.flags.set_auxiliary(res, src, dst);
+        self.flags.set_adjust(res, src, dst);
         self.flags.set_parity(res);
     }
 
@@ -2170,15 +2170,15 @@ impl CPU {
 
     // used by aaa, aas
     fn adjb(&mut self, param1: i8, param2: i8) {
-        if self.flags.auxiliary_carry || (self.get_r8(&R8::AL) & 0xf) > 9 {
+        if self.flags.adjust || (self.get_r8(&R8::AL) & 0xf) > 9 {
             let al = self.get_r8(&R8::AL);
             let ah = self.get_r8(&R8::AH);
             self.set_r8(&R8::AL, (u16::from(al) + param1 as u16) as u8);
             self.set_r8(&R8::AH, (u16::from(ah) + param2 as u16) as u8);
-            self.flags.auxiliary_carry = true;
+            self.flags.adjust = true;
             self.flags.carry = true;
         } else {
-            self.flags.auxiliary_carry = false;
+            self.flags.adjust = false;
             self.flags.carry = false;
         }
         let al = self.get_r8(&R8::AL);
@@ -2188,7 +2188,7 @@ impl CPU {
     // used by daa, das
     fn adj4(&mut self, param1: i16, param2: i16) {
         let mut al = self.get_r8(&R8::AL);
-        if ((al & 0x0F) > 0x09) || self.flags.auxiliary_carry {
+        if ((al & 0x0F) > 0x09) || self.flags.adjust {
             if (al > 0x99) || self.flags.carry {
                 al = (al as i16 + param2) as u8;
                 self.flags.carry = true;
@@ -2196,7 +2196,7 @@ impl CPU {
                 self.flags.carry = false;
             }
             al = (al as i16 + param1) as u8;
-            self.flags.auxiliary_carry = true;
+            self.flags.adjust = true;
         } else {
             if (al > 0x99) || self.flags.carry {
                 al = (al as i16 + param2) as u8;
@@ -2204,7 +2204,7 @@ impl CPU {
             } else {
                 self.flags.carry = false;
             }
-            self.flags.auxiliary_carry = false;
+            self.flags.adjust = false;
         }
         self.set_r8(&R8::AL, al);
         self.flags.sign = al & 0x80 != 0;

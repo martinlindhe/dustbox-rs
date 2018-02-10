@@ -426,7 +426,7 @@ fn update_registers(
     z_flag.set_active(app.cpu.flags.zero);
     s_flag.set_active(app.cpu.flags.sign);
     o_flag.set_active(app.cpu.flags.overflow);
-    a_flag.set_active(app.cpu.flags.auxiliary_carry);
+    a_flag.set_active(app.cpu.flags.adjust);
     p_flag.set_active(app.cpu.flags.parity);
     d_flag.set_active(app.cpu.flags.direction);
     i_flag.set_active(app.cpu.flags.interrupt);

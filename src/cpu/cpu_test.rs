@@ -55,7 +55,7 @@ fn can_execute_add8() {
     assert_eq!(0x00, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
-    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.adjust);
     assert_eq!(true, cpu.flags.zero);
     assert_eq!(false, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
@@ -64,7 +64,7 @@ fn can_execute_add8() {
     assert_eq!(0x00, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
-    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.adjust);
     assert_eq!(true, cpu.flags.zero);
     assert_eq!(false, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
@@ -73,7 +73,7 @@ fn can_execute_add8() {
     assert_eq!(0xFF, cpu.get_r8(&R8::AH));
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
-    assert_eq!(false, cpu.flags.auxiliary_carry);
+    assert_eq!(false, cpu.flags.adjust);
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(true, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
@@ -82,7 +82,7 @@ fn can_execute_add8() {
     assert_eq!(0xFE, cpu.get_r8(&R8::AH));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(false, cpu.flags.parity);
-    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.adjust);
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(true, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
@@ -111,7 +111,7 @@ fn can_execute_add16() {
     assert_eq!(0x0000, cpu.get_r16(&R16::AX));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
-    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.adjust);
     assert_eq!(true, cpu.flags.zero);
     assert_eq!(false, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
@@ -120,7 +120,7 @@ fn can_execute_add16() {
     assert_eq!(0x0000, cpu.get_r16(&R16::AX));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
-    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.adjust);
     assert_eq!(true, cpu.flags.zero);
     assert_eq!(false, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
@@ -129,7 +129,7 @@ fn can_execute_add16() {
     assert_eq!(0xFFFF, cpu.get_r16(&R16::AX));
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
-    assert_eq!(false, cpu.flags.auxiliary_carry);
+    assert_eq!(false, cpu.flags.adjust);
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(true, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
@@ -138,7 +138,7 @@ fn can_execute_add16() {
     assert_eq!(0xFFFE, cpu.get_r16(&R16::AX));
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(false, cpu.flags.parity);
-    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.adjust);
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(true, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
@@ -367,7 +367,7 @@ fn can_execute_with_flags() {
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(false, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
-    assert_eq!(false, cpu.flags.auxiliary_carry);
+    assert_eq!(false, cpu.flags.adjust);
     assert_eq!(false, cpu.flags.parity);
 
     cpu.execute_instruction();
@@ -377,7 +377,7 @@ fn can_execute_with_flags() {
     assert_eq!(true, cpu.flags.zero);
     assert_eq!(false, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
-    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.adjust);
     assert_eq!(true, cpu.flags.parity);
 }
 
@@ -409,7 +409,7 @@ fn can_execute_cmp() {
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(true, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
-    assert_eq!(false, cpu.flags.auxiliary_carry);
+    assert_eq!(false, cpu.flags.adjust);
     assert_eq!(true, cpu.flags.parity);
 }
 
@@ -969,7 +969,7 @@ fn can_execute_sahf() {
     cpu.execute_instructions(4);
     assert_eq!(true, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
-    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.adjust);
     assert_eq!(true, cpu.flags.zero);
     assert_eq!(true, cpu.flags.sign);
 }
@@ -1043,7 +1043,7 @@ fn can_execute_neg() {
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(true, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
-    assert_eq!(true, cpu.flags.auxiliary_carry);
+    assert_eq!(true, cpu.flags.adjust);
     assert_eq!(true, cpu.flags.parity);
 }
 
@@ -1064,7 +1064,7 @@ fn can_execute_sbb16() {
     // 7286 (dosbox) = 0b111_0010_1000_0110
     assert_eq!(false, cpu.flags.carry);
     assert_eq!(true, cpu.flags.parity);
-    assert_eq!(false, cpu.flags.auxiliary_carry);
+    assert_eq!(false, cpu.flags.adjust);
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(true, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
@@ -1810,7 +1810,7 @@ fn can_execute_shld() {
     assert_eq!(true, cpu.flags.overflow);
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(true, cpu.flags.sign);
-    // assert_eq!(false, cpu.flags.auxiliary_carry); // XXX dosbox: C0 Z0 S1 O1 A0 P1
+    // assert_eq!(false, cpu.flags.adjust); // XXX dosbox: C0 Z0 S1 O1 A0 P1
     assert_eq!(true, cpu.flags.parity);
 }
 
@@ -1902,7 +1902,7 @@ fn can_execute_shrd() {
     assert_eq!(false, cpu.flags.zero);
     assert_eq!(true, cpu.flags.sign);
     assert_eq!(false, cpu.flags.overflow);
-    assert_eq!(false, cpu.flags.auxiliary_carry);
+    assert_eq!(false, cpu.flags.adjust);
     assert_eq!(true, cpu.flags.parity);
 }
 
