@@ -3,14 +3,14 @@ use std::process::Command;
 use std::str;
 use std::path::{Path, PathBuf};
 use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io::{self, Read};
 
 use tera::Context;
 use tempdir::TempDir;
 
 use dustbox::cpu::instruction::Instruction;
 use dustbox::cpu::CPU;
-use dustbox::cpu::register::{R8, R16};
+use dustbox::cpu::register::R16;
 use dustbox::cpu::encoder::Encoder;
 use dustbox::cpu::op::Op;
 use dustbox::memory::mmu::MMU;
@@ -19,7 +19,13 @@ use dustbox::memory::mmu::MMU;
 #[path = "./fuzzer_test.rs"]
 mod fuzzer_test;
 
-fn fuzz(it: usize, ops: &[Instruction], affected_registers: &[&str], affected_flag_mask: u16) {
+pub enum Runner {
+    VmHttp,
+    VmxVmrun,
+    DosboxX,
+}
+
+fn fuzz(runner: Runner, it: usize, ops: &[Instruction], affected_registers: &[&str], affected_flag_mask: u16) {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let encoder = Encoder::new();
@@ -40,15 +46,22 @@ fn fuzz(it: usize, ops: &[Instruction], affected_registers: &[&str], affected_fl
     let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
     assemble_prober(&ops, prober_com);
 
-    //let output = stdout_from_vmx_vmrun(prober_com); // ~2.3 seconds per call
-    let output = stdout_from_vm_http(prober_com); // ~0.05 seconds
-    //let output = stdout_from_dosbox(prober_com); // ~2.3 seconds
+    let output = match runner {
+        Runner::VmHttp => stdout_from_vm_http(prober_com), // ~0.05 seconds per call
+        Runner::VmxVmrun => stdout_from_vmx_vmrun(prober_com), // ~2.3 seconds
+        Runner::DosboxX => stdout_from_dosbox(prober_com), // ~2.3 seconds
+    };
 
-    let dustbox_ah = cpu.get_r8(&R8::AH);
+    let dustbox_ax = cpu.get_r16(&R16::AX);
 
     let vm_regs = prober_reg_map(&output);
+    if vm_regs.len() == 0 {
+        println!("FATAL: no vm regs from vm output: {}", output);
+        return;
+    }
+
     if compare_regs(&cpu, &vm_regs, &affected_registers) {
-        println!("ah={:02x}: regs differ", dustbox_ah);
+        println!("\nMAJOR: ax={:04x}: regs differ", dustbox_ax);
     }
 
     let vm_flags = vm_regs["flag"];
@@ -57,7 +70,7 @@ fn fuzz(it: usize, ops: &[Instruction], affected_registers: &[&str], affected_fl
     let dustbox_masked_flags = dustbox_flags & affected_flag_mask;
     if vm_masked_flags != dustbox_masked_flags {
         let xored = vm_masked_flags ^ dustbox_masked_flags;
-        print!("ah={:02x}: flags differ: vm {:04x}, dustbox {:04x} = diff b{:016b}: ", dustbox_ah, vm_masked_flags, dustbox_masked_flags, xored);
+        print!("\nax={:04x}: flags differ: vm {:04x}, dustbox {:04x} = diff b{:016b}: ", dustbox_ax, vm_masked_flags, dustbox_masked_flags, xored);
         // XXX show differing flag names
         if xored & 0x0000_0001 != 0 {
             print!("C ");
@@ -74,6 +87,12 @@ fn fuzz(it: usize, ops: &[Instruction], affected_registers: &[&str], affected_fl
         if xored & 0x0000_0080 != 0 {
             print!("S ");
         }
+        if xored & 0x0000_0200 != 0 {
+            print!("I ");
+        }
+        if xored & 0x0000_0400 != 0 {
+            print!("D ");
+        }
         if xored & 0x0000_0800 != 0 {
             print!("O ");
         }
@@ -88,6 +107,8 @@ struct AffectedFlags {
     pub a: u8, // 4: auxiliary carry flag (AF)
     pub z: u8, // 6: zero flag
     pub s: u8, // 7: sign flag
+    pub i: u8, // 9: interrupt flag
+    pub d: u8, // 10 direction flag
     pub o: u8, // 11: overflow flag
 }
 
@@ -95,12 +116,17 @@ impl AffectedFlags {
     // returns a flag mask for affected flag registers by op
     pub fn for_op(op: Op) -> u16 {
         match op {
-            Op::Not8 | Op::Div8 | Op::Idiv8 => AffectedFlags{s:0, z:0, p:0, c:0, a: 0, o: 0}.mask(), // no affected flags
-            Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 | Op::Neg8 => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1}.mask(), // all
-            Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1}.mask(), // C O S Z
-            Op::Aaa | Op::Aas => AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0}.mask(),  // C A
-            Op::Mul8 | Op::Imul8 => AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0}.mask(), // C O
-            Op::Test8 => AffectedFlags{s:1, z:1, p:1, c:0, a: 0, o: 0}.mask(),        // S Z P
+            Op::Nop | Op::Salc | Op::Not8 | Op::Div8 | Op::Idiv8 | Op::Cbw | Op::Cwd | Op::Lahf => AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // no affected flags
+            Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 |
+            Op::Neg8 | Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::Sahf => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1, d:1, i:1}.mask(), // all
+            Op::Daa | Op::Das => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:0, d:0, i:0}.mask(), // C A S Z P
+            Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1, d:0, i:0}.mask(), // C O S Z
+            Op::Aaa | Op::Aas => AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0, d:0, i:0}.mask(),  // C A
+            Op::Rol8 | Op::Rcl8 | Op::Ror8 | Op::Rcr8 | Op::Mul8 | Op::Imul8 => AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0, d:0, i:0}.mask(), // C O
+            Op::Aad | Op::Aam | Op::Test8 => AffectedFlags{s:1, z:1, p:1, c:0, a:0, o:0, d:0, i:0}.mask(),        // S Z P
+            Op::Clc | Op::Cmc | Op::Stc => AffectedFlags{c:1, a:0, o:0, s:0, z:0, p:0, d:0, i:0}.mask(),  // C
+            Op::Cld | Op::Std => AffectedFlags{d:1, c:0, a:0, o:0, s:0, z:0, p:0, i:0}.mask(),  // D
+            Op::Cli | Op::Sti => AffectedFlags{i:1, d:0, c:0, a:0, o:0, s:0, z:0, p:0}.mask(),  // I
             _ => panic!("AffectedFlags: unhandled op {:?}", op),
         }
     }
@@ -121,6 +147,12 @@ impl AffectedFlags {
         }
         if self.s != 0 {
             out |= 0x0000_0080;
+        }
+        if self.i != 0 {
+            out |= 0x0000_0200;
+        }
+        if self.d != 0 {
+            out |= 0x0000_0400;
         }
         if self.o != 0 {
             out |= 0x0000_0800;

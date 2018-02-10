@@ -67,8 +67,39 @@ impl Encoder {
         }
 
         match op.command {
+            Op::Daa => out.push(0x27),
+            Op::Das => out.push(0x2F),
             Op::Aaa => out.push(0x37),
             Op::Aas => out.push(0x3F),
+            Op::Cmc => out.push(0xF5),
+            Op::Clc => out.push(0xF8),
+            Op::Stc => out.push(0xF9),
+            Op::Cli => out.push(0xFA),
+            Op::Sti => out.push(0xFB),
+            Op::Cld => out.push(0xFC),
+            Op::Std => out.push(0xFD),
+            Op::Cbw => out.push(0x98),
+            Op::Cwd => out.push(0x99),
+            Op::Sahf => out.push(0x9E),
+            Op::Lahf => out.push(0x9F),
+            Op::Nop => out.push(0x90),
+            Op::Salc => out.push(0xD6),
+            Op::Aad => {
+                if let Parameter::Imm8(imm) = op.params.dst {
+                    out.push(0xD5);
+                    out.push(imm);
+                } else {
+                    unreachable!();
+                }
+            }
+            Op::Aam => {
+                if let Parameter::Imm8(imm) = op.params.dst {
+                    out.push(0xD4);
+                    out.push(imm);
+                } else {
+                    unreachable!();
+                }
+            }
             Op::Dec8 | Op::Inc8 => {
                 // 0xFE: r/m8
                 out.push(0xFE);

@@ -375,7 +375,7 @@ impl Decoder {
                 let (mut op, length) = self.decode(Segment::ES);
                 return (op, length + 1);
             }
-            0x27 => op.command = Op::Daa(),
+            0x27 => op.command = Op::Daa,
             0x28 => {
                 // sub r/m8, r8
                 op.command = Op::Sub8;
@@ -413,7 +413,7 @@ impl Decoder {
                 let (mut op, length) = self.decode(Segment::CS);
                 return (op, length + 1);
             }
-            0x2F => op.command = Op::Das(),
+            0x2F => op.command = Op::Das,
             0x30 => {
                 // xor r/m8, r8
                 op.command = Op::Xor8;
@@ -713,12 +713,12 @@ impl Decoder {
             }
             0x86 => {
                 // xchg r/m8, r8
-                op.command = Op::Xchg8();
+                op.command = Op::Xchg8;
                 op.params = self.rm8_r8(op.segment_prefix);
             }
             0x87 => {
                 // xchg r/m16, r16
-                op.command = Op::Xchg16();
+                op.command = Op::Xchg16;
                 op.params = self.rm16_r16(op.segment_prefix);
             }
             0x88 => {
@@ -764,22 +764,22 @@ impl Decoder {
                     _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
                 }
             }
-            0x90 => op.command = Op::Nop(),
+            0x90 => op.command = Op::Nop,
             0x91...0x97 => {
                 // xchg AX, r16 | xchg r16, AX
                 // NOTE: "xchg ax,ax" is an alias of "nop"
-                op.command = Op::Xchg16();
+                op.command = Op::Xchg16;
                 op.params.dst = Parameter::Reg16(R16::AX);
                 op.params.src = Parameter::Reg16(Into::into(b & 7));
             }
-            0x98 => op.command = Op::Cbw(),
-            0x99 => op.command = Op::Cwd(),
+            0x98 => op.command = Op::Cbw,
+            0x99 => op.command = Op::Cwd,
             // 0x9A = "call word imm16:imm16"
             // 0x9B = "wait"
             0x9C => op.command = Op::Pushf,
             0x9D => op.command = Op::Popf,
-            0x9E => op.command = Op::Sahf(),
-            0x9F => op.command = Op::Lahf(),
+            0x9E => op.command = Op::Sahf,
+            0x9F => op.command = Op::Lahf,
             0xA0 => {
                 // mov AL, [moffs8]
                 op.command = Op::Mov8;
@@ -994,14 +994,14 @@ impl Decoder {
             }
             0xD4 => {
                 // aam imm8
-                op.command = Op::Aam();
+                op.command = Op::Aam;
                 op.params.dst = Parameter::Imm8(self.read_u8());
             }
             0xD5 => {
-                op.command = Op::Aad();
+                op.command = Op::Aad;
                 op.params.dst = Parameter::Imm8(self.read_u8());
             }
-            0xD6 => op.command = Op::Salc(),
+            0xD6 => op.command = Op::Salc,
             0xD7 => op.command = Op::Xlatb(),
             0xD8...0xDF => {
                 // fpu
@@ -1141,12 +1141,8 @@ impl Decoder {
                     _ => op.command = Op::Invalid(InvalidOp::Op),
                 }
             }
-            0xF4 => {
-                op.command = Op::Hlt();
-            }
-            0xF5 => {
-                op.command = Op::Cmc();
-            }
+            0xF4 => op.command = Op::Hlt(),
+            0xF5 => op.command = Op::Cmc,
             0xF6 => {
                 // <math> r/m8
                 let x = self.read_mod_reg_rm();
@@ -1185,12 +1181,12 @@ impl Decoder {
                     _ => unreachable!(),
                 }
             }
-            0xF8 => op.command = Op::Clc(),
-            0xF9 => op.command = Op::Stc(),
-            0xFA => op.command = Op::Cli(),
-            0xFB => op.command = Op::Sti(),
-            0xFC => op.command = Op::Cld(),
-            0xFD => op.command = Op::Std(),
+            0xF8 => op.command = Op::Clc,
+            0xF9 => op.command = Op::Stc,
+            0xFA => op.command = Op::Cli,
+            0xFB => op.command = Op::Sti,
+            0xFC => op.command = Op::Cld,
+            0xFD => op.command = Op::Std,
             0xFE => {
                 // r/m8
                 let x = self.read_mod_reg_rm();

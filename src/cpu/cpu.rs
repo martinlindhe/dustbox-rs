@@ -269,15 +269,44 @@ impl CPU {
                 };
                 self.adjb(6, v);
             }
-            Op::Aam() => {
+            Op::Aad => {
+                // ASCII Adjust AX Before Division
+                // one parameter
+                let op1 = self.read_parameter_value(&op.params.dst) as u16;
+                let mut ax = (self.get_r8(&R8::AH) as u16) * op1;
+                ax += self.get_r8(&R8::AL) as u16;
+                let al = ax as u8;
+                self.set_r8(&R8::AL, al);
+                self.set_r8(&R8::AH, 0);
+                // modification of flags A,C,O is undocumented
+                self.flags.carry = false;
+                self.flags.overflow = false;
+                self.flags.auxiliary_carry = false;
+                // The SF, ZF, and PF flags are set according to the resulting binary value in the AL register
+                self.flags.sign = al >= 0x80;
+                self.flags.zero = al == 0;
+                self.flags.set_parity(al as usize);
+            }
+            Op::Aam => {
                 // ASCII Adjust AX After Multiply
                 // tempAL ← AL;
                 // AH ← tempAL / imm8; (* imm8 is set to 0AH for the AAM mnemonic *)
                 // AL ← tempAL MOD imm8;
                 let imm8 = self.read_parameter_value(&op.params.dst) as u8;
+                if imm8 == 0 {
+                    return self.exception(&Exception::DIV0, 0);
+                }
                 let al = self.get_r8(&R8::AL);
                 self.set_r8(&R8::AH, al / imm8);
                 self.set_r8(&R8::AL, al % imm8);
+                // modification of flags A,C,O is undocumented
+                self.flags.carry = false;
+                self.flags.overflow = false;
+                self.flags.auxiliary_carry = false;
+                // The SF, ZF, and PF flags are set according to the resulting binary value in the AL register
+                self.flags.sign = al & 0x80 != 0; // XXX
+                self.flags.zero = al == 0;
+                self.flags.set_parity(al as usize);
             }
             Op::Aas => {
                 // ASCII Adjust AL After Subtraction
@@ -425,7 +454,7 @@ impl CPU {
                 self.push16(old_ip);
                 self.ip = temp_ip as u16;
             }
-            Op::Cbw() => {
+            Op::Cbw => {
                 // Convert Byte to Word
                 let ah = if self.get_r8(&R8::AL) & 0x80 != 0 {
                     0xFF
@@ -434,19 +463,19 @@ impl CPU {
                 };
                 self.set_r8(&R8::AH, ah);
             }
-            Op::Clc() => {
+            Op::Clc => {
                 // Clear Carry Flag
                 self.flags.carry = false;
             }
-            Op::Cld() => {
+            Op::Cld => {
                 // Clear Direction Flag
                 self.flags.direction = false;
             }
-            Op::Cli() => {
+            Op::Cli => {
                 // Clear Interrupt Flag
                 self.flags.interrupt = false;
             }
-            Op::Cmc() => {
+            Op::Cmc => {
                 // Complement Carry Flag
                 self.flags.carry = !self.flags.carry;
             }
@@ -485,7 +514,7 @@ impl CPU {
                 };
                 self.set_r16(&R16::DI, di);
             }
-            Op::Cwd() => {
+            Op::Cwd => {
                 // Convert Word to Doubleword
                 // DX:AX ← sign-extend of AX.
                 let dx = if self.get_r16(&R16::AX) & 0x8000 != 0 {
@@ -495,11 +524,11 @@ impl CPU {
                 };
                 self.set_r16(&R16::DX, dx);
             }
-            Op::Daa() => {
+            Op::Daa => {
                 // Decimal Adjust AL after Addition
                 self.adj4(6, 0x60);
             }
-            Op::Das() => {
+            Op::Das => {
                 // Decimal Adjust AL after Subtraction
                 self.adj4(-6, -0x60);
             }
@@ -842,7 +871,7 @@ impl CPU {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Lahf() => {
+            Op::Lahf => {
                 // Load Status Flags into AH Register
                 // Load: AH ← EFLAGS(SF:ZF:0:AF:0:PF:1:CF).
                 let mut val = 0 as u8;
@@ -1085,7 +1114,7 @@ impl CPU {
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
             }
-            Op::Nop() => {}
+            Op::Nop => {}
             Op::Not8 => {
                 // one arguments (dst)
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -1228,20 +1257,20 @@ impl CPU {
             Op::Rcl8 => {
                 // Rotate 9 bits (CF, r/m8) left imm8 times.
                 // two arguments
-                let op1 = self.read_parameter_value(&op.params.dst) as u8;
-                let count = (self.read_parameter_value(&op.params.src) & 0x1F) % 9;
+                let mut count = (self.read_parameter_value(&op.params.src) & 0x1F) % 9;
                 if count > 0 {
-                    let cf = self.flags.carry_val() as u8;
+                    let cf = self.flags.carry_val() as u16;
+                    let op1 = self.read_parameter_value(&op.params.dst) as u16;
                     let res = if count == 1 {
-                        (op1 << 1) | cf
+                        ((op1 << 1) | cf)
                     } else {
-                        (op1 << count) | (cf << (count - 1)) | (op1 >> (9 - count))
-                    };
-                    self.write_parameter_u8(&op.params.dst, res as u8);
+                        ((op1 << count) | (cf << (count - 1)) | (op1 >> (9 - count)))
+                    } as u8;
+                    self.write_parameter_u8(&op.params.dst, res);
                     self.flags.carry = (op1 >> (8 - count)) & 1 != 0;
                     // For left rotates, the OF flag is set to the exclusive OR of the CF bit
                     // (after the rotate) and the most-significant bit of the result.
-                    self.flags.overflow = self.flags.carry_val() as u8 ^ (op1 >> 7) != 0;
+                    self.flags.overflow = self.flags.carry_val() as u16 ^ ((res as u16) >> 7) != 0;
                 }
             }
             Op::Rcl16 => {
@@ -1266,18 +1295,17 @@ impl CPU {
             Op::Rcr8 => {
                 // two arguments
                 // rotate 9 bits right `op1` times
-                let op1 = self.read_parameter_value(&op.params.dst);
-                let count = (self.read_parameter_value(&op.params.src) as u32 & 0x1F) % 9;
-                if count > 0 {
-                    let cf = self.flags.carry_val();
-                    let res = (op1 >> count) | (cf << (8 - count)) | (op1 << (9 - count));
-                    self.write_parameter_u8(&op.params.dst, res as u8);
+                let mut count = self.read_parameter_value(&op.params.src) as u16/* & 0x1F*/;
+                if count % 9 != 0 {
+                    count %= 9;
+                    let cf = self.flags.carry_val() as u16;
+                    let op1 = self.read_parameter_value(&op.params.dst) as u16;
+                    let res = (op1 >> count | (cf << (8 - count)) | (op1 << (9 - count))) as u8;
+                    self.write_parameter_u8(&op.params.dst, res);
                     self.flags.carry = (op1 >> (count - 1)) & 1 != 0;
-                    // For right rotates, the OF flag is set to the exclusive OR of the
-                    // two most-significant bits of the result.
-                    let bit7 = (res >> 7) & 1;
-                    let bit6 = (res >> 6) & 1;
-                    self.flags.overflow = bit7 ^ bit6 != 0;
+                    // The OF flag is set to the exclusive OR of the two most-significant bits of the result.
+                    self.flags.overflow = (res ^ (res << 1)) & 0x80 != 0; // dosbox
+                    //self.flags.overflow = (((res << 1) ^ res) >> 7) & 0x1 != 0; // bochs. of = result6 ^ result7
                 }
             }
             Op::Rcr16 => {
@@ -1321,16 +1349,25 @@ impl CPU {
             }
             Op::Rol8 => {
                 // Rotate 8 bits of 'dst' left for 'src' times.
-                // two arguments
-                let mut res = self.read_parameter_value(&op.params.dst) as u8;
-                let count = self.read_parameter_value(&op.params.src) & 0x1F;
-                res = res.rotate_left(count as u32);
+                // two arguments: op1, count
+                let mut op1 = self.read_parameter_value(&op.params.dst) as u8;
+                let mut count = self.read_parameter_value(&op.params.src);
+                if count & 0b0_0111 == 0 {
+                    if count & 0b1_1000 != 0 {
+                        let bit0 = op1 & 1;
+                        let bit7 = op1 >> 7;
+                        self.flags.overflow = bit0 ^ bit7 != 0;
+                        self.flags.carry = bit0 != 0;
+                    }
+                    // no-op if count is 0
+                    return;
+                }
+                count &= 0x7;
+                let res = (op1 << count) | (op1 >> (8 - count));
                 self.write_parameter_u8(&op.params.dst, res);
                 let bit0 = res & 1;
-                let bit7 = (res >> 7) & 1;
-                if count == 1 {
-                    self.flags.overflow = bit0 ^ bit7 != 0;
-                }
+                let bit7 = res >> 7;
+                self.flags.overflow = bit0 ^ bit7 != 0;
                 self.flags.carry = bit0 != 0;
             }
             Op::Rol16 => {
@@ -1350,15 +1387,24 @@ impl CPU {
             Op::Ror8 => {
                 // Rotate 8 bits of 'dst' right for 'src' times.
                 // two arguments
-                let mut res = self.read_parameter_value(&op.params.dst) as u8;
+                let op1 = self.read_parameter_value(&op.params.dst) as u8;
                 let count = self.read_parameter_value(&op.params.src) & 0x1F;
-                res = res.rotate_right(count as u32);
+
+                if count & 0b0_0111 == 0 {
+                    if count & 0b1_1000 != 0 {
+                        let bit6 = (op1 >> 6) & 1;
+                        let bit7 = op1 >> 7;
+                        self.flags.overflow = bit6 ^ bit7 != 0;
+                        self.flags.carry = bit7 != 0;
+                    }
+                    return;
+                }
+
+                let res = op1.rotate_right(count as u32);
                 self.write_parameter_u8(&op.params.dst, res);
                 let bit6 = (res >> 6) & 1;
-                let bit7 = (res >> 7) & 1;
-                if count == 1 {
-                    self.flags.overflow = bit6 ^ bit7 != 0;
-                }
+                let bit7 = res >> 7;
+                self.flags.overflow = bit6 ^ bit7 != 0;
                 self.flags.carry = bit7 != 0;
             }
             Op::Ror16 => {
@@ -1375,7 +1421,7 @@ impl CPU {
                 }
                 self.flags.carry = bit15 != 0;
             }
-            Op::Sahf() => {
+            Op::Sahf => {
                 // Store AH into Flags
 
                 // Loads the SF, ZF, AF, PF, and CF flags of the EFLAGS register with values
@@ -1387,7 +1433,7 @@ impl CPU {
                 self.flags.zero = ah & 0x40 != 0; // bit 6
                 self.flags.sign = ah & 0x80 != 0; // bit 7
             }
-            Op::Salc() => {
+            Op::Salc => {
                 // "salc", or "setalc" is a undocumented Intel instruction
                 // http://ref.x86asm.net/coder32.html#gen_note_u_SALC_D6
                 // http://www.rcollins.org/secrets/opcodes/SALC.html
@@ -1408,16 +1454,16 @@ impl CPU {
                     if count > 8 {
                         count = 8;
                     }
+
                     let res = if op1 & 0x80 != 0 {
-                        (op1.wrapping_shr(count as u32)) | (0xff << (8 - count))
+                        ((op1 as usize) >> count) | (0xFF << (8 - count))
                     } else {
-                        op1 >> count
+                        ((op1 as usize) >> count)
                     };
-                    self.write_parameter_u8(&op.params.dst, res);
-                    self.flags.carry = (op1 as u8 >> (count - 1)) & 0x1 != 0;
-                    if count == 1 {
-                        self.flags.overflow = false;
-                    }
+                    
+                    self.write_parameter_u8(&op.params.dst, res as u8);
+                    self.flags.carry = (op1 as isize >> (count - 1)) & 0x1 != 0;
+                    self.flags.overflow = false;
                     self.flags.set_sign_u8(res as usize);
                     self.flags.set_zero_u8(res as usize);
                     self.flags.set_parity(res as usize);
@@ -1515,29 +1561,31 @@ impl CPU {
             Op::Shl8 => {
                 // Multiply `dst` by 2, `src` times.
                 // two arguments    (alias: sal)
-                let op1 = self.read_parameter_value(&op.params.dst) as u8;
-                let count = self.read_parameter_value(&op.params.src) & 0x1F;
-                self.flags.carry = false;
-                self.flags.overflow = false;
-
-                if count > 0 {
-                    let mut res: u8 = 0;
-                    if count < 8 { // NOTE: <= 8 in bochs. < 8 in winXP.
-                        res = op1 << count;
-                        let cf = op1 >> (8 - count) & 0x1;
-                        self.flags.carry = cf != 0;
-                        // NOTE: count == 1 to update overflow in winXP. intel docs says "count < 8"
-                        if count == 1 {
-                            //self.flags.overflow = cf ^ (res >> 7) != 0; // bochs
-                            self.flags.overflow = (op1 ^ res) & 0x80 != 0; // dosbox. identical to bochs
-                            // self.flags.overflow = ((op1 ^ res) >> (12 - 8)) & 0x800 != 0; // qemu
-                        }
-                    }
+                let count = self.read_parameter_value(&op.params.src) & 0b1_1111;
+                // XXX differs from dosbox & winxp
+                //if count > 0 {
+                    let op1 = self.read_parameter_value(&op.params.dst) as u16;
+                    let res = if count < 8 {
+                        op1 << count
+                    } else {
+                        0
+                    };
+                    let cf = if count > 8 {
+                        0
+                    } else {
+                        op1 >> (8 - count) & 0x1
+                    };
+                    self.flags.carry = cf != 0;
+                    //self.flags.overflow = cf ^ (res >> 7) != 0; // bochs
+                    //self.flags.overflow = (op1 ^ res) & 0x80 != 0; // dosbox buggy
+                    self.flags.overflow = res >> 7 ^ cf as u16 != 0; // MSB of result XOR CF. WARNING: This only works because FLAGS_CF == 1
+                    //self.flags.overflow = ((op1 ^ res) >> (12 - 8)) & 0x800 != 0; // qemu
+                    //self.flags.auxiliary_carry = count & 0x1F != 0; // XXX dosbox. AF not set in winxp
                     self.flags.set_sign_u8(res as usize);
                     self.flags.set_zero_u8(res as usize);
                     self.flags.set_parity(res as usize);
-                    self.write_parameter_u8(&op.params.dst, res);
-                }
+                    self.write_parameter_u8(&op.params.dst, res as u8);
+                //}
             }
             Op::Shl16 => {
                 // Multiply `dst` by 2, `src` times.
@@ -1574,6 +1622,14 @@ impl CPU {
                     self.flags.set_sign_u8(res);
                     self.flags.set_zero_u8(res);
                     self.flags.set_parity(res);
+                    /*
+                    The CF flag contains the value of the last bit shifted out of the destination operand;
+                    it is undefined for SHL and SHR instructions where the count is greater than or equal to the size (in bits) of the destination operand. 
+
+                    The OF flag is affected only for 1-bit shifts (see “Description” above); otherwise, it is undefined. 
+                    The SF, ZF, and PF flags are set according to the result. If the count is 0, the flags are not affected.
+                    For a non-zero count, the AF flag is undefined.
+                    */
                 }
             }
             Op::Shr16 => {
@@ -1629,15 +1685,15 @@ impl CPU {
                 // If a shift occurs, the AF flag is undefined. If the count is greater than the operand size,
                 // the flags are undefined.
             }
-            Op::Stc() => {
+            Op::Stc => {
                 // Set Carry Flag
                 self.flags.carry = true;
             }
-            Op::Std() => {
+            Op::Std => {
                 // Set Direction Flag
                 self.flags.direction = true;
             }
-            Op::Sti() => {
+            Op::Sti => {
                 // Set Interrupt Flag
                 self.flags.interrupt = true;
             }
@@ -1723,7 +1779,7 @@ impl CPU {
                 self.flags.set_zero_u16(res);
                 self.flags.set_parity(res);
             }
-            Op::Xchg8() => {
+            Op::Xchg8 => {
                 // two parameters (registers)
                 let mut src = self.read_parameter_value(&op.params.src);
                 let mut dst = self.read_parameter_value(&op.params.dst);
@@ -1731,7 +1787,7 @@ impl CPU {
                 self.write_parameter_u8(&op.params.dst, dst as u8);
                 self.write_parameter_u8(&op.params.src, src as u8);
             }
-            Op::Xchg16() => {
+            Op::Xchg16 => {
                 // two parameters (registers)
                 let mut src = self.read_parameter_value(&op.params.src);
                 let mut dst = self.read_parameter_value(&op.params.dst);
@@ -2097,24 +2153,30 @@ impl CPU {
     }
 
     // used by daa, das
-    fn adj4(&mut self, param1: i8, param2: i8) {
-        let old_al = self.get_r8(&R8::AL);
-        let old_cf = self.flags.carry;
-        self.flags.carry = false;
-
-        if (old_al & 0x0F) > 9 || self.flags.auxiliary_carry {
-            let tmp = u16::from(old_al) + param1 as u16;
-            self.set_r8(&R8::AL, tmp as u8);
-            self.flags.carry = tmp & 0x100 != 0;
+    fn adj4(&mut self, param1: i16, param2: i16) {
+        let mut al = self.get_r8(&R8::AL);
+        if ((al & 0x0F) > 0x09) || self.flags.auxiliary_carry {
+            if (al > 0x99) || self.flags.carry {
+                al = (al as i16 + param2) as u8;
+                self.flags.carry = true;
+            } else {
+                self.flags.carry = false;
+            }
+            al = (al as i16 + param1) as u8;
             self.flags.auxiliary_carry = true;
         } else {
+            if (al > 0x99) || self.flags.carry {
+                al = (al as i16 + param2) as u8;
+                self.flags.carry = true;
+            } else {
+                self.flags.carry = false;
+            }
             self.flags.auxiliary_carry = false;
         }
-
-        if old_al > 0x99 || old_cf {
-            self.set_r8(&R8::AL, (u16::from(old_al) + param2 as u16) as u8);
-            self.flags.carry = true;
-        }
+        self.set_r8(&R8::AL, al);
+        self.flags.sign = al & 0x80 != 0;
+        self.flags.zero = al == 0;
+        self.flags.set_parity(al as usize);
     }
 
     // write byte to I/O port
