@@ -1032,55 +1032,46 @@ impl CPU {
                 // XXX ZF is undefined in later docs
                 self.flags.zero = (self.get_r16(&R16::AX) != 0) | (self.get_r16(&R16::DX) != 0);
             }
-            Op::Neg8() => {
+            Op::Neg8 => {
+                // Two's Complement Negation
                 // one argument
                 let dst = self.read_parameter_value(&op.params.dst);
                 let src = 0;
                 let res = (Wrapping(src) - Wrapping(dst)).0;
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
 
-                // The CF flag set to 0 if the source operand is 0; otherwise it is set to 1.
-                if src == 0 {
-                    self.flags.carry = false;
-                } else {
-                    self.flags.carry = true;
-                }
+                self.flags.carry = dst != 0;
                 // The OF, SF, ZF, AF, and PF flags are set according to the result.
-                self.flags.set_overflow_sub_u8(res, src, dst);
+                self.flags.overflow = res == 0x80;
                 self.flags.set_sign_u8(res);
                 self.flags.set_zero_u8(res);
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
             }
-            Op::Neg16() => {
+            Op::Neg16 => {
                 // one argument
                 let dst = self.read_parameter_value(&op.params.dst);
                 let src = 0;
                 let res = (Wrapping(src) - Wrapping(dst)).0;
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
 
-                // The CF flag set to 0 if the source operand is 0; otherwise it is set to 1.
-                if src == 0 {
-                    self.flags.carry = false;
-                } else {
-                    self.flags.carry = true;
-                }
+                self.flags.carry = dst != 0;
                 // The OF, SF, ZF, AF, and PF flags are set according to the result.
-                self.flags.set_overflow_sub_u16(res, src, dst);
+                self.flags.overflow = res == 0x8000;
                 self.flags.set_sign_u16(res);
                 self.flags.set_zero_u16(res);
                 self.flags.set_auxiliary(res, src, dst);
                 self.flags.set_parity(res);
             }
             Op::Nop() => {}
-            Op::Not8() => {
+            Op::Not8 => {
                 // one arguments (dst)
                 let dst = self.read_parameter_value(&op.params.dst);
                 let res = !dst;
                 self.write_parameter_u8(&op.params.dst, (res & 0xFF) as u8);
                 // Flags Affected: None
             }
-            Op::Not16() => {
+            Op::Not16 => {
                 // one arguments (dst)
                 let dst = self.read_parameter_value(&op.params.dst);
                 let res = !dst;

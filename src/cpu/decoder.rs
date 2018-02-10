@@ -1157,8 +1157,8 @@ impl Decoder {
                         op.command = Op::Test8;
                         op.params.src = Parameter::Imm8(self.read_u8());
                     }
-                    2 => op.command = Op::Not8(),
-                    3 => op.command = Op::Neg8(),
+                    2 => op.command = Op::Not8,
+                    3 => op.command = Op::Neg8,
                     4 => op.command = Op::Mul8(),
                     5 => op.command = Op::Imul8,
                     6 => op.command = Op::Div8(),
@@ -1176,8 +1176,8 @@ impl Decoder {
                         op.command = Op::Test16;
                         op.params.src = Parameter::Imm16(self.read_u16());
                     }
-                    2 => op.command = Op::Not16(),
-                    3 => op.command = Op::Neg16(),
+                    2 => op.command = Op::Not16,
+                    3 => op.command = Op::Neg16,
                     4 => op.command = Op::Mul16(),
                     5 => op.command = Op::Imul16,
                     6 => op.command = Op::Div16(),

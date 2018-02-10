@@ -95,10 +95,11 @@ impl AffectedFlags {
     // returns a flag mask for affected flag registers by op
     pub fn for_op(op: Op) -> u16 {
         match op {
-            Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1}.mask(),
-            Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1}.mask(),
-            Op::Aaa | Op::Aas => AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0}.mask(),
-            Op::Test8 => AffectedFlags{s:1, z:1, p:1, c:0, a: 0, o: 0}.mask(),
+            Op::Not8 => AffectedFlags{s:0, z:0, p:0, c:0, a: 0, o: 0}.mask(), // no affected flags
+            Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 | Op::Neg8 => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1}.mask(), // all
+            Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1}.mask(), // C O S Z
+            Op::Aaa | Op::Aas => AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0}.mask(),  // C A
+            Op::Test8 => AffectedFlags{s:1, z:1, p:1, c:0, a: 0, o: 0}.mask(),        // S Z P
             _ => panic!("AffectedFlags: unhandled op {:?}", op),
         }
     }
@@ -266,13 +267,13 @@ fn stdout_from_dosbox(prober_com: &str) -> String {
     fs::copy(prober_com, "/Users/m/dosbox-x/prober.com").unwrap();
 
     Command::new("dosbox-x")
-        .args(&["-noautoexec", "-c", "prober.com > prober.out", "--exit"])
+        .args(&["-c", "prober.com > PROBER.OUT", "--exit"])
         .current_dir("/Users/m/dosbox-x")
         .output()
         .expect("failed to execute process");
 
     let cwd = Path::new("/Users/m/dosbox-x");
-    let file_path = cwd.join("prober.out");
+    let file_path = cwd.join("PROBER.OUT");
 
     read_text_file(&file_path)
 }

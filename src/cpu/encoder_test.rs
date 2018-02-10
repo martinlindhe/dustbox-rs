@@ -91,6 +91,36 @@ fn can_encode_test8() {
     // r8, imm8
     let op = Instruction::new2(Op::Test8, Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
     assert_encdec(&op, "test bh,0xff", vec!(0xF6, 0xC7, 0xFF));
+
+    // r/m8, r8  (dst is r8)
+    let op = Instruction::new2(Op::Test8, Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
+    assert_encdec(&op, "test bh,dl", vec!(0x84, 0xD7));
+
+    // r/m8, r8: NOTE can only be decoded to this form. parameter order does not matter
+    let op = Instruction::new2(Op::Test8, Parameter::Ptr8(Segment::Default, 0xC365), Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "test [0xc365],bh", vec!(0x84, 0x3E, 0x65, 0xC3));
+}
+
+#[test]
+fn can_encode_not8() {
+    // r/m8
+    let op = Instruction::new1(Op::Not8, Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "not bh", vec!(0xF6, 0xD7));
+
+    // r/m8
+    let op = Instruction::new1(Op::Not8, Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_encdec(&op, "not byte [0xc365]", vec!(0xF6, 0x16, 0x65, 0xC3));
+}
+
+#[test]
+fn can_encode_neg8() {
+    // r/m8
+    let op = Instruction::new1(Op::Neg8, Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "neg bh", vec!(0xF6, 0xDF));
+
+    // r/m8
+    let op = Instruction::new1(Op::Neg8, Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_encdec(&op, "neg byte [0xc365]", vec!(0xF6, 0x1E, 0x65, 0xC3));
 }
 
 #[test]

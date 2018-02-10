@@ -143,6 +143,12 @@ impl ModRegRm {
         (self.reg << 3) | // mid 3 bits
         self.rm           // low 3 bits
     }
+
+    pub fn rm_reg(rm: u8, reg: u8) -> u8 {
+        // md 3 = register adressing
+        // XXX ModRegRm.rm really should use enum AMode, not like AMode is now. naming there is wrong
+        ModRegRm{md: 3, rm: rm, reg: reg}.u8()
+    }
 }
 
 fn right_pad(s: &str, len: usize) -> String {

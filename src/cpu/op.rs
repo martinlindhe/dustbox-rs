@@ -85,11 +85,11 @@ pub enum Op {
     Movzx16(),
     Mul8(),
     Mul16(),
-    Neg8(),
-    Neg16(),
+    Neg8,
+    Neg16,
     Nop(),
-    Not8(),
-    Not16(),
+    Not8,
+    Not16,
     Or8,
     Or16,
     Out8(),
@@ -152,6 +152,20 @@ impl Op {
         match *self {
             Op::Unknown() | Op::Invalid(_) => false,
             _ => true,
+        }
+    }
+
+    // used by encoder
+    pub fn f6_index(&self) -> u8 {
+        match *self {
+            Op::Test8 => 0,
+            Op::Not8  => 2,
+            Op::Neg8  => 3,
+            Op::Mul8() => 4,
+            Op::Imul8 => 5,
+            Op::Div8() => 6,
+            Op::Idiv8 => 7,
+            _ => panic!("f6_index {:?}", self),
         }
     }
 

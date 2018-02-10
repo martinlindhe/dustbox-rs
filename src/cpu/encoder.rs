@@ -202,7 +202,7 @@ impl Encoder {
                     Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
                 }
             }
-            Op::Test8 => {
+            Op::Test8 | Op::Not8 | Op::Neg8 => {
                 match self.math_instr8(op) {
                     Ok(data) => out.extend(data),
                     Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
@@ -267,7 +267,7 @@ impl Encoder {
                     // 0x80: <arithmetic> r/m8, imm8
                     out.push(0x80);
                     // md 3 = register adressing
-                    let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.arith_get_index(&ins.command)};
+                    let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.arith_index(&ins.command)};
                     out.push(mrr.u8());
                     out.push(i);
                 } else if ins.params.src.is_ptr() {
@@ -309,30 +309,45 @@ impl Encoder {
     }
 
     fn math_instr8(&self, ins: &Instruction) -> Result<Vec<u8>, SimpleError> {
-        // 0x84: test r/m8, r8
-
+        // XXX 0xD2: bit shift byte by CL
         let mut out = vec!();
         match ins.params.dst {
             Parameter::Reg8(r) => {
-                match ins.params.src {
-                    Parameter::Imm8(i) => {
+                if ins.command == Op::Test8 {
+                    if let Parameter::Imm8(i) = ins.params.src {
                         if r == R8::AL {
                             // 0xA8: test AL, imm8
                             out.push(0xA8);
                         } else {
-                            // 0xF6: <math> r/m8.  reg = 0 for test8 (1 also valid). only for test op: "test r/m8, imm8"
-                            // md 3 = register adressing
-                            // XXX ModRegRm.rm really should use enum AMode, not like AMode is now. naming there is wrong
-                            let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.math_get_index(&ins.command)};
+                            // 0xF6: test r/m8, imm8
                             out.push(0xF6);
-                            out.push(mrr.u8());
+                            out.push(ModRegRm::rm_reg(r.index() as u8, self.math_index(&ins.command)));
                         }
                         out.push(i);
+                    } else {
+                        // 0x84: test r/m8, r8
+                        out.push(0x84);
+                        out.extend(self.encode_rm8_r8(&ins.params));
                     }
-                    _ => {
-                        // 0xD2: bit shift byte by CL
-                        panic!("bitshift_instr8 {:?}", ins);
-                    }
+                } else {
+                    // 0xF6: <math> r/m8.  reg = instruction
+                    out.push(0xF6);
+                    out.push(ModRegRm::rm_reg(r.index() as u8, self.math_index(&ins.command)));
+                }
+                Ok(out)
+            }
+            Parameter::Ptr8(_, _) |
+            Parameter::Ptr8Amode(_, _) |
+            Parameter::Ptr8AmodeS8(_, _, _) |
+            Parameter::Ptr8AmodeS16(_, _, _) => {
+                if ins.command == Op::Test8 {
+                    // 0x84: test r/m8, r8
+                    out.push(0x84);
+                    out.extend(self.encode_rm8_r8(&ins.params));
+                } else {
+                    // 0xF6: not r/m8
+                    out.push(0xF6);
+                    out.extend(self.encode_rm(&ins.params.dst, ins.command.f6_index()));
                 }
                 Ok(out)
             }
@@ -348,7 +363,7 @@ impl Encoder {
                     Parameter::Imm8(i) => {
                         // md 3 = register adressing
                         // XXX ModRegRm.rm really should use enum AMode, not like AMode is now. naming there is wrong
-                        let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.bitshift_get_index(&ins.command)};
+                        let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.bitshift_index(&ins.command)};
                         if i == 1 {
                             // 0xD0: bit shift byte by 1
                             out.push(0xD0);
@@ -371,7 +386,7 @@ impl Encoder {
         }
     }
 
-    fn bitshift_get_index(&self, op: &Op) -> u8 {
+    fn bitshift_index(&self, op: &Op) -> u8 {
         match *op {
             Op::Rol8 => 0,
             Op::Ror8 => 1,
@@ -384,7 +399,7 @@ impl Encoder {
         }
     }
 
-    fn arith_get_index(&self, op: &Op) -> u8 {
+    fn arith_index(&self, op: &Op) -> u8 {
         match *op {
             Op::Add8 => 0,
             Op::Or8  => 1,
@@ -398,11 +413,11 @@ impl Encoder {
         }
     }
 
-    fn math_get_index(&self, op: &Op) -> u8 {
+    fn math_index(&self, op: &Op) -> u8 {
         match *op {
             Op::Test8 => 0,
-            Op::Not8() => 2,
-            Op::Neg8() => 3,
+            Op::Not8  => 2,
+            Op::Neg8 => 3,
             Op::Mul8() => 4,
             Op::Imul8 => 5,
             Op::Div8() => 6,
