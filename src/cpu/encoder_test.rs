@@ -146,6 +146,28 @@ fn can_encode_imul8() {
 }
 
 #[test]
+fn can_encode_div8() {
+    // r/m8
+    let op = Instruction::new1(Op::Div8, Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "div bh", vec!(0xF6, 0xF7));
+
+    // r/m8
+    let op = Instruction::new1(Op::Div8, Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_encdec(&op, "div byte [0xc365]", vec!(0xF6, 0x36, 0x65, 0xC3));
+}
+
+#[test]
+fn can_encode_idiv8() {
+    // r/m8
+    let op = Instruction::new1(Op::Idiv8, Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "idiv bh", vec!(0xF6, 0xFF));
+
+    // r/m8
+    let op = Instruction::new1(Op::Idiv8, Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_encdec(&op, "idiv byte [0xc365]", vec!(0xF6, 0x3E, 0x65, 0xC3));
+}
+
+#[test]
 fn can_encode_and8() {
     // AL, imm8
     let op = Instruction::new2(Op::And8, Parameter::Reg8(R8::AL), Parameter::Imm8(0xFF));

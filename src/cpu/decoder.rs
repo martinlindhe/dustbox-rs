@@ -1161,7 +1161,7 @@ impl Decoder {
                     3 => op.command = Op::Neg8,
                     4 => op.command = Op::Mul8,
                     5 => op.command = Op::Imul8,
-                    6 => op.command = Op::Div8(),
+                    6 => op.command = Op::Div8,
                     7 => op.command = Op::Idiv8,
                     _ => unreachable!(),
                 }
@@ -1180,7 +1180,7 @@ impl Decoder {
                     3 => op.command = Op::Neg16,
                     4 => op.command = Op::Mul16,
                     5 => op.command = Op::Imul16,
-                    6 => op.command = Op::Div16(),
+                    6 => op.command = Op::Div16,
                     7 => op.command = Op::Idiv16,
                     _ => unreachable!(),
                 }

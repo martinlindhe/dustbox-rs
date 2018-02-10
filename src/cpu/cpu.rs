@@ -535,23 +535,37 @@ impl CPU {
 
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
-            Op::Div8() => {
-                let dst = self.get_r16(&R16::AX) as usize;
-                let src = self.read_parameter_value(&op.params.dst);
-                let res = (Wrapping(dst) / Wrapping(src)).0;
-                let rem = (Wrapping(dst) % Wrapping(src)).0;
+            Op::Div8 => {
+                let ax = self.get_r16(&R16::AX) as u16;
+                let op1 = self.read_parameter_value(&op.params.dst) as u16;
+                if op1 == 0 {
+                    return self.exception(&Exception::DIV0, 0);
+                }
+                let quotient = ax / op1;
+                let remainder = (ax % op1) as u8;
+                let quo8 = (quotient & 0xFF) as u8;
+                if quotient > 0xFF {
+                    return self.exception(&Exception::DIV0, 0);
+                }
+                self.set_r8(&R8::AH, remainder);
+                self.set_r8(&R8::AL, quo8);
                 // The CF, OF, SF, ZF, AF, and PF flags are undefined.
-                self.set_r8(&R8::AL, (res & 0xFF) as u8); // quotient
-                self.set_r8(&R8::AH, (rem & 0xFF) as u8); // remainder
             }
-            Op::Div16() => {
-                let dst = ((self.get_r16(&R16::DX) as usize) << 16) + self.get_r16(&R16::AX) as usize; // DX:AX
-                let src = self.read_parameter_value(&op.params.dst);
-                let res = (Wrapping(dst) / Wrapping(src)).0;
-                let rem = (Wrapping(dst) % Wrapping(src)).0;
+            Op::Div16 => {
+                let num = ((self.get_r16(&R16::DX) as u32) << 16) + self.get_r16(&R16::AX) as u32; // DX:AX
+                let op1 = self.read_parameter_value(&op.params.dst) as u32;
+                if op1 == 0 {
+                    return self.exception(&Exception::DIV0, 0);
+                }
+                let remainder = (num % op1) as u16;
+                let quotient = num / op1;
+                let quo16 = (quotient & 0xFFFF) as u16;
+                if quotient != quo16 as u32 {
+                    return self.exception(&Exception::DIV0, 0);
+                }
+                self.set_r16(&R16::DX, remainder);
+                self.set_r16(&R16::AX, quo16);
                 // The CF, OF, SF, ZF, AF, and PF flags are undefined.
-                self.set_r16(&R16::AX, (res & 0xFFFF) as u16); // quotient
-                self.set_r16(&R16::DX, (rem & 0xFFFF) as u16); // remainder
             }
             Op::Enter => {
                 // Make Stack Frame for Procedure Parameters
@@ -585,32 +599,36 @@ impl CPU {
                 // self.fatal_error = true;
             }
             Op::Idiv8 => {
-                let dividend = self.get_r16(&R16::AX) as i16;
-                let op1 = self.read_parameter_value(&op.params.dst) as i16;
+                let ax = self.get_r16(&R16::AX) as i16; // dividend
+                let op1 = self.read_parameter_value(&op.params.dst) as i8;
                 if op1 == 0 {
-                    self.exception(&Exception::DIV0, 0);
+                    return self.exception(&Exception::DIV0, 0);
                 }
-                let quo = dividend / op1;
-                let rem = dividend % op1;
-                if dividend > 0xFF {
-                    self.exception(&Exception::DIV0, 0);
+                let rem = (ax % op1 as i16) as i8;
+                let quo = ax / op1 as i16;
+                let quo8s = (quo & 0xFF) as i8;
+                if quo != quo8s as i16 {
+                    return self.exception(&Exception::DIV0, 0);
                 }
-                self.set_r8(&R8::AL, (quo & 0xFF) as u8);
-                self.set_r8(&R8::AH, (rem & 0xFF) as u8);
+                self.set_r8(&R8::AL, quo as u8);
+                self.set_r8(&R8::AH, rem as u8);
+                // The CF, OF, SF, ZF, AF, and PF flags are undefined.
             }
             Op::Idiv16 => {
-                let dividend = (((self.get_r16(&R16::DX) as i32) << 16) | self.get_r16(&R16::AX) as i32) as isize; // DX:AX
-                let op1 = (self.read_parameter_value(&op.params.dst) as i16) as isize;
+                let dividend = (((self.get_r16(&R16::DX) as u32) << 16) | self.get_r16(&R16::AX) as u32) as i32; // DX:AX
+                let op1 = self.read_parameter_value(&op.params.dst) as i16;
                 if op1 == 0 {
-                    self.exception(&Exception::DIV0, 0);
+                    return self.exception(&Exception::DIV0, 0);
                 }
-                let quo = dividend / op1;
-                let rem = dividend % op1;
-                if quo != quo & 0xFFFF {
-                    self.exception(&Exception::DIV0, 0);
+                let quo = dividend / op1 as i32;
+                let rem = (dividend % op1 as i32) as i16;
+                let quo16s = quo as i16;
+	            if quo != quo16s as i32 {
+                    return self.exception(&Exception::DIV0, 0);
                 }
-                self.set_r16(&R16::AX, quo as u16);
+                self.set_r16(&R16::AX, quo16s as u16);
                 self.set_r16(&R16::DX, rem as u16);
+                // The CF, OF, SF, ZF, AF, and PF flags are undefined.
             }
             Op::Imul8 => {
                 // NOTE: only 1-parameter imul8 instruction exists

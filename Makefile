@@ -14,7 +14,7 @@ expensive-games:
 	cargo test games_com --release -- --color always --nocapture --ignored
 
 expensive-fuzz:
-	cargo test fuzz --package dustbox_fuzzer --release -- --color always --nocapture --ignored
+	cargo test fuzz --package dustbox_fuzzer -- --color always --nocapture --ignored
 
 expensive-encode:
 	cargo test encode -- --color always --nocapture --ignored
