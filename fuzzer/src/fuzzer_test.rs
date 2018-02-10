@@ -6,7 +6,7 @@ use dustbox::cpu::parameter::Parameter;
 use dustbox::cpu::segment::Segment;
 use dustbox::cpu::register::{R8, R16, AMode};
 
-use fuzzer::{fuzz, Runner, AffectedFlags};
+use fuzzer::{fuzz, VmRunner, AffectedFlags};
 
 #[test] #[ignore] // expensive test
 fn fuzz_instruction() {
@@ -32,9 +32,9 @@ fn fuzz_instruction() {
     // dustbox tries to be consistent with dosbox-x where behavior differs
 
     for i in 0..65535 as usize {
-        let op = Op::Lea16;
-        let runner = Runner::VmHttp;
-        let affected_flags_mask = AffectedFlags::for_op(op.clone());
+        let op = Op::Xlatb;
+        let runner = VmRunner::VmHttp;
+        let affected_flags_mask = AffectedFlags::for_op(&op);
 
         let mut n1 = ((i + 1) & 0xFFFF) ^ 0xAAAA;
         let mut n2 = i & 0xFF;
@@ -84,6 +84,6 @@ fn fuzz_instruction() {
 
         print!("{:02x}, {:02x} ", n1, n2);
         io::stdout().flush().ok().expect("Could not flush stdout");
-        fuzz(runner, i, &ops, &affected_registers, affected_flags_mask);
+        fuzz(&runner, i, &ops, &affected_registers, affected_flags_mask);
     }
 }

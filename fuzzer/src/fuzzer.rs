@@ -19,18 +19,18 @@ use dustbox::memory::mmu::MMU;
 #[path = "./fuzzer_test.rs"]
 mod fuzzer_test;
 
-pub enum Runner {
+pub enum VmRunner {
     VmHttp,
     VmxVmrun,
     DosboxX,
 }
 
-fn fuzz(runner: Runner, it: usize, ops: &[Instruction], affected_registers: &[&str], affected_flag_mask: u16) {
+fn fuzz(runner: &VmRunner, it: usize, ops: &[Instruction], affected_registers: &[&str], affected_flag_mask: u16) {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let encoder = Encoder::new();
 
-   match encoder.encode_vec(&ops) {
+   match encoder.encode_vec(ops) {
         Ok(data) => {
             if it % 1000 == 0 {
                 use dustbox::cpu::encoder::ndisasm_bytes;
@@ -44,23 +44,23 @@ fn fuzz(runner: Runner, it: usize, ops: &[Instruction], affected_registers: &[&s
 
     // run in vm, compare regs
     let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
-    assemble_prober(&ops, prober_com);
+    assemble_prober(ops, prober_com);
 
-    let output = match runner {
-        Runner::VmHttp => stdout_from_vm_http(prober_com), // ~0.05 seconds per call
-        Runner::VmxVmrun => stdout_from_vmx_vmrun(prober_com), // ~2.3 seconds
-        Runner::DosboxX => stdout_from_dosbox(prober_com), // ~2.3 seconds
+    let output = match *runner {
+        VmRunner::VmHttp => stdout_from_vm_http(prober_com), // ~0.05 seconds per call
+        VmRunner::VmxVmrun => stdout_from_vmx_vmrun(prober_com), // ~2.3 seconds
+        VmRunner::DosboxX => stdout_from_dosbox(prober_com), // ~2.3 seconds
     };
 
     let dustbox_ax = cpu.get_r16(&R16::AX);
 
     let vm_regs = prober_reg_map(&output);
-    if vm_regs.len() == 0 {
+    if vm_regs.is_empty() {
         println!("FATAL: no vm regs from vm output: {}", output);
         return;
     }
 
-    if compare_regs(&cpu, &vm_regs, &affected_registers) {
+    if compare_regs(&cpu, &vm_regs, affected_registers) {
         println!("\nMAJOR: ax={:04x}: regs differ", dustbox_ax);
     }
 
@@ -114,10 +114,10 @@ struct AffectedFlags {
 
 impl AffectedFlags {
     // returns a flag mask for affected flag registers by op
-    pub fn for_op(op: Op) -> u16 {
-        match op {
+    pub fn for_op(op: &Op) -> u16 {
+        match *op {
             Op::Nop | Op::Salc | Op::Not8 | Op::Div8 | Op::Idiv8 | Op::Cbw | Op::Cwd | Op::Lahf |
-            Op::Lea16 | Op::Xchg8 => AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // no affected flags
+            Op::Lea16 | Op::Xchg8 | Op::Xlatb => AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // no affected flags
             Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 |
             Op::Neg8 | Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::Sahf => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1, d:1, i:1}.mask(), // all
             Op::Daa | Op::Das => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:0, d:0, i:0}.mask(), // C A S Z P
@@ -188,23 +188,14 @@ fn compare_reg(reg_name: &str, cpu: &CPU, vm_val: u16) -> bool {
 
 fn reg_str_to_index(s: &str) -> usize {
     match s {
-        "al" => 0,
-        "cl" => 1,
-        "dl" => 2,
-        "bl" => 3,
-        "ah" => 4,
-        "ch" => 5,
-        "dh" => 6,
-        "bh" => 7,
-
-        "ax" => 0,
-        "cx" => 1,
-        "dx" => 2,
-        "bx" => 3,
-        "sp" => 4,
-        "bp" => 5,
-        "si" => 6,
-        "di" => 7,
+        "al" | "ax" => 0,
+        "cl" | "cx" => 1,
+        "dl" | "dx" => 2,
+        "bl" | "bx" => 3,
+        "ah" | "sp" => 4,
+        "ch" | "bp" => 5,
+        "dh" | "si" => 6,
+        "bh" | "di" => 7,
         _ => panic!("{}", s),
     }
 }

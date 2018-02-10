@@ -221,7 +221,7 @@ impl Decoder {
                     }
                     0xA4 =>{
                         // shld r/m16, r16, imm8
-                        op.command = Op::Shld();
+                        op.command = Op::Shld;
                         op.params = self.rm16_r16(op.segment_prefix);
                         op.params.src2 = Parameter::Imm8(self.read_u8());
                     }
@@ -1002,7 +1002,7 @@ impl Decoder {
                 op.params.dst = Parameter::Imm8(self.read_u8());
             }
             0xD6 => op.command = Op::Salc,
-            0xD7 => op.command = Op::Xlatb(),
+            0xD7 => op.command = Op::Xlatb,
             0xD8...0xDF => {
                 // fpu
                 println!("ERROR: unsupported FPU opcode {:02X}", b);

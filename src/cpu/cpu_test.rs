@@ -1785,16 +1785,34 @@ fn can_execute_xlatb() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
-        0xBB, 0x40, 0x02, // mov bx,0x240
-        0xD7,             // xlatb
+        0xBB, 0x40, 0x02,               // mov bx,0x240
+        0xC6, 0x06, 0x40, 0x02, 0x80,   // mov [0x0240], byte 0x80
+        0xD7,                           // xlatb
     ];
     cpu.load_com(&code);
-    // prepare ds:bx with expected value
-    let ds = cpu.get_sr(&SR::DS);
-    cpu.mmu.write_u16(ds, 0x0240, 0x80);
+    cpu.execute_instructions(3);
+    assert_eq!(0x80, cpu.get_r8(&R8::AL)); // al = [ds:bx]
+}
 
-    cpu.execute_instructions(2); // xlatb: al = [ds:bx]
-    assert_eq!(0x80, cpu.get_r8(&R8::AL));
+#[test]
+fn can_execute_shld() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xBB, 0x88, 0x44,           // mov bx,0x4488
+        0xBF, 0x33, 0x22,           // mov di,0x2233
+        0x0F, 0xA4, 0xFB, 0x08,     // shld bx,di,0x8
+    ];
+    cpu.load_com(&code);
+    cpu.execute_instructions(3);
+    assert_eq!(0x8822, cpu.get_r16(&R16::BX));
+    // XXX dosbox: C0 Z0 S1 O1 A0 P1
+    assert_eq!(false, cpu.flags.carry);
+    assert_eq!(true, cpu.flags.overflow);
+    //assert_eq!(false, cpu.flags.zero);
+    //assert_eq!(true, cpu.flags.sign);
+    //assert_eq!(false, cpu.flags.auxiliary_carry);
+    //assert_eq!(true, cpu.flags.parity);
 }
 
 /*

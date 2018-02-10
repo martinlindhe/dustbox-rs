@@ -1607,10 +1607,35 @@ impl CPU {
                     self.flags.set_parity(res);
                 }
             }
-            Op::Shld() => {
+            Op::Shld => {
                 // Double Precision Shift Left
                 // 3 arguments
-                println!("XXX impl {}", op);
+                let count = self.read_parameter_value(&op.params.src2) & 0x1F;
+                if count > 0 {
+                    let op1 = self.read_parameter_value(&op.params.dst) as u16;
+                    let op2 = self.read_parameter_value(&op.params.src) as u16;
+                    // count < 32, since only lower 5 bits used
+                    let temp_32 = ((op1 as u32) << 16) | (op2 as u32); // double formed by op1:op2
+                    let mut result_32 = temp_32 << count;
+
+                    // hack to act like x86 SHLD when count > 16
+                    if count > 16 {
+                        // for Pentium processor, when count > 16, actually shifting op1:op2:op2 << count,
+                        // it is the same as shifting op2:op2 by count-16
+                        // For P6 and later (CPU_LEVEL >= 6), when count > 16, actually shifting op1:op2:op1 << count,
+                        // which is the same as shifting op2:op1 by count-16
+                        // The behavior is undefined so both ways are correct, we prefer P6 way of implementation
+                        result_32 |= (op1 as u32) << (count - 16);
+                     }
+
+                    let res16 = (result_32 >> 16) as u16;
+                    self.write_parameter_u16(op.segment_prefix, &op.params.dst, res16);
+
+                    // XXX SET_FLAGS_OSZAPC_LOGIC_16(result_16);
+                    let cf = (temp_32 >> (32 - count)) & 0x1;
+                    self.flags.carry = cf != 0;
+                    self.flags.overflow = cf ^ (res16 as u32 >> 15) != 0;
+                }
             }
             Op::Shr8 => {
                 // Unsigned divide r/m8 by 2, `src` times.
@@ -1799,7 +1824,7 @@ impl CPU {
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, dst as u16);
                 self.write_parameter_u16(op.segment_prefix, &op.params.src, src as u16);
             }
-            Op::Xlatb() => {
+            Op::Xlatb => {
                 // no parameters
                 // Set AL to memory byte DS:[(E)BX + unsigned AL].
                 // The DS segment may be overridden with a segment override prefix.

@@ -84,6 +84,7 @@ impl Encoder {
             Op::Lahf => out.push(0x9F),
             Op::Nop => out.push(0x90),
             Op::Salc => out.push(0xD6),
+            Op::Xlatb => out.push(0xD7),
             Op::Aad => {
                 if let Parameter::Imm8(imm) = op.params.dst {
                     out.push(0xD5);
