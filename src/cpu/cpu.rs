@@ -1780,6 +1780,7 @@ impl CPU {
                 self.flags.set_parity(res);
             }
             Op::Xchg8 => {
+                // Exchange Register/Memory with Register
                 // two parameters (registers)
                 let mut src = self.read_parameter_value(&op.params.src);
                 let mut dst = self.read_parameter_value(&op.params.dst);

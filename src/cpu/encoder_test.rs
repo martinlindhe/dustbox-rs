@@ -83,6 +83,16 @@ fn can_encode_random_seq() {
 }
 
 #[test]
+fn can_encode_xchg8() {
+    // r/m8, r8
+    let op = Instruction::new2(Op::Xchg8, Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
+    assert_encdec(&op, "xchg dl,bh", vec!(0x86, 0xD7));
+    // XXX NOTE: nasm encodes differently:
+    // 00000100  86FA              xchg bh,dl       nasm        FA = 0b1111_1010
+    // 00000102  86D7              xchg dl,bh       us          D7 = 0b1101_0111
+}
+
+#[test]
 fn can_encode_test8() {
     // AL, imm8
     let op = Instruction::new2(Op::Test8, Parameter::Reg8(R8::AL), Parameter::Imm8(0xFF));

@@ -9,11 +9,11 @@ use fuzzer::{fuzz, Runner, AffectedFlags};
 
 #[test] #[ignore] // expensive test
 fn fuzz_instruction() {
-    let affected_registers = vec!("ax");
+    let affected_registers = vec!("ax", "bx");
     // verified register & flag operation with winXP:
     // Shl8, Shr8, Rol8, Ror8, Sar8, Rcl8, Rcr8
     // Cmp8, And8, Xor8, Or8, Add8, Adc8, Sub8, Sbb8
-    // Test8, Not8, Mul8, Imul8
+    // Test8, Not8, Mul8, Imul8, Xchg8
     // Nop
     // Aas, Aaa, Daa, Das
     // Clc, Cld, Cli, Cmc, Stc, Std, Sti, Lahf, Sahf, Salc
@@ -30,7 +30,7 @@ fn fuzz_instruction() {
     // dustbox tries to be consistent with dosbox-x where behavior differs
 
     for i in 0..65535 as usize {
-        let op = Op::Shl8;
+        let op = Op::Xchg8;
         let runner = Runner::VmHttp;
         let affected_flags_mask = AffectedFlags::for_op(op.clone());
 
@@ -73,7 +73,8 @@ fn fuzz_instruction() {
 
             // <op> al, imm8
             Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(n1 as u8)),
-            Instruction::new2(op, Parameter::Reg8(R8::AH), Parameter::Imm8(n2 as u8)),
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Imm8(n2 as u8)),
+            Instruction::new2(op, Parameter::Reg8(R8::AH), Parameter::Reg8(R8::BH)),
         );
 
         print!("{:02x}, {:02x} ", n1, n2);

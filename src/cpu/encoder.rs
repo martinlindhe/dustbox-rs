@@ -143,6 +143,11 @@ impl Encoder {
                 // 0x83: <arithmetic> r/m16, imm8
             }
             */
+            Op::Xchg8 => {
+                // 0x86: xchg r/m8, r8
+                out.push(0x86);
+                out.extend(self.encode_rm8_r8(&op.params));
+            }
             Op::Mov8 => {
                 match op.params.dst {
                     Parameter::Reg8(r) => {
