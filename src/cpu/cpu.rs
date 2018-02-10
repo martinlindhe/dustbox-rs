@@ -893,17 +893,20 @@ impl CPU {
                 }
                 self.set_r8(&R8::AH, val);
             }
-            Op::Lea16() => {
+            Op::Lea16 => {
                 // Load Effective Address
                 let src = self.read_parameter_address(&op.params.src) as u16;
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, src);
             }
-            Op::Lds() => {
+            Op::Lds => {
                 // Load DS:r16 with far pointer from memory.
+                println!("XXX read_parameter_address {:?}", op.params.src);
                 let seg = self.read_parameter_address(&op.params.src) as u16;
-                let val = self.read_parameter_value(&op.params.src) as u16;
-                self.set_sr(&SR::DS, seg);
-                self.write_parameter_u16(op.segment_prefix, &op.params.dst, val);
+                println!("XXX read_parameter_address val: {:04x}", seg);
+
+                let op2 = self.read_parameter_value(&op.params.src) as u16;
+                self.set_sr(&SR::DS, seg); // XXX seg should be "segment selector". this is wqrong!!!
+                self.write_parameter_u16(op.segment_prefix, &op.params.dst, op2);
             }
             Op::Leave => {
                 // High Level Procedure Exit
@@ -914,7 +917,7 @@ impl CPU {
                 let bp = self.pop16();
                 self.set_r16(&R16::BP, bp);
             }
-            Op::Les() => {
+            Op::Les => {
                 // les ax, [0x104]
                 // Load ES:r16 with far pointer from memory.
                 let seg = self.read_parameter_address(&op.params.src) as u16;
@@ -1960,7 +1963,7 @@ impl CPU {
         (self.ip as i16 + val) as u16
     }
 
-    // returns the address of pointer, used by LEA, LDS, LES
+    // returns the address of pointer, used by LEA
     fn read_parameter_address(&mut self, p: &Parameter) -> usize {
         match *p {
             Parameter::Ptr16Amode(_, ref amode) => self.amode16(amode) as usize,

@@ -502,13 +502,30 @@ fn can_execute_es_outsb() {
 }
 
 #[test]
+fn can_execute_lea() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xBB, 0x44, 0x44,           // mov bx,0x4444
+        0x8D, 0x3F,                 // lea di,[bx]
+        0x8D, 0x36, 0x33, 0x22,     // lea si,[0x2233]
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instructions(2);
+    assert_eq!(0x4444, cpu.get_r16(&R16::DI));
+
+    cpu.execute_instruction();
+    assert_eq!(0x2233, cpu.get_r16(&R16::SI));
+}
+
+#[test]
 fn can_execute_addressing() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x02,             // mov bx,0x200
         0xC6, 0x47, 0x2C, 0xFF,       // mov byte [bx+0x2c],0xff  ; rm8 [amode+s8]
-        0x8D, 0x36, 0x00, 0x01,       // lea si,[0x100]
         0x8B, 0x14,                   // mov dx,[si]              ; rm16 [reg]
         0x8B, 0x47, 0x2C,             // mov ax,[bx+0x2c]         ; rm16 [amode+s8]
         0x89, 0x87, 0x30, 0x00,       // mov [bx+0x0030],ax       ; rm [amode+s16]
@@ -519,16 +536,15 @@ fn can_execute_addressing() {
 
     cpu.load_com(&code);
 
-    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 9);
+    let res = cpu.decoder.disassemble_block_to_str(0x85F, 0x100, 8);
     assert_eq!("[085F:0100] BB0002           Mov16    bx, 0x0200
 [085F:0103] C6472CFF         Mov8     byte [ds:bx+0x2C], 0xFF
-[085F:0107] 8D360001         Lea16    si, word [ds:0x0100]
-[085F:010B] 8B14             Mov16    dx, word [ds:si]
-[085F:010D] 8B472C           Mov16    ax, word [ds:bx+0x2C]
-[085F:0110] 89873000         Mov16    word [ds:bx+0x0030], ax
-[085F:0114] 8905             Mov16    word [ds:di], ax
-[085F:0116] C685AE06FE       Mov8     byte [ds:di+0x06AE], 0xFE
-[085F:011B] 8A85AE06         Mov8     al, byte [ds:di+0x06AE]",
+[085F:0107] 8B14             Mov16    dx, word [ds:si]
+[085F:0109] 8B472C           Mov16    ax, word [ds:bx+0x2C]
+[085F:010C] 89873000         Mov16    word [ds:bx+0x0030], ax
+[085F:0110] 8905             Mov16    word [ds:di], ax
+[085F:0112] C685AE06FE       Mov8     byte [ds:di+0x06AE], 0xFE
+[085F:0117] 8A85AE06         Mov8     al, byte [ds:di+0x06AE]",
                res);
 
     cpu.execute_instruction();
@@ -537,9 +553,6 @@ fn can_execute_addressing() {
     cpu.execute_instruction();
     let ds = cpu.get_sr(&SR::DS);
     assert_eq!(0xFF, cpu.mmu.read_u8(ds, 0x22C));
-
-    cpu.execute_instruction();
-    assert_eq!(0x100, cpu.get_r16(&R16::SI));
 
     cpu.execute_instruction();
     // should have read word at [0x100]
@@ -1783,6 +1796,27 @@ fn can_execute_xlatb() {
     cpu.execute_instructions(2); // xlatb: al = [ds:bx]
     assert_eq!(0x80, cpu.get_r8(&R8::AL));
 }
+
+/*
+#[test]
+fn can_execute_lds() {
+    // STATUS: broken
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xBB, 0x00, 0x60,           // mov bx,0x6000
+        0xC7, 0x07, 0x22, 0x11,     // mov word [bx],0x1122
+        0xC5, 0x17,                 // lds dx,[bx]
+    ];
+    cpu.load_com(&code);
+
+    cpu.execute_instructions(3);
+    // XXX writes to registers ds and dx.
+    // dx = value from [bx]. ds = segment selector
+    assert_eq!(0x1122, cpu.get_r16(&R16::DX));
+    assert_eq!(0x18CC, cpu.get_sr(&SR::DS));   // XXX ?! "segment selector". dustbox = 0x6000. dosbox = 0x18cc. winxp = 0x150a
+}
+*/
 
 #[test]
 fn can_execute_movsx() {

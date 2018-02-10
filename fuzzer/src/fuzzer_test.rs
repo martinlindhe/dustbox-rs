@@ -3,7 +3,8 @@ use std::io::{self, Write};
 use dustbox::cpu::instruction::Instruction;
 use dustbox::cpu::op::Op;
 use dustbox::cpu::parameter::Parameter;
-use dustbox::cpu::register::{R8, R16};
+use dustbox::cpu::segment::Segment;
+use dustbox::cpu::register::{R8, R16, AMode};
 
 use fuzzer::{fuzz, Runner, AffectedFlags};
 
@@ -18,6 +19,7 @@ fn fuzz_instruction() {
     // Aas, Aaa, Daa, Das
     // Clc, Cld, Cli, Cmc, Stc, Std, Sti, Lahf, Sahf, Salc
     // Cbw, Cwd
+    // Lea16
 
     // differs from winXP:
     // Neg8: mov ah,0; not ah =   OVERFLOW flag differs vs winxp
@@ -30,7 +32,7 @@ fn fuzz_instruction() {
     // dustbox tries to be consistent with dosbox-x where behavior differs
 
     for i in 0..65535 as usize {
-        let op = Op::Xchg8;
+        let op = Op::Lea16;
         let runner = Runner::VmHttp;
         let affected_flags_mask = AffectedFlags::for_op(op.clone());
 
@@ -72,9 +74,12 @@ fn fuzz_instruction() {
             // mutate parameters
 
             // <op> al, imm8
-            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(n1 as u8)),
-            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Imm8(n2 as u8)),
-            Instruction::new2(op, Parameter::Reg8(R8::AH), Parameter::Reg8(R8::BH)),
+            //Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(n1 as u8)),
+            //Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Imm8(n2 as u8)),
+            //Instruction::new2(op, Parameter::Reg8(R8::AH), Parameter::Reg8(R8::BH)),
+
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::BX), Parameter::Imm16(n1 as u16)),
+            Instruction::new2(op, Parameter::Reg16(R16::DI), Parameter::Ptr16Amode(Segment::Default, AMode::BX)),
         );
 
         print!("{:02x}, {:02x} ", n1, n2);

@@ -3,7 +3,7 @@ use std::process::Command;
 use std::str;
 use std::path::{Path, PathBuf};
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::{Read};
 
 use tera::Context;
 use tempdir::TempDir;
@@ -117,7 +117,7 @@ impl AffectedFlags {
     pub fn for_op(op: Op) -> u16 {
         match op {
             Op::Nop | Op::Salc | Op::Not8 | Op::Div8 | Op::Idiv8 | Op::Cbw | Op::Cwd | Op::Lahf |
-            Op::Xchg8 => AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // no affected flags
+            Op::Lea16 | Op::Xchg8 => AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // no affected flags
             Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 |
             Op::Neg8 | Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::Sahf => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1, d:1, i:1}.mask(), // all
             Op::Daa | Op::Das => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:0, d:0, i:0}.mask(), // C A S Z P

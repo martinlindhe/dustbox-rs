@@ -395,6 +395,12 @@ fn can_encode_pop() {
 }
 
 #[test]
+fn can_encode_lea() {
+    let op = Instruction::new2(Op::Lea16, Parameter::Reg16(R16::DI), Parameter::Ptr16Amode(Segment::Default, AMode::BX));
+    assert_encdec(&op, "lea di,[bx]", vec!(0x8D, 0x3F));
+}
+
+#[test]
 fn can_encode_bitshift_instructions() {
     let op = Instruction::new2(Op::Shr8, Parameter::Reg8(R8::AH), Parameter::Imm8(0xFF));
     assert_encdec(&op, "shr ah,byte 0xff", vec!(0xC0, 0xEC, 0xFF));

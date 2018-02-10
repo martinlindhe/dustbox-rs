@@ -748,7 +748,7 @@ impl Decoder {
             }
             0x8D => {
                 // lea r16, m
-                op.command = Op::Lea16();
+                op.command = Op::Lea16;
                 op.params = self.r16_m16(op.segment_prefix);
             }
             0x8E => {
@@ -878,12 +878,12 @@ impl Decoder {
             0xC3 => op.command = Op::Retn, // ret [near]
             0xC4 => {
                 // les r16, m16
-                op.command = Op::Les();
+                op.command = Op::Les;
                 op.params = self.r16_m16(op.segment_prefix);
             }
             0xC5 => {
                 // lds r16, m16
-                op.command = Op::Lds();
+                op.command = Op::Lds;
                 op.params = self.r16_m16(op.segment_prefix);
             }
             0xC6 => {
