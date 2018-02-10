@@ -99,6 +99,7 @@ impl AffectedFlags {
             Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 | Op::Neg8 => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1}.mask(), // all
             Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1}.mask(), // C O S Z
             Op::Aaa | Op::Aas => AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0}.mask(),  // C A
+            Op::Mul8 | Op::Imul8 => AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0}.mask(), // C O
             Op::Test8 => AffectedFlags{s:1, z:1, p:1, c:0, a: 0, o: 0}.mask(),        // S Z P
             _ => panic!("AffectedFlags: unhandled op {:?}", op),
         }

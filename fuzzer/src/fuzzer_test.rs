@@ -13,7 +13,7 @@ fn fuzz_instruction() {
     // verified register & flag operation with winXP:
     // Shr8, Rol8,
     // Cmp8, And8, Xor8, Or8, Add8, Adc8, Sub8, Sbb8
-    // Test8, Not8,
+    // Test8, Not8, Mul8, Imul8
     // Aas, Aaa
 
     // XXX differs from winXP: Shl8 (OF), Sar8 (wrong result some times)
@@ -21,7 +21,7 @@ fn fuzz_instruction() {
     // Neg8: mov ah,0; not ah =   overflow flag differs vs winxp
 
     for i in 0..65535 as usize {
-        let op = Op::Not8;
+        let op = Op::Imul8;
         let affected_flags_mask = AffectedFlags::for_op(op.clone());
 
         let n1 = ((i + 1) & 0xFF) ^ 0xAA;

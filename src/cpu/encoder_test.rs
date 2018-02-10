@@ -124,6 +124,28 @@ fn can_encode_neg8() {
 }
 
 #[test]
+fn can_encode_mul8() {
+    // r/m8
+    let op = Instruction::new1(Op::Mul8, Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "mul bh", vec!(0xF6, 0xE7));
+
+    // r/m8
+    let op = Instruction::new1(Op::Mul8, Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_encdec(&op, "mul byte [0xc365]", vec!(0xF6, 0x26, 0x65, 0xC3));
+}
+
+#[test]
+fn can_encode_imul8() {
+    // r/m8
+    let op = Instruction::new1(Op::Imul8, Parameter::Reg8(R8::BH));
+    assert_encdec(&op, "imul bh", vec!(0xF6, 0xEF));
+
+    // r/m8
+    let op = Instruction::new1(Op::Imul8, Parameter::Ptr8(Segment::Default, 0xC365));
+    assert_encdec(&op, "imul byte [0xc365]", vec!(0xF6, 0x2E, 0x65, 0xC3));
+}
+
+#[test]
 fn can_encode_and8() {
     // AL, imm8
     let op = Instruction::new2(Op::And8, Parameter::Reg8(R8::AL), Parameter::Imm8(0xFF));

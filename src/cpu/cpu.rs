@@ -617,16 +617,18 @@ impl CPU {
                 // IMUL r/m8               : AX← AL ∗ r/m byte.
                 let f1 = self.get_r8(&R8::AL) as i8;
                 let f2 = self.read_parameter_value(&op.params.dst) as i8;
-                let product = f1 as i16 * f2 as i16;
-                self.set_r16(&R16::AX, product as u16);
+                let ax = (f1 as i16 * f2 as i16) as u16; // product
+                self.set_r16(&R16::AX, ax);
 
-                // XXX flags
-                if self.get_r16(&R16::DX) != 0 {
-                    self.flags.carry = true;
-                    self.flags.overflow = true;
-                } else {
+                // For the one operand form of the instruction, the CF and OF flags are set when significant
+                // bits are carried into the upper half of the result and cleared when the result fits
+                // exactly in the lower half of the result.
+                if (ax & 0xff80) == 0xff80 || (ax & 0xff80) == 0x0000 {
                     self.flags.carry = false;
                     self.flags.overflow = false;
+                } else {
+                    self.flags.carry = true;
+                    self.flags.overflow = true;
                 }
             }
             Op::Imul16 => {
@@ -659,13 +661,12 @@ impl CPU {
                 }
 
                 // XXX flags
-                if self.get_r16(&R16::DX) != 0 {
-                    self.flags.carry = true;
-                    self.flags.overflow = true;
-                } else {
-                    self.flags.carry = false;
-                    self.flags.overflow = false;
-                }
+                // Flags Affected
+                // For the one operand form of the instruction, the CF and OF flags are set when significant bits are carried
+                // into the upper half of the result and cleared when the result fits exactly in the lower half of the result.
+                // For the two- and three-operand forms of the instruction, the CF and OF flags are set when the result must be
+                // truncated to fit in the destination operand size and cleared when the result fits exactly in the destination
+                // operand size. The SF, ZF, AF, and PF flags are undefined.
             }
             Op::In8() => {
                 // Input from Port
@@ -1005,19 +1006,24 @@ impl CPU {
                 }
                 self.write_parameter_u16(op.segment_prefix, &op.params.dst, data);
             }
-            Op::Mul8() => {
+            Op::Mul8 => {
                 // Unsigned multiply (AX ← AL ∗ r/m8).
-                let src = self.get_r8(&R8::AL) as usize;
-                let dst = self.read_parameter_value(&op.params.dst);
-                let res = (Wrapping(dst) * Wrapping(src)).0;
-
-                self.set_r16(&R16::AX, (res & 0xFFFF) as u16);
+                let al = self.get_r8(&R8::AL) as usize;
+                let arg1 = self.read_parameter_value(&op.params.dst);
+                let ax = (Wrapping(al) * Wrapping(arg1)).0 as u16;
+                self.set_r16(&R16::AX, ax);
                 // The OF and CF flags are set to 0 if the upper half of the
                 // result is 0; otherwise, they are set to 1.
                 // The SF, ZF, AF, and PF flags are undefined.
-                // XXX flags
+                if ax & 0xFF00 != 0 {
+                    self.flags.carry = true;
+                    self.flags.overflow = true;
+                } else {
+                    self.flags.carry = false;
+                    self.flags.overflow = false;
+                }
             }
-            Op::Mul16() => {
+            Op::Mul16 => {
                 // Unsigned multiply (DX:AX ← AX ∗ r/m16).
                 let src = self.get_r16(&R16::AX) as usize;
                 let dst = self.read_parameter_value(&op.params.dst);
@@ -1029,8 +1035,6 @@ impl CPU {
                 let dx_true = self.get_r16(&R16::DX) != 0;
                 self.flags.carry = dx_true;
                 self.flags.overflow = dx_true;
-                // XXX ZF is undefined in later docs
-                self.flags.zero = (self.get_r16(&R16::AX) != 0) | (self.get_r16(&R16::DX) != 0);
             }
             Op::Neg8 => {
                 // Two's Complement Negation

@@ -202,7 +202,7 @@ impl Encoder {
                     Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
                 }
             }
-            Op::Test8 | Op::Not8 | Op::Neg8 => {
+            Op::Test8 | Op::Not8 | Op::Neg8 | Op::Mul8 | Op::Imul8 => {
                 match self.math_instr8(op) {
                     Ok(data) => out.extend(data),
                     Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
@@ -418,7 +418,7 @@ impl Encoder {
             Op::Test8 => 0,
             Op::Not8  => 2,
             Op::Neg8 => 3,
-            Op::Mul8() => 4,
+            Op::Mul8 => 4,
             Op::Imul8 => 5,
             Op::Div8() => 6,
             Op::Idiv8 => 7,
