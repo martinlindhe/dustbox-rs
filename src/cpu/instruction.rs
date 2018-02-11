@@ -6,7 +6,7 @@ use cpu::register::{R8, R16, SR, AMode};
 use cpu::op::Op;
 use cpu::parameter::{Parameter, ParameterSet};
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Instruction {
     pub command: Op,
     pub params: ParameterSet,
@@ -28,14 +28,18 @@ impl fmt::Display for Instruction {
 
 impl Instruction {
     pub fn new(op: Op) -> Self {
-        Instruction::new2(op, Parameter::None, Parameter::None)
+        Instruction::new3(op, Parameter::None, Parameter::None, Parameter::None)
     }
 
     pub fn new1(op: Op, dst: Parameter) -> Self {
-        Instruction::new2(op, dst, Parameter::None)
+        Instruction::new3(op, dst, Parameter::None, Parameter::None)
     }
 
     pub fn new2(op: Op, dst: Parameter, src: Parameter) -> Self {
+        Instruction::new3(op, dst, src, Parameter::None)
+    }
+
+    pub fn new3(op: Op, dst: Parameter, src: Parameter, src2: Parameter) -> Self {
         Instruction {
             command: op,
             segment_prefix: Segment::Default,
@@ -44,7 +48,7 @@ impl Instruction {
             params: ParameterSet {
                 dst: dst,
                 src: src,
-                src2: Parameter::None,
+                src2: src2,
             },
         }
     }

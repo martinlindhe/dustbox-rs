@@ -5,7 +5,7 @@ use cpu::segment::Segment;
 use cpu::register::{R8, R16, SR, AMode};
 
 /// A set of Parameters for an Instruction
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ParameterSet {
     pub dst: Parameter,
     pub src: Parameter,

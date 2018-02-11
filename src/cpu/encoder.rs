@@ -154,6 +154,12 @@ impl Encoder {
                  out.extend(self.encode_r_rm(&op.params)); // XXX 16-bit ver?!
                 // lea r16, m        di, [bx]  = 0b11_1111
             }
+            Op::Shld => {
+                // shld r/m16, r16, imm8
+                out.push(0x0F);
+                out.push(0xA4);
+                out.extend(self.encode_rm_r_imm(&op.params));
+            }
             Op::Mov8 => {
                 match op.params.dst {
                     Parameter::Reg8(r) => {
@@ -478,9 +484,26 @@ impl Encoder {
 
     fn encode_rm_r(&self, params: &ParameterSet) -> Vec<u8> {
         match params.src {
-            Parameter::Reg8(r) => self.encode_rm(&params.dst, r.index() as u8),
+            Parameter::Reg8(ref r) => self.encode_rm(&params.dst, r.index() as u8),
+            Parameter::Reg16(ref r) => self.encode_rm(&params.dst, r.index() as u8),
             _ => panic!("unexpected parameter type: {:?}", params.src),
         }
+    }
+
+    fn encode_rm_r_imm(&self, params: &ParameterSet) -> Vec<u8> {
+        let mut out = Vec::new();
+        // shld r/m16, r16, imm8
+        out.extend(match params.src {
+            Parameter::Reg8(ref r) => self.encode_rm(&params.dst, r.index() as u8),
+            Parameter::Reg16(ref r) => self.encode_rm(&params.dst, r.index() as u8),
+            _ => panic!("unexpected parameter type: {:?}", params.src),
+        });
+        if let Parameter::Imm8(imm) = params.src2 {
+            out.push(imm);
+        } else {
+            unreachable!();
+        }
+        out
     }
 
     fn encode_rm(&self, dst: &Parameter, reg: u8) -> Vec<u8> {

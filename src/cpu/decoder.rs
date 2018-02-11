@@ -41,15 +41,7 @@ impl Decoder {
 
     pub fn disassemble_block_to_str(&mut self, seg: u16, offset: u16, n: usize) -> String {
         let ops = self.decode_to_block(seg, offset, n);
-        self.instructions_to_str(ops)
-    }
-
-    fn instructions_to_str(&mut self, ops: Vec<InstructionInfo>) -> String {
-        let mut lines = Vec::new();
-        for op in ops {
-            lines.push(op.to_string())
-        }
-        lines.join("\n")
+        instruction_info_to_str(&ops)
     }
 
     pub fn decode_instruction(&mut self, iseg: u16, ioffset: u16) -> InstructionInfo {
@@ -1388,4 +1380,20 @@ impl Decoder {
     fn read_s16(&mut self) -> i16 {
         self.read_u16() as i16
     }
+}
+
+pub fn instruction_info_to_str(ops: &Vec<InstructionInfo>) -> String {
+    let mut lines = Vec::new();
+    for op in ops {
+        lines.push(op.to_string())
+    }
+    lines.join("\n")
+}
+
+pub fn instructions_to_str(ops: &Vec<Instruction>) -> String {
+    let mut lines = Vec::new();
+    for op in ops {
+        lines.push(op.to_string())
+    }
+    lines.join("\n")
 }

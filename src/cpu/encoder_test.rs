@@ -401,6 +401,12 @@ fn can_encode_lea() {
 }
 
 #[test]
+fn can_encode_shld() {
+    let op = Instruction::new3(Op::Shld, Parameter::Reg16(R16::BX), Parameter::Reg16(R16::DI), Parameter::Imm8(0x8));
+    assert_encdec(&op, "shld bx,di,0x8", vec!(0x0F, 0xA4, 0xFB, 0x08));
+}
+
+#[test]
 fn can_encode_bitshift_instructions() {
     let op = Instruction::new2(Op::Shr8, Parameter::Reg8(R8::AH), Parameter::Imm8(0xFF));
     assert_encdec(&op, "shr ah,byte 0xff", vec!(0xC0, 0xEC, 0xFF));

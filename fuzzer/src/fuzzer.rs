@@ -25,26 +25,18 @@ pub enum VmRunner {
     DosboxX,
 }
 
-fn fuzz(runner: &VmRunner, it: usize, ops: &[Instruction], affected_registers: &[&str], affected_flag_mask: u16) {
+// return false on failure
+fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&str], affected_flag_mask: u16) -> bool {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);
     let encoder = Encoder::new();
 
-   match encoder.encode_vec(ops) {
-        Ok(data) => {
-            if it % 1000 == 0 {
-                use dustbox::cpu::encoder::ndisasm_bytes;
-                println!("ndisasm of encoded seq: {}", ndisasm_bytes(&data).unwrap());
-            }
-            cpu.load_com(&data);
-        }
-        Err(why) => panic!("{}", why),
-    }
-    cpu.execute_instructions(ops.len());
+    cpu.load_com(data);
+    cpu.execute_instructions(op_count);
 
     // run in vm, compare regs
     let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
-    assemble_prober(ops, prober_com);
+    assemble_prober(data, prober_com);
 
     let output = match *runner {
         VmRunner::VmHttp => stdout_from_vm_http(prober_com), // ~0.05 seconds per call
@@ -57,11 +49,12 @@ fn fuzz(runner: &VmRunner, it: usize, ops: &[Instruction], affected_registers: &
     let vm_regs = prober_reg_map(&output);
     if vm_regs.is_empty() {
         println!("FATAL: no vm regs from vm output: {}", output);
-        return;
+        return false;
     }
 
     if compare_regs(&cpu, &vm_regs, affected_registers) {
         println!("\nMAJOR: ax={:04x}: regs differ", dustbox_ax);
+        return false;
     }
 
     let vm_flags = vm_regs["flag"];
@@ -97,7 +90,9 @@ fn fuzz(runner: &VmRunner, it: usize, ops: &[Instruction], affected_registers: &
             print!("O ");
         }
         println!();
+        return false;
     }
+    return true;
 }
 
 struct AffectedFlags {
@@ -120,7 +115,9 @@ impl AffectedFlags {
             Op::Lea16 | Op::Xchg8 | Op::Xlatb => AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // no affected flags
             Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 |
             Op::Neg8 | Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::Sahf => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1, d:1, i:1}.mask(), // all
+            Op::Xor8 => AffectedFlags{o:1, s:1, z:1, p:1, c:1, a:0, d:0, i:0}.mask(), // O C S Z P
             Op::Daa | Op::Das => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:0, d:0, i:0}.mask(), // C A S Z P
+            Op::Shld => AffectedFlags{s:1, z:1, a:1, p:1, o:1, c:0, d:0, i:0}.mask(), // S Z P O A
             Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1, d:0, i:0}.mask(), // C O S Z
             Op::Aaa | Op::Aas => AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0, d:0, i:0}.mask(),  // C A
             Op::Rol8 | Op::Rcl8 | Op::Ror8 | Op::Rcr8 | Op::Mul8 | Op::Imul8 => AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0, d:0, i:0}.mask(), // C O
@@ -200,14 +197,14 @@ fn reg_str_to_index(s: &str) -> usize {
     }
 }
 
-fn assemble_prober(ops: &[Instruction], prober_com: &str) {
+fn assemble_prober(data: &[u8], prober_com: &str) {
     let mut tera = compile_templates!("../utils/prober/*.tpl.asm");
 
     // disable autoescaping
     tera.autoescape_on(vec![]);
 
     let mut context = Context::new();
-    context.add("snippet", &ops_as_db_bytes(ops));
+    context.add("snippet", &vec_as_db_bytes(data));
     // add stuff to context
     match tera.render("prober.tpl.asm", &context) {
         Ok(res) => {
@@ -240,6 +237,17 @@ fn ops_as_db_bytes(ops: &[Instruction]) -> String {
     } else {
         panic!("invalid byte sequence");
     }
+}
+
+// creates a "db 0x1,0x2..." representation of a &[u8]
+fn vec_as_db_bytes(data: &[u8]) -> String {
+    let encoder = Encoder::new();
+    let mut v = Vec::new();
+    for c in data {
+        v.push(format!("0x{:02X}", c));
+    }
+    let s = v.join(",");
+    format!("db {}", s)
 }
 
 // parse prober.com output into a map
