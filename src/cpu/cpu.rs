@@ -447,7 +447,7 @@ impl CPU {
                 // XXX throw BR exception if out of bounds
                 println!("XXX impl {}", op);
             }
-            Op::CallNear() => {
+            Op::CallNear => {
                 // call near rel
                 let old_ip = self.ip;
                 let temp_ip = self.read_parameter_value(&op.params.dst);
@@ -757,37 +757,37 @@ impl CPU {
                 let int = self.read_parameter_value(&op.params.dst);
                 self.int(int as u8);
             }
-            Op::Ja() => {
+            Op::Ja => {
                 // Jump if above (CF=0 and ZF=0).    (alias: jnbe)
                 if !self.flags.carry & !self.flags.zero {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jc() => {
+            Op::Jc => {
                 // Jump if carry (CF=1).    (alias: jb, jnae)
                 if self.flags.carry {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jcxz() => {
+            Op::Jcxz => {
                 // Jump if CX register is 0.
                 if self.get_r16(&R16::CX) == 0 {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jg() => {
+            Op::Jg => {
                 // Jump if greater (ZF=0 and SF=OF).    (alias: jnle)
                 if !self.flags.zero & self.flags.sign == self.flags.overflow {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jl() => {
+            Op::Jl => {
                 // Jump if less (SF ≠ OF).    (alias: jnge)
                 if self.flags.sign != self.flags.overflow {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::JmpFar() => {
+            Op::JmpFar => {
                 match op.params.dst {
                     Parameter::Ptr16Imm(seg, imm) => {
                         self.set_sr(&SR::CS, seg);
@@ -796,76 +796,76 @@ impl CPU {
                     _ => panic!("jmp far with unexpected type {:?}", op.params.dst),
                 }
             }
-            Op::JmpNear() | Op::JmpShort() => {
+            Op::JmpNear | Op::JmpShort => {
                 self.ip = self.read_parameter_value(&op.params.dst) as u16;
             }
-            Op::Jna() => {
+            Op::Jna => {
                 // Jump if not above (CF=1 or ZF=1).    (alias: jbe)
                 if self.flags.carry | self.flags.zero {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jnc() => {
+            Op::Jnc => {
                 // Jump if not carry (CF=0).    (alias: jae, jnb)
                 if !self.flags.carry {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jng() => {
+            Op::Jng => {
                 // Jump if not greater (ZF=1 or SF ≠ OF).    (alias: jle)
                 if self.flags.zero | self.flags.sign != self.flags.overflow {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jnl() => {
+            Op::Jnl => {
                 // Jump if not less (SF=OF).    (alias: jge)
                 if self.flags.sign == self.flags.overflow {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jns() => {
+            Op::Jns => {
                 // Jump if not sign (SF=0).
                 if !self.flags.sign {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jno() => {
+            Op::Jno => {
                 // Jump if not overflow (OF=0).
                 if !self.flags.overflow {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jnz() => {
+            Op::Jnz => {
                 // Jump if not zero (ZF=0).    (alias: jne)
                 if !self.flags.zero {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Js() => {
+            Op::Js => {
                 // Jump if sign (SF=1).
                 if self.flags.sign {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jo() => {
+            Op::Jo => {
                 // Jump if overflow (OF=1).
                 if self.flags.overflow {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jpe() => {
+            Op::Jpe => {
                 // Jump short if parity even (PF=1)
                 if self.flags.parity {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jpo() => {
+            Op::Jpo => {
                 // Jump short if parity odd (PF=0).
                  if !self.flags.parity {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
                 }
             }
-            Op::Jz() => {
+            Op::Jz => {
                 // Jump if zero (ZF ← 1).    (alias: je)
                 if self.flags.zero {
                     self.ip = self.read_parameter_value(&op.params.dst) as u16;
@@ -953,7 +953,7 @@ impl CPU {
                 };
                 self.set_r16(&R16::SI, si);
             }
-            Op::Loop() => {
+            Op::Loop => {
                 // Decrement count; jump short if count ≠ 0.
                 let dst = self.read_parameter_value(&op.params.dst) as u16;
                 let cx = (Wrapping(self.get_r16(&R16::CX)) - Wrapping(1)).0;
@@ -962,7 +962,7 @@ impl CPU {
                     self.ip = dst;
                 }
             }
-            Op::Loope() => {
+            Op::Loope => {
                 // Decrement count; jump short if count ≠ 0 and ZF = 1.
                 let dst = self.read_parameter_value(&op.params.dst) as u16;
                 let cx = (Wrapping(self.get_r16(&R16::CX)) - Wrapping(1)).0;
@@ -971,7 +971,7 @@ impl CPU {
                     self.ip = dst;
                 }
             }
-            Op::Loopne() => {
+            Op::Loopne => {
                 // Decrement count; jump short if count ≠ 0 and ZF = 0.
                 let dst = self.read_parameter_value(&op.params.dst) as u16;
                 let cx = (Wrapping(self.get_r16(&R16::CX)) - Wrapping(1)).0;
@@ -1677,7 +1677,7 @@ impl CPU {
                     self.flags.set_parity(res);
                 }
             }
-            Op::Shrd() => {
+            Op::Shrd => {
                 // Double Precision Shift Right
                 // 3 arguments
 

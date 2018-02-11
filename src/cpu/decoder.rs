@@ -161,27 +161,27 @@ impl Decoder {
                 match b {
                     0x82 => {
                         // jc rel16
-                        op.command = Op::Jc();
+                        op.command = Op::Jc;
                         op.params.dst = Parameter::Imm16(self.read_rel16());
                     }
                     0x84 => {
                         // jz rel16
-                        op.command = Op::Jz();
+                        op.command = Op::Jz;
                         op.params.dst = Parameter::Imm16(self.read_rel16());
                     }
                     0x85 => {
                         // jnz rel16
-                        op.command = Op::Jnz();
+                        op.command = Op::Jnz;
                         op.params.dst = Parameter::Imm16(self.read_rel16());
                     }
                     0x87 => {
                         // ja rel16
-                        op.command = Op::Ja();
+                        op.command = Op::Ja;
                         op.params.dst = Parameter::Imm16(self.read_rel16());
                     }
                     0x89 => {
                         // jns rel16
-                        op.command = Op::Jns();
+                        op.command = Op::Jns;
                         op.params.dst = Parameter::Imm16(self.read_rel16());
                     }
                     0x92 => {
@@ -229,7 +229,7 @@ impl Decoder {
                     }
                     0xAC => {
                         // shrd r/m16, r16, imm8
-                        op.command = Op::Shrd();
+                        op.command = Op::Shrd;
                         op.params = self.rm16_r16(op.segment_prefix);
                         op.params.src2 = Parameter::Imm8(self.read_u8());
                     }
@@ -563,82 +563,82 @@ impl Decoder {
             0x6F => op.command = Op::Outsw(),
             0x70 => {
                 // jo rel8
-                op.command = Op::Jo();
+                op.command = Op::Jo;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x71 => {
                 // jno rel8
-                op.command = Op::Jno();
+                op.command = Op::Jno;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x72 => {
                 // jc rel8
-                op.command = Op::Jc();
+                op.command = Op::Jc;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x73 => {
                 // jnc rel8
-                op.command = Op::Jnc();
+                op.command = Op::Jnc;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x74 => {
                 // jz rel8
-                op.command = Op::Jz();
+                op.command = Op::Jz;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x75 => {
                 // jnz rel8
-                op.command = Op::Jnz();
+                op.command = Op::Jnz;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x76 => {
                 // jna rel8
-                op.command = Op::Jna();
+                op.command = Op::Jna;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x77 => {
                 // ja rel8
-                op.command = Op::Ja();
+                op.command = Op::Ja;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x78 => {
                 // js rel8
-                op.command = Op::Js();
+                op.command = Op::Js;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x79 => {
                 // jns rel8
-                op.command = Op::Jns();
+                op.command = Op::Jns;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
 	        0x7A => {
                 // jpe rel8
-		        op.command = Op::Jpe(); // alias: jp
+		        op.command = Op::Jpe; // alias: jp
 		        op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x7B => {
                 // jpo rel8
-                op.command = Op::Jpo(); // alias: jnp
+                op.command = Op::Jpo; // alias: jnp
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x7C => {
                 // jl rel8
-                op.command = Op::Jl();
+                op.command = Op::Jl;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x7D => {
                 // jnl rel8
-                op.command = Op::Jnl();
+                op.command = Op::Jnl;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x7E => {
                 // jng rel8
-                op.command = Op::Jng();
+                op.command = Op::Jng;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x7F => {
                 // jg rel8
-                op.command = Op::Jg();
+                op.command = Op::Jg;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0x80 => {
@@ -1001,20 +1001,20 @@ impl Decoder {
                 op.command = Op::Invalid(InvalidOp::Op);
             }
             0xE0 => {
-                op.command = Op::Loopne();
+                op.command = Op::Loopne;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0xE1 => {
-                op.command = Op::Loope();
+                op.command = Op::Loope;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0xE2 => {
-                op.command = Op::Loop();
+                op.command = Op::Loop;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0xE3 => {
                 // jcxz rel8
-                op.command = Op::Jcxz();
+                op.command = Op::Jcxz;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0xE4 => {
@@ -1043,24 +1043,24 @@ impl Decoder {
             }
             0xE8 => {
                 // call near s16
-                op.command = Op::CallNear();
+                op.command = Op::CallNear;
                 op.params.dst = Parameter::Imm16(self.read_rel16());
             }
             0xE9 => {
                 // jmp near rel16
-                op.command = Op::JmpNear();
+                op.command = Op::JmpNear;
                 op.params.dst = Parameter::Imm16(self.read_rel16());
             }
             0xEA => {
                 // jmp far ptr16:16
-                op.command = Op::JmpFar();
+                op.command = Op::JmpFar;
                 let imm = self.read_u16();
                 let seg = self.read_u16();
                 op.params.dst = Parameter::Ptr16Imm(seg, imm);
             }
             0xEB => {
                 // jmp short rel8
-                op.command = Op::JmpShort();
+                op.command = Op::JmpShort;
                 op.params.dst = Parameter::Imm16(self.read_rel8());
             }
             0xEC => {
@@ -1199,9 +1199,9 @@ impl Decoder {
                 match x.reg {
                     0 => op.command = Op::Inc16,
                     1 => op.command = Op::Dec16,
-                    2 => op.command = Op::CallNear(),
+                    2 => op.command = Op::CallNear,
                     // 3 => call far
-                    4 => op.command = Op::JmpNear(),
+                    4 => op.command = Op::JmpNear,
                     // 5 => jmp far
                     6 => op.command = Op::Push16,
                     _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),

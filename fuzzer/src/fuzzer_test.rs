@@ -17,9 +17,10 @@ fn fuzz_instruction() {
     let affected_registers = vec!("ax", "dx");
 
     let ops_to_fuzz = vec!(
+        //Op::Shrd,
+        Op::Shld, //  overflow differs from winxp. may be wrong in both
         Op::Aaa, Op::Aas, Op::Aad, Op::Daa, Op::Das,
         Op::Aam, // Aam - P Z S flags differ from winxp & dosbox-x
-        Op::Shld, //  overflow differs from winxp. may be wrong in both
         //Op::Shl8, Op::Rol8, Op::Ror8, Op::Rcr8, // OVERFLOW flag differ from winxp
         //Op::Rcl8, // register values dont match with dosbox-x, but with bochs & winxp
         Op::Shr8, Op::Sar8,
@@ -79,8 +80,9 @@ fn fuzz_instruction() {
 // returns a snippet used to mutate state for op
 fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
     match *op {
-        Op::Shld => {
-            // shld r/m16, r16, imm8
+        Op::Shld | Op::Shrd => {
+            // mutate ax, dx, imm8
+            // shld ax, dx, imm8
             vec!(
                 Instruction::new2(Op::Mov16, Parameter::Reg16(R16::AX), Parameter::Imm16(rng.gen())),
                 Instruction::new2(Op::Mov16, Parameter::Reg16(R16::DX), Parameter::Imm16(rng.gen())),

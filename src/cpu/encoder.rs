@@ -160,6 +160,11 @@ impl Encoder {
                 out.push(0xA4);
                 out.extend(self.encode_rm_r_imm(&op.params));
             }
+            Op::Shrd => {
+                out.push(0x0F);
+                out.push(0xAC);
+                out.extend(self.encode_rm_r_imm(&op.params));
+            }
             Op::Mov8 => {
                 match op.params.dst {
                     Parameter::Reg8(r) => {
