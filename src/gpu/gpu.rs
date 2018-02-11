@@ -34,28 +34,6 @@ impl GPU {
         }
     }
 
-    pub fn reset(&mut self, cpu: &mut CPU) {
-        let rom_base = MMU::s_translate(0xc000, 0);
-
-        // XXX: phys_writes(rom_base+0x1e, "IBM compatible EGA BIOS", 24);
-
-        let mut pos = 0x100;
-
-        // cga font
-        for i in 0..(128 * 8) {
-            cpu.mmu.memory.borrow_mut().write_u8(rom_base + pos, font::FONT_08[i]);
-            //phys_writeb(rom_base+int10.rom.used++,int10_font_08[i]);
-            pos += 1;
-        }
-
-        // cga second half
-        for i in 0..(128 * 8) {
-            cpu.mmu.memory.borrow_mut().write_u8(rom_base + pos, font::FONT_08[i + (128 * 8)]);
-            //phys_writeb(rom_base+int10.rom.used++,int10_font_08[i+128*8]);
-            pos += 1;
-        }
-    }
-
     pub fn render_frame(&self, memory: &[u8]) -> Vec<u8> {
         match self.mode {
             // 00: 40x25 Black and White text (CGA,EGA,MCGA,VGA)

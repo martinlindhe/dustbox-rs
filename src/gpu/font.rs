@@ -1,5 +1,29 @@
 // data tables copied from dosbox-x, src/ints/int10_memory.cpp
 
+use memory::mmu::MMU;
+
+pub fn load_fonts(mmu: &mut MMU) {
+    let rom_base = MMU::s_translate(0xc000, 0);
+
+    // XXX: phys_writes(rom_base+0x1e, "IBM compatible EGA BIOS", 24);
+
+    let mut pos = 0x100;
+
+    // cga font
+    for i in 0..(128 * 8) {
+        mmu.memory.borrow_mut().write_u8(rom_base + pos, FONT_08[i]);
+        //phys_writeb(rom_base+int10.rom.used++,int10_font_08[i]);
+        pos += 1;
+    }
+
+    // cga second half
+    for i in 0..(128 * 8) {
+        mmu.memory.borrow_mut().write_u8(rom_base + pos, FONT_08[i + (128 * 8)]);
+        //phys_writeb(rom_base+int10.rom.used++,int10_font_08[i+128*8]);
+        pos += 1;
+    }
+}
+
 pub static FONT_08: [u8; 256 * 8] = [
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7e, 0x81, 0xa5, 0x81, 0xbd, 0x99, 0x81, 0x7e,
     0x7e, 0xff, 0xdb, 0xff, 0xc3, 0xe7, 0xff, 0x7e, 0x6c, 0xfe, 0xfe, 0xfe, 0x7c, 0x38, 0x10, 0x00,

@@ -14,6 +14,7 @@ use interrupt;
 use gpu::GPU;
 use pit::PIT;
 use pic::PIC;
+use gpu::font::load_fonts;
 
 #[cfg(test)]
 #[path = "./cpu_test.rs"]
@@ -53,7 +54,8 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new(mmu: MMU) -> Self {
+    pub fn new(mut mmu: MMU) -> Self {
+        load_fonts(&mut mmu);
         CPU {
             ip: 0,
             instruction_count: 0,
