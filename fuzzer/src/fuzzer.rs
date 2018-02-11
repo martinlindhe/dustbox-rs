@@ -44,8 +44,6 @@ fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&
         VmRunner::DosboxX => stdout_from_dosbox(prober_com), // ~2.3 seconds
     };
 
-    let dustbox_ax = cpu.get_r16(&R16::AX);
-
     let vm_regs = prober_reg_map(&output);
     if vm_regs.is_empty() {
         println!("FATAL: no vm regs from vm output: {}", output);
@@ -53,7 +51,7 @@ fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&
     }
 
     if compare_regs(&cpu, &vm_regs, affected_registers) {
-        println!("\nMAJOR: ax={:04x}: regs differ", dustbox_ax);
+        println!("\nMAJOR: regs differ");
         return false;
     }
 
@@ -63,7 +61,7 @@ fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&
     let dustbox_masked_flags = dustbox_flags & affected_flag_mask;
     if vm_masked_flags != dustbox_masked_flags {
         let xored = vm_masked_flags ^ dustbox_masked_flags;
-        print!("\nax={:04x}: flags differ: vm {:04x}, dustbox {:04x} = diff b{:016b}: ", dustbox_ax, vm_masked_flags, dustbox_masked_flags, xored);
+        print!("\nflags differ: vm {:04x}, dustbox {:04x}: ", vm_masked_flags, dustbox_masked_flags);
         // XXX show differing flag names
         if xored & 0x0000_0001 != 0 {
             print!("C ");

@@ -2170,10 +2170,10 @@ impl CPU {
     // used by aaa, aas
     fn adjb(&mut self, param1: i8, param2: i8) {
         if self.flags.adjust || (self.get_r8(&R8::AL) & 0xf) > 9 {
-            let al = self.get_r8(&R8::AL);
-            let ah = self.get_r8(&R8::AH);
-            self.set_r8(&R8::AL, (u16::from(al) + param1 as u16) as u8);
-            self.set_r8(&R8::AH, (u16::from(ah) + param2 as u16) as u8);
+            let al = (self.get_r8(&R8::AL) as i16 + param1 as i16) as u8;
+            let ah = (self.get_r8(&R8::AH) as i16 +  param2 as i16) as u8;
+            self.set_r8(&R8::AL, al);
+            self.set_r8(&R8::AH, ah);
             self.flags.adjust = true;
             self.flags.carry = true;
         } else {
