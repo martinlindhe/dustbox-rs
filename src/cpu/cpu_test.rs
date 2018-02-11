@@ -1795,6 +1795,29 @@ fn can_execute_xlatb() {
 }
 
 #[test]
+fn can_execute_cmpsw() {
+    let mmu = MMU::new();
+    let mut cpu = CPU::new(mmu);
+    let code: Vec<u8> = vec![
+        0xBE, 0x30, 0x30,           // mov si,0x3030
+        0xC7, 0x04, 0x22, 0x22,     // mov word [si],0x2222
+        0xBF, 0x40, 0x30,           // mov di,0x3040
+        0xC7, 0x05, 0x11, 0x11,     // mov word [di],0x1111
+        0xA7,                       // cmpsw   ; compare byte at address DS:(E)SI with byte at address ES:(E)DI
+    ];
+    cpu.load_com(&code);
+    cpu.execute_instructions(5);
+    // xxx only results in regs ...
+    // dosbox regs:
+    //assert_eq!(false, cpu.flags.carry); // XXX
+    //assert_eq!(false, cpu.flags.zero);
+    //assert_eq!(false, cpu.flags.sign);
+    //assert_eq!(true, cpu.flags.overflow);
+    //assert_eq!(false, cpu.flags.adjust);
+    //assert_eq!(true, cpu.flags.parity);
+}
+
+#[test]
 fn can_execute_shld() {
     let mmu = MMU::new();
     let mut cpu = CPU::new(mmu);

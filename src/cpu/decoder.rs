@@ -798,8 +798,8 @@ impl Decoder {
             }
             0xA4 => op.command = Op::Movsb(),
             0xA5 => op.command = Op::Movsw(),
-            0xA6 => op.command = Op::Cmpsb(),
-            0xA7 => op.command = Op::Cmpsw(),
+            0xA6 => op.command = Op::Cmpsb,
+            0xA7 => op.command = Op::Cmpsw,
             0xA8 => {
                 // test AL, imm8
                 op.command = Op::Test8;

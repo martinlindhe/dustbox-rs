@@ -32,7 +32,7 @@ enum Exception {
     PF = 14,     // Page fault
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct CPU {
     pub ip: u16,
     pub instruction_count: usize,
@@ -493,7 +493,7 @@ impl CPU {
                 let dst = self.read_parameter_value(&op.params.dst);
                 self.cmp16(dst, src);
             }
-            Op::Cmpsw() => {
+            Op::Cmpsw => {
                 // no parameters
                 // Compare word at address DS:(E)SI with word at address ES:(E)DI
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
@@ -2215,9 +2215,10 @@ impl CPU {
     pub fn out_u8(&mut self, dst: u16, data: u8) {
         match dst {
             0x0021 => self.pic.write_0021(data),
-            0x0040 => self.pit.set_counter_divisor(data),
-            0x0042 => self.pit.counter2.write_next_part(data),
-            0x0043 => self.pit.set_mode_port(data),
+            0x0040 => self.pit.counter0.write_reload_part(data),
+            0x0041 => self.pit.counter0.write_reload_part(data),
+            0x0042 => self.pit.counter2.write_reload_part(data),
+            0x0043 => self.pit.set_mode_command(data),
             0x0061 => {
                 // keyboard controller port b OR ppi programmable perihpial interface (XT only) - which mode are we in?
             },

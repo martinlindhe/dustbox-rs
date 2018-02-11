@@ -19,7 +19,6 @@ use memory_breakpoints::MemoryBreakpoints;
 #[path = "./debugger_test.rs"]
 mod debugger_test;
 
-#[derive(Default)]
 pub struct PrevRegs {
     pub ip: u16,
     pub r16: [register::Register16; 8], // general purpose registers
@@ -27,7 +26,6 @@ pub struct PrevRegs {
     pub flags: flags::Flags,
 }
 
-#[derive(Default)]
 pub struct Debugger {
     pub cpu: CPU,
     pub prev_regs: PrevRegs,

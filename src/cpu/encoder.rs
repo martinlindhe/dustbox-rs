@@ -19,6 +19,7 @@ quick_error! {
         }
         UnhandledParameter(param: Parameter) {
             description("unhandled param")
+            display("unhandled param: {:?}", param)
         }
         Text(s: String) {
             description("text")
@@ -85,6 +86,8 @@ impl Encoder {
             Op::Nop => out.push(0x90),
             Op::Salc => out.push(0xD6),
             Op::Xlatb => out.push(0xD7),
+            Op::Cmpsb => out.push(0xA6),
+            Op::Cmpsw => out.push(0xA7),
             Op::Aad => {
                 if let Parameter::Imm8(imm) = op.params.dst {
                     out.push(0xD5);
@@ -221,19 +224,20 @@ impl Encoder {
                 //0x8B: mov r16, r/m16
                 //0x8C: mov r/m16, sreg
                 //0x8E: mov sreg, r/m16
+                //0xC7: mov r/m16, imm16    reg = 0 for MOV.
 
-                if op.params.dst.is_reg() && op.params.src.is_imm() {
-                    //0xB8...0xBF: mov r16, u16
+                if op.params.src.is_imm() {
                     if let Parameter::Reg16(ref r) = op.params.dst {
+                        //0xB8...0xBF: mov r16, u16
                         out.push(0xB8 | r.index() as u8);
+                        if let Parameter::Imm16(imm16) = op.params.src {
+                            out.push((imm16 & 0xFF) as u8);
+                            out.push((imm16 >> 8) as u8);
+                        } else {
+                            return Err(EncodeError::UnhandledParameter(op.params.src.clone()));
+                        }
                     } else {
                         return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
-                    }
-                    if let Parameter::Imm16(imm16) = op.params.src {
-                        out.push((imm16 & 0xFF) as u8);
-                        out.push((imm16 >> 8) as u8);
-                    } else {
-                        return Err(EncodeError::UnhandledParameter(op.params.src.clone()));
                     }
                     /*
                 } else if op.params.src.is_ptr() {

@@ -17,6 +17,7 @@ fn fuzz_instruction() {
     let affected_registers = vec!("ax", "dx");
 
     let ops_to_fuzz = vec!(
+        Op::Cmpsw,
         //Op::Shrd,
         Op::Shld, //  overflow differs from winxp. may be wrong in both
         Op::Aaa, Op::Aas, Op::Aad, Op::Daa, Op::Das,
@@ -76,102 +77,85 @@ fn fuzz_instruction() {
         }
     }
 }
-
 // returns a snippet used to mutate state for op
 fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
     match *op {
-        Op::Shld | Op::Shrd => {
+        Op::Cmpsw => { vec!(
+            // compare word at address DS:(E)SI with byte at address ES:(E)DI;
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::SI), Parameter::Imm16(0x3030)),
+            Instruction::new2(Op::Mov16, Parameter::Ptr16Amode(Segment::Default, AMode::SI), Parameter::Imm16(rng.gen())),
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::DI), Parameter::Imm16(0x3040)),
+            Instruction::new2(Op::Mov16, Parameter::Ptr16Amode(Segment::Default, AMode::DI), Parameter::Imm16(rng.gen())),
+            Instruction::new(op.clone()),
+        )}
+        Op::Shld | Op::Shrd => { vec!(
             // mutate ax, dx, imm8
             // shld ax, dx, imm8
-            vec!(
-                Instruction::new2(Op::Mov16, Parameter::Reg16(R16::AX), Parameter::Imm16(rng.gen())),
-                Instruction::new2(Op::Mov16, Parameter::Reg16(R16::DX), Parameter::Imm16(rng.gen())),
-                Instruction::new3(op.clone(), Parameter::Reg16(R16::AX), Parameter::Reg16(R16::DX), Parameter::Imm8(rng.gen())),
-            )
-        }
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::AX), Parameter::Imm16(rng.gen())),
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::DX), Parameter::Imm16(rng.gen())),
+            Instruction::new3(op.clone(), Parameter::Reg16(R16::AX), Parameter::Reg16(R16::DX), Parameter::Imm8(rng.gen())),
+        )}
         Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::Rol8 | Op::Ror8 | Op::Rcl8 | Op::Rcr8 |
-        Op::Cmp8 | Op::And8 | Op::Xor8 | Op::Or8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 | Op::Test8 => {
+        Op::Cmp8 | Op::And8 | Op::Xor8 | Op::Or8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 | Op::Test8 => { vec!(
             // test r/m8, imm8
-            vec!(
-                Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AL), Parameter::Imm8(rng.gen())),
-                Instruction::new2(op.clone(), Parameter::Reg8(R8::AL), Parameter::Imm8(rng.gen())),
-            )
-        }
-        Op::Mul8 | Op::Imul8 => {
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AL), Parameter::Imm8(rng.gen())),
+            Instruction::new2(op.clone(), Parameter::Reg8(R8::AL), Parameter::Imm8(rng.gen())),
+        )}
+        Op::Mul8 | Op::Imul8 => { vec!(
             // mul r/m8      ax = al * r/m
             // imul r/m8     ax = al * r/m
-            vec!(
-                Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AL), Parameter::Imm8(rng.gen())),
-                Instruction::new2(Op::Mov8, Parameter::Reg8(R8::DL), Parameter::Imm8(rng.gen())),
-                Instruction::new1(op.clone(), Parameter::Reg8(R8::DL)),
-            )
-        }
-        Op::Div8 | Op::Idiv8 => {
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AL), Parameter::Imm8(rng.gen())),
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::DL), Parameter::Imm8(rng.gen())),
+            Instruction::new1(op.clone(), Parameter::Reg8(R8::DL)),
+        )}
+        Op::Div8 | Op::Idiv8 => { vec!(
             // divide AX by r/m8, store in AL, AH
-            vec!(
-                Instruction::new2(Op::Mov16, Parameter::Reg16(R16::AX), Parameter::Imm16(rng.gen())),
-                Instruction::new2(Op::Mov8, Parameter::Reg8(R8::DL), Parameter::Imm8(rng.gen())),
-                Instruction::new1(op.clone(), Parameter::Reg8(R8::DL)),
-            )
-        }
-        Op::Xchg8 => {
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::AX), Parameter::Imm16(rng.gen())),
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::DL), Parameter::Imm8(rng.gen())),
+            Instruction::new1(op.clone(), Parameter::Reg8(R8::DL)),
+        )}
+        Op::Xchg8 => { vec!(
             // xchg r/m8, r8
-            vec!(
-                Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AL), Parameter::Imm8(rng.gen())),
-                Instruction::new2(Op::Mov8, Parameter::Reg8(R8::DL), Parameter::Imm8(rng.gen())),
-                Instruction::new2(op.clone(), Parameter::Reg8(R8::DL), Parameter::Reg8(R8::BL)),
-            )
-        }
-        Op::Lahf | Op::Salc | Op::Clc | Op::Cld | Op::Cli | Op::Cmc | Op::Stc | Op::Std | Op::Sti => {
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AL), Parameter::Imm8(rng.gen())),
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::DL), Parameter::Imm8(rng.gen())),
+            Instruction::new2(op.clone(), Parameter::Reg8(R8::DL), Parameter::Reg8(R8::BL)),
+        )}
+        Op::Lahf | Op::Salc | Op::Clc | Op::Cld | Op::Cli | Op::Cmc | Op::Stc | Op::Std | Op::Sti => { vec!(
             // mutate flags
-            vec!(
-                Instruction::new1(Op::Push16, Parameter::Imm16(rng.gen())),
-                Instruction::new(Op::Popf),
-                Instruction::new(op.clone()),
-            )
-        }
-        Op::Aas | Op::Aaa | Op::Daa | Op::Das | Op::Cbw => {
+            Instruction::new1(Op::Push16, Parameter::Imm16(rng.gen())),
+            Instruction::new(Op::Popf),
+            Instruction::new(op.clone()),
+        )}
+        Op::Aas | Op::Aaa | Op::Daa | Op::Das | Op::Cbw => { vec!(
             // mutate al: no args
-            vec!(
-                Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AL), Parameter::Imm8(rng.gen())),
-                Instruction::new(op.clone()),
-            )
-        }
-        Op::Not8 | Op::Neg8 => {
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AL), Parameter::Imm8(rng.gen())),
+            Instruction::new(op.clone()),
+        )}
+        Op::Not8 | Op::Neg8 => { vec!(
             // mutate al: r/m8
-            vec!(
-                Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AL), Parameter::Imm8(rng.gen())),
-                Instruction::new1(op.clone(), Parameter::Reg8(R8::AL)),
-            )
-        }
-        Op::Sahf => {
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AL), Parameter::Imm8(rng.gen())),
+            Instruction::new1(op.clone(), Parameter::Reg8(R8::AL)),
+        )}
+        Op::Sahf => { vec!(
             // mutate ah: no args
-            vec!(
-                Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(rng.gen())),
-                Instruction::new(op.clone()),
-            )
-        }
-        Op::Cwd => {
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R8::AH), Parameter::Imm8(rng.gen())),
+            Instruction::new(op.clone()),
+        )}
+        Op::Cwd => { vec!(
             // mutate ax: no args
-            vec!(
-                Instruction::new2(Op::Mov16, Parameter::Reg16(R16::AX), Parameter::Imm16(rng.gen())),
-                Instruction::new(op.clone()),
-            )
-        }
-        Op::Aad | Op::Aam => {
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::AX), Parameter::Imm16(rng.gen())),
+            Instruction::new(op.clone()),
+        )}
+        Op::Aad | Op::Aam => { vec!(
             // mutate ax: imm8
-            vec!(
-                Instruction::new2(Op::Mov16, Parameter::Reg16(R16::AX), Parameter::Imm16(rng.gen())),
-                Instruction::new1(op.clone(), Parameter::Imm8(rng.gen())),
-            )
-        }
-        Op::Lea16 => {
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::AX), Parameter::Imm16(rng.gen())),
+            Instruction::new1(op.clone(), Parameter::Imm8(rng.gen())),
+        )}
+        Op::Lea16 => { vec!(
             // lea r16, m
-            vec!(
-                Instruction::new2(Op::Mov16, Parameter::Reg16(R16::BX), Parameter::Imm16(rng.gen())),
-                Instruction::new2(op.clone(), Parameter::Reg16(R16::AX), Parameter::Ptr16Amode(Segment::Default, AMode::BX)),
-            )
-        }
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R16::BX), Parameter::Imm16(rng.gen())),
+            Instruction::new2(op.clone(), Parameter::Reg16(R16::AX), Parameter::Ptr16Amode(Segment::Default, AMode::BX)),
+        )}
         Op::Nop => vec!(Instruction::new(op.clone())),
         _ => panic!("get_mutator_snippet: unhandled op {:?}", op),
     }

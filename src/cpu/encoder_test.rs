@@ -428,14 +428,10 @@ fn can_encode_int() {
 }
 
 #[test]
-fn can_encode_mov_addressing_modes() {
+fn can_encode_mov8() {
     // r8, imm8
     let op = Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Imm8(0xFF));
     assert_encdec(&op, "mov bh,0xff", vec!(0xB7, 0xFF));
-
-    // r16, imm16
-    let op = Instruction::new2(Op::Mov16, Parameter::Reg16(R16::BX), Parameter::Imm16(0x8844));
-    assert_encdec(&op, "mov bx,0x8844", vec!(0xBB, 0x44, 0x88));
 
     // r/m8, r8  (dst is r8)
     let op = Instruction::new2(Op::Mov8, Parameter::Reg8(R8::BH), Parameter::Reg8(R8::DL));
@@ -464,6 +460,18 @@ fn can_encode_mov_addressing_modes() {
     // r/m8, r8  (dst is [bx])
     let op = Instruction::new2(Op::Mov8, Parameter::Ptr8Amode(Segment::Default, AMode::BX), Parameter::Reg8(R8::BH));
     assert_encdec(&op, "mov [bx],bh", vec!(0x88, 0x3F));
+}
+
+#[test]
+fn can_encode_mov16() {
+    // r16, imm16
+    let op = Instruction::new2(Op::Mov16, Parameter::Reg16(R16::BX), Parameter::Imm16(0x8844));
+    assert_encdec(&op, "mov bx,0x8844", vec!(0xBB, 0x44, 0x88));
+/*
+// XXX:
+    let op = Instruction::new2(Op::Mov16, Parameter::Ptr16Amode(Segment::Default, AMode::SI), Parameter::Imm16(0x8844));  // mov [si], word xxxx
+    assert_encdec(&op, "mov word [si],0x8844", vec!(0xC7, 0x04, 0x44, 0x88));
+*/
 }
 
 fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u8>) {

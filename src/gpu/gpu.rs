@@ -36,10 +36,10 @@ impl GPU {
             // 00: 40x25 Black and White text (CGA,EGA,MCGA,VGA)
             // 01: 40x25 16 color text (CGA,EGA,MCGA,VGA)
             // 02: 80x25 16 shades of gray text (CGA,EGA,MCGA,VGA)
-            0x03 => self.render_mode03_frame(memory), // 80x25 16 color text (CGA,EGA,MCGA,VGA)
+            //0x03 => self.render_mode03_frame(memory), // 80x25 16 color text (CGA,EGA,MCGA,VGA)
             0x04 => self.render_mode04_frame(memory), // 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
             // 05: 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
-            0x06 => self.render_mode06_frame(memory), // 640x200 B/W graphics (CGA,EGA,MCGA,VGA)
+            //0x06 => self.render_mode06_frame(memory), // 640x200 B/W graphics (CGA,EGA,MCGA,VGA)
             // 07: 80x25 Monochrome text (MDA,HERC,EGA,VGA)
             // 08: 160x200 16 color graphics (PCjr)
             // 09: 320x200 16 color graphics (PCjr)
@@ -49,8 +49,8 @@ impl GPU {
             // 0F: 640x350 Monochrome graphics (EGA,VGA)
             // 10: 640x350 16 color graphics (EGA or VGA with 128K)
             //     640x350 4 color graphics (64K EGA)
-            0x11 => self.render_mode11_frame(memory), // 640x480 B/W graphics (MCGA,VGA)
-            0x12 => self.render_mode12_frame(memory), // 640x480 16 color graphics (VGA)
+            //0x11 => self.render_mode11_frame(memory), // 640x480 B/W graphics (MCGA,VGA)
+            //0x12 => self.render_mode12_frame(memory), // 640x480 16 color graphics (VGA)
             0x13 => self.render_mode13_frame(memory), // 320x200 256 color graphics (MCGA,VGA)
             _ => {
                 println!("XXX fixme render_frame for mode {:02x}", self.mode);
@@ -58,7 +58,7 @@ impl GPU {
             }
         }
     }
-
+/*
     fn render_mode03_frame(&self, memory: &[u8]) -> Vec<u8> {
         // 03h = T  80x25  8x8   640x200   16       4   B800 CGA,PCjr,Tandy
         //     = T  80x25  8x14  640x350   16/64    8   B800 EGA
@@ -69,7 +69,7 @@ impl GPU {
         // XXX impl
         Vec::new()
     }
-
+*/
     fn render_mode04_frame(&self, memory: &[u8]) -> Vec<u8> {
         // XXX palette selection is done by writes to cga registers
         // mappings to the cga palette
@@ -98,7 +98,7 @@ impl GPU {
         }
         buf
     }
-
+/*
     fn render_mode06_frame(&self, memory: &[u8]) -> Vec<u8> {
         // 06h = G  80x25  8x8   640x200    2       .   B800 CGA,PCjr,EGA,MCGA,VGA
         //     = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
@@ -119,7 +119,7 @@ impl GPU {
         // XXX impl, planar mode
         Vec::new()
     }
-
+*/
     fn render_mode13_frame(&self, memory: &[u8]) -> Vec<u8> {
         let mut buf = vec![0u8; (self.width * self.height * 3) as usize];
         for y in 0..self.height {

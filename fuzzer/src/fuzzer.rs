@@ -114,7 +114,7 @@ impl AffectedFlags {
             Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 |
             Op::Neg8 | Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::Sahf => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1, d:1, i:1}.mask(), // all
             Op::Xor8 => AffectedFlags{o:1, s:1, z:1, p:1, c:1, a:0, d:0, i:0}.mask(), // O C S Z P
-            Op::Shrd => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:1, d:0, i:0}.mask(), // C A S Z P O
+            Op::Shrd | Op::Cmpsw => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:1, d:0, i:0}.mask(), // C A S Z P O
             Op::Daa | Op::Das => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:0, d:0, i:0}.mask(), // C A S Z P
             Op::Shld => AffectedFlags{s:1, z:1, a:1, p:1, o:1, c:0, d:0, i:0}.mask(), // S Z P O A
             Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1, d:0, i:0}.mask(), // C O S Z
