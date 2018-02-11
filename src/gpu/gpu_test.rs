@@ -14,7 +14,7 @@ use image::{ImageBuffer, Rgb};
 use tools;
 use cpu::CPU;
 use memory::mmu::MMU;
-use gpu::DACPalette;
+use gpu::palette::DACPalette;
 
 #[test] #[ignore] // expensive test
 fn demo_256() {

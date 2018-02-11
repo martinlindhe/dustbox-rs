@@ -1,7 +1,10 @@
 use std::cell::RefCell;
 use std::num::Wrapping;
 
+use cpu::CPU;
+use memory::mmu::MMU;
 use gpu::palette::{DACPalette, default_vga_palette};
+use gpu::font;
 
 #[cfg(test)]
 #[path = "./gpu_test.rs"]
@@ -22,12 +25,34 @@ impl GPU {
     pub fn new() -> Self {
         GPU {
             scanline: 0,
-            width: 80,
-            height: 25,
+            width: 300,
+            height: 200,
             pal: default_vga_palette(),
             pel_address: 0,
             pel_component: 0,
             mode: 0x03, // default mode is 80x25 text
+        }
+    }
+
+    pub fn reset(&mut self, cpu: &mut CPU) {
+        let rom_base = MMU::s_translate(0xc000, 0);
+
+        // XXX: phys_writes(rom_base+0x1e, "IBM compatible EGA BIOS", 24);
+
+        let mut pos = 0x100;
+
+        // cga font
+        for i in 0..(128 * 8) {
+            cpu.mmu.memory.borrow_mut().write_u8(rom_base + pos, font::FONT_08[i]);
+            //phys_writeb(rom_base+int10.rom.used++,int10_font_08[i]);
+            pos += 1;
+        }
+
+        // cga second half
+        for i in 0..(128 * 8) {
+            cpu.mmu.memory.borrow_mut().write_u8(rom_base + pos, font::FONT_08[i + (128 * 8)]);
+            //phys_writeb(rom_base+int10.rom.used++,int10_font_08[i+128*8]);
+            pos += 1;
         }
     }
 

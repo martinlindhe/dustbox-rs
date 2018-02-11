@@ -40,7 +40,7 @@ impl Counter {
     }
 
     pub fn dec(&mut self) {
-        // XXX dec should happen on each timer interrupt
+        // XXX channel 0 is connected to interrupt.
         self.count = (Wrapping(self.count) - Wrapping(1)).0;
         if self.count == 0 {
             if self.reload == 0 {
@@ -51,7 +51,7 @@ impl Counter {
         }
     }
 
-    pub fn read_next_part(&mut self) -> u8 {
+    pub fn get_next_u8(&mut self) -> u8 {
         match self.access_mode {
             AccessMode::LatchCountValue => {
                 // Counter Latch Command
@@ -105,9 +105,10 @@ impl Counter {
     }
 
     pub fn set_mode(&mut self, access_mode: u8, operating_mode: u8, bcd_mode: u8) {
-        println!("pit {}: set_mode_command access {:?}, operating {:?}, bcd {:?}", self.channel, access_mode, operating_mode, bcd_mode);
+        // println!("pit {}: set_mode_command access {:?}, operating {:?}, bcd {:?}", self.channel, access_mode, operating_mode, bcd_mode);
         self.access_mode = match access_mode {
             0 => {
+                // prepare current count value in the latch register
                 self.latch = self.count;
                 AccessMode::LatchCountValue
             },

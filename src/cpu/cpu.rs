@@ -44,6 +44,7 @@ pub struct CPU {
     pub gpu: GPU,
     pub pit: PIT,
     pub pic: PIC,
+    pub pic2: PIC, // secondary pic
     rom_base: usize,
     pub fatal_error: bool, // for debugging: signals to debugger we hit an error
     pub deterministic: bool, // for testing: toggles non-deterministic behaviour
@@ -63,6 +64,7 @@ impl CPU {
             gpu: GPU::new(),
             pit: PIT::new(),
             pic: PIC::new(),
+            pic2: PIC::new(),
             rom_base: 0,
             fatal_error: false,
             deterministic: false,
@@ -1958,7 +1960,7 @@ impl CPU {
 
     // returns the absoute address of CS:IP
     pub fn get_address(&self) -> usize {
-        self.mmu.s_translate(self.get_sr(&SR::CS), self.ip)
+        MMU::s_translate(self.get_sr(&SR::CS), self.ip)
     }
 
     fn read_u8(&mut self) -> u8 {
@@ -2211,10 +2213,63 @@ impl CPU {
         self.flags.set_parity(al as usize);
     }
 
+    // read byte from I/O port
+    fn in_port(&mut self, port: u16) -> u8 {
+        /*
+        println!("in_port: read from {:04X} at {:06X}",
+                 port,
+                 self.get_offset());
+        */
+        match port {
+            // PORT 0000-001F - DMA 1 - FIRST DIRECT MEMORY ACCESS CONTROLLER (8237)
+            0x0002 => {
+                // DMA channel 1	current address		byte  0, then byte 1
+                println!("XXX fixme in_port read DMA channel 1 current address");
+                0
+            }
+            0x0020 => self.pic.get_register(),
+            0x0021 => self.pic.get_ocw1(),
+            0x0040 => self.pit.counter0.get_next_u8(),
+            0x0041 => self.pit.counter1.get_next_u8(),
+            0x0042 => self.pit.counter2.get_next_u8(),
+            0x0060 => {
+                // keyboard controller data output buffer
+                0 // XXX
+            },
+            0x0061 => {
+                // keyboard controller port b control register
+                0 // XXX
+            }
+            0x00A0 => self.pic2.get_register(),
+            0x00A1 => self.pic2.get_ocw1(),
+            0x0201 => {
+                // read joystick position and status
+                // Bit(s)	Description	(Table P0542)
+                //  7	status B joystick button 2 / D paddle button
+                //  6	status B joystick button 1 / C paddle button
+                //  5	status A joystick button 2 / B paddle button
+                //  4	status A joystick button 1 / A paddle button
+                //  3	B joystick Y coordinate	   / D paddle coordinate
+                //  2	B joystick X coordinate	   / C paddle coordinate
+                //  1	A joystick Y coordinate	   / B paddle coordinate
+                //  0	A joystick X coordinate	   / A paddle coordinate
+                0 // XXX
+            }
+            0x03DA => self.gpu.read_cga_status_register(),
+            _ => {
+                println!("in_port: unhandled in8 {:04X} at {:06X}",
+                         port,
+                         self.get_address());
+                0
+            }
+        }
+    }
+
     // write byte to I/O port
     pub fn out_u8(&mut self, dst: u16, data: u8) {
         match dst {
-            0x0021 => self.pic.write_0021(data),
+            0x0020 => self.pic.set_command(data),
+            0x0021 => self.pic.set_data(data),
             0x0040 => self.pit.counter0.write_reload_part(data),
             0x0041 => self.pit.counter0.write_reload_part(data),
             0x0042 => self.pit.counter2.write_reload_part(data),
@@ -2222,6 +2277,8 @@ impl CPU {
             0x0061 => {
                 // keyboard controller port b OR ppi programmable perihpial interface (XT only) - which mode are we in?
             },
+            0x00A0 => self.pic2.set_command(data),
+            0x00A1 => self.pic2.set_data(data),
             0x0201 => {
                 // W  fire joystick's four one-shots
             }
@@ -2299,55 +2356,6 @@ impl CPU {
             */
              _ => {
                 println!("XXX unhandled out_u16 to {:04X}, data {:02X}", dst, data);
-            }
-        }
-    }
-
-    // read byte from I/O port
-    fn in_port(&mut self, port: u16) -> u8 {
-        /*
-        println!("in_port: read from {:04X} at {:06X}",
-                 port,
-                 self.get_offset());
-        */
-        match port {
-            // PORT 0000-001F - DMA 1 - FIRST DIRECT MEMORY ACCESS CONTROLLER (8237)
-            0x0002 => {
-                // DMA channel 1	current address		byte  0, then byte 1
-                println!("XXX fixme in_port read DMA channel 1 current address");
-                0
-            }
-            0x0021 => self.pic.read_ocw1(),
-            0x0040 => self.pit.counter0.read_next_part(),
-            0x0041 => self.pit.counter1.read_next_part(),
-            0x0042 => self.pit.counter2.read_next_part(),
-            0x0060 => {
-                // keyboard controller data output buffer
-                0 // XXX
-            },
-            0x0061 => {
-                // keyboard controller port b control register
-                0 // XXX
-            }
-            0x0201 => {
-                // read joystick position and status
-                // Bit(s)	Description	(Table P0542)
-                //  7	status B joystick button 2 / D paddle button
-                //  6	status B joystick button 1 / C paddle button
-                //  5	status A joystick button 2 / B paddle button
-                //  4	status A joystick button 1 / A paddle button
-                //  3	B joystick Y coordinate	   / D paddle coordinate
-                //  2	B joystick X coordinate	   / C paddle coordinate
-                //  1	A joystick Y coordinate	   / B paddle coordinate
-                //  0	A joystick X coordinate	   / A paddle coordinate
-                0 // XXX
-            }
-            0x03DA => self.gpu.read_cga_status_register(),
-            _ => {
-                println!("in_port: unhandled in8 {:04X} at {:06X}",
-                         port,
-                         self.get_address());
-                0
             }
         }
     }

@@ -23,6 +23,8 @@ pub mod memory;
 pub mod gpu;
 pub mod pic;
 pub mod pit;
+pub mod cmos;
+pub mod bios;
 pub mod codepage;
 pub mod tools;
 
