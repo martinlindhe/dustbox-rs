@@ -14,5 +14,5 @@ fn can_execute_pit_set_reload_value() {
     machine.load_com(&code);
     machine.execute_instructions(6);
 
-    assert_eq!(0x2244, machine.cpu.pit.counter0.reload);
+    assert_eq!(0x2244, machine.hw.pit.counter0.reload);
 }

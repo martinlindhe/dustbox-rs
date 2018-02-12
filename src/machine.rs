@@ -127,7 +127,7 @@ impl Machine {
 
         if self.cpu.cycle_count % 100 == 0 {
             // FIXME: counter should decrement ~18.2 times/sec
-            self.cpu.pit.counter0.dec();
+            self.hw.pit.counter0.dec();
         }
     }
 

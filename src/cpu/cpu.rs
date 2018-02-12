@@ -13,8 +13,6 @@ use memory::Memory;
 use memory::mmu::MMU;
 use interrupt;
 use gpu::GPU;
-use pit::PIT;
-use pic::PIC;
 use machine::Machine;
 use hardware::Hardware;
 
@@ -42,9 +40,6 @@ pub struct CPU {
     pub r16: [Register16; 8], // general purpose registers
     pub sreg16: [u16; 6], // segment registers
     pub flags: Flags,
-    pub pit: PIT,
-    pub pic: PIC,
-    pub pic2: PIC, // secondary pic
     pub rom_base: usize,
     pub fatal_error: bool, // for debugging: signals to debugger we hit an error
     pub deterministic: bool, // for testing: toggles non-deterministic behaviour
@@ -61,9 +56,6 @@ impl CPU {
             r16: [Register16 { val: 0 }; 8],
             sreg16: [0; 6],
             flags: Flags::new(),
-            pit: PIT::new(),
-            pic: PIC::new(),
-            pic2: PIC::new(),
             rom_base: 0,
             fatal_error: false,
             deterministic: false,

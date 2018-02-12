@@ -14,11 +14,11 @@ impl CPU {
                 println!("XXX fixme in_port read DMA channel 1 current address");
                 0
             }
-            0x0020 => self.pic.get_register(),
-            0x0021 => self.pic.get_ocw1(),
-            0x0040 => self.pit.counter0.get_next_u8(),
-            0x0041 => self.pit.counter1.get_next_u8(),
-            0x0042 => self.pit.counter2.get_next_u8(),
+            0x0020 => hw.pic.get_register(),
+            0x0021 => hw.pic.get_ocw1(),
+            0x0040 => hw.pit.counter0.get_next_u8(),
+            0x0041 => hw.pit.counter1.get_next_u8(),
+            0x0042 => hw.pit.counter2.get_next_u8(),
             0x0060 => {
                 // keyboard controller data output buffer
                 0 // XXX
@@ -27,8 +27,8 @@ impl CPU {
                 // keyboard controller port b control register
                 0 // XXX
             }
-            0x00A0 => self.pic2.get_register(),
-            0x00A1 => self.pic2.get_ocw1(),
+            0x00A0 => hw.pic2.get_register(),
+            0x00A1 => hw.pic2.get_ocw1(),
             0x0201 => {
                 // read joystick position and status
                 // Bit(s)	Description	(Table P0542)
@@ -53,17 +53,17 @@ impl CPU {
     // write byte to I/O port
     pub fn out_u8(&mut self, hw: &mut Hardware, port: u16, data: u8) {
         match port {
-            0x0020 => self.pic.set_command(data),
-            0x0021 => self.pic.set_data(data),
-            0x0040 => self.pit.counter0.write_reload_part(data),
-            0x0041 => self.pit.counter1.write_reload_part(data),
-            0x0042 => self.pit.counter2.write_reload_part(data),
-            0x0043 => self.pit.set_mode_command(data),
+            0x0020 => hw.pic.set_command(data),
+            0x0021 => hw.pic.set_data(data),
+            0x0040 => hw.pit.counter0.write_reload_part(data),
+            0x0041 => hw.pit.counter1.write_reload_part(data),
+            0x0042 => hw.pit.counter2.write_reload_part(data),
+            0x0043 => hw.pit.set_mode_command(data),
             0x0061 => {
                 // keyboard controller port b OR ppi programmable perihpial interface (XT only) - which mode are we in?
             },
-            0x00A0 => self.pic2.set_command(data),
-            0x00A1 => self.pic2.set_data(data),
+            0x00A0 => hw.pic2.set_command(data),
+            0x00A1 => hw.pic2.set_data(data),
             0x0201 => {
                 // W  fire joystick's four one-shots
             }
