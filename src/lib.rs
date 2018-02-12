@@ -1,8 +1,6 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-#![feature(unboxed_closures)]
-
 extern crate time;
 extern crate rand;
 extern crate tempdir;
