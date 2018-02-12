@@ -1,8 +1,9 @@
+use hardware::Hardware;
 use cpu::CPU;
 use cpu::register::{R16, SR};
 
 // mouse related interrupts
-pub fn handle(cpu: &mut CPU) {
+pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
     match cpu.get_r16(&R16::AX) {
         0x0003 => {
             // MS MOUSE v1.0+ - RETURN POSITION AND BUTTON STATUS

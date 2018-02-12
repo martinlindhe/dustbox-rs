@@ -1,8 +1,9 @@
+use hardware::Hardware;
 use cpu::CPU;
 use cpu::register::{R8, R16};
 
 // keyboard related interrupts
-pub fn handle(cpu: &mut CPU) {
+pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
     match cpu.get_r8(&R8::AH) {
         0x00 => {
             // KEYBOARD - GET KEYSTROKE

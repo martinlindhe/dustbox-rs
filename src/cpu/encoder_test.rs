@@ -18,6 +18,7 @@ use cpu::parameter::Parameter;
 use cpu::instruction::{Instruction, InstructionInfo, RepeatMode};
 use cpu::op::Op;
 use cpu::register::{R8, R16, AMode, SR};
+use machine::Machine;
 use memory::mmu::MMU;
 
 #[test] #[ignore] // expensive test
@@ -25,21 +26,20 @@ fn can_encode_random_seq() {
     let mut rng = XorShiftRng::new_unseeded();
     let mut code = vec![0u8; 10];
 
-    let mmu = MMU::new();
-    let mut cpu = CPU::new(mmu);
+    let mut machine = Machine::new();
 
     for _ in 0..1000 {
         for mut b in &mut code {
             *b = rng.gen();
         }
 
-        cpu.load_com(&code);
+        machine.load_com(&code);
 
         let encoder = Encoder::new();
 
         // randomizes a byte sequence and tries to decode the first instruction
-        let cs = cpu.get_sr(&SR::CS);
-        let ops = cpu.decoder.decode_to_block(cs, 0x100, 1);
+        let cs = machine.cpu.get_sr(&SR::CS);
+        let ops = machine.cpu.decoder.decode_to_block(&mut machine.hw.mmu, cs, 0x100, 1);
         let op = &ops[0];
         if op.instruction.command.is_valid() {
             // - if successful, try to encode. all valid decodings should be mapped for valid
@@ -63,8 +63,8 @@ fn can_encode_random_seq() {
 
                     // - if encode was successful, try to decode that seq again and make sure the resulting
                     //   ops are the same (this should ensure all cases code 2-way to the same values)
-                    cpu.load_com(&enc);
-                    let decoded = cpu.decoder.decode_to_block(cs, 0x100, 1);
+                    machine.load_com(&enc);
+                    let decoded = machine.cpu.decoder.decode_to_block(&mut machine.hw.mmu, cs, 0x100, 1);
                     let reencoded_op = &decoded[0];
                     if op.instruction != reencoded_op.instruction {
                         panic!("re-encoding failed.\n\nexpected {:?},\noutput   {:?}",
@@ -479,11 +479,10 @@ fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u
     let code = encoder.encode(&op).unwrap();
     assert_eq!(expected_bytes, code, "encoded byte sequence does not match expected bytes");
 
-    let mmu = MMU::new();
-    let mut cpu = CPU::new(mmu);
-    cpu.load_com(&code);
-    let cs = cpu.get_sr(&SR::CS);
-    let ops = cpu.decoder.decode_to_block(cs, 0x100, 1);
+    let mut machine = Machine::new();
+    machine.load_com(&code);
+    let cs = machine.cpu.get_sr(&SR::CS);
+    let ops = machine.cpu.decoder.decode_to_block(&mut machine.hw.mmu, cs, 0x100, 1);
     let decoded_op = &ops[0].instruction;
     assert_eq!(op, decoded_op, "decoded resulting op from instruction encode does not match input op");
 

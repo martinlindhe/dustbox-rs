@@ -1,8 +1,9 @@
+use hardware::Hardware;
 use cpu::CPU;
 use cpu::register::{R8, R16, SR};
 
 // video related interrupts
-pub fn handle(cpu: &mut CPU) {
+pub fn handle(cpu: &mut CPU, mut hw: &mut Hardware) {
     match cpu.get_r8(&R8::AH) {
         0x00 => {
             // VIDEO - SET VIDEO MODE
@@ -15,7 +16,7 @@ pub fn handle(cpu: &mut CPU) {
             // 3Fh mode 6
             // AL = CRT controller mode byte (Phoenix 386 BIOS v1.10)
             let al = cpu.get_r8(&R8::AL);
-            cpu.gpu.set_mode(al);
+            hw.gpu.set_mode(al);
         }
         0x01 => {
             // VIDEO - SET TEXT-MODE CURSOR SHAPE
@@ -180,21 +181,21 @@ pub fn handle(cpu: &mut CPU) {
                     let count = cpu.get_r16(&R16::CX) as usize;
 
                     // #define VGAREG_DAC_WRITE_ADDRESS       0x3c8
-                    cpu.out_u8(0x3C8, start as u8);
+                    cpu.out_u8(&mut hw, 0x3C8, start as u8);
 
                     let es = cpu.get_sr(&SR::ES);
                     let dx = cpu.get_r16(&R16::DX);
 
                     for i in start..(start+count) {
                         let next = (i * 3) as u16;
-                        let r = cpu.mmu.read_u8(es, dx + next) ;
-                        let g = cpu.mmu.read_u8(es, dx + next + 1);
-                        let b = cpu.mmu.read_u8(es, dx + next + 2);
+                        let r = hw.mmu.read_u8(es, dx + next) ;
+                        let g = hw.mmu.read_u8(es, dx + next + 1);
+                        let b = hw.mmu.read_u8(es, dx + next + 2);
 
                         // #define VGAREG_DAC_DATA                0x3c9
-                        cpu.out_u8(0x3C9, r);
-                        cpu.out_u8(0x3C9, g);
-                        cpu.out_u8(0x3C9, b);
+                        cpu.out_u8(&mut hw, 0x3C9, r);
+                        cpu.out_u8(&mut hw, 0x3C9, g);
+                        cpu.out_u8(&mut hw, 0x3C9, b);
                     }
                 }
                 0x17 => {

@@ -13,6 +13,7 @@ use image::{ImageBuffer, Rgb};
 
 use tools;
 use cpu::CPU;
+use machine::Machine;
 use memory::mmu::MMU;
 use gpu::palette::DACPalette;
 
@@ -153,16 +154,16 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
     while let Some(bin) = test_bins.pop() {
         println!("{}: {}", group, bin);
 
-        let mut cpu = CPU::new(MMU::new());
-        cpu.deterministic = true;
+        let mut machine = Machine::new();
+        machine.cpu.deterministic = true;
         match tools::read_binary(bin) {
-            Ok(data) => cpu.load_com(&data),
+            Ok(data) => machine.load_com(&data),
             Err(err) => panic!("failed to read {}: {}", bin, err),
         }
 
         for _ in 0..7_000_000 {
-            cpu.execute_instruction();
-            if cpu.fatal_error {
+            machine.execute_instruction();
+            if machine.cpu.fatal_error {
                 break;
             }
         }
@@ -174,7 +175,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
         filename.push(stem.to_os_string());
         filename.push(".png");
 
-        if write_video_frame_to_disk(&cpu, filename.to_str().unwrap()) {
+        if write_video_frame_to_disk(&machine, filename.to_str().unwrap()) {
             let mut pub_filename = String::new();
             pub_filename.push_str(&format!("render/{}/{}_", group, name_prefix));
             pub_filename.push_str(stem.to_str().unwrap());
@@ -216,14 +217,14 @@ fn draw_image(frame: &[u8], width: u32, height: u32) -> ImageBuffer<Rgb<u8>, Vec
 }
 
 // returns true on success
-fn write_video_frame_to_disk(cpu: &CPU, pngfile: &str) -> bool {
-    let mem = cpu.mmu.dump_mem();
-    let frame = cpu.gpu.render_frame(&mem);
+fn write_video_frame_to_disk(machine: &Machine, pngfile: &str) -> bool {
+    let mem = machine.hw.mmu.dump_mem();
+    let frame = machine.hw.gpu.render_frame(&mem);
     if frame.len() == 0 {
         println!("ERROR: no frame rendered");
         return false;
     }
-    let img = draw_image(&frame, cpu.gpu.width, cpu.gpu.height);
+    let img = draw_image(&frame, machine.hw.gpu.width, machine.hw.gpu.height);
     if let Err(why) = img.save(pngfile) {
         println!("save err: {:?}", why);
         return false;

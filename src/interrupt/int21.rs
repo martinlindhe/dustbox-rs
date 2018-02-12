@@ -1,11 +1,12 @@
 use time;
 
+use hardware::Hardware;
 use cpu::CPU;
 use cpu::register::{R8, R16, SR};
 use codepage::cp437;
 
 // dos related interrupts
-pub fn handle(cpu: &mut CPU) {
+pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
     match cpu.get_r8(&R8::AH) {
         0x02 => {
             // DOS 1+ - WRITE CHARACTER TO STANDARD OUTPUT
@@ -53,7 +54,7 @@ pub fn handle(cpu: &mut CPU) {
             // the pointer is in DS:EDX
             let mut count = 0;
             loop {
-                let b = cpu.mmu.read_u8(cpu.get_sr(&SR::DS), cpu.get_r16(&R16::DX) + count);
+                let b = hw.mmu.read_u8(cpu.get_sr(&SR::DS), cpu.get_r16(&R16::DX) + count);
                 count += 1;
                 if b as char == '$' {
                     break;

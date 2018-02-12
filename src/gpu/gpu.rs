@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::num::Wrapping;
+use std::marker::PhantomData;
 
 use cpu::CPU;
 use memory::mmu::MMU;

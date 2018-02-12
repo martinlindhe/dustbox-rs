@@ -3,13 +3,10 @@ use std::num::ParseIntError;
 use std::io::Error as IoError;
 use std::process::exit;
 
-use dustbox::cpu::CPU;
-use dustbox::cpu::register;
-use dustbox::cpu::register::{R16, SR};
-use dustbox::cpu::flags;
+use dustbox::machine::Machine;
+use dustbox::cpu::register::{R16, SR, RegisterSnapshot};
 use dustbox::cpu::segment;
 use dustbox::cpu::decoder::Decoder;
-use dustbox::memory::mmu::MMU;
 use dustbox::tools;
 
 use breakpoints::Breakpoints;
@@ -19,16 +16,9 @@ use memory_breakpoints::MemoryBreakpoints;
 #[path = "./debugger_test.rs"]
 mod debugger_test;
 
-pub struct PrevRegs {
-    pub ip: u16,
-    pub r16: [register::Register16; 8], // general purpose registers
-    pub sreg16: [u16; 6],               // segment registers
-    pub flags: flags::Flags,
-}
-
 pub struct Debugger {
-    pub cpu: CPU,
-    pub prev_regs: PrevRegs,
+    pub machine: Machine,
+    pub prev_regs: RegisterSnapshot,
     last_program: Option<String>,
     ip_breakpoints: Breakpoints, // break when IP reach address
     memory_breakpoints: MemoryBreakpoints, // break when memory change on this address
@@ -36,16 +26,10 @@ pub struct Debugger {
 
 impl Debugger {
     pub fn new() -> Self {
-        let mmu = MMU::new();
-        let cpu = CPU::new(mmu);
+        let machine = Machine::new();
         Debugger {
-            cpu: cpu.clone(),
-            prev_regs: PrevRegs {
-                ip: cpu.ip,
-                r16: cpu.r16,
-                sreg16: cpu.sreg16,
-                flags: cpu.flags,
-            },
+            prev_regs: machine.register_snapshot(),
+            machine: machine,
             last_program: None,
             ip_breakpoints: Breakpoints::new(),
             memory_breakpoints: MemoryBreakpoints::new(),
@@ -53,24 +37,24 @@ impl Debugger {
     }
 
     pub fn is_ip_at_breakpoint(&self) -> bool {
-        let offset = self.cpu.get_address();
+        let offset = self.machine.cpu.get_address();
         self.ip_breakpoints.hit(offset)
     }
 
     fn should_break(&mut self) -> bool {
-        if self.cpu.fatal_error {
+        if self.machine.cpu.fatal_error {
             return true;
         }
         if self.is_ip_at_breakpoint() {
             println!(
                 "Breakpoint reached, ip = {:04X}:{:04X}",
-                self.cpu.get_sr(&SR::CS),
-                self.cpu.ip
+                self.machine.cpu.get_sr(&SR::CS),
+                self.machine.cpu.ip
             );
             return true;
         }
         for addr in self.memory_breakpoints.get() {
-            let val = self.cpu.mmu.memory.borrow().read_u8(addr);
+            let val = self.machine.hw.mmu.memory.borrow().read_u8(addr);
             if self.memory_breakpoints.has_changed(addr, val) {
                 println!("Value at memory breakpoint has changed. {:06X} = {:02X}", addr, val);
                 return true;
@@ -83,7 +67,7 @@ impl Debugger {
         let start = Instant::now();
         let mut done = 0;
         for _ in 0..cnt {
-            self.cpu.execute_instruction();
+            self.machine.execute_instruction();
             if self.should_break() {
                 break;
             }
@@ -93,27 +77,27 @@ impl Debugger {
         let ms = (elapsed.as_secs() * 1_000) + u64::from(elapsed.subsec_nanos() / 1_000_000);
         println!(
             "Executed total {} instructions ({} now) in {} ms",
-            self.cpu.instruction_count,
+            self.machine.cpu.instruction_count,
             done,
             ms
         );
     }
 
     pub fn step_over(&mut self) {
-        let mut decoder = Decoder::new(self.cpu.mmu.clone());
-        let op = decoder.decode_instruction(self.cpu.get_sr(&SR::CS), self.cpu.ip);
+        let mut decoder = Decoder::new();
+        let op = decoder.decode_instruction(&mut self.machine.hw.mmu, self.machine.cpu.get_sr(&SR::CS), self.machine.cpu.ip);
 
-        let dst_ip = self.cpu.ip + op.bytes.len() as u16;
+        let dst_ip = self.machine.cpu.ip + op.bytes.len() as u16;
         println!("Step-over running to {:04X}", dst_ip);
 
         let mut cnt = 0;
         loop {
             cnt += 1;
-            self.cpu.execute_instruction();
+            self.machine.execute_instruction();
             if self.should_break() {
                 break;
             }
-            if self.cpu.ip == dst_ip {
+            if self.machine.cpu.ip == dst_ip {
                 break;
             }
         }
@@ -121,13 +105,13 @@ impl Debugger {
             "Step-over to {:04X} done, executed {} instructions ({} total)",
             dst_ip,
             cnt,
-            self.cpu.instruction_count
+            self.machine.cpu.instruction_count
         );
     }
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
-        let mut decoder = Decoder::new(self.cpu.mmu.clone());
-        decoder.disassemble_block_to_str(self.cpu.get_sr(&SR::CS), self.cpu.ip, n)
+        let mut decoder = Decoder::new();
+        decoder.disassemble_block_to_str(&mut self.machine.hw.mmu, self.machine.cpu.get_sr(&SR::CS), self.machine.cpu.ip, n)
     }
 
     pub fn dump_memory(&self, filename: &str, base: usize, len: usize) -> Result<usize, IoError> {
@@ -140,7 +124,7 @@ impl Debugger {
             Err(why) => return Err(why),
             Ok(file) => file,
         };
-        let dump = self.cpu.mmu.dump_mem();
+        let dump = self.machine.hw.mmu.dump_mem();
 
         if let Err(why) = file.write(&dump[base..base + len]) {
             return Err(why);
@@ -201,16 +185,16 @@ impl Debugger {
                 }
             }
             "reset" => {
-                println!("Resetting CPU");
-                self.cpu.hard_reset(MMU::new());
+                println!("Resetting machine");
+                self.machine.hard_reset();
             }
             "exit" | "quit" | "q" => {
                 println!("Exiting ... {} instructions was executed",
-                      self.cpu.instruction_count);
+                      self.machine.cpu.instruction_count);
                 exit(0);
             }
             "instcount" => {
-                println!("Executed {} instructions", self.cpu.instruction_count);
+                println!("Executed {} instructions", self.machine.cpu.instruction_count);
             }
             "reg" | "regs" | "registers" => {
                 self.print_registers();
@@ -329,8 +313,8 @@ impl Debugger {
                 self.show_flat_address();
             }
             "d" | "disasm" => {
-                let mut decoder = Decoder::new(self.cpu.mmu.clone());
-                let op = decoder.decode_instruction(self.cpu.get_sr(&SR::CS), self.cpu.ip);
+                let mut decoder = Decoder::new();
+                let op = decoder.decode_instruction(&mut self.machine.hw.mmu, self.machine.cpu.get_sr(&SR::CS), self.machine.cpu.ip);
                 println!("{:?}", op);
                 println!("{}", op);
             }
@@ -353,7 +337,7 @@ impl Debugger {
                     return;
                 }
 
-                let mem_dump = self.cpu.mmu.dump_mem();
+                let mem_dump = self.machine.hw.mmu.dump_mem();
                 let mut pos: usize;
                 let mut length: usize;
 
@@ -417,7 +401,7 @@ impl Debugger {
                 }
             }
             "r" | "run" => {
-                self.cpu.execute_frame();
+                self.machine.execute_frame();
             }
             "" => {}
             _ => {
@@ -430,20 +414,20 @@ impl Debugger {
         println!("Reading raw binary from {}", name);
         match tools::read_binary(name) {
             Ok(data) => {
-                self.cpu.hard_reset(MMU::new());
-                self.cpu.load_com(&data);
+                self.machine.hard_reset();
+                self.machine.load_com(&data);
             }
             Err(what) => println!("error {}", what),
         };
     }
 
     fn show_flat_address(&mut self) {
-        let offset = self.cpu.get_address();
-        let rom_offset = offset - self.cpu.get_rom_base() + 0x100;
+        let offset = self.machine.cpu.get_address();
+        let rom_offset = offset - self.machine.cpu.get_rom_base() + 0x100;
         println!(
             "{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
-            self.cpu.get_sr(&SR::CS),
-            self.cpu.ip,
+            self.machine.cpu.get_sr(&SR::CS),
+            self.machine.cpu.ip,
             offset,
             rom_offset
         );
@@ -482,20 +466,20 @@ impl Debugger {
             usize::from_str_radix(&x[2..], 16)
         } else {
             match x.as_ref() {
-                "ax" => Ok(self.cpu.get_r16(&R16::AX) as usize),
-                "bx" => Ok(self.cpu.get_r16(&R16::BX) as usize),
-                "cx" => Ok(self.cpu.get_r16(&R16::CX) as usize),
-                "dx" => Ok(self.cpu.get_r16(&R16::DX) as usize),
-                "sp" => Ok(self.cpu.get_r16(&R16::SP) as usize),
-                "bp" => Ok(self.cpu.get_r16(&R16::BP) as usize),
-                "si" => Ok(self.cpu.get_r16(&R16::SI) as usize),
-                "di" => Ok(self.cpu.get_r16(&R16::DI) as usize),
-                "es" => Ok(self.cpu.get_sr(&SR::ES) as usize),
-                "cs" => Ok(self.cpu.get_sr(&SR::CS) as usize),
-                "ss" => Ok(self.cpu.get_sr(&SR::SS) as usize),
-                "ds" => Ok(self.cpu.get_sr(&SR::DS) as usize),
-                "fs" => Ok(self.cpu.get_sr(&SR::FS) as usize),
-                "gs" => Ok(self.cpu.get_sr(&SR::GS) as usize),
+                "ax" => Ok(self.machine.cpu.get_r16(&R16::AX) as usize),
+                "bx" => Ok(self.machine.cpu.get_r16(&R16::BX) as usize),
+                "cx" => Ok(self.machine.cpu.get_r16(&R16::CX) as usize),
+                "dx" => Ok(self.machine.cpu.get_r16(&R16::DX) as usize),
+                "sp" => Ok(self.machine.cpu.get_r16(&R16::SP) as usize),
+                "bp" => Ok(self.machine.cpu.get_r16(&R16::BP) as usize),
+                "si" => Ok(self.machine.cpu.get_r16(&R16::SI) as usize),
+                "di" => Ok(self.machine.cpu.get_r16(&R16::DI) as usize),
+                "es" => Ok(self.machine.cpu.get_sr(&SR::ES) as usize),
+                "cs" => Ok(self.machine.cpu.get_sr(&SR::CS) as usize),
+                "ss" => Ok(self.machine.cpu.get_sr(&SR::SS) as usize),
+                "ds" => Ok(self.machine.cpu.get_sr(&SR::DS) as usize),
+                "fs" => Ok(self.machine.cpu.get_sr(&SR::FS) as usize),
+                "gs" => Ok(self.machine.cpu.get_sr(&SR::GS) as usize),
                 _ => usize::from_str_radix(&x, 16)
             }
         }
@@ -505,39 +489,39 @@ impl Debugger {
         let mut res = String::new();
 
         res += format!("AX:{:04X}  SI:{:04X}  DS:{:04X}  IP:{:04X}  cnt:{}\n",
-                       self.cpu.get_r16(&R16::AX),
-                       self.cpu.get_r16(&R16::SI),
-                       self.cpu.get_sr(&SR::DS),
-                       self.cpu.ip,
-                       self.cpu.instruction_count)
+                       self.machine.cpu.get_r16(&R16::AX),
+                       self.machine.cpu.get_r16(&R16::SI),
+                       self.machine.cpu.get_sr(&SR::DS),
+                       self.machine.cpu.ip,
+                       self.machine.cpu.instruction_count)
                 .as_ref();
         res += format!("BX:{:04X}  DI:{:04X}  CS:{:04X}  fl:{:04X}\n",
-                       self.cpu.get_r16(&R16::BX),
-                       self.cpu.get_r16(&R16::DI),
-                       self.cpu.get_sr(&SR::CS),
-                       self.cpu.flags.u16())
+                       self.machine.cpu.get_r16(&R16::BX),
+                       self.machine.cpu.get_r16(&R16::DI),
+                       self.machine.cpu.get_sr(&SR::CS),
+                       self.machine.cpu.flags.u16())
                 .as_ref();
         res += format!("CX:{:04X}  BP:{:04X}  ES:{:04X}  GS:{:04X}\n",
-                       self.cpu.get_r16(&R16::CX),
-                       self.cpu.get_r16(&R16::BP),
-                       self.cpu.get_sr(&SR::ES),
-                       self.cpu.get_sr(&SR::GS))
+                       self.machine.cpu.get_r16(&R16::CX),
+                       self.machine.cpu.get_r16(&R16::BP),
+                       self.machine.cpu.get_sr(&SR::ES),
+                       self.machine.cpu.get_sr(&SR::GS))
                 .as_ref();
         res += format!("DX:{:04X}  SP:{:04X}  FS:{:04X}  SS:{:04X}\n",
-                       self.cpu.get_r16(&R16::DX),
-                       self.cpu.get_r16(&R16::SP),
-                       self.cpu.get_sr(&SR::FS),
-                       self.cpu.get_sr(&SR::SS))
+                       self.machine.cpu.get_r16(&R16::DX),
+                       self.machine.cpu.get_r16(&R16::SP),
+                       self.machine.cpu.get_sr(&SR::FS),
+                       self.machine.cpu.get_sr(&SR::SS))
                 .as_ref();
         res += format!("C{} Z{} S{} O{} A{} P{} D{} I{}",
-                       self.cpu.flags.carry_numeric(),
-                       self.cpu.flags.zero_numeric(),
-                       self.cpu.flags.sign_numeric(),
-                       self.cpu.flags.overflow_numeric(),
-                       self.cpu.flags.adjust_numeric(),
-                       self.cpu.flags.parity_numeric(),
-                       self.cpu.flags.direction_numeric(),
-                       self.cpu.flags.interrupt_numeric())
+                       self.machine.cpu.flags.carry_numeric(),
+                       self.machine.cpu.flags.zero_numeric(),
+                       self.machine.cpu.flags.sign_numeric(),
+                       self.machine.cpu.flags.overflow_numeric(),
+                       self.machine.cpu.flags.adjust_numeric(),
+                       self.machine.cpu.flags.parity_numeric(),
+                       self.machine.cpu.flags.direction_numeric(),
+                       self.machine.cpu.flags.interrupt_numeric())
                 .as_ref();
 
         res

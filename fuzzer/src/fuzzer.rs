@@ -8,12 +8,10 @@ use std::io::{Read};
 use tera::Context;
 use tempdir::TempDir;
 
-use dustbox::cpu::instruction::Instruction;
+use dustbox::machine::Machine;
 use dustbox::cpu::CPU;
 use dustbox::cpu::register::R16;
-use dustbox::cpu::encoder::Encoder;
 use dustbox::cpu::op::Op;
-use dustbox::memory::mmu::MMU;
 
 #[cfg(test)]
 #[path = "./fuzzer_test.rs"]
@@ -27,12 +25,9 @@ pub enum VmRunner {
 
 // return false on failure
 fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&str], affected_flag_mask: u16) -> bool {
-    let mmu = MMU::new();
-    let mut cpu = CPU::new(mmu);
-    let encoder = Encoder::new();
-
-    cpu.load_com(data);
-    cpu.execute_instructions(op_count);
+    let mut machine = Machine::new();
+    machine.load_com(data);
+    machine.execute_instructions(op_count);
 
     // run in vm, compare regs
     let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
@@ -50,14 +45,14 @@ fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&
         return false;
     }
 
-    if compare_regs(&cpu, &vm_regs, affected_registers) {
+    if compare_regs(&machine.cpu, &vm_regs, affected_registers) {
         println!("\nMAJOR: regs differ");
         return false;
     }
 
     let vm_flags = vm_regs["flag"];
     let vm_masked_flags = vm_flags & affected_flag_mask;
-    let dustbox_flags = cpu.flags.u16();
+    let dustbox_flags = machine.cpu.flags.u16();
     let dustbox_masked_flags = dustbox_flags & affected_flag_mask;
     if vm_masked_flags != dustbox_masked_flags {
         let xored = vm_masked_flags ^ dustbox_masked_flags;
@@ -223,6 +218,7 @@ fn assemble_prober(data: &[u8], prober_com: &str) {
         .expect("failed to execute process");
 }
 
+/*
 // creates a "db 0x1,0x2..." representation of the encoded instructions
 fn ops_as_db_bytes(ops: &[Instruction]) -> String {
     let encoder = Encoder::new();
@@ -237,10 +233,10 @@ fn ops_as_db_bytes(ops: &[Instruction]) -> String {
         panic!("invalid byte sequence");
     }
 }
+*/
 
 // creates a "db 0x1,0x2..." representation of a &[u8]
 fn vec_as_db_bytes(data: &[u8]) -> String {
-    let encoder = Encoder::new();
     let mut v = Vec::new();
     for c in data {
         v.push(format!("0x{:02X}", c));

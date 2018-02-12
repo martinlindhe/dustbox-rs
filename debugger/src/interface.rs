@@ -91,9 +91,9 @@ impl Interface {
                 let app = app.borrow();
                 //This makes a copy for every draw, maybe not a problem
                 //but it's stupid, and we shouldn't do this
-                let mem = app.cpu.mmu.dump_mem();
-                let frame = app.cpu.gpu.render_frame(&mem);
-                draw_canvas(ctx, frame, app.cpu.gpu.width, app.cpu.gpu.height);
+                let mem = app.machine.hw.mmu.dump_mem();
+                let frame = app.machine.hw.gpu.render_frame(&mem);
+                draw_canvas(ctx, frame, app.machine.hw.gpu.width, app.machine.hw.gpu.height);
                 ctx.paint();
                 Inhibit(false)
             });
@@ -155,7 +155,7 @@ impl Interface {
             button_step_into.connect_clicked(move |_| {
                 let mut app = app.borrow_mut();
 
-                app.cpu.fatal_error = false;
+                app.machine.cpu.fatal_error = false;
                 app.exec_command("step into 1");
 
                 // update disasm
@@ -177,7 +177,7 @@ impl Interface {
             button_step_over.connect_clicked(move |_| {
                 let mut app = app.borrow_mut();
 
-                app.cpu.fatal_error = false;
+                app.machine.cpu.fatal_error = false;
                 app.exec_command("step over 1");
 
                 // update disasm
@@ -199,7 +199,7 @@ impl Interface {
             button_run_to_breakpoint.connect_clicked(move |_| {
                 let mut app = app.borrow_mut();
 
-                app.cpu.fatal_error = false;
+                app.machine.cpu.fatal_error = false;
 
                 // run until bp is reached or 1M instructions was executed
                 app.exec_command("step into 6_000_000");
@@ -222,10 +222,10 @@ impl Interface {
 
             button_run.connect_clicked(move |_| {
                 let mut app = app.borrow_mut();
-                app.cpu.fatal_error = false;
+                app.machine.cpu.fatal_error = false;
 
                 // runs & draws 1 frame
-                app.cpu.execute_frame();
+                app.machine.execute_frame();
 
                 // update disasm
                 let text = app.disasm_n_instructions_to_text(20);
@@ -338,19 +338,19 @@ fn update_registers(
     let dx_value: gtk::Label = builder.get_object("dx_value").unwrap();
 
     ax_value.set_markup(&u16_as_register_str(
-        app.cpu.get_r16(&R16::AX),
+        app.machine.cpu.get_r16(&R16::AX),
         app.prev_regs.r16[R16::AX.index()].val,
     ));
     bx_value.set_markup(&u16_as_register_str(
-        app.cpu.get_r16(&R16::BX),
+        app.machine.cpu.get_r16(&R16::BX),
         app.prev_regs.r16[R16::BX.index()].val,
     ));
     cx_value.set_markup(&u16_as_register_str(
-        app.cpu.get_r16(&R16::CX),
+        app.machine.cpu.get_r16(&R16::CX),
         app.prev_regs.r16[R16::CX.index()].val,
     ));
     dx_value.set_markup(&u16_as_register_str(
-        app.cpu.get_r16(&R16::DX),
+        app.machine.cpu.get_r16(&R16::DX),
         app.prev_regs.r16[R16::DX.index()].val,
     ));
 
@@ -360,19 +360,19 @@ fn update_registers(
     let sp_value: gtk::Label = builder.get_object("sp_value").unwrap();
 
     si_value.set_markup(&u16_as_register_str(
-        app.cpu.get_r16(&R16::SI),
+        app.machine.cpu.get_r16(&R16::SI),
         app.prev_regs.r16[R16::SI.index()].val,
     ));
     di_value.set_markup(&u16_as_register_str(
-        app.cpu.get_r16(&R16::DI),
+        app.machine.cpu.get_r16(&R16::DI),
         app.prev_regs.r16[R16::DI.index()].val,
     ));
     bp_value.set_markup(&u16_as_register_str(
-        app.cpu.get_r16(&R16::BP),
+        app.machine.cpu.get_r16(&R16::BP),
         app.prev_regs.r16[R16::BP.index()].val,
     ));
     sp_value.set_markup(&u16_as_register_str(
-        app.cpu.get_r16(&R16::SP),
+        app.machine.cpu.get_r16(&R16::SP),
         app.prev_regs.r16[R16::SP.index()].val,
     ));
 
@@ -382,19 +382,19 @@ fn update_registers(
     let fs_value: gtk::Label = builder.get_object("fs_value").unwrap();
 
     ds_value.set_markup(&u16_as_register_str(
-        app.cpu.get_sr(&SR::DS),
+        app.machine.cpu.get_sr(&SR::DS),
         app.prev_regs.sreg16[SR::DS.index()],
     ));
     cs_value.set_markup(&u16_as_register_str(
-        app.cpu.get_sr(&SR::CS),
+        app.machine.cpu.get_sr(&SR::CS),
         app.prev_regs.sreg16[SR::CS.index()],
     ));
     es_value.set_markup(&u16_as_register_str(
-        app.cpu.get_sr(&SR::ES),
+        app.machine.cpu.get_sr(&SR::ES),
         app.prev_regs.sreg16[SR::ES.index()],
     ));
     fs_value.set_markup(&u16_as_register_str(
-        app.cpu.get_sr(&SR::FS),
+        app.machine.cpu.get_sr(&SR::FS),
         app.prev_regs.sreg16[SR::FS.index()],
     ));
 
@@ -403,14 +403,14 @@ fn update_registers(
     let ip_value: gtk::Label = builder.get_object("ip_value").unwrap();
 
     gs_value.set_markup(&u16_as_register_str(
-        app.cpu.get_sr(&SR::GS),
+        app.machine.cpu.get_sr(&SR::GS),
         app.prev_regs.sreg16[SR::GS.index()],
     ));
     ss_value.set_markup(&u16_as_register_str(
-        app.cpu.get_sr(&SR::SS),
+        app.machine.cpu.get_sr(&SR::SS),
         app.prev_regs.sreg16[SR::SS.index()],
     ));
-    ip_value.set_markup(&u16_as_register_str(app.cpu.ip, app.prev_regs.ip));
+    ip_value.set_markup(&u16_as_register_str(app.machine.cpu.ip, app.prev_regs.ip));
 
     // XXX: color changes for flag changes too
     let c_flag: gtk::CheckButton = builder.get_object("c_flag").unwrap();
@@ -422,18 +422,18 @@ fn update_registers(
     let d_flag: gtk::CheckButton = builder.get_object("d_flag").unwrap();
     let i_flag: gtk::CheckButton = builder.get_object("i_flag").unwrap();
 
-    c_flag.set_active(app.cpu.flags.carry);
-    z_flag.set_active(app.cpu.flags.zero);
-    s_flag.set_active(app.cpu.flags.sign);
-    o_flag.set_active(app.cpu.flags.overflow);
-    a_flag.set_active(app.cpu.flags.adjust);
-    p_flag.set_active(app.cpu.flags.parity);
-    d_flag.set_active(app.cpu.flags.direction);
-    i_flag.set_active(app.cpu.flags.interrupt);
+    c_flag.set_active(app.machine.cpu.flags.carry);
+    z_flag.set_active(app.machine.cpu.flags.zero);
+    s_flag.set_active(app.machine.cpu.flags.sign);
+    o_flag.set_active(app.machine.cpu.flags.overflow);
+    a_flag.set_active(app.machine.cpu.flags.adjust);
+    p_flag.set_active(app.machine.cpu.flags.parity);
+    d_flag.set_active(app.machine.cpu.flags.direction);
+    i_flag.set_active(app.machine.cpu.flags.interrupt);
 
     // save previous values for next update
-    app.prev_regs.ip = app.cpu.ip;
-    app.prev_regs.r16 = app.cpu.r16;
-    app.prev_regs.sreg16 = app.cpu.sreg16;
-    app.prev_regs.flags = app.cpu.flags;
+    app.prev_regs.ip = app.machine.cpu.ip;
+    app.prev_regs.r16 = app.machine.cpu.r16;
+    app.prev_regs.sreg16 = app.machine.cpu.sreg16;
+    app.prev_regs.flags = app.machine.cpu.flags;
 }

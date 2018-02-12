@@ -1,5 +1,7 @@
 use std::convert::From;
 
+use cpu::flags::Flags;
+
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Register16 {
     pub val: u16,
@@ -208,4 +210,11 @@ impl Into<AMode> for u8 {
             _ => unreachable!(),
         }
     }
+}
+
+pub struct RegisterSnapshot {
+    pub ip: u16,
+    pub r16: [Register16; 8], // general purpose registers
+    pub sreg16: [u16; 6],               // segment registers
+    pub flags: Flags,
 }

@@ -1,6 +1,8 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
+#![feature(unboxed_closures)]
+
 extern crate time;
 extern crate rand;
 extern crate tempdir;
@@ -18,6 +20,8 @@ extern crate simple_error;
 #[cfg(test)] #[macro_use]
 extern crate pretty_assertions;
 
+pub mod machine;
+pub mod hardware;
 pub mod cpu;
 pub mod memory;
 pub mod gpu;

@@ -1,10 +1,8 @@
-use cpu::CPU;
-use memory::mmu::MMU;
+use machine::Machine;
 
 #[test]
 fn can_execute_pit_set_reload_value() {
-    let mmu = MMU::new();
-    let mut cpu = CPU::new(mmu);
+    let mut machine = Machine::new();
     let code: Vec<u8> = vec![
         0xB0, 0x34,         // mov al,0b0011_0100   ; channel 0, lobyte/hibyte, rate generator
         0xE6, 0x43,         // out 0x43,al
@@ -13,8 +11,8 @@ fn can_execute_pit_set_reload_value() {
         0x88, 0xE0,         // mov al,ah            ; ax = high 8 bits of reload value
         0xE6, 0x40,         // out 0x40,al          ; set high byte of PIT reload value
     ];
-    cpu.load_com(&code);
-    cpu.execute_instructions(6);
+    machine.load_com(&code);
+    machine.execute_instructions(6);
 
-    assert_eq!(0x2244, cpu.pit.counter0.reload);
+    assert_eq!(0x2244, machine.cpu.pit.counter0.reload);
 }
