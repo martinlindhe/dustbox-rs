@@ -1214,7 +1214,7 @@ impl Decoder {
     }
 
     // decode rm8
-    fn rm8(&mut self, mut mmu: &mut MMU, seg: Segment, rm: u8, md: u8) -> Parameter {
+    fn rm8(&mut self, mmu: &mut MMU, seg: Segment, rm: u8, md: u8) -> Parameter {
         match md {
             0 => {
                 if rm == 6 {
@@ -1236,7 +1236,7 @@ impl Decoder {
     }
 
     // decode rm16
-    fn rm16(&mut self, mut mmu: &mut MMU, seg: Segment, rm: u8, md: u8) -> Parameter {
+    fn rm16(&mut self, mmu: &mut MMU, seg: Segment, rm: u8, md: u8) -> Parameter {
         match md {
             0 => {
                 if rm == 6 {

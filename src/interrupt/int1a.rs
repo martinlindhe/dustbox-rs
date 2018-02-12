@@ -5,7 +5,7 @@ use cpu::CPU;
 use cpu::register::{R8, R16};
 
 // time related interrupts
-pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
+pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
     match cpu.get_r8(&R8::AH) {
         0x00 => {
             // TIME - GET SYSTEM TIME

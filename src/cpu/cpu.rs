@@ -40,7 +40,7 @@ pub struct CPU {
     pub r16: [Register16; 8], // general purpose registers
     pub sreg16: [u16; 6], // segment registers
     pub flags: Flags,
-    pub rom_base: usize,
+    pub rom_base: u32,
     pub fatal_error: bool, // for debugging: signals to debugger we hit an error
     pub deterministic: bool, // for testing: toggles non-deterministic behaviour
     pub decoder: Decoder,
@@ -123,7 +123,7 @@ impl CPU {
     }
 
     // base address the rom was loaded to
-    pub fn get_rom_base(&self) -> usize {
+    pub fn get_rom_base(&self) -> u32 {
         self.rom_base
     }
 
@@ -1825,7 +1825,7 @@ impl CPU {
     }
 
     // returns the absoute address of CS:IP
-    pub fn get_address(&self) -> usize {
+    pub fn get_address(&self) -> u32 {
         MMU::s_translate(self.get_sr(&SR::CS), self.ip)
     }
 

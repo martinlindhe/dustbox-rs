@@ -1,5 +1,4 @@
 use gpu::GPU;
-use gpu::font::load_fonts;
 use memory::mmu::MMU;
 use pit::PIT;
 use pic::PIC;
@@ -15,10 +14,11 @@ pub struct Hardware {
 impl Hardware {
     pub fn new() -> Self {
         let mut mmu = MMU::new();
-        load_fonts(&mut mmu);
+        let mut gpu = GPU::new();
+        gpu.init_rom_memory(&mut mmu);
         Hardware {
             mmu: mmu,
-            gpu: GPU::new(),
+            gpu: gpu,
             pit: PIT::new(),
             pic: PIC::new(),
             pic2: PIC::new(),

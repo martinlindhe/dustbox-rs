@@ -4,7 +4,6 @@ use cpu::op::{Op, InvalidOp};
 use cpu::register::{SR, R16, RegisterSnapshot};
 use cpu::segment::Segment;
 use memory::mmu::MMU;
-use gpu::font::load_fonts;
 use hardware::Hardware;
 
 pub struct Machine {

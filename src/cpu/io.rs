@@ -100,7 +100,7 @@ impl CPU {
     }
 
     // write word to I/O port
-    pub fn out_u16(&mut self, hw: &mut Hardware, port: u16, data: u16) {
+    pub fn out_u16(&mut self, _hw: &mut Hardware, port: u16, data: u16) {
         match port {
             0x03C4 => {
                 // XXX

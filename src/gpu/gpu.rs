@@ -6,12 +6,30 @@ use cpu::CPU;
 use memory::mmu::MMU;
 use gpu::palette::{DACPalette, default_vga_palette};
 use gpu::font;
+use gpu::video_parameters;
 
 #[cfg(test)]
 #[path = "./gpu_test.rs"]
 mod gpu_test;
 
-#[derive(Clone, Default)]
+pub static STATIC_FUNCTIONALITY: [u8; 0x10] = [
+ /* 0 */ 0xff,  // All modes supported #1
+ /* 1 */ 0xff,  // All modes supported #2
+ /* 2 */ 0x0f,  // All modes supported #3
+ /* 3 */ 0x00, 0x00, 0x00, 0x00,  // reserved
+ /* 7 */ 0x07,  // 200, 350, 400 scan lines
+ /* 8 */ 0x04,  // total number of character blocks available in text modes
+ /* 9 */ 0x02,  // maximum number of active character blocks in text modes
+ /* a */ 0xff,  // Misc Flags Everthing supported
+ /* b */ 0x0e,  // Support for Display combination, intensity/blinking and video state saving/restoring
+ /* c */ 0x00,  // reserved
+ /* d */ 0x00,  // reserved
+ /* e */ 0x00,  // Change to add new functions
+ /* f */ 0x00,  // reserved
+];
+
+
+#[derive(Clone)]
 pub struct GPU {
     pub scanline: u32,
     pub width: u32,
@@ -20,6 +38,18 @@ pub struct GPU {
     pub pel_address: u8,            // set by write to 03c8
     pel_component: usize,           // color component for next out 03c9, 0 = red, 1 = green, 2 = blue
     mode: u8,
+    architecture: Architecture,
+    font_8_first: u32,
+    font_8_second: u32,
+    font_14: u32,
+    font_14_alternate: u32,
+    font_16: u32,
+    font_16_alternate: u32,
+    static_config: u32,
+    video_parameter_table: u32,
+    video_dcc_table: u32,
+    video_save_pointer_table: u32,
+    video_save_pointers: u32,
 }
 
 impl GPU {
@@ -32,6 +62,18 @@ impl GPU {
             pel_address: 0,
             pel_component: 0,
             mode: 0x03, // default mode is 80x25 text
+            architecture: Architecture::VGA,
+            font_8_first: 0,
+            font_8_second: 0,
+            font_14: 0,
+            font_14_alternate: 0,
+            font_16: 0,
+            font_16_alternate: 0,
+            static_config: 0,
+            video_parameter_table: 0,
+            video_dcc_table: 0,
+            video_save_pointer_table: 0,
+            video_save_pointers: 0,
         }
     }
 
@@ -270,5 +312,192 @@ impl GPU {
         // println!("read_cga_status_register: returns {:02X}", flags);
 
         flags
+    }
+
+    fn setup_video_parameter_table(&mut self, mmu: &mut MMU, segment: u16, offset: u16) -> u16 {
+        if self.architecture.is_vga() {
+            for (i, b) in video_parameters::TABLE_VGA.iter().enumerate() {
+                mmu.write_u8(segment, offset + i as u16, *b);
+            }
+            return video_parameters::TABLE_VGA.len() as u16;
+        }
+        for (i, b) in video_parameters::TABLE_EGA.iter().enumerate() {
+            mmu.write_u8(segment, offset + i as u16, *b);
+        }
+        return video_parameters::TABLE_EGA.len() as u16;
+    }
+
+    fn video_bios_size(&self) -> u16 {
+        // XXX more details in Init_VGABIOS in dosbox-x
+        0x8000
+    }
+
+    pub fn init_rom_memory(&mut self, mut mmu: &mut MMU) {
+        let rom_base = 0xC000;
+
+        let video_bios_size = self.video_bios_size();
+
+        let mut pos = 3;
+        if self.architecture.is_ega_vga() {
+            // ROM signature
+            mmu.write_u16(rom_base, 0, 0xAA55);
+            mmu.write_u8(rom_base, 2, (video_bios_size >> 9) as u8);
+            /*
+            // entry point
+            mmu.write_u8(rom_base, 3, 0xFE); // Callback instruction
+            mmu.write_u8(rom_base, 4, 0x38);
+            mmu.write_u16(rom_base, 5, VGA_ROM_BIOS_ENTRY_cb);
+            mmu.write_u8(rom_base, 7, 0xCB); // RETF
+            */
+
+            // VGA BIOS copyright
+            if self.architecture.is_vga() {
+                mmu.write(rom_base, 0x1e, b"IBM compatible VGA BIOS\0");
+            } else {
+                mmu.write(rom_base, 0x1e, b"IBM compatible EGA BIOS\0");
+            }
+
+            pos = 0x100;
+        }
+
+        // cga font
+        self.font_8_first = MMU::s_translate(rom_base, pos);
+        for i in 0..(128 * 8) {
+            mmu.write_u8(rom_base, pos, font::FONT_08[i]);
+            pos += 1;
+        }
+
+        if self.architecture.is_ega_vga() {
+            // cga second half
+            self.font_8_second = MMU::s_translate(rom_base, pos);
+            for i in 0..(128 * 8) {
+                mmu.write_u8(rom_base, pos, font::FONT_08[i + (128 * 8)]);
+                pos += 1;
+            }
+        }
+
+        if self.architecture.is_ega_vga() {
+            // ega font
+            self.font_14 = MMU::s_translate(rom_base, pos);
+            for i in 0..(256 * 14) {
+                mmu.write_u8(rom_base, pos, font::FONT_14[i]);
+                pos += 1;
+            }
+        }
+
+        if self.architecture.is_vga() {
+            // vga font
+            self.font_16 = MMU::s_translate(rom_base, pos);
+            for i in 0..(256 * 16) {
+                mmu.write_u8(rom_base, pos, font::FONT_16[i]);
+                pos += 1;
+            }
+
+            self.static_config = MMU::s_translate(rom_base, pos);
+            for i in 0..0x10 {
+                mmu.write_u8(rom_base, pos, STATIC_FUNCTIONALITY[i]);
+                pos += 1;
+            }
+        }
+
+        mmu.set_vec(0x1F, self.font_8_second);
+        self.font_14_alternate = MMU::s_translate(rom_base, pos);
+        self.font_16_alternate = MMU::s_translate(rom_base, pos);
+
+        mmu.write_u8(rom_base, pos, 0x00); // end of table (empty)
+        pos += 1;
+
+        if self.architecture.is_ega_vga() {
+            self.video_parameter_table = MMU::s_translate(rom_base, pos);
+            pos += self.setup_video_parameter_table(&mut mmu, rom_base, pos);
+
+            if self.architecture.is_vga() {
+                self.video_dcc_table = MMU::s_translate(rom_base, pos);
+                mmu.write_u8(rom_base, pos, 0x10); pos += 1; // number of entries
+                mmu.write_u8(rom_base, pos, 1); pos += 1;    // version number
+                mmu.write_u8(rom_base, pos, 8); pos += 1;    // maximum display code
+                mmu.write_u8(rom_base, pos, 0); pos += 1;    // reserved
+
+                // display combination codes
+                mmu.write_u16(rom_base, pos, 0x0000); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0100); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0200); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0102); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0400); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0104); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0500); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0502); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0600); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0601); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0605); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0800); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0801); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0700); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0702); pos += 2;
+                mmu.write_u16(rom_base, pos, 0x0706); pos += 2;
+
+                self.video_save_pointer_table = MMU::s_translate(rom_base, pos);
+                mmu.write_u16(rom_base, pos, 0x1a); pos += 2; // length of table
+
+                mmu.write_u32(rom_base, pos, self.video_dcc_table as u32); pos += 4;
+                mmu.write_u32(rom_base, pos, 0); pos += 4; // alphanumeric charset override
+                mmu.write_u32(rom_base, pos, 0); pos += 4; // user palette table
+                mmu.write_u32(rom_base, pos, 0); pos += 4;
+                mmu.write_u32(rom_base, pos, 0); pos += 4;
+                mmu.write_u32(rom_base, pos, 0); pos += 4;
+            }
+
+            self.video_save_pointers = MMU::s_translate(rom_base, pos);
+            mmu.write_u32(rom_base, pos, self.video_parameter_table as u32); pos += 4;
+            mmu.write_u32(rom_base, pos,0); pos += 4; // dynamic save area pointer
+            mmu.write_u32(rom_base, pos,0); pos += 4; // alphanumeric character set override
+            mmu.write_u32(rom_base, pos, 0); pos += 4; // graphics character set override
+            mmu.write_u32(rom_base, pos, self.video_save_pointer_table as u32); pos += 4; // will be 0 if not vga
+            mmu.write_u32(rom_base, pos, 0); pos += 4;
+            mmu.write_u32(rom_base, pos, 0); pos += 4;
+        }
+
+        if self.architecture.is_tandy() {
+            mmu.set_vec(0x44, self.font_8_first);
+        }
+    }
+}
+
+// Architecture indicates the current gpu mode of operation
+#[derive(Clone, PartialEq)]
+enum Architecture {
+    Tandy, CGA, EGA, VGA,
+}
+
+impl Architecture {
+    pub fn is_ega_vga(&self) -> bool {
+        match *self {
+            Architecture::EGA | Architecture::VGA => true,
+            _ => false,
+        }
+    }
+    pub fn is_tandy(&self) -> bool {
+        match *self {
+            Architecture::Tandy => true,
+            _ => false,
+        }
+    }
+    pub fn is_cga(&self) -> bool {
+        match *self {
+            Architecture::CGA => true,
+            _ => false,
+        }
+    }
+    pub fn is_ega(&self) -> bool {
+        match *self {
+            Architecture::EGA => true,
+            _ => false,
+        }
+    }
+    pub fn is_vga(&self) -> bool {
+        match *self {
+            Architecture::VGA => true,
+            _ => false,
+        }
     }
 }
