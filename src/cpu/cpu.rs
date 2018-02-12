@@ -154,8 +154,8 @@ impl CPU {
                 // ASCII Adjust AX Before Division
                 // one parameter
                 let op1 = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16; // read_parameter_value XXX add param that specify mmu
-                let mut ax = (self.get_r8(&R8::AH) as u16) * op1;
-                ax += self.get_r8(&R8::AL) as u16;
+                let mut ax = u16::from(self.get_r8(&R8::AH)) * op1;
+                ax += u16::from(self.get_r8(&R8::AL));
                 let al = ax as u8;
                 self.set_r8(&R8::AL, al);
                 self.set_r8(&R8::AH, 0);
@@ -462,7 +462,7 @@ impl CPU {
                 // The CF, OF, SF, ZF, AF, and PF flags are undefined.
             }
             Op::Div16 => {
-                let num = ((self.get_r16(&R16::DX) as u32) << 16) + self.get_r16(&R16::AX) as u32; // DX:AX
+                let num = (u32::from(self.get_r16(&R16::DX)) << 16) + u32::from(self.get_r16(&R16::AX)); // DX:AX
                 let op1 = self.read_parameter_value(&hw.mmu, &op.params.dst) as u32;
                 if op1 == 0 {
                     return self.exception(&Exception::DIV0, 0);
@@ -470,7 +470,7 @@ impl CPU {
                 let remainder = (num % op1) as u16;
                 let quotient = num / op1;
                 let quo16 = (quotient & 0xFFFF) as u16;
-                if quotient != quo16 as u32 {
+                if quotient != u32::from(quo16) {
                     return self.exception(&Exception::DIV0, 0);
                 }
                 self.set_r16(&R16::DX, remainder);
@@ -514,10 +514,10 @@ impl CPU {
                 if op1 == 0 {
                     return self.exception(&Exception::DIV0, 0);
                 }
-                let rem = (ax % op1 as i16) as i8;
-                let quo = ax / op1 as i16;
+                let rem = (ax % i16::from(op1)) as i8;
+                let quo = ax / i16::from(op1);
                 let quo8s = (quo & 0xFF) as i8;
-                if quo != quo8s as i16 {
+                if quo != i16::from(quo8s) {
                     return self.exception(&Exception::DIV0, 0);
                 }
                 self.set_r8(&R8::AL, quo as u8);
@@ -525,15 +525,15 @@ impl CPU {
                 // The CF, OF, SF, ZF, AF, and PF flags are undefined.
             }
             Op::Idiv16 => {
-                let dividend = (((self.get_r16(&R16::DX) as u32) << 16) | self.get_r16(&R16::AX) as u32) as i32; // DX:AX
+                let dividend = ((u32::from(self.get_r16(&R16::DX)) << 16) | u32::from(self.get_r16(&R16::AX))) as i32; // DX:AX
                 let op1 = self.read_parameter_value(&hw.mmu, &op.params.dst) as i16;
                 if op1 == 0 {
                     return self.exception(&Exception::DIV0, 0);
                 }
-                let quo = dividend / op1 as i32;
-                let rem = (dividend % op1 as i32) as i16;
+                let quo = dividend / i32::from(op1);
+                let rem = (dividend % i32::from(op1)) as i16;
                 let quo16s = quo as i16;
-	            if quo != quo16s as i32 {
+	            if quo != i32::from(quo16s) {
                     return self.exception(&Exception::DIV0, 0);
                 }
                 self.set_r16(&R16::AX, quo16s as u16);
@@ -545,7 +545,7 @@ impl CPU {
                 // IMUL r/m8               : AX← AL ∗ r/m byte.
                 let f1 = self.get_r8(&R8::AL) as i8;
                 let f2 = self.read_parameter_value(&hw.mmu, &op.params.dst) as i8;
-                let ax = (f1 as i16 * f2 as i16) as u16; // product
+                let ax = (i16::from(f1) * i16::from(f2)) as u16; // product
                 self.set_r16(&R16::AX, ax);
 
                 // For the one operand form of the instruction, the CF and OF flags are set when significant
@@ -1154,7 +1154,7 @@ impl CPU {
                     self.flags.carry = (op1 >> (8 - count)) & 1 != 0;
                     // For left rotates, the OF flag is set to the exclusive OR of the CF bit
                     // (after the rotate) and the most-significant bit of the result.
-                    self.flags.overflow = self.flags.carry_val() as u16 ^ ((res as u16) >> 7) != 0;
+                    self.flags.overflow = self.flags.carry_val() as u16 ^ (u16::from(res) >> 7) != 0;
                 }
             }
             Op::Rcl16 => {
@@ -1496,7 +1496,7 @@ impl CPU {
                     let op1 = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16;
                     let op2 = self.read_parameter_value(&hw.mmu, &op.params.src) as u16;
                     // count < 32, since only lower 5 bits used
-                    let temp_32 = ((op1 as u32) << 16) | (op2 as u32); // double formed by op1:op2
+                    let temp_32 = (u32::from(op1) << 16) | u32::from(op2); // double formed by op1:op2
                     let mut result_32 = temp_32 << count;
 
                     // hack to act like x86 SHLD when count > 16
@@ -1506,7 +1506,7 @@ impl CPU {
                         // For P6 and later (CPU_LEVEL >= 6), when count > 16, actually shifting op1:op2:op1 << count,
                         // which is the same as shifting op2:op1 by count-16
                         // The behavior is undefined so both ways are correct, we prefer P6 way of implementation
-                        result_32 |= (op1 as u32) << (count - 16);
+                        result_32 |= u32::from(op1) << (count - 16);
                      }
 
                     let res16 = (result_32 >> 16) as u16;
@@ -1514,7 +1514,7 @@ impl CPU {
 
                     let cf = (temp_32 >> (32 - count)) & 0x1;
                     self.flags.carry = cf != 0;
-                    self.flags.overflow = cf ^ (res16 as u32 >> 15) != 0;
+                    self.flags.overflow = cf ^ (u32::from(res16) >> 15) != 0;
                     self.flags.set_zero_u16(res16 as usize);
                     self.flags.set_sign_u16(res16 as usize);
                     self.flags.set_adjust(res16 as usize, op1 as usize, op2 as usize);
@@ -2043,8 +2043,8 @@ impl CPU {
     // used by aaa, aas
     fn adjb(&mut self, param1: i8, param2: i8) {
         if self.flags.adjust || (self.get_r8(&R8::AL) & 0xf) > 9 {
-            let al = (self.get_r8(&R8::AL) as i16 + param1 as i16) as u8;
-            let ah = (self.get_r8(&R8::AH) as i16 +  param2 as i16) as u8;
+            let al = (i16::from(self.get_r8(&R8::AL)) + i16::from(param1)) as u8;
+            let ah = (i16::from(self.get_r8(&R8::AH)) + i16::from(param2)) as u8;
             self.set_r8(&R8::AL, al);
             self.set_r8(&R8::AH, ah);
             self.flags.adjust = true;
@@ -2062,16 +2062,16 @@ impl CPU {
         let mut al = self.get_r8(&R8::AL);
         if ((al & 0x0F) > 0x09) || self.flags.adjust {
             if (al > 0x99) || self.flags.carry {
-                al = (al as i16 + param2) as u8;
+                al = (i16::from(al) + param2) as u8;
                 self.flags.carry = true;
             } else {
                 self.flags.carry = false;
             }
-            al = (al as i16 + param1) as u8;
+            al = (i16::from(al) + param1) as u8;
             self.flags.adjust = true;
         } else {
             if (al > 0x99) || self.flags.carry {
-                al = (al as i16 + param2) as u8;
+                al = (i16::from(al) + param2) as u8;
                 self.flags.carry = true;
             } else {
                 self.flags.carry = false;

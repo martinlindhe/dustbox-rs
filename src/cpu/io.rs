@@ -5,7 +5,7 @@ use hardware::Hardware;
 
 impl CPU {
     // read byte from I/O port
-    pub fn in_u8(&mut self, mut hw: &mut Hardware, port: u16) -> u8 {
+    pub fn in_u8(&mut self, hw: &mut Hardware, port: u16) -> u8 {
         // println!("in_port: read from {:04X} at {:06X}", port, self.get_offset());
         match port {
             // PORT 0000-001F - DMA 1 - FIRST DIRECT MEMORY ACCESS CONTROLLER (8237)
@@ -56,7 +56,7 @@ impl CPU {
             0x0020 => self.pic.set_command(data),
             0x0021 => self.pic.set_data(data),
             0x0040 => self.pit.counter0.write_reload_part(data),
-            0x0041 => self.pit.counter0.write_reload_part(data),
+            0x0041 => self.pit.counter1.write_reload_part(data),
             0x0042 => self.pit.counter2.write_reload_part(data),
             0x0043 => self.pit.set_mode_command(data),
             0x0061 => {

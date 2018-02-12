@@ -1,6 +1,3 @@
-use std::sync::{Arc, Mutex};
-use std::cell::RefCell;
-
 use cpu::CPU;
 use gpu::GPU;
 use cpu::op::{Op, InvalidOp};

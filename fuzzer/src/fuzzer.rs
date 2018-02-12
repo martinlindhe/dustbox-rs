@@ -85,7 +85,7 @@ fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&
         println!();
         return false;
     }
-    return true;
+    true
 }
 
 struct AffectedFlags {
