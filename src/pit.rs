@@ -89,17 +89,17 @@ impl Counter {
             }
             AccessMode::LoByteHiByte => {
                 self.reload = if self.hi {
-                    (self.reload & 0x00FF) | ((val as u16) << 8)
+                    (self.reload & 0x00FF) | (u16::from(val) << 8)
                 } else {
-                    (self.reload & 0xFF00) | val as u16
+                    (self.reload & 0xFF00) | u16::from(val)
                 };
                 self.hi = !self.hi;
             }
             AccessMode::LoByteOnly => {
-                self.reload = (self.reload & 0xFF00) | val as u16;
+                self.reload = (self.reload & 0xFF00) | u16::from(val);
             }
             AccessMode::HiByteOnly => {
-                self.reload = (self.reload & 0x00FF) | ((val as u16) << 8);
+                self.reload = (self.reload & 0x00FF) | (u16::from(val) << 8);
             }
         }
     }
