@@ -773,13 +773,9 @@ impl CPU {
             }
             Op::Lds => {
                 // Load DS:r16 with far pointer from memory.
-                println!("XXX read_parameter_address {:?}", op.params.src);
-                let seg = self.read_parameter_address(&op.params.src) as u16;
-                println!("XXX read_parameter_address val: {:04x}", seg);
-
-                let op2 = self.read_parameter_value(&hw.mmu, &op.params.src) as u16;
-                self.set_sr(&SR::DS, seg); // XXX seg should be "segment selector". this is wqrong!!!
-                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, op2);
+                let (segment, offset) = self.read_segment_selector(&hw.mmu, &op.params.src);
+                self.set_sr(&SR::DS, segment);
+                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, offset);
             }
             Op::Leave => {
                 // High Level Procedure Exit
@@ -793,10 +789,9 @@ impl CPU {
             Op::Les => {
                 // les ax, [0x104]
                 // Load ES:r16 with far pointer from memory.
-                let seg = self.read_parameter_address(&op.params.src) as u16;
-                let val = self.read_parameter_value(&hw.mmu, &op.params.src) as u16;
-                self.set_sr(&SR::ES, seg);
-                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, val);
+                let (segment, offset) = self.read_segment_selector(&hw.mmu, &op.params.src);
+                self.set_sr(&SR::ES, segment);
+                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, offset);
             }
             Op::Lodsb() => {
                 // no arguments
@@ -1862,6 +1857,33 @@ impl CPU {
     fn read_rel16(&mut self, mmu: &MMU) -> u16 {
         let val = self.read_u16(mmu) as i16;
         (self.ip as i16 + val) as u16
+    }
+
+    // returns "segment, offset" pair
+    fn get_amode_addr(&self, amode: &AMode) -> (u16, u16) {
+        match *amode {
+            AMode::BX => (self.get_sr(&SR::DS), self.get_r16(&R16::BX)),
+            AMode::BP => (self.get_sr(&SR::SS), self.get_r16(&R16::BP)),
+            AMode::SI => (self.get_sr(&SR::DS), self.get_r16(&R16::SI)),
+            AMode::DI => (self.get_sr(&SR::DS), self.get_r16(&R16::DI)),
+            AMode::BXSI => (self.get_sr(&SR::DS), self.get_r16(&R16::BX) + self.get_r16(&R16::SI)),
+            AMode::BXDI => (self.get_sr(&SR::DS), self.get_r16(&R16::BX) + self.get_r16(&R16::DI)),
+            AMode::BPSI => (self.get_sr(&SR::SS), self.get_r16(&R16::BP) + self.get_r16(&R16::SI)),
+            AMode::BPDI => (self.get_sr(&SR::SS), self.get_r16(&R16::BP) + self.get_r16(&R16::DI)),
+        }
+    }
+
+    // used by lds, les
+    fn read_segment_selector(&self, mmu: &MMU, p: &Parameter) -> (u16, u16) {
+        let (segment, offset) = match *p {
+            Parameter::Ptr16(seg, imm) => (self.segment(seg), imm),
+            Parameter::Ptr16Amode(_, ref amode) => self.get_amode_addr(amode),
+            _ => panic!("unhandled parameter {:?}", p),
+        };
+
+        let o_val = mmu.read_u16(segment, offset);
+        let s_val = mmu.read_u16(segment, offset + 2);
+        (s_val, o_val)
     }
 
     // returns the address of pointer, used by LEA

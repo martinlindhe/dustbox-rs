@@ -771,6 +771,22 @@ fn can_execute_idiv16() {
 }
 
 #[test]
+fn can_execute_lds() {
+    let mut machine = Machine::new();
+    let code: Vec<u8> = vec![
+        0xBB, 0x00, 0x60,               // mov bx,0x6000
+        0xC7, 0x07, 0x22, 0x11,         // mov word [bx],0x1122
+        0xC7, 0x47, 0x02, 0x88, 0x66,   // mov word [bx+0x2],0x6688
+        0xC5, 0x17,                     // lds dx,[bx]              NOTE: will corrupt DS, breaking further execution
+    ];
+    machine.load_com(&code);
+
+    machine.execute_instructions(4);
+    assert_eq!(0x1122, machine.cpu.get_r16(&R16::DX));
+    assert_eq!(0x6688, machine.cpu.get_sr(&SR::DS));
+}
+
+#[test]
 fn can_execute_les() {
     let mut machine = Machine::new();
     let code: Vec<u8> = vec![
@@ -1769,27 +1785,6 @@ fn can_execute_shld() {
     // assert_eq!(false, machine.cpu.flags.adjust); // XXX dosbox: C0 Z0 S1 O1 A0 P1
     assert_eq!(true, machine.cpu.flags.parity);
 }
-
-/*
-#[test]
-fn can_execute_lds() {
-    // STATUS: broken
-    let mmu = MMU::new();
-    let mut cpu = CPU::new(mmu);
-    let code: Vec<u8> = vec![
-        0xBB, 0x00, 0x60,           // mov bx,0x6000
-        0xC7, 0x07, 0x22, 0x11,     // mov word [bx],0x1122
-        0xC5, 0x17,                 // lds dx,[bx]
-    ];
-    machine.load_com(&code);
-
-    machine.execute_instructions(3);
-    // XXX writes to registers ds and dx.
-    // dx = value from [bx]. ds = segment selector
-    assert_eq!(0x1122, machine.cpu.get_r16(&R16::DX));
-    assert_eq!(0x18CC, machine.cpu.get_sr(&SR::DS));   // XXX ?! "segment selector". dustbox = 0x6000. dosbox = 0x18cc. winxp = 0x150a
-}
-*/
 
 #[test]
 fn can_execute_movsx() {
