@@ -42,8 +42,3 @@ impl Segment {
         }
     }
 }
-
-// translates a segment:offset address into a flat address
-pub fn as_flat_address(segment: u16, offset: u16) -> usize {
-    (segment as usize * 16) + offset as usize
-}

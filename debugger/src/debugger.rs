@@ -5,9 +5,9 @@ use std::process::exit;
 
 use dustbox::machine::Machine;
 use dustbox::cpu::register::{R16, SR, RegisterSnapshot};
-use dustbox::cpu::segment;
 use dustbox::cpu::decoder::Decoder;
 use dustbox::tools;
+use dustbox::memory::mmu::MMU;
 
 use breakpoints::Breakpoints;
 use memory_breakpoints::MemoryBreakpoints;
@@ -114,7 +114,7 @@ impl Debugger {
         decoder.disassemble_block_to_str(&mut self.machine.hw.mmu, self.machine.cpu.get_sr(&SR::CS), self.machine.cpu.ip, n)
     }
 
-    pub fn dump_memory(&self, filename: &str, base: usize, len: usize) -> Result<usize, IoError> {
+    pub fn dump_memory(&self, filename: &str, base: u32, len: u32) -> Result<usize, IoError> {
         use std::path::Path;
         use std::fs::File;
         use std::io::Write;
@@ -126,6 +126,8 @@ impl Debugger {
         };
         let dump = self.machine.hw.mmu.dump_mem();
 
+        let base = base as usize;
+        let len = len as usize;
         if let Err(why) = file.write(&dump[base..base + len]) {
             return Err(why);
         }
@@ -174,7 +176,7 @@ impl Debugger {
                                 }
                             }
                         };
-                        self.step_into(cnt);
+                        self.step_into(cnt as usize);
                     },
                     "over" => {
                         self.step_over();
@@ -338,8 +340,8 @@ impl Debugger {
                 }
 
                 let mem_dump = self.machine.hw.mmu.dump_mem();
-                let mut pos: usize;
-                let mut length: usize;
+                let mut pos: u32;
+                let mut length: u32;
 
                 match self.parse_segment_offset_pair(&parts[1]) {
                     Ok(p) => pos = p,
@@ -361,7 +363,7 @@ impl Debugger {
                     if row_cnt == 0 {
                         print!("[{:06X}] ", i);
                     }
-                    print!("{:02X} ", mem_dump[i]);
+                    print!("{:02X} ", mem_dump[i as usize]);
                     row_cnt += 1;
                     if row_cnt == 16 {
                         println!();
@@ -377,8 +379,8 @@ impl Debugger {
                     return;
                 }
 
-                let mut pos: usize;
-                let mut length: usize;
+                let mut pos: u32;
+                let mut length: u32;
 
                 match self.parse_segment_offset_pair(&parts[1]) {
                     Ok(p) => pos = p,
@@ -434,14 +436,14 @@ impl Debugger {
     }
 
     // parses segment:offset pair to an integer
-    fn parse_segment_offset_pair(&self, s: &str) -> Result<usize, ParseIntError> {
+    fn parse_segment_offset_pair(&self, s: &str) -> Result<u32, ParseIntError> {
         let x = &s.replace("_", "");
         match x.find(':') {
             Some(pos) => {
                 match self.parse_register_hex_string(&x[0..pos]) {
                     Ok(segment) => {
                         match self.parse_register_hex_string(&x[pos+1..]) {
-                            Ok(offset) => Ok(segment::as_flat_address(segment as u16, offset as u16)),
+                            Ok(offset) => Ok(MMU::to_flat(segment as u16, offset as u16)),
                             Err(v) => Err(v),
                         }
                     },
@@ -451,7 +453,7 @@ impl Debugger {
             None => {
                 // flat address
                 match self.parse_register_hex_string(x) {
-                    Ok(val) => Ok(val),
+                    Ok(val) => Ok(val as u32),
                     Err(v) => Err(v),
                 }
             }
@@ -529,13 +531,13 @@ impl Debugger {
 }
 
 // parses string to a integer. unprefixed values assume base 10, and "0x" prefix indicates base 16.
-fn parse_number_string(s: &str) -> Result<usize, ParseIntError> {
+fn parse_number_string(s: &str) -> Result<u32, ParseIntError> {
     let x = &s.replace("_", "");
     if x.len() >= 2 && &x[0..2] == "0x" {
         // hex
-        usize::from_str_radix(&x[2..], 16)
+        u32::from_str_radix(&x[2..], 16)
     } else {
         // decimal
-        x.parse::<usize>()
+        x.parse::<u32>()
     }
 }

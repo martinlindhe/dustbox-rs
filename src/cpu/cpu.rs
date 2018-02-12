@@ -588,7 +588,7 @@ impl CPU {
                 // truncated to fit in the destination operand size and cleared when the result fits exactly in the destination
                 // operand size. The SF, ZF, AF, and PF flags are undefined.
             }
-            Op::In8() => {
+            Op::In8 => {
                 // Input from Port
                 // two parameters (dst=AL)
                 let src = self.read_parameter_value(&hw.mmu, &op.params.src);
@@ -623,8 +623,19 @@ impl CPU {
 
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
-            Op::Insb() => {
-                println!("XXX impl {}", op);
+            Op::Insb => {
+                // Input from Port to String
+                // Input byte from I/O port specified in DX into memory location specified in ES:DI.
+                // The ES segment cannot be overridden with a segment override prefix.
+                let dx = self.get_r16(&R16::DX);
+                let data = self.in_u8(&mut hw, dx);
+                hw.mmu.write_u8(self.get_sr(&SR::ES), self.get_r16(&R16::DI), data);
+                let di = if !self.flags.direction {
+                    (Wrapping(self.get_r16(&R16::DI)) + Wrapping(1)).0
+                } else {
+                    (Wrapping(self.get_r16(&R16::DI)) - Wrapping(1)).0
+                };
+                self.set_r16(&R16::DI, di);
             }
             Op::Int() => {
                 let int = self.read_parameter_value(&hw.mmu, &op.params.dst);
@@ -793,7 +804,7 @@ impl CPU {
                 self.set_sr(&SR::ES, segment);
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, offset);
             }
-            Op::Lodsb() => {
+            Op::Lodsb => {
                 // no arguments
                 // Load byte at address DS:(E)SI into AL.
                 // The DS segment may be over-ridden with a segment override prefix.
@@ -807,7 +818,7 @@ impl CPU {
                 };
                 self.set_r16(&R16::SI, si);
             }
-            Op::Lodsw() => {
+            Op::Lodsw => {
                 // no arguments
                 // Load word at address DS:(E)SI into AX.
                 // The DS segment may be over-ridden with a segment override prefix.
@@ -858,7 +869,7 @@ impl CPU {
                 let data = self.read_parameter_value(&hw.mmu, &op.params.src) as u16;
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, data);
             }
-            Op::Movsb() => {
+            Op::Movsb => {
                 // move byte from address DS:(E)SI to ES:(E)DI.
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
                 let b = hw.mmu.read_u8(self.segment(op.segment_prefix), self.get_r16(&R16::SI));
@@ -878,7 +889,7 @@ impl CPU {
                 };
                 self.set_r16(&R16::DI, di);
             }
-            Op::Movsw() => {
+            Op::Movsw => {
                 // move word from address DS:(E)SI to ES:(E)DI.
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
                 let b = hw.mmu.read_u16(self.segment(op.segment_prefix), self.get_r16(&R16::SI));
@@ -1028,19 +1039,19 @@ impl CPU {
                 self.flags.set_parity(res);
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
-            Op::Out8() => {
+            Op::Out8 => {
                 // two arguments
                 let addr = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16;
                 let val = self.read_parameter_value(&hw.mmu, &op.params.src) as u8;
                 self.out_u8(&mut hw, addr, val);
             }
-            Op::Out16() => {
+            Op::Out16 => {
                 // two arguments
                 let addr = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16;
                 let val = self.read_parameter_value(&hw.mmu, &op.params.src) as u16;
                 self.out_u16(&mut hw, addr, val);
             }
-            Op::Outsb() => {
+            Op::Outsb => {
                 // Output byte from memory location specified in DS:(E)SI or RSI to I/O port specified in DX.
                 // no arguments
                 let val = hw.mmu.read_u8(self.segment(op.segment_prefix), self.get_r16(&R16::SI));
@@ -1053,7 +1064,7 @@ impl CPU {
                 };
                 self.set_r16(&R16::SI, si);
             }
-            Op::Outsw() => {
+            Op::Outsw => {
                 // Output word from memory location specified in DS:(E)SI or RSI to I/O port specified in DX**.
                 // no arguments
                 let val = hw.mmu.read_u16(self.segment(op.segment_prefix), self.get_r16(&R16::SI));
@@ -1396,12 +1407,12 @@ impl CPU {
 
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
             }
-            Op::Scasb() => {
+            Op::Scasb => {
                 // Compare AL with byte at ES:(E)DI then set status flags.
+                // ES cannot be overridden with a segment override prefix.
                 let src = self.get_r8(&R8::AL);
                 let dst = hw.mmu.read_u8(self.get_sr(&SR::ES), self.get_r16(&R16::DI));
                 self.cmp8(dst as usize, src as usize);
-
                 let di = if !self.flags.direction {
                     (Wrapping(self.get_r16(&R16::DI)) + Wrapping(1)).0
                 } else {
@@ -1596,7 +1607,7 @@ impl CPU {
                 // Set Interrupt Flag
                 self.flags.interrupt = true;
             }
-            Op::Stosb() => {
+            Op::Stosb => {
                 // no parameters
                 // store AL at ES:(E)DI
                 // The ES segment cannot be overridden with a segment override prefix.
@@ -1611,7 +1622,7 @@ impl CPU {
                 };
                 self.set_r16(&R16::DI, di);
             }
-            Op::Stosw() => {
+            Op::Stosw => {
                 // no parameters
                 // store AX at address ES:(E)DI
                 // The ES segment cannot be overridden with a segment override prefix.
@@ -1826,7 +1837,7 @@ impl CPU {
 
     // returns the absoute address of CS:IP
     pub fn get_address(&self) -> u32 {
-        MMU::s_translate(self.get_sr(&SR::CS), self.ip)
+        MMU::to_flat(self.get_sr(&SR::CS), self.ip)
     }
 
     fn read_u8(&mut self, mmu: &MMU) -> u8 {

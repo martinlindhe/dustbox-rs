@@ -93,7 +93,7 @@ impl Machine {
         let (op, length) = self.cpu.decoder.get_instruction(&mut self.hw.mmu, Segment::DS, cs, ip);
 
         match op.command {
-            Op::Unknown() => {
+            Op::Unknown => {
                 self.cpu.fatal_error = true;
                 println!("executed unknown op, stopping. {} instructions executed",
                          self.cpu.instruction_count);
