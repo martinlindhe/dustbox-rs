@@ -1,4 +1,4 @@
-pub use self::memory::*;
-mod memory;
+pub use self::flat_memory::*;
+mod flat_memory;
 
 pub mod mmu;

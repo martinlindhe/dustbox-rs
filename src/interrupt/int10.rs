@@ -41,10 +41,10 @@ pub fn handle(cpu: &mut CPU, mut hw: &mut Hardware) {
             // DH = row (00h is top)
             // DL = column (00h is left)
             // Return: Nothing
-            println!("XXX set cursor position, page={}, row={}, column={}",
-                     cpu.get_r8(&R8::BH),
-                     cpu.get_r8(&R8::DH),
-                     cpu.get_r8(&R8::DL));
+            let page = cpu.get_r8(&R8::BH);
+            let row = cpu.get_r8(&R8::DH);
+            let column = cpu.get_r8(&R8::DL);
+            println!("XXX set cursor position, page={}, row={}, column={}", page, row, column);
         }
         0x06 => {
             // VIDEO - SCROLL UP WINDOW

@@ -1,16 +1,16 @@
-use memory::Memory;
+use memory::FlatMemory;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 #[derive(Clone, Default)]
 pub struct MMU {
-    pub memory: Rc<RefCell<Memory>>
+    pub memory: Rc<RefCell<FlatMemory>>
 }
 
 impl MMU {
     pub fn new() -> Self{
         MMU {
-            memory: Rc::new(RefCell::new(Memory::new()))
+            memory: Rc::new(RefCell::new(FlatMemory::new()))
         }
     }
 

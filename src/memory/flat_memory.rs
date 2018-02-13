@@ -1,11 +1,11 @@
 #[derive(Clone, Default)]
-pub struct Memory {
+pub struct FlatMemory {
     pub memory: Vec<u8>,
 }
 
-impl Memory {
+impl FlatMemory {
     pub fn new() -> Self {
-        Memory { memory: vec![0u8; 0x1_0000 * 64] }
+        FlatMemory { memory: vec![0u8; 0x1_0000 * 64] }
     }
 
     pub fn read_u8(&self, addr: u32) -> u8 {
