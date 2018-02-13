@@ -1231,13 +1231,13 @@ impl CPU {
                 self.set_sr(&SR::CS, cs);
             }
             Op::Retn => {
+                self.ip = self.pop16(&mut hw.mmu);
                 if op.params.count() == 1 {
                     // 1 argument: pop imm16 bytes from stack
                     let imm16 = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16;
                     let sp = self.get_r16(&R16::SP) + imm16;
                     self.set_r16(&R16::SP, sp);
                 }
-                self.ip = self.pop16(&mut hw.mmu);
             }
             Op::Rol8 => {
                 // Rotate 8 bits of 'dst' left for 'src' times.

@@ -1899,19 +1899,21 @@ fn can_execute_shrd() {
 fn can_execute_ret_imm() {
     let mut machine = Machine::new();
     let code: Vec<u8> = vec![
-        0xE8, 0x00, 0x00,   // call 0x103
-        0x50,               // push ax
-        0xC2, 0x02, 0x00,   // ret 0x2
+        0xE8, 0x03, 0x00,   // 000100: call 0x106
+        0xB9, 0x34, 0x12,   // 000103: mov cx,0x1234
+        0xC2, 0x01, 0x00,   // 000106: ret 0x1
     ];
     machine.load_com(&code);
+    assert_eq!(0x0100, machine.cpu.ip);
+    assert_eq!(0xFFFE, machine.cpu.get_r16(&R16::SP));
 
-    assert_eq!(0xFFFE, machine.cpu.get_r16(&R16::SP));
     machine.execute_instruction(); // call
+    assert_eq!(0x0106, machine.cpu.ip);
     assert_eq!(0xFFFC, machine.cpu.get_r16(&R16::SP));
-    machine.execute_instruction(); // push
-    assert_eq!(0xFFFA, machine.cpu.get_r16(&R16::SP));
-    machine.execute_instruction(); // ret 0x2
-    assert_eq!(0xFFFE, machine.cpu.get_r16(&R16::SP));
+
+    machine.execute_instruction(); // ret 0x1
+    assert_eq!(0xFFFF, machine.cpu.get_r16(&R16::SP));  // FFFE + 1
+    assert_eq!(0x0103, machine.cpu.ip);
 }
 
 #[test]

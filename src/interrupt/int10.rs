@@ -229,10 +229,14 @@ pub fn handle(cpu: &mut CPU, mut hw: &mut Hardware) {
                     // DL    = highest character row on screen
                     let bh = cpu.get_r8(&R8::BH);
                     match bh { // BH = pointer specifier
-                        // 00h INT 1Fh pointer
+                        0x00 => { // INT 1Fh pointer
+                            let (seg, off) = hw.mmu.read_vec(0x1F);
+                            cpu.set_sr(&SR::ES, seg);
+                            cpu.set_r16(&R16::BP, off);
+                        }
                         // 01h INT 43h pointer
                         0x02 => {
-                            // 02h ROM 8x14 character font pointer
+                            // ROM 8x14 character font pointer
                             cpu.set_sr(&SR::ES, MMU::segment_from_long_pair(hw.gpu.font_14));
                             cpu.set_r16(&R16::BP, MMU::offset_from_long_pair(hw.gpu.font_14));
                         }

@@ -71,8 +71,15 @@ impl MMU {
         Vec::from(self.memory.borrow().read(addr, length))
     }
 
-    pub fn set_vec(&mut self, v: u32, data: u32) {
+    pub fn write_vec(&mut self, v: u32, data: u32) {
         self.memory.borrow_mut().write_u32(v << 2, data);
+    }
+
+    pub fn read_vec(&mut self, v: u32) -> (u16, u16) {
+        let v = v << 2;
+        let seg = self.memory.borrow_mut().read_u16(v);
+        let off = self.memory.borrow_mut().read_u16(v + 2);
+        (seg, off)
     }
 
     pub fn dump_mem(&self) -> Vec<u8> {

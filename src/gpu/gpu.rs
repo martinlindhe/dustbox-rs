@@ -400,7 +400,7 @@ impl GPU {
             }
         }
 
-        mmu.set_vec(0x1F, self.font_8_second);
+        mmu.write_vec(0x1F, self.font_8_second);
         self.font_14_alternate = MMU::to_long_pair(rom_base, pos);
         self.font_16_alternate = MMU::to_long_pair(rom_base, pos);
 
@@ -458,7 +458,7 @@ impl GPU {
         }
 
         if self.architecture.is_tandy() {
-            mmu.set_vec(0x44, self.font_8_first);
+            mmu.write_vec(0x44, self.font_8_first);
         }
     }
 }

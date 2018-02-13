@@ -29,7 +29,8 @@ fn can_get_font_info() {
     ];
     machine.load_com(&code);
 
-    machine.execute_instructions(4);
+    machine.execute_instructions(3);
+    machine.execute_instruction(); // trigger the interrupt
     assert_eq!(0xC000, machine.cpu.get_sr(&SR::ES));
     assert_eq!(0x1700, machine.cpu.get_r16(&R16::BP));
 }
@@ -93,7 +94,6 @@ fn demo_256() {
 fn demo_512() {
     let test_bins = vec![
         "../dos-software-decoding/demo-512/1/1.com",
-        "../dos-software-decoding/demo-512/200h/200h.com",
         "../dos-software-decoding/demo-512/bars512/bars512.com",
         "../dos-software-decoding/demo-512/basicboy/basicboy.com",
         "../dos-software-decoding/demo-512/blaze/blaze5.com",
