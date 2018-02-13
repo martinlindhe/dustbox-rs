@@ -140,33 +140,4 @@ impl CPU {
             _ => println!("XXX unhandled out_u16 to {:04X}, data {:02X}", port, data),
         }
     }
-
-    // execute interrupt
-    pub fn int(&mut self, mut hw: &mut Hardware, int: u8) {
-        match int {
-            0x03 => {
-                // debugger interrupt
-                // http://www.ctyme.com/intr/int-03.htm
-                println!("INT 3 - debugger interrupt. AX={:04X}", self.get_r16(&R16::AX));
-                self.fatal_error = true; // stops execution
-            }
-            0x10 => interrupt::int10::handle(self, &mut hw),
-            0x16 => interrupt::int16::handle(self, &mut hw),
-            0x1A => interrupt::int1a::handle(self, &mut hw),
-            0x20 => {
-                // DOS 1+ - TERMINATE PROGRAM
-                // NOTE: Windows overloads INT 20
-                println!("INT 20 - Terminating program");
-                self.fatal_error = true; // stops execution
-            }
-            0x21 => interrupt::int21::handle(self, &mut hw),
-            0x33 => interrupt::int33::handle(self, &mut hw),
-            _ => {
-                println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}",
-                         int,
-                         self.get_r16(&R16::AX),
-                         self.get_r16(&R16::BX));
-            }
-        }
-    }
 }

@@ -1731,7 +1731,19 @@ fn can_execute_imul16_3_args() {
     assert_eq!(0xF100, machine.cpu.get_r16(&R16::AX));
     // 3887
 }
+/*
+#[test]
+fn can_execute_int() {
+    let mut machine = Machine::new();
+    let code: Vec<u8> = vec![
+        0xCD, 0x21, // int 0x21
+    ];
+    machine.load_com(&code);
 
+    machine.execute_instruction(); // should now be in interrupt vector table ...
+    assert_eq!(0x0079, machine.cpu.ip);
+}
+*/
 #[test]
 fn can_execute_xlatb() {
     let mut machine = Machine::new();

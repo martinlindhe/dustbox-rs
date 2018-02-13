@@ -637,7 +637,7 @@ impl CPU {
                 self.set_r16(&R16::DI, di);
             }
             Op::Int() => {
-                let int = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                let int = self.read_parameter_imm(&op.params.dst);
                 self.int(&mut hw, int as u8);
             }
             Op::Ja => {
@@ -1912,6 +1912,15 @@ impl CPU {
         }
     }
 
+    fn read_parameter_imm(&self, p: &Parameter) -> usize {
+        match *p {
+            Parameter::Imm8(imm) => imm as usize,
+            Parameter::Imm16(imm) => imm as usize,
+            Parameter::ImmS8(imm) => imm as usize,
+            _ => panic!("read_parameter_imm only allows imm-type params: {:?}", p),
+        }
+    }
+
     fn read_parameter_value(&mut self, mmu: &MMU, p: &Parameter) -> usize {
         match *p {
             Parameter::Imm8(imm) => imm as usize,
@@ -2106,6 +2115,35 @@ impl CPU {
         self.flags.sign = al & 0x80 != 0;
         self.flags.zero = al == 0;
         self.flags.set_parity(al as usize);
+    }
+
+    // execute interrupt
+    fn int(&mut self, mut hw: &mut Hardware, int: u8) {
+        match int {
+            0x03 => {
+                // debugger interrupt
+                // http://www.ctyme.com/intr/int-03.htm
+                println!("INT 3 - debugger interrupt. AX={:04X}", self.get_r16(&R16::AX));
+                self.fatal_error = true; // stops execution
+            }
+            0x10 => interrupt::int10::handle(self, &mut hw),
+            0x16 => interrupt::int16::handle(self, &mut hw),
+            0x1A => interrupt::int1a::handle(self, &mut hw),
+            0x20 => {
+                // DOS 1+ - TERMINATE PROGRAM
+                // NOTE: Windows overloads INT 20
+                println!("INT 20 - Terminating program");
+                self.fatal_error = true; // stops execution
+            }
+            0x21 => interrupt::int21::handle(self, &mut hw),
+            0x33 => interrupt::int33::handle(self, &mut hw),
+            _ => {
+                println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}",
+                        int,
+                        self.get_r16(&R16::AX),
+                        self.get_r16(&R16::BX));
+            }
+        }
     }
 }
 
