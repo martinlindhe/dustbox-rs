@@ -594,6 +594,13 @@ impl CPU {
                 let data = self.in_u8(&mut hw, src as u16);
                 self.write_parameter_u8(&mut hw.mmu, &op.params.dst, data);
             }
+            Op::In16 => {
+                // Input from Port
+                // two parameters (dst=AX)
+                let src = self.read_parameter_value(&hw.mmu, &op.params.src);
+                let data = self.in_u16(&mut hw, src as u16);
+                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, data);
+            }
             Op::Inc8 => {
                 let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
                 let src = 1;
@@ -620,7 +627,7 @@ impl CPU {
                 self.flags.set_adjust(res, src, dst);
                 self.flags.set_parity(res);
 
-                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u16);
             }
             Op::Insb => {
                 // Input from Port to String

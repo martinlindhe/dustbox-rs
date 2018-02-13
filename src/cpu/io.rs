@@ -44,7 +44,17 @@ impl CPU {
             }
             0x03DA => hw.gpu.read_cga_status_register(),
             _ => {
-                println!("in_u8: unhandled in8 {:04X}", port);
+                println!("in_u8: unhandled port {:04X}", port);
+                0
+            }
+        }
+    }
+
+    // read word from I/O port
+    pub fn in_u16(&mut self, _hw: &mut Hardware, port: u16) -> u16 {
+        match port {
+            _ => {
+                println!("in_u16: unhandled port {:04X}", port);
                 0
             }
         }
@@ -95,7 +105,7 @@ impl CPU {
                 //  bit 0 = 0 3x8h bit3 indicates if CRT beam is on or off.
                 //            No more info available. Might conflict with EGA/VGA.
             }
-            _ => println!("ERROR: unhandled out_u8 to port {:04X}, data {:02X}", port, data),
+            _ => println!("out_u8: unhandled port {:04X} = {:02X}", port, data),
         }
     }
 
@@ -137,7 +147,7 @@ impl CPU {
                     registers 10h-11h on CGA, EGA, VGA and 12h-14h on EGA, VGA are
                     conflictive with MCGA (see #P0710)
             */
-            _ => println!("XXX unhandled out_u16 to {:04X}, data {:02X}", port, data),
+            _ => println!("out_u16: unhandled port {:04X} = {:04X}", port, data),
         }
     }
 }
