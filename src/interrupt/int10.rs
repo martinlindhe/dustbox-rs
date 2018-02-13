@@ -1,6 +1,7 @@
 use hardware::Hardware;
 use cpu::CPU;
 use cpu::register::{R8, R16, SR};
+use memory::mmu::MMU;
 
 // video related interrupts
 pub fn handle(cpu: &mut CPU, mut hw: &mut Hardware) {
@@ -222,23 +223,34 @@ pub fn handle(cpu: &mut CPU, mut hw: &mut Hardware) {
                 }
                 0x30 => {
                     // VIDEO - GET FONT INFORMATION (EGA, MCGA, VGA)
-                    // in:
-                    // BH = pointer specifier
-                    //    00h INT 1Fh pointer
-                    //    01h INT 43h pointer
-                    //    02h ROM 8x14 character font pointer
-                    //    03h ROM 8x8 double dot font pointer
-                    //    04h ROM 8x8 double dot font (high 128 characters)
-                    //    05h ROM alpha alternate (9 by 14) pointer (EGA,VGA)
-                    //    06h ROM 8x16 font (MCGA, VGA)
-                    //    07h ROM alternate 9x16 font (VGA only) (see #00021)
-                    //    11h (UltraVision v2+) 8x20 font (VGA) or 8x19 font (autosync EGA)
-                    //    12h (UltraVision v2+) 8x10 font (VGA) or 8x11 font (autosync EGA)
                     // return:
                     // ES:BP = specified pointer
                     // CX    = bytes/character of on-screen font (not the requested font!)
                     // DL    = highest character row on screen
-                    println!("stub int10 - VIDEO - GET FONT INFORMATION (EGA, MCGA, VGA)");
+                    let bh = cpu.get_r8(&R8::BH);
+                    match bh { // BH = pointer specifier
+                        // 00h INT 1Fh pointer
+                        // 01h INT 43h pointer
+                        0x02 => {
+                            // 02h ROM 8x14 character font pointer
+                            cpu.set_sr(&SR::ES, MMU::segment_from_long_pair(hw.gpu.font_14));
+                            cpu.set_r16(&R16::BP, MMU::offset_from_long_pair(hw.gpu.font_14));
+                        }
+                        // 03h ROM 8x8 double dot font pointer
+                        // 04h ROM 8x8 double dot font (high 128 characters)
+                        // 05h ROM alpha alternate (9 by 14) pointer (EGA,VGA)
+                        0x06 => {
+                            // ROM 8x16 font (MCGA, VGA)
+                            if hw.gpu.architecture.is_vga() {
+                                cpu.set_sr(&SR::ES, MMU::segment_from_long_pair(hw.gpu.font_16));
+                                cpu.set_r16(&R16::BP, MMU::offset_from_long_pair(hw.gpu.font_16));
+                            }
+                        }
+                        // 07h ROM alternate 9x16 font (VGA only) (see #00021)
+                        // 11h (UltraVision v2+) 8x20 font (VGA) or 8x19 font (autosync EGA)
+                        // 12h (UltraVision v2+) 8x10 font (VGA) or 8x11 font (autosync EGA)
+                        _ => panic!("VIDEO - GET FONT INFORMATION (EGA, MCGA, VGA): unhandled bh={:02X}", bh),
+                    }
                 }
                 _ => {
                     println!("int10 error: unknown ah=11, al={:02X}", cpu.get_r8(&R8::AL));

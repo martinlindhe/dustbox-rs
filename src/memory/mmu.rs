@@ -2,6 +2,10 @@ use memory::FlatMemory;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+#[cfg(test)]
+#[path = "./mmu_test.rs"]
+mod mmu_test;
+
 #[derive(Clone, Default)]
 pub struct MMU {
     pub memory: Rc<RefCell<FlatMemory>>
@@ -16,7 +20,22 @@ impl MMU {
 
     // translates a segment:offset pair to a physical address
     pub fn to_flat(seg: u16, offset: u16) -> u32 {
-        (seg as u32) * 16 + (offset as u32)
+        ((seg as u32) << 4) + (offset as u32)
+    }
+
+    // returns seg:offs as a 32-bit value with segment in the high 16 bits
+    pub fn to_long_pair(seg: u16, offset: u16) -> u32 {
+        ((seg as u32) << 16) + (offset as u32)
+    }
+
+    // returns a 16-bit segment from a flat address
+    pub fn segment_from_long_pair(flat: u32) -> u16 {
+        (flat >> 16) as u16
+    }
+
+    // returns a 16-bit offset from a flat address
+    pub fn offset_from_long_pair(flat: u32) -> u16 {
+        flat as u16
     }
 
     pub fn read_u8(&self, seg: u16, offset: u16) -> u8 {

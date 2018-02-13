@@ -16,6 +16,23 @@ use cpu::CPU;
 use machine::Machine;
 use memory::mmu::MMU;
 use gpu::palette::DACPalette;
+use cpu::register::{R16, SR};
+
+
+#[test]
+fn can_get_font_info() {
+    let mut machine = Machine::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x30, 0x11,   // mov ax,0x1130  ; 1130 = get font info
+        0xB7, 0x06,         // mov bh,0x6     ; get ROM 8x16 font (MCGA, VGA)
+        0xCD, 0x10,         // int 0x10       ; es:bp = c000:1700 i dosbox
+    ];
+    machine.load_com(&code);
+
+    machine.execute_instructions(4);
+    assert_eq!(0xC000, machine.cpu.get_sr(&SR::ES));
+    assert_eq!(0x1700, machine.cpu.get_r16(&R16::BP));
+}
 
 #[test] #[ignore] // expensive test
 fn demo_256() {
