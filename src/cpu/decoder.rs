@@ -908,16 +908,16 @@ impl Decoder {
             }
             0xCB => op.command = Op::Retf,
             0xCC => {
-                op.command = Op::Int();
+                op.command = Op::Int;
                 op.params.dst = Parameter::Imm8(3);
             }
             0xCD => {
                 // int imm8
-                op.command = Op::Int();
+                op.command = Op::Int;
                 op.params.dst = Parameter::Imm8(self.read_u8(mmu));
             }
             0xCE => op.command = Op::Into(),
-	        0xCF => op.command = Op::Iret(),
+	        0xCF => op.command = Op::Iret,
             0xD0 => {
                 // bit shift byte by 1
                 let x = self.read_mod_reg_rm(mmu);
@@ -1092,7 +1092,7 @@ impl Decoder {
                 return (op, length + 1)
             }
             0xF1 => {
-                op.command = Op::Int();
+                op.command = Op::Int;
                 op.params.dst = Parameter::Imm8(1);
             }
             0xF2 => {

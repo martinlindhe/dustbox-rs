@@ -777,13 +777,35 @@ fn can_execute_lds() {
         0xBB, 0x00, 0x60,               // mov bx,0x6000
         0xC7, 0x07, 0x22, 0x11,         // mov word [bx],0x1122
         0xC7, 0x47, 0x02, 0x88, 0x66,   // mov word [bx+0x2],0x6688
-        0xC5, 0x17,                     // lds dx,[bx]              NOTE: will corrupt DS, breaking further execution
+        0x8C, 0xD9,                     // mov cx,ds   ; backup ds
+        0xC5, 0x17,                     // lds dx,[bx]    loads ds and dx with values pointed to at [bx]
+        0x8C, 0xD8,                     // mov ax,ds ; save new ds in ax
+        0x8E, 0xD9,                     // mov ds,cx   ;  restore ds
     ];
     machine.load_com(&code);
 
-    machine.execute_instructions(4);
+    machine.execute_instructions(7);
     assert_eq!(0x1122, machine.cpu.get_r16(&R16::DX));
-    assert_eq!(0x6688, machine.cpu.get_sr(&SR::DS));
+    assert_eq!(0x6688, machine.cpu.get_r16(&R16::AX)); // holds the changed DS value
+}
+
+#[test]
+fn can_execute_lds_2() {
+    let mut machine = Machine::new();
+    let code: Vec<u8> = vec![
+        0xBB, 0x00, 0x60,               // mov bx,0x6000
+        0xC7, 0x47, 0x06, 0x22, 0x11,   // mov word [bx+0x6],0x1122
+        0xC7, 0x47, 0x08, 0x88, 0x66,   // mov word [bx+0x8],0x6688
+        0x8C, 0xD9,                     // mov cx,ds   ; backup ds
+        0xC5, 0x57, 0x06,               // lds dx,[bx+0x6]   loads ds and dx with values pointed to at [bx+6]
+        0x8C, 0xD8,                     // mov ax,ds ; save new ds in ax
+        0x8E, 0xD9,                     // mov ds,cx   ;  restore ds
+    ];
+    machine.load_com(&code);
+
+    machine.execute_instructions(7);
+    assert_eq!(0x1122, machine.cpu.get_r16(&R16::DX));
+    assert_eq!(0x6688, machine.cpu.get_r16(&R16::AX)); // holds the changed DS value
 }
 
 #[test]
@@ -1731,19 +1753,26 @@ fn can_execute_imul16_3_args() {
     assert_eq!(0xF100, machine.cpu.get_r16(&R16::AX));
     // 3887
 }
-/*
+
 #[test]
-fn can_execute_int() {
+fn can_execute_int_iret() {
+    // should hit a default interrupt handler (iret) for int 0x72
     let mut machine = Machine::new();
     let code: Vec<u8> = vec![
-        0xCD, 0x21, // int 0x21
+        0xCD, 0x72, // int 0x72
     ];
     machine.load_com(&code);
 
-    machine.execute_instruction(); // should now be in interrupt vector table ...
-    assert_eq!(0x0079, machine.cpu.ip);
+    assert_eq!(0x085F, machine.cpu.get_sr(&SR::CS));
+    machine.execute_instruction();
+    assert_eq!(0xF000, machine.cpu.get_sr(&SR::CS));
+    assert_eq!(0x0072, machine.cpu.ip);
+
+    machine.execute_instruction(); // IRET
+    assert_eq!(0x085F, machine.cpu.get_sr(&SR::CS));
+    assert_eq!(0x0102, machine.cpu.ip);
 }
-*/
+
 #[test]
 fn can_execute_xlatb() {
     let mut machine = Machine::new();

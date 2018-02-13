@@ -16,7 +16,6 @@ use gdk::prelude::*;
 use gdk_pixbuf;
 use cairo;
 
-use dustbox::memory::Memory;
 use dustbox::cpu::CPU;
 use dustbox::cpu;
 use dustbox::cpu::register::{R8, R16, SR};

@@ -124,7 +124,7 @@ impl Encoder {
                     out.extend(self.encode_rm(&op.params.dst, op.command.feff_index()));
                 }
             }
-            Op::Int() => {
+            Op::Int => {
                 if let Parameter::Imm8(imm) = op.params.dst {
                     if imm == 1 {
                         out.push(0xF1);

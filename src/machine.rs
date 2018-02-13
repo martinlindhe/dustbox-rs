@@ -89,6 +89,12 @@ impl Machine {
 
     pub fn execute_instruction(&mut self) {
         let cs = self.cpu.get_sr(&SR::CS);
+        if cs == 0xF000 {
+            // we are in interrupt vector code, execute high-level interrupt.
+            // the default interrupt vector table has a IRET
+            let int = self.cpu.ip as u8;
+            self.cpu.handle_interrupt(&mut self.hw, int);
+        }
         let ip = self.cpu.ip;
         let (op, length) = self.cpu.decoder.get_instruction(&mut self.hw.mmu, Segment::DS, cs, ip);
 
@@ -129,5 +135,4 @@ impl Machine {
             self.hw.pit.counter0.dec();
         }
     }
-
 }

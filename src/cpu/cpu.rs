@@ -636,7 +636,7 @@ impl CPU {
                 };
                 self.set_r16(&R16::DI, di);
             }
-            Op::Int() => {
+            Op::Int => {
                 let int = self.read_parameter_imm(&op.params.dst);
                 self.int(&mut hw, int as u8);
             }
@@ -1204,6 +1204,14 @@ impl CPU {
                     self.flags.overflow = bit15 ^ bit14 != 0;
                 }
             }
+            Op::Iret => {
+                self.ip = self.pop16(&mut hw.mmu);
+                let cs = self.pop16(&mut hw.mmu);
+                self.set_sr(&SR::CS, cs);
+                let flags = self.pop16(&mut hw.mmu);
+                self.flags.set_u16(flags);
+                hw.bios.flags_flat = 0;
+            }
             Op::Retf => {
                 if op.params.count() == 1 {
                     // 1 argument: pop imm16 bytes from stack
@@ -1221,10 +1229,6 @@ impl CPU {
                     let imm16 = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16;
                     let sp = self.get_r16(&R16::SP) + imm16;
                     self.set_r16(&R16::SP, sp);
-                }
-                if self.get_r16(&R16::SP) == 0xFFFE {
-                    println!("retn called at end of stack, ending program after {} instructions", self.instruction_count);
-                    self.fatal_error = true;
                 }
                 self.ip = self.pop16(&mut hw.mmu);
             }
@@ -1888,6 +1892,10 @@ impl CPU {
         let (segment, offset) = match *p {
             Parameter::Ptr16(seg, imm) => (self.segment(seg), imm),
             Parameter::Ptr16Amode(_, ref amode) => self.get_amode_addr(amode),
+            Parameter::Ptr16AmodeS8(_, ref amode, imms) => {
+                let (seg, off) = self.get_amode_addr(amode);
+                (seg, ((off as i32) + (imms as i32)) as u16)
+            }
             _ => panic!("unhandled parameter {:?}", p),
         };
 
@@ -2117,8 +2125,27 @@ impl CPU {
         self.flags.set_parity(al as usize);
     }
 
-    // execute interrupt
-    fn int(&mut self, mut hw: &mut Hardware, int: u8) {
+    fn int(&mut self, hw: &mut Hardware, int: u8) {
+        let flags = self.flags.u16();
+        self.push16(&mut hw.mmu, flags);
+        hw.bios.flags_flat = MMU::to_flat(self.get_sr(&SR::SS), self.get_r16(&R16::SP));
+
+        self.flags.interrupt = false;
+        self.flags.trap = false;
+        let cs = self.get_sr(&SR::CS);
+        let ip = self.ip;
+        self.push16(&mut hw.mmu, cs);
+        self.push16(&mut hw.mmu, ip);
+        let base = 0;
+        let idx = (int as u16) << 2;
+        let ip = hw.mmu.read_u16(base, idx);
+        let cs = hw.mmu.read_u16(base, idx + 2);
+        // println!("int: jumping to interrupt handler for interrupt {:02X} pos at {:04X}:{:04X} = {:04X}:{:04X}", int, base, idx, cs, ip);
+        self.ip = ip;
+        self.set_sr(&SR::CS, cs);
+    }
+
+    pub fn handle_interrupt(&mut self, mut hw: &mut Hardware, int: u8) {
         match int {
             0x03 => {
                 // debugger interrupt

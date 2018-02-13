@@ -332,7 +332,7 @@ impl GPU {
         0x8000
     }
 
-    pub fn init_rom_memory(&mut self, mut mmu: &mut MMU) {
+    pub fn init(&mut self, mut mmu: &mut MMU) {
         let rom_base = 0xC000;
 
         let video_bios_size = self.video_bios_size();

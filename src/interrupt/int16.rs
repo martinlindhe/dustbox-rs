@@ -1,9 +1,10 @@
 use hardware::Hardware;
 use cpu::CPU;
 use cpu::register::{R8, R16};
+use cpu::flags;
 
 // keyboard related interrupts
-pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
+pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
     match cpu.get_r8(&R8::AH) {
         0x00 => {
             // KEYBOARD - GET KEYSTROKE
@@ -21,8 +22,8 @@ pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
             // AH = BIOS scan code
             // AL = ASCII character
 
-            //println!("XXX impl KEYBOARD - CHECK FOR KEYSTROKE");
-            cpu.flags.zero = true;
+            // println!("XXX impl KEYBOARD - CHECK FOR KEYSTROKE");
+            hw.bios.set_flag(&mut hw.mmu, flags::FLAG_ZF, true);
         }
         0x11 => {
             // KEYBOARD - CHECK FOR ENHANCED KEYSTROKE (enh kbd support only)
@@ -32,7 +33,7 @@ pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
             // AH = BIOS scan code
             // AL = ASCII character
             println!("XXX impl KEYBOARD - CHECK FOR ENHANCED KEYSTROKE");
-            cpu.flags.zero = true;
+            hw.bios.set_flag(&mut hw.mmu, flags::FLAG_ZF, true);
         }
         _ => {
             println!("int16 error: unknown ah={:02X}, ax={:04X}",

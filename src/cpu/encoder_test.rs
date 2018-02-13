@@ -423,7 +423,7 @@ fn can_encode_bitshift_instructions() {
 
 #[test]
 fn can_encode_int() {
-    let op = Instruction::new1(Op::Int(), Parameter::Imm8(0x21));
+    let op = Instruction::new1(Op::Int, Parameter::Imm8(0x21));
     assert_encdec(&op, "int 0x21", vec!(0xCD, 0x21));
 }
 

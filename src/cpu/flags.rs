@@ -27,15 +27,15 @@ pub struct Flags {
 }
 
 // XXX make use of flag mask
-const FLAG_CF: u16 = 0x0000_0001;
-const FLAG_PF: u16 = 0x0000_0004;
-const FLAG_AF: u16 = 0x0000_0010;
-const FLAG_ZF: u16 = 0x0000_0040;
-const FLAG_SF: u16 = 0x0000_0080;
-const FLAG_TF: u16 = 0x0000_0100;
-const FLAG_IF: u16 = 0x0000_0200;
-const FLAG_DF: u16 = 0x0000_0400;
-const FLAG_OF: u16 = 0x0000_0800;
+pub const FLAG_CF: u16 = 0x0000_0001;
+pub const FLAG_PF: u16 = 0x0000_0004;
+pub const FLAG_AF: u16 = 0x0000_0010;
+pub const FLAG_ZF: u16 = 0x0000_0040;
+pub const FLAG_SF: u16 = 0x0000_0080;
+pub const FLAG_TF: u16 = 0x0000_0100;
+pub const FLAG_IF: u16 = 0x0000_0200;
+pub const FLAG_DF: u16 = 0x0000_0400;
+pub const FLAG_OF: u16 = 0x0000_0800;
 
 static PARITY_LOOKUP: [u16; 256] = [
     FLAG_PF, 0, 0, FLAG_PF, 0, FLAG_PF, FLAG_PF, 0, 0, FLAG_PF, FLAG_PF, 0, FLAG_PF, 0, 0, FLAG_PF,
