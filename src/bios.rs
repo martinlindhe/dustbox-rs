@@ -3,11 +3,11 @@
 
 use cpu::CPU;
 use cpu::flags::Flags;
-use memory::mmu::MMU;
+use memory::mmu::{MMU, MemoryAddress};
 
 #[derive(Clone)]
 pub struct BIOS {
-    pub flags_flat: u32, // the FLAGS register offset on stack while in interrupt
+    pub flags_address: MemoryAddress, // the FLAGS register offset on stack while in interrupt
 }
 
 const BIOS_SEGMENT: u16 = 0xF000;
@@ -18,22 +18,22 @@ impl BIOS {
     pub fn new() -> Self {
         // XXX see ROMBIOS_Init in dosbox-x
         BIOS {
-            flags_flat: 0,
+            flags_address: MemoryAddress::Unset,
         }
     }
 
     // manipulates the FLAGS register on stack while in a interrupt
     pub fn set_flag(&mut self, mmu: &mut MMU, flag_mask: u16, flag_value: bool) {
-        if self.flags_flat == 0 {
-            panic!("bios: set_flag with 0 flags_flat");
+        if self.flags_address == MemoryAddress::Unset {
+            panic!("bios: set_flag with 0 flags_address");
         }
-        let mut flags = mmu.memory.borrow().read_u16(self.flags_flat);
+        let mut flags = mmu.memory.borrow().read_u16(self.flags_address.value());
         if flag_value {
             flags = flags | flag_mask;
         } else {
             flags = flags & !flag_mask;
         }
-        mmu.memory.borrow_mut().write_u16(self.flags_flat, flags);
+        mmu.memory.borrow_mut().write_u16(self.flags_address.value(), flags);
     }
 
     pub fn init(&mut self, mut mmu: &mut MMU) {

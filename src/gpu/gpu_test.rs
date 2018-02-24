@@ -15,7 +15,6 @@ use tools;
 use cpu::CPU;
 use machine::Machine;
 use memory::mmu::MMU;
-use gpu::palette::DACPalette;
 use cpu::register::{R16, SR};
 
 

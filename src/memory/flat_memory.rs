@@ -1,7 +1,11 @@
+use hex::hex_bytes_separated;
+
 #[derive(Clone, Default)]
 pub struct FlatMemory {
     pub memory: Vec<u8>,
 }
+
+const DEBUG_MEMORY: bool = false;
 
 impl FlatMemory {
     pub fn new() -> Self {
@@ -9,7 +13,11 @@ impl FlatMemory {
     }
 
     pub fn read_u8(&self, addr: u32) -> u8 {
-        self.memory[addr as usize]
+        let val = self.memory[addr as usize];
+        if DEBUG_MEMORY {
+            println!("read_u8 from {:06x} = {:02x}", addr, val);
+        }
+        val
     }
 
     pub fn read_u16(&self, addr: u32) -> u16 {
@@ -17,6 +25,9 @@ impl FlatMemory {
     }
 
     pub fn write_u8(&mut self, addr: u32, data: u8) {
+        if DEBUG_MEMORY {
+            println!("write_u8 to {:06x} = {:02x}", addr, data);
+        }
         self.memory[addr as usize] = data;
     }
 
@@ -37,6 +48,9 @@ impl FlatMemory {
 
     pub fn write(&mut self, addr: u32, data: &[u8]) {
         let addr = addr as usize;
+        if DEBUG_MEMORY {
+            println!("write to {:06x} in {} bytes: {}", addr, data.len(), hex_bytes_separated(data, ' '));
+        }
         self.memory[addr..addr+data.len()].copy_from_slice(data);
     }
 }

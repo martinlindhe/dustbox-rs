@@ -20,6 +20,7 @@ use cpu::op::Op;
 use cpu::register::{R8, R16, AMode, SR};
 use machine::Machine;
 use memory::mmu::MMU;
+use hex::hex_bytes;
 
 #[test] #[ignore] // expensive test
 fn can_encode_random_seq() {
@@ -487,13 +488,4 @@ fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u
     assert_eq!(op, decoded_op, "decoded resulting op from instruction encode does not match input op");
 
     assert_eq!(expected_ndisasm.to_owned(), ndisasm_bytes(&code).unwrap(), "disasm of encoded byte sequence does not match expected ndisasm output");
-}
-
-fn hex_bytes(data: &[u8]) -> String {
-    use std::fmt::Write;
-    let mut s = String::new();
-    for &b in data {
-        write!(&mut s, "{:02x} ", b).expect("Unable to write");
-    }
-    s.trim().to_owned()
 }

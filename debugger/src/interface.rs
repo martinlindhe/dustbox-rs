@@ -19,7 +19,6 @@ use cairo;
 use dustbox::cpu::CPU;
 use dustbox::cpu;
 use dustbox::cpu::register::{R8, R16, SR};
-use dustbox::gpu::palette::DACPalette;
 
 use debugger;
 

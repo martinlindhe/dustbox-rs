@@ -29,5 +29,6 @@ pub mod cmos;
 pub mod bios;
 pub mod codepage;
 pub mod tools;
+pub mod hex;
 
 mod interrupt;
