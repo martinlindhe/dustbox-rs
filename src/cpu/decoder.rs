@@ -6,7 +6,9 @@ use cpu::parameter::{Parameter, ParameterSet};
 use cpu::op::{Op, InvalidOp};
 use cpu::register::{R8, R16, SR};
 use cpu::segment::Segment;
-use memory::mmu::MMU;
+use memory::mmu::{MMU, MemoryAddress};
+
+const DEBUG_DECODER: bool = false;
 
 #[cfg(test)]
 #[path = "./decoder_test.rs"]
@@ -43,13 +45,16 @@ impl Decoder {
     }
 
     pub fn decode_instruction(&mut self, mut mmu: &mut MMU, iseg: u16, ioffset: u16) -> InstructionInfo {
-       let (op, length) = self.get_instruction(&mut mmu, Segment::Default, iseg, ioffset);
-       InstructionInfo {
-           segment: iseg as usize,
-           offset: ioffset as usize,
-           bytes: mmu.read(iseg, ioffset, length),
-           instruction: op
-       }
+        let (op, length) = self.get_instruction(&mut mmu, Segment::Default, iseg, ioffset);
+        if DEBUG_DECODER {
+            println!("decode_instruction at {:06x}: {:?}", MemoryAddress::RealSegmentOffset(iseg, ioffset).value(), op);
+        }
+        InstructionInfo {
+            segment: iseg as usize,
+            offset: ioffset as usize,
+            bytes: mmu.read(iseg, ioffset, length),
+            instruction: op
+        }
     }
 
     pub fn get_instruction(&mut self, mut mmu: &mut MMU, seg: Segment, iseg: u16, ioffset: u16) -> (Instruction, usize) {

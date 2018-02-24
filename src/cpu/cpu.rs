@@ -591,14 +591,14 @@ impl CPU {
                 // Input from Port
                 // two parameters (dst=AL)
                 let src = self.read_parameter_value(&hw.mmu, &op.params.src);
-                let data = self.in_u8(&mut hw, src as u16);
+                let data = hw.in_u8(src as u16);
                 self.write_parameter_u8(&mut hw.mmu, &op.params.dst, data);
             }
             Op::In16 => {
                 // Input from Port
                 // two parameters (dst=AX)
                 let src = self.read_parameter_value(&hw.mmu, &op.params.src);
-                let data = self.in_u16(&mut hw, src as u16);
+                let data = hw.in_u16(src as u16);
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, data);
             }
             Op::Inc8 => {
@@ -634,7 +634,7 @@ impl CPU {
                 // Input byte from I/O port specified in DX into memory location specified in ES:DI.
                 // The ES segment cannot be overridden with a segment override prefix.
                 let dx = self.get_r16(&R16::DX);
-                let data = self.in_u8(&mut hw, dx);
+                let data = hw.in_u8(dx);
                 hw.mmu.write_u8(self.get_sr(&SR::ES), self.get_r16(&R16::DI), data);
                 let di = if !self.flags.direction {
                     (Wrapping(self.get_r16(&R16::DI)) + Wrapping(1)).0
@@ -1049,20 +1049,20 @@ impl CPU {
                 // two arguments
                 let addr = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16;
                 let val = self.read_parameter_value(&hw.mmu, &op.params.src) as u8;
-                self.out_u8(&mut hw, addr, val);
+                hw.out_u8(addr, val);
             }
             Op::Out16 => {
                 // two arguments
                 let addr = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16;
                 let val = self.read_parameter_value(&hw.mmu, &op.params.src) as u16;
-                self.out_u16(&mut hw, addr, val);
+                hw.out_u16(addr, val);
             }
             Op::Outsb => {
                 // Output byte from memory location specified in DS:(E)SI or RSI to I/O port specified in DX.
                 // no arguments
                 let val = hw.mmu.read_u8(self.segment(op.segment_prefix), self.get_r16(&R16::SI));
                 let port = self.get_r16(&R16::DX);
-                self.out_u8(&mut hw, port, val);
+                hw.out_u8(port, val);
                 let si = if !self.flags.direction {
                     (Wrapping(self.get_r16(&R16::SI)) + Wrapping(1)).0
                 } else {
@@ -1075,7 +1075,7 @@ impl CPU {
                 // no arguments
                 let val = hw.mmu.read_u16(self.segment(op.segment_prefix), self.get_r16(&R16::SI));
                 let port = self.get_r16(&R16::DX);
-                self.out_u16(&mut hw, port, val);
+                hw.out_u16(port, val);
                 let si = if !self.flags.direction {
                     (Wrapping(self.get_r16(&R16::SI)) + Wrapping(2)).0
                 } else {
