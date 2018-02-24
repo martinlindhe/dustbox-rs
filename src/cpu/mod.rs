@@ -1,7 +1,5 @@
 mod cpu;
 
-mod io;
-
 pub mod decoder;
 pub mod instruction;
 pub mod segment;
@@ -12,5 +10,3 @@ pub mod op;
 pub mod encoder;
 
 pub use self::cpu::*;
-
-pub use self::io::*;

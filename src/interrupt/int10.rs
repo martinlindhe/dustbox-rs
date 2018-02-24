@@ -6,7 +6,7 @@ use gpu::modes::{VideoModeBlock, GFXMode, SpecialMode, ega_mode_block, vga_mode_
 use gpu::modes::GFXMode::*;
 
 // video related interrupts
-pub fn handle(cpu: &mut CPU, mut hw: &mut Hardware) {
+pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
     match cpu.get_r8(&R8::AH) {
         0x00 => {
             // VIDEO - SET VIDEO MODE
@@ -184,7 +184,7 @@ pub fn handle(cpu: &mut CPU, mut hw: &mut Hardware) {
                     let count = cpu.get_r16(&R16::CX) as usize;
 
                     // #define VGAREG_DAC_WRITE_ADDRESS       0x3c8
-                    cpu.out_u8(&mut hw, 0x3C8, start as u8);
+                    hw.out_u8(0x3C8, start as u8);
 
                     let es = cpu.get_sr(&SR::ES);
                     let dx = cpu.get_r16(&R16::DX);
@@ -196,9 +196,9 @@ pub fn handle(cpu: &mut CPU, mut hw: &mut Hardware) {
                         let b = hw.mmu.read_u8(es, dx + next + 2);
 
                         // #define VGAREG_DAC_DATA                0x3c9
-                        cpu.out_u8(&mut hw, 0x3C9, r);
-                        cpu.out_u8(&mut hw, 0x3C9, g);
-                        cpu.out_u8(&mut hw, 0x3C9, b);
+                        hw.out_u8(0x3C9, r);
+                        hw.out_u8(0x3C9, g);
+                        hw.out_u8(0x3C9, b);
                     }
                 }
                 0x17 => {

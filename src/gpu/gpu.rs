@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use cpu::CPU;
 use memory::mmu::{MMU, MemoryAddress};
-use gpu::palette::{ColorSpace, default_vga_palette};
+use gpu::palette::{ColorSpace, vga_palette};
 use gpu::palette::ColorSpace::RGB;
 use gpu::font;
 use gpu::video_parameters;
@@ -98,7 +98,7 @@ impl GPU {
             scanline: 0,
             width: 300,
             height: 200,
-            pal: default_vga_palette(),
+            pal: vga_palette().to_vec(),
             pel_address: 0,
             pel_component: 0,
             mode: 0x03, // default mode is 80x25 text
@@ -260,6 +260,7 @@ impl GPU {
             0x13 => {
                 self.width = 320;
                 self.height = 200;
+                self.pal = vga_palette().to_vec();
             }
             _ => {
                 println!("video error: unknown video mode {:02X}", mode);
