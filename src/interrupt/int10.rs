@@ -10,16 +10,8 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
     match cpu.get_r8(&R8::AH) {
         0x00 => {
             // VIDEO - SET VIDEO MODE
-            // AL = desired video mode
-            //
-            // Return:
-            // AL = video mode flag (Phoenix, AMI BIOS)
-            // 20h mode > 7
-            // 30h modes 0-5 and 7
-            // 3Fh mode 6
-            // AL = CRT controller mode byte (Phoenix 386 BIOS v1.10)
             let al = cpu.get_r8(&R8::AL);
-            hw.gpu.set_mode(al);
+            hw.gpu.set_mode(&mut hw.mmu, &mut hw.bios, al);
         }
         0x01 => {
             // VIDEO - SET TEXT-MODE CURSOR SHAPE
@@ -36,14 +28,6 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
         }
         0x02 => {
             // VIDEO - SET CURSOR POSITION
-            //
-            // BH = page number
-            // 0-3 in modes 2&3
-            // 0-7 in modes 0&1
-            // 0 in graphics modes
-            // DH = row (00h is top)
-            // DL = column (00h is left)
-            // Return: Nothing
             let page = cpu.get_r8(&R8::BH);
             let row = cpu.get_r8(&R8::DH);
             let column = cpu.get_r8(&R8::DL);

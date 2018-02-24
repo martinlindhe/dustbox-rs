@@ -29,8 +29,8 @@ pub struct VideoModeBlock {
     pub sheight: u32,
     pub twidth: usize,
     pub theight: usize,
-    pub cwidth: usize,
-    pub cheight: usize,
+    pub cwidth: usize,      // Character Width
+    pub cheight: usize,     // Character Height
     pub ptotal: usize,
     pub pstart: u32,
     pub plength: usize,

@@ -48,8 +48,6 @@ pub struct GPU {
     static_config: MemoryAddress,
     video_parameter_table: MemoryAddress,
     video_dcc_table: MemoryAddress,
-    video_save_pointer_table: MemoryAddress,
-    video_save_pointers: MemoryAddress,
     pub card: GraphicCard,
     pub mode: VideoModeBlock,
     modes: Vec<VideoModeBlock>,
@@ -74,8 +72,6 @@ impl GPU {
             static_config: MemoryAddress::Unset,
             video_parameter_table: MemoryAddress::Unset,
             video_dcc_table: MemoryAddress::Unset,
-            video_save_pointer_table: MemoryAddress::Unset,
-            video_save_pointers: MemoryAddress::Unset,
             card: generation,
             mode: mode,
             modes: modes,
@@ -192,7 +188,7 @@ impl GPU {
     }
 
     // int 10, ah = 00h
-    pub fn set_mode(&mut self, mode: u8) {
+    pub fn set_mode(&mut self, mmu: &mut MMU, bios: &mut BIOS, mode: u8) {
         let mut found = false;
         for block in &self.modes {
             if block.mode == mode as u16 {
@@ -215,10 +211,13 @@ impl GPU {
                 println!("set_mode: unknown palette for video mode {:?}", self.mode.kind);
             }
         }
+
+        let clear_mem = true;
+        bios.set_video_mode(mmu, &self.mode, clear_mem);
     }
 
+    // HACK to have a source of info to toggle CGA status register
     pub fn progress_scanline(&mut self) {
-        // HACK to have a source of info to toggle CGA status register
         self.scanline += 1;
         if self.scanline > self.mode.swidth {
             self.scanline = 0;
@@ -414,6 +413,7 @@ impl GPU {
             self.video_parameter_table = MemoryAddress::RealSegmentOffset(seg, pos);
             pos += self.setup_video_parameter_table(&mut mmu, seg, pos);
 
+            let mut video_save_pointer_table: u32 = 0;
             if self.card.is_vga() {
                 self.video_dcc_table = MemoryAddress::RealSegmentOffset(seg, pos);
                 mmu.write_u8(seg, pos, 0x10); pos += 1; // number of entries
@@ -439,7 +439,7 @@ impl GPU {
                 mmu.write_u16(seg, pos, 0x0702); pos += 2;
                 mmu.write_u16(seg, pos, 0x0706); pos += 2;
 
-                self.video_save_pointer_table = MemoryAddress::RealSegmentOffset(seg, pos);
+                video_save_pointer_table = MemoryAddress::RealSegmentOffset(seg, pos).value();
                 mmu.write_u16(seg, pos, 0x1a); pos += 2; // length of table
 
                 mmu.write_u32(seg, pos, self.video_dcc_table.value()); pos += 4;
@@ -450,12 +450,15 @@ impl GPU {
                 mmu.write_u32(seg, pos, 0); pos += 4;
             }
 
-            self.video_save_pointers = MemoryAddress::RealSegmentOffset(seg, pos);
+            mmu.write_u32(BIOS::DATA_SEG, BIOS::DATA_VS_POINTER, MemoryAddress::RealSegmentOffset(seg, pos).value());
             mmu.write_u32(seg, pos, self.video_parameter_table.value()); pos += 4;
             mmu.write_u32(seg, pos,0); pos += 4; // dynamic save area pointer
             mmu.write_u32(seg, pos,0); pos += 4; // alphanumeric character set override
             mmu.write_u32(seg, pos, 0); pos += 4; // graphics character set override
-            mmu.write_u32(seg, pos, self.video_save_pointer_table.value()); pos += 4; // will be 0 if not vga
+            if self.card.is_vga() {
+                mmu.write_u32(seg, pos, video_save_pointer_table);
+            }
+            pos += 4;
             mmu.write_u32(seg, pos, 0); pos += 4;
             mmu.write_u32(seg, pos, 0); pos += 4;
         }
