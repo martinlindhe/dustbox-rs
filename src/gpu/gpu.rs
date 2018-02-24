@@ -4,11 +4,14 @@ use std::marker::PhantomData;
 
 use cpu::CPU;
 use memory::mmu::{MMU, MemoryAddress};
-use gpu::palette::{ColorSpace, vga_palette};
+use gpu::palette::{ColorSpace, ega_palette, vga_palette};
 use gpu::palette::ColorSpace::RGB;
 use gpu::font;
 use gpu::video_parameters;
 use gpu::modes::GFXMode::*;
+use gpu::modes::VideoModeBlock;
+use gpu::graphic_card::GraphicCard;
+use bios::BIOS;
 
 #[cfg(test)]
 #[path = "./gpu_test.rs"]
@@ -33,12 +36,9 @@ pub static STATIC_FUNCTIONALITY: [u8; 0x10] = [
 #[derive(Clone)]
 pub struct GPU {
     pub scanline: u32,
-    pub width: u32,
-    pub height: u32,
     pub pal: Vec<ColorSpace>,
     pub pel_address: u8,            // set by write to 03c8
     pel_component: usize,           // color component for next out 03c9, 0 = red, 1 = green, 2 = blue
-    mode: u8,
     font_8_first: MemoryAddress,
     font_8_second: MemoryAddress,
     pub font_14: MemoryAddress,
@@ -51,57 +51,20 @@ pub struct GPU {
     video_save_pointer_table: MemoryAddress,
     video_save_pointers: MemoryAddress,
     pub card: GraphicCard,
-}
-
-// GraphicCard indicates the gfx card generation to emulate
-#[derive(Clone, PartialEq)]
-pub enum GraphicCard {
-    CGA, EGA, VGA, Tandy,
-}
-
-impl GraphicCard {
-     pub fn is_ega_vga(&self) -> bool {
-        match *self {
-            GraphicCard::EGA | GraphicCard::VGA => true,
-            _ => false,
-        }
-    }
-    pub fn is_tandy(&self) -> bool {
-        match *self {
-            GraphicCard::Tandy => true,
-            _ => false,
-        }
-    }
-    pub fn is_cga(&self) -> bool {
-        match *self {
-            GraphicCard::CGA => true,
-            _ => false,
-        }
-    }
-    pub fn is_ega(&self) -> bool {
-        match *self {
-            GraphicCard::EGA => true,
-            _ => false,
-        }
-    }
-    pub fn is_vga(&self) -> bool {
-        match *self {
-            GraphicCard::VGA => true,
-            _ => false,
-        }
-    }
+    pub mode: VideoModeBlock,
+    modes: Vec<VideoModeBlock>,
 }
 
 impl GPU {
     pub fn new() -> Self {
+        let generation = GraphicCard::VGA;
+        let modes = VideoModeBlock::get_mode_block(&generation);
+        let mode = modes[3].clone();
         GPU {
             scanline: 0,
-            width: 300,
-            height: 200,
             pal: vga_palette().to_vec(),
             pel_address: 0,
             pel_component: 0,
-            mode: 0x03, // default mode is 80x25 text
             font_8_first: MemoryAddress::Unset,
             font_8_second: MemoryAddress::Unset,
             font_14: MemoryAddress::Unset,
@@ -113,12 +76,14 @@ impl GPU {
             video_dcc_table: MemoryAddress::Unset,
             video_save_pointer_table: MemoryAddress::Unset,
             video_save_pointers: MemoryAddress::Unset,
-            card: GraphicCard::VGA,
+            card: generation,
+            mode: mode,
+            modes: modes,
         }
     }
 
     pub fn render_frame(&self, memory: &[u8]) -> Vec<u8> {
-        match self.mode {
+        match self.mode.mode {
             // 00: 40x25 Black and White text (CGA,EGA,MCGA,VGA)
             // 01: 40x25 16 color text (CGA,EGA,MCGA,VGA)
             // 02: 80x25 16 shades of gray text (CGA,EGA,MCGA,VGA)
@@ -139,7 +104,7 @@ impl GPU {
             //0x12 => self.render_mode12_frame(memory), // 640x480 16 color graphics (VGA)
             0x13 => self.render_mode13_frame(memory), // 320x200 256 color graphics (MCGA,VGA)
             _ => {
-                println!("XXX fixme render_frame for mode {:02x}", self.mode);
+                println!("XXX fixme render_frame for mode {:02x}", self.mode.mode);
                 Vec::new()
             }
         }
@@ -165,10 +130,10 @@ impl GPU {
         // let pal0_map: [u8; 4] = [0, 10, 12, 14];
 
         // 04h = G  40x25  8x8   320x200    4       .   B800 CGA,PCjr,EGA,MCGA,VGA
-        let mut buf = vec![0u8; (self.width * self.height * 3) as usize];
-        println!("cga draw {}x{}", self.width, self.height);
-        for y in 0..self.height {
-            for x in 0..self.width {
+        let mut buf = vec![0u8; (self.mode.swidth * self.mode.sheight * 3) as usize];
+        println!("cga draw {}x{}", self.mode.swidth, self.mode.sheight);
+        for y in 0..self.mode.sheight {
+            for x in 0..self.mode.swidth {
                 // divide Y by 2
                 // divide X by 4 (2 bits for each pixel)
                 // 80 bytes per line (80 * 4 = 320), 4 pixels per byte
@@ -176,7 +141,7 @@ impl GPU {
                 let bits = (memory[offset] >> ((3 - (x & 3)) * 2)) & 3; // 2 bits: cga palette to use
                 let pal = &self.pal[pal1_map[bits as usize]];
 
-                let dst = (((y * self.width) + x) * 3) as usize;
+                let dst = (((y * self.mode.swidth) + x) * 3) as usize;
                 if let &RGB(r, g, b) = pal {
                     buf[dst] = r;
                     buf[dst+1] = g;
@@ -209,13 +174,13 @@ impl GPU {
     }
 */
     fn render_mode13_frame(&self, memory: &[u8]) -> Vec<u8> {
-        let mut buf = vec![0u8; (self.width * self.height * 3) as usize];
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let offset = 0xA_0000 + ((y * self.width) + x) as usize;
+        let mut buf = vec![0u8; (self.mode.swidth * self.mode.sheight * 3) as usize];
+        for y in 0..self.mode.sheight {
+            for x in 0..self.mode.swidth {
+                let offset = 0xA_0000 + ((y * self.mode.swidth) + x) as usize;
                 let byte = memory[offset];
                 let pal = &self.pal[byte as usize];
-                let i = ((y * self.width + x) * 3) as usize;
+                let i = ((y * self.mode.swidth + x) * 3) as usize;
                 if let &RGB(r, g, b) = pal {
                     buf[i] = r;
                     buf[i+1] = g;
@@ -226,44 +191,28 @@ impl GPU {
         buf
     }
 
+    // int 10, ah = 00h
     pub fn set_mode(&mut self, mode: u8) {
-        self.mode = mode;
-        // more info and video modes: http://www.ctyme.com/intr/rb-0069.htm
-        match mode {
-            0x01 => {
-                // 01h = T  40x25  8x8   320x200   16       8   B800 CGA,PCjr,Tandy
-                //     = T  40x25  8x14  320x350   16       8   B800 EGA
-                //     = T  40x25  8x16  320x400   16       8   B800 MCGA
-                //     = T  40x25  9x16  360x400   16       8   B800 VGA
-                println!("XXX video: set video mode to 320x200, 16 colors (text)");
+        let mut found = false;
+        for block in &self.modes {
+            if block.mode == mode as u16 {
+                self.mode = block.clone();
+                found = true;
             }
-            0x03 => {
-                self.width = 640;
-                self.height = 200;
+        }
+        if !found {
+            panic!("video mode not found: {:02X} in graphics compatibility {:?}", mode, self.card);
+        }
+
+        match self.mode.kind {
+            EGA => {
+                self.pal = ega_palette().to_vec();
             }
-            0x04 => {
-                self.width = 320;
-                self.height = 200;
-            }
-            0x06 => {
-                self.width = 640;
-                self.height = 200;
-            }
-            0x11 => {
-                self.width = 640;
-                self.height = 480;
-            }
-            0x12 => {
-                self.width = 640;
-                self.height = 480;
-            }
-            0x13 => {
-                self.width = 320;
-                self.height = 200;
+            VGA => {
                 self.pal = vga_palette().to_vec();
             }
             _ => {
-                println!("video error: unknown video mode {:02X}", mode);
+                println!("set_mode: unknown palette for video mode {:?}", self.mode.kind);
             }
         }
     }
@@ -271,7 +220,7 @@ impl GPU {
     pub fn progress_scanline(&mut self) {
         // HACK to have a source of info to toggle CGA status register
         self.scanline += 1;
-        if self.scanline > self.width {
+        if self.scanline > self.mode.swidth {
             self.scanline = 0;
         }
     }

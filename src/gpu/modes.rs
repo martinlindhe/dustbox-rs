@@ -1,4 +1,4 @@
-// lists copied from dosbox-x, int10_modes.cpp
+use gpu::graphic_card::GraphicCard;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum GFXMode {
@@ -41,6 +41,17 @@ pub struct VideoModeBlock {
     pub special: SpecialMode,
 }
 
+impl VideoModeBlock {
+    pub fn get_mode_block(card: &GraphicCard) -> Vec<VideoModeBlock> {
+        match *card {
+            GraphicCard::VGA => {
+                vga_mode_block().to_vec()
+            }
+            _ => panic!("unhandled {:?}", card)
+        }
+    }
+}
+
 #[derive(Clone, PartialEq)]
 pub struct SpecialMode {
     pub EGA_HALF_CLOCK: bool,
@@ -64,6 +75,7 @@ impl Default for SpecialMode {
     }
 }
 
+// list of video modes based on dosbox-x, int10_modes.cpp
 pub fn ega_mode_block() -> [VideoModeBlock; 12] {[
     VideoModeBlock{mode: 0x000, kind: GFXMode::TEXT, swidth: 320, sheight: 350, twidth: 40, theight: 25, cwidth: 8, cheight: 14, ptotal: 8, pstart: 0xB8000, plength: 0x0800, htotal: 50,  vtotal: 366, hdispend: 40, vdispend: 350, special: SpecialMode{EGA_HALF_CLOCK: true, ..Default::default()}},
     VideoModeBlock{mode: 0x001, kind: GFXMode::TEXT, swidth: 320, sheight: 350, twidth: 40, theight: 25, cwidth: 8, cheight: 14, ptotal: 8, pstart: 0xB8000, plength: 0x0800, htotal: 50,  vtotal: 366, hdispend: 40, vdispend: 350, special: SpecialMode{EGA_HALF_CLOCK: true, ..Default::default()}},

@@ -238,7 +238,7 @@ fn write_video_frame_to_disk(machine: &Machine, pngfile: &str) -> bool {
         println!("ERROR: no frame rendered");
         return false;
     }
-    let img = draw_image(&frame, machine.hw.gpu.width, machine.hw.gpu.height);
+    let img = draw_image(&frame, machine.hw.gpu.mode.swidth, machine.hw.gpu.mode.sheight);
     if let Err(why) = img.save(pngfile) {
         println!("save err: {:?}", why);
         return false;
