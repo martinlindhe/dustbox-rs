@@ -3,10 +3,12 @@ use std::num::Wrapping;
 use std::marker::PhantomData;
 
 use cpu::CPU;
-use memory::mmu::MMU;
-use gpu::palette::{DACPalette, default_vga_palette};
+use memory::mmu::{MMU, MemoryAddress};
+use gpu::palette::{ColorSpace, default_vga_palette};
+use gpu::palette::ColorSpace::RGB;
 use gpu::font;
 use gpu::video_parameters;
+use gpu::modes::GFXMode::*;
 
 #[cfg(test)]
 #[path = "./gpu_test.rs"]
@@ -28,28 +30,66 @@ pub static STATIC_FUNCTIONALITY: [u8; 0x10] = [
  /* f */ 0x00,  // reserved
 ];
 
-
 #[derive(Clone)]
 pub struct GPU {
     pub scanline: u32,
     pub width: u32,
     pub height: u32,
-    pub pal: Vec<DACPalette>,
+    pub pal: Vec<ColorSpace>,
     pub pel_address: u8,            // set by write to 03c8
     pel_component: usize,           // color component for next out 03c9, 0 = red, 1 = green, 2 = blue
     mode: u8,
-    pub architecture: Architecture,
-    font_8_first: u32,
-    font_8_second: u32,
-    pub font_14: u32,
-    font_14_alternate: u32,
-    pub font_16: u32,
-    font_16_alternate: u32,
-    static_config: u32,
-    video_parameter_table: u32,
-    video_dcc_table: u32,
-    video_save_pointer_table: u32,
-    video_save_pointers: u32,
+    font_8_first: MemoryAddress,
+    font_8_second: MemoryAddress,
+    pub font_14: MemoryAddress,
+    font_14_alternate: MemoryAddress,
+    pub font_16: MemoryAddress,
+    font_16_alternate: MemoryAddress,
+    static_config: MemoryAddress,
+    video_parameter_table: MemoryAddress,
+    video_dcc_table: MemoryAddress,
+    video_save_pointer_table: MemoryAddress,
+    video_save_pointers: MemoryAddress,
+    pub card: GraphicCard,
+}
+
+// GraphicCard indicates the gfx card generation to emulate
+#[derive(Clone, PartialEq)]
+pub enum GraphicCard {
+    CGA, EGA, VGA, Tandy,
+}
+
+impl GraphicCard {
+     pub fn is_ega_vga(&self) -> bool {
+        match *self {
+            GraphicCard::EGA | GraphicCard::VGA => true,
+            _ => false,
+        }
+    }
+    pub fn is_tandy(&self) -> bool {
+        match *self {
+            GraphicCard::Tandy => true,
+            _ => false,
+        }
+    }
+    pub fn is_cga(&self) -> bool {
+        match *self {
+            GraphicCard::CGA => true,
+            _ => false,
+        }
+    }
+    pub fn is_ega(&self) -> bool {
+        match *self {
+            GraphicCard::EGA => true,
+            _ => false,
+        }
+    }
+    pub fn is_vga(&self) -> bool {
+        match *self {
+            GraphicCard::VGA => true,
+            _ => false,
+        }
+    }
 }
 
 impl GPU {
@@ -62,18 +102,18 @@ impl GPU {
             pel_address: 0,
             pel_component: 0,
             mode: 0x03, // default mode is 80x25 text
-            architecture: Architecture::VGA,
-            font_8_first: 0,
-            font_8_second: 0,
-            font_14: 0,
-            font_14_alternate: 0,
-            font_16: 0,
-            font_16_alternate: 0,
-            static_config: 0,
-            video_parameter_table: 0,
-            video_dcc_table: 0,
-            video_save_pointer_table: 0,
-            video_save_pointers: 0,
+            font_8_first: MemoryAddress::Unset,
+            font_8_second: MemoryAddress::Unset,
+            font_14: MemoryAddress::Unset,
+            font_14_alternate: MemoryAddress::Unset,
+            font_16: MemoryAddress::Unset,
+            font_16_alternate: MemoryAddress::Unset,
+            static_config: MemoryAddress::Unset,
+            video_parameter_table: MemoryAddress::Unset,
+            video_dcc_table: MemoryAddress::Unset,
+            video_save_pointer_table: MemoryAddress::Unset,
+            video_save_pointers: MemoryAddress::Unset,
+            card: GraphicCard::VGA,
         }
     }
 
@@ -137,9 +177,11 @@ impl GPU {
                 let pal = &self.pal[pal1_map[bits as usize]];
 
                 let dst = (((y * self.width) + x) * 3) as usize;
-                buf[dst] = pal.r;
-                buf[dst+1] = pal.g;
-                buf[dst+2] = pal.b;
+                if let &RGB(r, g, b) = pal {
+                    buf[dst] = r;
+                    buf[dst+1] = g;
+                    buf[dst+2] = b;
+                }
             }
         }
         buf
@@ -174,9 +216,11 @@ impl GPU {
                 let byte = memory[offset];
                 let pal = &self.pal[byte as usize];
                 let i = ((y * self.width + x) * 3) as usize;
-                buf[i] = pal.r;
-                buf[i+1] = pal.g;
-                buf[i+2] = pal.b;
+                if let &RGB(r, g, b) = pal {
+                    buf[i] = r;
+                    buf[i+1] = g;
+                    buf[i+2] = b;
+                }
             }
         }
         buf
@@ -246,10 +290,11 @@ impl GPU {
         // map 6-bit color into 8 bits
         let v = val << 2;
 
+        let addr = self.pel_address;
         match self.pel_component {
-            0 => self.pal[self.pel_address as usize].r = v,
-            1 => self.pal[self.pel_address as usize].g = v,
-            2 => self.pal[self.pel_address as usize].b = v,
+            0 => self.set_palette_r(addr, v),
+            1 => self.set_palette_g(addr, v),
+            2 => self.set_palette_b(addr, v),
             _ => {}
         }
 
@@ -262,19 +307,27 @@ impl GPU {
     }
 
     // sets the 0-255 intensity of the red color channel
-    pub fn set_palette_r(&mut self, index: usize, val: u8) {
-        // XXX unsure how to handle color index > 0xFF. wrap or ignore?
-        self.pal[index & 0xFF].r = val;
+    pub fn set_palette_r(&mut self, index: u8, val: u8) {
+        match self.pal[index as usize] {
+            RGB(ref mut r, _, _) => *r = val,
+            _ => {}
+        }
     }
 
     // sets the 0-255 intensity of the green color channel
-    pub fn set_palette_g(&mut self, index: usize, val: u8) {
-        self.pal[index & 0xFF].g = val;
+    pub fn set_palette_g(&mut self, index: u8, val: u8) {
+        match self.pal[index as usize] {
+            RGB(_, ref mut g, _) => *g = val,
+            _ => {}
+        }
     }
 
     // sets the 0-255 intensity of the blue color channel
-    pub fn set_palette_b(&mut self, index: usize, val: u8) {
-        self.pal[index & 0xFF].b = val;
+    pub fn set_palette_b(&mut self, index: u8, val: u8) {
+        match self.pal[index as usize] {
+            RGB(_, _, ref mut b) => *b = val,
+            _ => {}
+        }
     }
 
     // CGA status register (0x03DA)
@@ -315,7 +368,7 @@ impl GPU {
     }
 
     fn setup_video_parameter_table(&mut self, mmu: &mut MMU, segment: u16, offset: u16) -> u16 {
-        if self.architecture.is_vga() {
+        if self.card.is_vga() {
             for (i, b) in video_parameters::TABLE_VGA.iter().enumerate() {
                 mmu.write_u8(segment, offset + i as u16, *b);
             }
@@ -333,15 +386,15 @@ impl GPU {
     }
 
     pub fn init(&mut self, mut mmu: &mut MMU) {
-        let rom_base = 0xC000;
+        let seg = 0xC000;
 
         let video_bios_size = self.video_bios_size();
 
         let mut pos = 3;
-        if self.architecture.is_ega_vga() {
+        if self.card.is_ega_vga() {
             // ROM signature
-            mmu.write_u16(rom_base, 0, 0xAA55);
-            mmu.write_u8(rom_base, 2, (video_bios_size >> 9) as u8);
+            mmu.write_u16(seg, 0, 0xAA55);
+            mmu.write_u8(seg, 2, (video_bios_size >> 9) as u8);
             /*
             // entry point
             mmu.write_u8(rom_base, 3, 0xFE); // Callback instruction
@@ -351,153 +404,114 @@ impl GPU {
             */
 
             // VGA BIOS copyright
-            if self.architecture.is_vga() {
-                mmu.write(rom_base, 0x1e, b"IBM compatible VGA BIOS\0");
+            if self.card.is_vga() {
+                mmu.write(seg, 0x1e, b"IBM compatible VGA BIOS\0");
             } else {
-                mmu.write(rom_base, 0x1e, b"IBM compatible EGA BIOS\0");
+                mmu.write(seg, 0x1e, b"IBM compatible EGA BIOS\0");
             }
 
             pos = 0x100;
         }
 
         // cga font
-        self.font_8_first = MMU::to_long_pair(rom_base, pos);
+        self.font_8_first = MemoryAddress::RealSegmentOffset(seg, pos);
         for i in 0..(128 * 8) {
-            mmu.write_u8(rom_base, pos, font::FONT_08[i]);
+            mmu.write_u8(seg, pos, font::FONT_08[i]);
             pos += 1;
         }
 
-        if self.architecture.is_ega_vga() {
+        if self.card.is_ega_vga() {
             // cga second half
-            self.font_8_second = MMU::to_long_pair(rom_base, pos);
+            self.font_8_second = MemoryAddress::RealSegmentOffset(seg, pos);
             for i in 0..(128 * 8) {
-                mmu.write_u8(rom_base, pos, font::FONT_08[i + (128 * 8)]);
+                mmu.write_u8(seg, pos, font::FONT_08[i + (128 * 8)]);
                 pos += 1;
             }
         }
 
-        if self.architecture.is_ega_vga() {
+        if self.card.is_ega_vga() {
             // ega font
-            self.font_14 = MMU::to_long_pair(rom_base, pos);
+            self.font_14 = MemoryAddress::RealSegmentOffset(seg, pos);
             for i in 0..(256 * 14) {
-                mmu.write_u8(rom_base, pos, font::FONT_14[i]);
+                mmu.write_u8(seg, pos, font::FONT_14[i]);
                 pos += 1;
             }
         }
 
-        if self.architecture.is_vga() {
+        if self.card.is_vga() {
             // vga font
-            self.font_16 = MMU::to_long_pair(rom_base, pos);
+            self.font_16 = MemoryAddress::RealSegmentOffset(seg, pos);
             for i in 0..(256 * 16) {
-                mmu.write_u8(rom_base, pos, font::FONT_16[i]);
+                mmu.write_u8(seg, pos, font::FONT_16[i]);
                 pos += 1;
             }
 
-            self.static_config = MMU::to_long_pair(rom_base, pos);
+            self.static_config = MemoryAddress::RealSegmentOffset(seg, pos);
             for i in 0..0x10 {
-                mmu.write_u8(rom_base, pos, STATIC_FUNCTIONALITY[i]);
+                mmu.write_u8(seg, pos, STATIC_FUNCTIONALITY[i]);
                 pos += 1;
             }
         }
 
-        mmu.write_vec(0x1F, self.font_8_second);
-        self.font_14_alternate = MMU::to_long_pair(rom_base, pos);
-        self.font_16_alternate = MMU::to_long_pair(rom_base, pos);
+        mmu.write_vec(0x1F, self.font_8_second.value());
+        self.font_14_alternate = MemoryAddress::RealSegmentOffset(seg, pos);
+        self.font_16_alternate = MemoryAddress::RealSegmentOffset(seg, pos);
 
-        mmu.write_u8(rom_base, pos, 0x00); // end of table (empty)
+        mmu.write_u8(seg, pos, 0x00); // end of table (empty)
         pos += 1;
 
-        if self.architecture.is_ega_vga() {
-            self.video_parameter_table = MMU::to_long_pair(rom_base, pos);
-            pos += self.setup_video_parameter_table(&mut mmu, rom_base, pos);
+        if self.card.is_ega_vga() {
+            self.video_parameter_table = MemoryAddress::RealSegmentOffset(seg, pos);
+            pos += self.setup_video_parameter_table(&mut mmu, seg, pos);
 
-            if self.architecture.is_vga() {
-                self.video_dcc_table = MMU::to_long_pair(rom_base, pos);
-                mmu.write_u8(rom_base, pos, 0x10); pos += 1; // number of entries
-                mmu.write_u8(rom_base, pos, 1); pos += 1;    // version number
-                mmu.write_u8(rom_base, pos, 8); pos += 1;    // maximum display code
-                mmu.write_u8(rom_base, pos, 0); pos += 1;    // reserved
+            if self.card.is_vga() {
+                self.video_dcc_table = MemoryAddress::RealSegmentOffset(seg, pos);
+                mmu.write_u8(seg, pos, 0x10); pos += 1; // number of entries
+                mmu.write_u8(seg, pos, 1); pos += 1;    // version number
+                mmu.write_u8(seg, pos, 8); pos += 1;    // maximum display code
+                mmu.write_u8(seg, pos, 0); pos += 1;    // reserved
 
                 // display combination codes
-                mmu.write_u16(rom_base, pos, 0x0000); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0100); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0200); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0102); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0400); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0104); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0500); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0502); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0600); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0601); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0605); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0800); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0801); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0700); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0702); pos += 2;
-                mmu.write_u16(rom_base, pos, 0x0706); pos += 2;
+                mmu.write_u16(seg, pos, 0x0000); pos += 2;
+                mmu.write_u16(seg, pos, 0x0100); pos += 2;
+                mmu.write_u16(seg, pos, 0x0200); pos += 2;
+                mmu.write_u16(seg, pos, 0x0102); pos += 2;
+                mmu.write_u16(seg, pos, 0x0400); pos += 2;
+                mmu.write_u16(seg, pos, 0x0104); pos += 2;
+                mmu.write_u16(seg, pos, 0x0500); pos += 2;
+                mmu.write_u16(seg, pos, 0x0502); pos += 2;
+                mmu.write_u16(seg, pos, 0x0600); pos += 2;
+                mmu.write_u16(seg, pos, 0x0601); pos += 2;
+                mmu.write_u16(seg, pos, 0x0605); pos += 2;
+                mmu.write_u16(seg, pos, 0x0800); pos += 2;
+                mmu.write_u16(seg, pos, 0x0801); pos += 2;
+                mmu.write_u16(seg, pos, 0x0700); pos += 2;
+                mmu.write_u16(seg, pos, 0x0702); pos += 2;
+                mmu.write_u16(seg, pos, 0x0706); pos += 2;
 
-                self.video_save_pointer_table = MMU::to_long_pair(rom_base, pos);
-                mmu.write_u16(rom_base, pos, 0x1a); pos += 2; // length of table
+                self.video_save_pointer_table = MemoryAddress::RealSegmentOffset(seg, pos);
+                mmu.write_u16(seg, pos, 0x1a); pos += 2; // length of table
 
-                mmu.write_u32(rom_base, pos, self.video_dcc_table as u32); pos += 4;
-                mmu.write_u32(rom_base, pos, 0); pos += 4; // alphanumeric charset override
-                mmu.write_u32(rom_base, pos, 0); pos += 4; // user palette table
-                mmu.write_u32(rom_base, pos, 0); pos += 4;
-                mmu.write_u32(rom_base, pos, 0); pos += 4;
-                mmu.write_u32(rom_base, pos, 0); pos += 4;
+                mmu.write_u32(seg, pos, self.video_dcc_table.value()); pos += 4;
+                mmu.write_u32(seg, pos, 0); pos += 4; // alphanumeric charset override
+                mmu.write_u32(seg, pos, 0); pos += 4; // user palette table
+                mmu.write_u32(seg, pos, 0); pos += 4;
+                mmu.write_u32(seg, pos, 0); pos += 4;
+                mmu.write_u32(seg, pos, 0); pos += 4;
             }
 
-            self.video_save_pointers = MMU::to_long_pair(rom_base, pos);
-            mmu.write_u32(rom_base, pos, self.video_parameter_table as u32); pos += 4;
-            mmu.write_u32(rom_base, pos,0); pos += 4; // dynamic save area pointer
-            mmu.write_u32(rom_base, pos,0); pos += 4; // alphanumeric character set override
-            mmu.write_u32(rom_base, pos, 0); pos += 4; // graphics character set override
-            mmu.write_u32(rom_base, pos, self.video_save_pointer_table as u32); pos += 4; // will be 0 if not vga
-            mmu.write_u32(rom_base, pos, 0); pos += 4;
-            mmu.write_u32(rom_base, pos, 0); pos += 4;
+            self.video_save_pointers = MemoryAddress::RealSegmentOffset(seg, pos);
+            mmu.write_u32(seg, pos, self.video_parameter_table.value()); pos += 4;
+            mmu.write_u32(seg, pos,0); pos += 4; // dynamic save area pointer
+            mmu.write_u32(seg, pos,0); pos += 4; // alphanumeric character set override
+            mmu.write_u32(seg, pos, 0); pos += 4; // graphics character set override
+            mmu.write_u32(seg, pos, self.video_save_pointer_table.value()); pos += 4; // will be 0 if not vga
+            mmu.write_u32(seg, pos, 0); pos += 4;
+            mmu.write_u32(seg, pos, 0); pos += 4;
         }
 
-        if self.architecture.is_tandy() {
-            mmu.write_vec(0x44, self.font_8_first);
-        }
-    }
-}
-
-// Architecture indicates the current gpu mode of operation
-#[derive(Clone, PartialEq)]
-pub enum Architecture {
-    Tandy, CGA, EGA, VGA,
-}
-
-impl Architecture {
-    pub fn is_ega_vga(&self) -> bool {
-        match *self {
-            Architecture::EGA | Architecture::VGA => true,
-            _ => false,
-        }
-    }
-    pub fn is_tandy(&self) -> bool {
-        match *self {
-            Architecture::Tandy => true,
-            _ => false,
-        }
-    }
-    pub fn is_cga(&self) -> bool {
-        match *self {
-            Architecture::CGA => true,
-            _ => false,
-        }
-    }
-    pub fn is_ega(&self) -> bool {
-        match *self {
-            Architecture::EGA => true,
-            _ => false,
-        }
-    }
-    pub fn is_vga(&self) -> bool {
-        match *self {
-            Architecture::VGA => true,
-            _ => false,
+        if self.card.is_tandy() {
+            mmu.write_vec(0x44, self.font_8_first.value());
         }
     }
 }

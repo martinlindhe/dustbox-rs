@@ -7,7 +7,7 @@ use dustbox::machine::Machine;
 use dustbox::cpu::register::{R16, SR, RegisterSnapshot};
 use dustbox::cpu::decoder::Decoder;
 use dustbox::tools;
-use dustbox::memory::mmu::MMU;
+use dustbox::memory::mmu::MemoryAddress;
 
 use breakpoints::Breakpoints;
 use memory_breakpoints::MemoryBreakpoints;
@@ -443,7 +443,7 @@ impl Debugger {
                 match self.parse_register_hex_string(&x[0..pos]) {
                     Ok(segment) => {
                         match self.parse_register_hex_string(&x[pos+1..]) {
-                            Ok(offset) => Ok(MMU::to_flat(segment as u16, offset as u16)),
+                            Ok(offset) => Ok(MemoryAddress::RealSegmentOffset(segment as u16, offset as u16).value()),
                             Err(v) => Err(v),
                         }
                     },

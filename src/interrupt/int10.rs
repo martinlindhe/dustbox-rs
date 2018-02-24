@@ -1,7 +1,9 @@
 use hardware::Hardware;
 use cpu::CPU;
 use cpu::register::{R8, R16, SR};
-use memory::mmu::MMU;
+use memory::mmu::{MMU, MemoryAddress};
+use gpu::modes::{VideoModeBlock, GFXMode, SpecialMode, ega_mode_block, vga_mode_block};
+use gpu::modes::GFXMode::*;
 
 // video related interrupts
 pub fn handle(cpu: &mut CPU, mut hw: &mut Hardware) {
@@ -237,17 +239,21 @@ pub fn handle(cpu: &mut CPU, mut hw: &mut Hardware) {
                         // 01h INT 43h pointer
                         0x02 => {
                             // ROM 8x14 character font pointer
-                            cpu.set_sr(&SR::ES, MMU::segment_from_long_pair(hw.gpu.font_14));
-                            cpu.set_r16(&R16::BP, MMU::offset_from_long_pair(hw.gpu.font_14));
+                            if let MemoryAddress::RealSegmentOffset(seg, off) = hw.gpu.font_14 {
+                                cpu.set_sr(&SR::ES, seg);
+                                cpu.set_r16(&R16::BP, off);
+                            }
                         }
                         // 03h ROM 8x8 double dot font pointer
                         // 04h ROM 8x8 double dot font (high 128 characters)
                         // 05h ROM alpha alternate (9 by 14) pointer (EGA,VGA)
                         0x06 => {
                             // ROM 8x16 font (MCGA, VGA)
-                            if hw.gpu.architecture.is_vga() {
-                                cpu.set_sr(&SR::ES, MMU::segment_from_long_pair(hw.gpu.font_16));
-                                cpu.set_r16(&R16::BP, MMU::offset_from_long_pair(hw.gpu.font_16));
+                            if hw.gpu.card.is_vga() {
+                                if let MemoryAddress::RealSegmentOffset(seg, off) = hw.gpu.font_16 {
+                                    cpu.set_sr(&SR::ES, seg);
+                                    cpu.set_r16(&R16::BP, off);
+                                }
                             }
                         }
                         // 07h ROM alternate 9x16 font (VGA only) (see #00021)

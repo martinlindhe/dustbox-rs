@@ -9,7 +9,7 @@ use cpu::op::{Op, InvalidOp};
 use cpu::register::{Register16, R8, R16, SR, AMode};
 use cpu::decoder::Decoder;
 use cpu::segment::Segment;
-use memory::mmu::MMU;
+use memory::mmu::{MMU, MemoryAddress};
 use interrupt;
 use gpu::GPU;
 use machine::Machine;
@@ -1217,7 +1217,7 @@ impl CPU {
                 self.set_sr(&SR::CS, cs);
                 let flags = self.pop16(&mut hw.mmu);
                 self.flags.set_u16(flags);
-                hw.bios.flags_flat = 0;
+                hw.bios.flags_address = MemoryAddress::Unset;
             }
             Op::Retf => {
                 if op.params.count() == 1 {
@@ -1847,7 +1847,7 @@ impl CPU {
 
     // returns the absoute address of CS:IP
     pub fn get_address(&self) -> u32 {
-        MMU::to_flat(self.get_sr(&SR::CS), self.ip)
+        MemoryAddress::RealSegmentOffset(self.get_sr(&SR::CS), self.ip).value()
     }
 
     fn read_u8(&mut self, mmu: &MMU) -> u8 {
@@ -2135,7 +2135,7 @@ impl CPU {
     fn int(&mut self, hw: &mut Hardware, int: u8) {
         let flags = self.flags.u16();
         self.push16(&mut hw.mmu, flags);
-        hw.bios.flags_flat = MMU::to_flat(self.get_sr(&SR::SS), self.get_r16(&R16::SP));
+        hw.bios.flags_address = MemoryAddress::RealSegmentOffset(self.get_sr(&SR::SS), self.get_r16(&R16::SP));
 
         self.flags.interrupt = false;
         self.flags.trap = false;

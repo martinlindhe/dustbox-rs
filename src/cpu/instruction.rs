@@ -5,6 +5,7 @@ use cpu::segment::Segment;
 use cpu::register::{R8, R16, SR, AMode};
 use cpu::op::Op;
 use cpu::parameter::{Parameter, ParameterSet};
+use hex::hex_bytes;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Instruction {
@@ -100,22 +101,14 @@ pub struct InstructionInfo {
 
 impl fmt::Display for InstructionInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let hex = self.to_hex_string(&self.bytes);
         write!(
             f,
             "[{:04X}:{:04X}] {} {}",
             self.segment,
             self.offset,
-            right_pad(&hex, 16),
+            right_pad(&hex_bytes(&self.bytes), 16),
             format!("{}", self.instruction),
         )
-    }
-}
-
-impl InstructionInfo {
-    fn to_hex_string(&self, bytes: &[u8]) -> String {
-        let strs: Vec<String> = bytes.iter().map(|b| format!("{:02X}", b)).collect();
-        strs.join("")
     }
 }
 
