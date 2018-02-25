@@ -81,7 +81,7 @@ pub enum MemoryAddress {
 }
 
 impl MemoryAddress {
-    // translates a segment:offset pair to a physical address
+    /// translates a segment:offset pair to a physical (flat) address
     pub fn value(&self) -> u32 {
         match *self {
             MemoryAddress::RealSegmentOffset(seg, off) => ((seg as u32) << 4) + off as u32,

@@ -203,9 +203,9 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             match cpu.get_r8(&R8::AL) {
                 0x24 => {
                     // VIDEO - GRAPH-MODE CHARGEN - LOAD 8x16 GRAPHICS CHARS (VGA,MCGA)
-                    // BL = row specifier (see AX=1121h)
-                    // Return: Nothing
-                    println!("XXX VIDEO - GRAPH-MODE CHARGEN - LOAD 8x16 GRAPHICS CHARS (VGA,MCGA)");
+                    let bl = cpu.get_r8(&R8::BL);
+                    let dl = cpu.get_r8(&R8::DL);
+                    hw.gpu.load_graphics_chars(&mut hw.mmu, bl, dl);
                 }
                 0x30 => {
                     // VIDEO - GET FONT INFORMATION (EGA, MCGA, VGA)

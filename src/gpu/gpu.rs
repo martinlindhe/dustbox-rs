@@ -190,7 +190,7 @@ impl GPU {
         buf
     }
 
-    // int 10h, ah = 00h
+    /// int 10h, ah = 00h
     pub fn set_mode(&mut self, mmu: &mut MMU, bios: &mut BIOS, mode: u8) {
         let mut found = false;
         for block in &self.modes {
@@ -219,7 +219,7 @@ impl GPU {
         bios.set_video_mode(mmu, &self.mode, clear_mem);
     }
 
-    // int 10h, ah = 02h
+    /// int 10h, ah = 02h
     pub fn set_cursor_pos(&mut self, mmu: &mut MMU, row: u8, col: u8, page: u8) {
         // page = page number:
         //    0-3 in modes 2&3
@@ -248,6 +248,23 @@ impl GPU {
             self.crtc.set_index(0x0F);
             self.crtc.write_current(address as u8);
         }
+    }
+
+    /// int 10h, ax = 1124h
+    /// GRAPH-MODE CHARGEN - LOAD 8x16 GRAPHICS CHARS (VGA,MCGA)
+    pub fn load_graphics_chars(&mut self, mmu: &mut MMU, row: u8, dl: u8) {
+        if !self.card.is_vga() {
+            return;
+        }
+        mmu.write_vec(0x43, self.font_16.value());
+        mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_CHAR_HEIGHT, 16);
+        let val = match row {
+            0x00 => dl - 1, // row 0 = user specified in DL
+            0x01 => 13,
+            0x03 => 42,
+            0x02 | _ => 24,
+        };
+        mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_NB_ROWS, val);
     }
 
     // HACK to have a source of info to toggle CGA status register
