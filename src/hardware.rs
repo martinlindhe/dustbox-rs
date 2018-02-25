@@ -72,6 +72,9 @@ impl Hardware {
                 //  0	A joystick X coordinate	   / A paddle coordinate
                 0 // XXX
             }
+            0x03C7 => self.gpu.dac.get_state(),
+            0x03C8 => self.gpu.dac.get_pel_write_index(),
+            0x03C9 => self.gpu.dac.get_pel_data(),
             0x03DA => self.gpu.read_cga_status_register(),
             _ => {
                 println!("in_u8: unhandled port {:04X}", port);
@@ -115,9 +118,9 @@ impl Hardware {
             }
             0x03B4 => self.gpu.crtc.set_index(data),           // NOTE: mirroring 3d4 is what dosbox does too
             0x03B5 => self.gpu.crtc.write_current(data),
-            0x03C7 => self.gpu.set_pel_address(data),   // XXX unsure if understood correctly
-            0x03C8 => self.gpu.set_pel_address(data),
-            0x03C9 => self.gpu.set_pel_data(data),
+            0x03C7 => self.gpu.dac.set_pel_read_index(data),
+            0x03C8 => self.gpu.dac.set_pel_write_index(data),
+            0x03C9 => self.gpu.dac.set_pel_data(data),
             0x03D4 => self.gpu.crtc.set_index(data),
             0x03D5 => self.gpu.crtc.write_current(data),
             0x03D8 => {

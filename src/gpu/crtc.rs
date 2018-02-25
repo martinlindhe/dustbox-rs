@@ -1,5 +1,5 @@
 #[derive(Clone, Default)]
-pub struct VgaCRTC {
+pub struct CRTC {
     horizontal_total: u8,
     horizontal_display_end: u8,
     start_horizontal_blanking: u8,
@@ -30,7 +30,7 @@ pub struct VgaCRTC {
     read_only: bool,
 }
 
-impl VgaCRTC {
+impl CRTC {
     // 03D4  rW  CRT (6845) register index   (CGA/MCGA/color EGA/color VGA)
     // selects which register (0-11h) is to be accessed through 03D5
     // bit 7-6 =0: (VGA) reserved

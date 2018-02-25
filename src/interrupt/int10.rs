@@ -147,42 +147,42 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
                              cpu.get_r8(&R8::BL),
                              cpu.get_r8(&R8::BH));
                 }
+                0x07 => {
+                    // VIDEO - GET INDIVIDUAL PALETTE REGISTER (VGA,UltraVision v2+)
+                    let reg = cpu.get_r8(&R8::BL);
+                    cpu.set_r8(&R8::BH, hw.gpu.get_individual_palette_register(reg));
+                }
+                0x10 => {
+                    // VIDEO - SET INDIVIDUAL DAC REGISTER (VGA/MCGA)
+                    let index = cpu.get_r8(&R8::BL);
+                    let r = cpu.get_r8(&R8::DH);
+                    let g = cpu.get_r8(&R8::CH);
+                    let b = cpu.get_r8(&R8::CL);
+                    hw.gpu.set_individual_dac_register(&mut hw.mmu, index, r, g, b);
+                }
                 0x12 => {
                     // VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA)
-                    //
-                    // BX = starting color register
-                    // CX = number of registers to set
-                    // ES:DX -> table of 3*CX bytes where each 3 byte group represents one
-                    // byte each of red, green and blue (0-63)
-                    let start = cpu.get_r16(&R16::BX) as usize;
-                    let count = cpu.get_r16(&R16::CX) as usize;
-
-                    // #define VGAREG_DAC_WRITE_ADDRESS       0x3c8
-                    hw.out_u8(0x3C8, start as u8);
-
-                    let es = cpu.get_sr(&SR::ES);
-                    let dx = cpu.get_r16(&R16::DX);
-
-                    for i in start..(start+count) {
-                        let next = (i * 3) as u16;
-                        let r = hw.mmu.read_u8(es, dx + next) ;
-                        let g = hw.mmu.read_u8(es, dx + next + 1);
-                        let b = hw.mmu.read_u8(es, dx + next + 2);
-
-                        // #define VGAREG_DAC_DATA                0x3c9
-                        hw.out_u8(0x3C9, r);
-                        hw.out_u8(0x3C9, g);
-                        hw.out_u8(0x3C9, b);
-                    }
+                    let start = cpu.get_r16(&R16::BX);
+                    let count = cpu.get_r16(&R16::CX);
+                    let seg = cpu.get_sr(&SR::ES);
+                    let off = cpu.get_r16(&R16::DX);
+                    hw.gpu.set_dac_block(&mut hw.mmu, start, count, seg, off);
+                }
+                0x15 => {
+                    // VIDEO - READ INDIVIDUAL DAC REGISTER (VGA/MCGA)
+                    let reg = cpu.get_r8(&R8::BL);
+                    let (r, g, b) = hw.gpu.get_individual_dac_register(reg);
+                    cpu.set_r8(&R8::DH, r);
+                    cpu.set_r8(&R8::CH, g);
+                    cpu.set_r8(&R8::CL, b);
                 }
                 0x17 => {
                     // VIDEO - READ BLOCK OF DAC REGISTERS (VGA/MCGA)
-                    // BX = starting palette register
-                    // CX = number of palette registers to read
-                    // ES:DX -> buffer (3 * CX bytes in size) (see also AX=1012h)
-                    // Return:
-                    // Buffer filled with CX red, green and blue triples
-                    println!("XXX VIDEO - READ BLOCK OF DAC REGISTERS (VGA/MCGA)");
+                    let index = cpu.get_r16(&R16::BX);
+                    let count = cpu.get_r16(&R16::CX);
+                    let seg = cpu.get_sr(&SR::ES);
+                    let off = cpu.get_r16(&R16::DX);
+                    hw.gpu.read_dac_block(&mut hw.mmu, index, count, seg, off);
                 }
                 _ => {
                     println!("int10 error: unknown AH 10, al={:02X}", cpu.get_r8(&R8::AL));

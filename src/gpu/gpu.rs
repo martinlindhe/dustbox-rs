@@ -4,7 +4,8 @@ use std::marker::PhantomData;
 
 use cpu::CPU;
 use memory::mmu::{MMU, MemoryAddress};
-use gpu::palette::{ColorSpace, ega_palette, vga_palette};
+use gpu::palette;
+use gpu::palette::ColorSpace;
 use gpu::palette::ColorSpace::RGB;
 use gpu::font;
 use gpu::video_parameters;
@@ -13,18 +14,23 @@ use gpu::modes::VideoModeBlock;
 use gpu::graphic_card::GraphicCard;
 use bios::BIOS;
 use bios;
-use gpu::crtc::VgaCRTC;
+use gpu::crtc::CRTC;
+use gpu::dac::DAC;
+use gpu::dac;
 
 #[cfg(test)]
 #[path = "./gpu_test.rs"]
 mod gpu_test;
 
 const DEBUG_FONT: bool = false;
+const DEBUG_INTERRUPTS: bool = false;
 
 const ECHO_TELETYPE: bool = false; // if set, character output from dos programs will be echoed to stdout
 
 const CGA_MASKS: [u8; 4]  = [0x3f, 0xcf, 0xf3, 0xfc];
 const CGA_MASKS2: [u8; 8] = [0x7f, 0xbf, 0xdf, 0xef, 0xf7, 0xfb, 0xfd, 0xfe];
+
+const ACTL_MAX_REG: u8 = 0x14;
 
 pub static STATIC_FUNCTIONALITY: [u8; 0x10] = [
  /* 0 */ 0xff,  // All modes supported #1
@@ -45,9 +51,8 @@ pub static STATIC_FUNCTIONALITY: [u8; 0x10] = [
 #[derive(Clone)]
 pub struct GPU {
     pub scanline: u32,
-    pub pal: Vec<ColorSpace>,
-    pub pel_address: u8,            // set by write to 03c8
-    pel_component: usize,           // color component for next out 03c9, 0 = red, 1 = green, 2 = blue
+    pub crtc: CRTC,
+    pub dac: DAC,
     font_8_first: MemoryAddress,
     font_8_second: MemoryAddress,
     pub font_14: MemoryAddress,
@@ -60,7 +65,6 @@ pub struct GPU {
     pub card: GraphicCard,
     pub mode: VideoModeBlock,
     modes: Vec<VideoModeBlock>,
-    pub crtc: VgaCRTC, // out_3d4, out_3d5
 }
 
 impl GPU {
@@ -70,9 +74,8 @@ impl GPU {
         let mode = modes[3].clone();
         GPU {
             scanline: 0,
-            pal: vga_palette().to_vec(),
-            pel_address: 0,
-            pel_component: 0,
+            crtc: CRTC::default(),
+            dac: DAC::default(),
             font_8_first: MemoryAddress::Unset,
             font_8_second: MemoryAddress::Unset,
             font_14: MemoryAddress::Unset,
@@ -85,7 +88,6 @@ impl GPU {
             card: generation,
             mode: mode,
             modes: modes,
-            crtc: VgaCRTC::default(),
         }
     }
 
@@ -147,7 +149,7 @@ impl GPU {
                 // 80 bytes per line (80 * 4 = 320), 4 pixels per byte
                 let offset = (0xB_8000 + ((y%2) * 0x2000) + (80 * (y >> 1)) + (x >> 2)) as usize;
                 let bits = (memory[offset] >> ((3 - (x & 3)) * 2)) & 3; // 2 bits: cga palette to use
-                let pal = &self.pal[pal1_map[bits as usize]];
+                let pal = &self.dac.pal[pal1_map[bits as usize]];
 
                 let dst = (((y * self.mode.swidth) + x) * 3) as usize;
                 if let &RGB(r, g, b) = pal {
@@ -187,7 +189,7 @@ impl GPU {
             for x in 0..self.mode.swidth {
                 let offset = 0xA_0000 + ((y * self.mode.swidth) + x) as usize;
                 let byte = memory[offset];
-                let pal = &self.pal[byte as usize];
+                let pal = &self.dac.pal[byte as usize];
                 let i = ((y * self.mode.swidth + x) * 3) as usize;
                 if let &RGB(r, g, b) = pal {
                     buf[i] = r;
@@ -202,6 +204,10 @@ impl GPU {
     /// int 10h, ah = 00h
     /// SET VIDEO MODE
     pub fn set_mode(&mut self, mmu: &mut MMU, bios: &mut BIOS, mode: u8) {
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ah = 00h: set_mode {:02X}", mode);
+        }
+
         let mut found = false;
         for block in &self.modes {
             if block.mode == mode as u16 {
@@ -214,15 +220,12 @@ impl GPU {
         }
 
         match self.mode.kind {
-            GFXMode::EGA => {
-                self.pal = ega_palette().to_vec();
-            }
-            GFXMode::VGA => {
-                self.pal = vga_palette().to_vec();
-            }
-            _ => {
-                println!("set_mode: unknown palette for video mode {:?}", self.mode.kind);
-            }
+            GFXMode::TEXT => self.dac.pal = palette::text_palette().to_vec(),
+            GFXMode::CGA2 => self.dac.pal = palette::cga_palette_2().to_vec(),
+            GFXMode::CGA4 => self.dac.pal = palette::cga_palette().to_vec(), // XXX is this the right cga pal for this mode?
+            GFXMode::EGA => self.dac.pal = palette::ega_palette().to_vec(),
+            GFXMode::VGA => self.dac.pal = palette::vga_palette().to_vec(),
+            _ => panic!("set_mode: unhandled palette for video mode {:?}", self.mode.kind),
         }
 
         let clear_mem = true;
@@ -248,16 +251,14 @@ impl GPU {
             16 => mmu.write_vec(0x43, &self.font_16),
             _ => {},
         }
-        // FIXME
-        //VGA_DAC_UpdateColorPalette(); // XXX from dosbox: updates their palette cache
-
-        // Tell mouse resolution change
-        //Mouse_NewVideoMode();
     }
 
     /// int 10h, ah = 05h
     /// SELECT ACTIVE DISPLAY PAGE
     pub fn set_active_page(&mut self, mmu: &mut MMU, page: u8) {
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ah = 05h: set_active_page");
+        }
         if page > 7 {
             println!("error: int10_set_active_page page {}", page);
         }
@@ -294,6 +295,9 @@ impl GPU {
     /// int 10h, ah = 02h
     /// SET CURSOR POSITION
     pub fn set_cursor_pos(&mut self, mmu: &mut MMU, row: u8, col: u8, page: u8) {
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ah = 02h: set_cursor_pos");
+        }
         // page = page number:
         //    0-3 in modes 2&3
         //    0-7 in modes 0&1
@@ -326,6 +330,9 @@ impl GPU {
     /// int 10h, ah = 0Ah
     /// WRITE CHARACTER ONLY AT CURSOR POSITION
     pub fn write_char(&mut self, mut mmu: &mut MMU, chr: u16, attr: u8, mut page: u8, mut count: u16, mut showattr: bool) {
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ah = 0Ah: write_char");
+        }
         if !self.mode.is_text() {
             showattr = true;
             match self.card {
@@ -356,6 +363,9 @@ impl GPU {
     /// and scrolling the screen as necessary
     pub fn teletype_output(&mut self, mmu: &mut MMU, chr: u8, page: u8, attr: u8) {
         // BL = foreground color (graphics modes only)
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ah = 0Eh: teletype_output");
+        }
         if ECHO_TELETYPE {
             print!("{}", chr as char);
         }
@@ -514,6 +524,9 @@ impl GPU {
     /// WRITE GRAPHICS PIXEL
     /// color: if bit 7 is set, value is XOR'ed onto screen except in 256-color modes
     pub fn write_pixel(&mut self, mmu: &mut MMU, x: u16, y: u16, _page: u8, mut color: u8) {
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ah = 0Ch: write_pixel");
+        }
         match self.mode.kind {
             GFXMode::TEXT => {}, // Valid only in graphics modes
             GFXMode::CGA4 => {
@@ -559,9 +572,34 @@ impl GPU {
         }
     }
 
+    /// int 10h, ax = 1017h
+    /// READ BLOCK OF DAC REGISTERS (VGA/MCGA)
+    pub fn read_dac_block(&mut self, mmu: &mut MMU, index: u16, mut count: u16, seg: u16, mut off: u16) {
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ax = 1017h: read_dac_block");
+        }
+        // index = starting palette register
+        // count = number of palette registers to read
+        // seg:off -> buffer (3 * CX bytes in size) (see also AX=1012h)
+        // Return: buffer filled with CX red, green and blue triples
+        self.dac.set_pel_read_index(index as u8);
+        while count > 0 {
+            mmu.write_u8(seg, off, self.dac.get_pel_data());
+            off += 1;
+            mmu.write_u8(seg, off, self.dac.get_pel_data());
+            off += 1;
+            mmu.write_u8(seg, off, self.dac.get_pel_data());
+            off += 1;
+            count -= 1;
+        }
+    }
+
     /// int 10h, ax = 1124h
     /// GRAPH-MODE CHARGEN - LOAD 8x16 GRAPHICS CHARS (VGA,MCGA)
     pub fn load_graphics_chars(&mut self, mmu: &mut MMU, row: u8, dl: u8) {
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ax = 1124h: load_graphics_chars");
+        }
         if !self.card.is_vga() {
             return;
         }
@@ -579,7 +617,9 @@ impl GPU {
     /// int 10h, ah = 13h
     /// WRITE STRING (AT and later,EGA)
     pub fn write_string(&mut self, mmu: &mut MMU, mut row: u8, mut col: u8, flag: u8, mut attr: u8, str_seg: u16, mut str_off: u16, mut count: u16, page: u8) {
-        //void INT10_WriteString(Bit8u row,Bit8u col,Bit8u flag,Bit8u attr,PhysPt string,Bit16u count,Bit8u page) {
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ah = 13h: write_string");
+        }
         let cur_row = bios::cursor_pos_row(mmu, page);
         let cur_col = bios::cursor_pos_col(mmu, page);
         if row == 0xFF {
@@ -603,66 +643,129 @@ impl GPU {
         }
     }
 
+    /// int 10h, ax = 1007h
+    /// GET INDIVIDUAL PALETTE REGISTER (VGA,UltraVision v2+)
+    pub fn get_individual_palette_register(&self, _reg: u8) -> u8 {
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ax = 1007h: get_individual_palette_register");
+        }
+        panic!("todo");
+        /*
+        const VGAREG_ACTL_ADDRESS: u16    = 0x3C0;
+        const VGAREG_ACTL_WRITE_DATA: u16 = 0x3C0;
+        const VGAREG_ACTL_READ_DATA: u16  = 0x3C1;
+
+        if reg <= ACTL_MAX_REG {
+            self.reset_actl();
+            IO_Write(VGAREG_ACTL_ADDRESS, reg + 32);
+            let ret = IO_Read(VGAREG_ACTL_READ_DATA);
+            IO_Write(VGAREG_ACTL_WRITE_DATA, ret);
+            ret
+        }
+        0
+        */
+    }
+
+    /// int 10h, ax = 1010h
+    /// SET INDIVIDUAL DAC REGISTER (VGA/MCGA)
+    /// color components in 6-bit values (0-63)
+    pub fn set_individual_dac_register(&mut self, mmu: &mut MMU, index: u8, r: u8, g: u8, b: u8) {
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ax = 1010h: set_individual_dac_register: index {:02X}, rgb = {:02X}, {:02X}, {:02X}", index, r, g, b);
+        }
+        self.dac.set_pel_write_index(index);
+        if (mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_MODESET_CTL) & 0x06) == 0 {
+            self.dac.set_pel_data(r);
+            self.dac.set_pel_data(g);
+            self.dac.set_pel_data(b);
+        } else {
+            // calculate clamped intensity, taken from VGABIOS
+            let i = (( 77 * (r as u32) + 151 * (g as u32) + 28 * (b as u32) ) + 0x80) >> 8;
+            let ic = if i > 0x3F {
+                0x3F
+            } else {
+                ((i as u8) & 0xFF)
+            };
+            self.dac.set_pel_data(ic);
+            self.dac.set_pel_data(ic);
+            self.dac.set_pel_data(ic);
+        }
+    }
+
+    /// int 10, ax = 1012h
+    /// SET BLOCK OF DAC REGISTERS (VGA/MCGA)
+    pub fn set_dac_block(&mut self, mmu: &mut MMU, index: u16, mut count: u16, seg: u16, mut off: u16) {
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ax = 1012h: set_dac_block: index {:04X}, count {} at {:04X}:{:04X}", index, count, seg, off);
+        }
+        // index = starting color register
+        // count = number of registers to set
+        // seg:off -> table of 3*CX bytes where each 3 byte group represents one byte each of red, green and blue (0-63)
+
+        self.dac.set_pel_write_index(index as u8);
+
+        if (mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_MODESET_CTL) & 0x06) == 0 {
+            while count > 0 {
+                let r = mmu.read_u8(seg, off); off += 1;
+                self.dac.set_pel_data(r);
+
+                let g = mmu.read_u8(seg, off); off += 1;
+                self.dac.set_pel_data(g);
+
+                let b = mmu.read_u8(seg, off); off += 1;
+                self.dac.set_pel_data(b);
+                count -= 1;
+            }
+        } else {
+            while count > 0 {
+                let r = mmu.read_u8(seg, off); off += 1;
+                let g = mmu.read_u8(seg, off); off += 1;
+                let b = mmu.read_u8(seg, off); off += 1;
+
+                // calculate clamped intensity, taken from VGABIOS
+                let i = (( 77 * (r as u32) + 151 * (g as u32) + 28 * (b as u32) ) + 0x80) >> 8;
+                let ic = if i > 0x3F {
+                    0x3F
+                } else {
+                    ((i as u8) & 0xFF)
+                };
+                self.dac.set_pel_data(ic);
+                self.dac.set_pel_data(ic);
+                self.dac.set_pel_data(ic);
+                count -= 1;
+            }
+        }
+    }
+
+    /// int 10h, ax = 1015h
+    /// READ INDIVIDUAL DAC REGISTER (VGA/MCGA)
+    pub fn get_individual_dac_register(&mut self, reg: u8) -> (u8, u8, u8) {
+        if DEBUG_INTERRUPTS {
+            println!("int 10h, ax = 1015h: get_individual_dac_register: reg {:02X}", reg);
+        }
+        self.dac.set_pel_read_index(reg);
+        let r = self.dac.get_pel_data();
+        let g = self.dac.get_pel_data();
+        let b = self.dac.get_pel_data();
+        (r, g, b)
+    }
+
+    fn reset_actl(&self) {
+        // 03BA  R-  CRT status register (see #P0656)
+        // 03DA  R-  CGA status register (see #P0818)
+        /*
+        match self.mode.crtc_address() + 6 {
+            0x3BA => panic!("xxx"),
+            0x3DA => self.read_cga_status_register(),
+        }
+        */
+    }
+
     // HACK to have a source of info to toggle CGA status register
     pub fn progress_scanline(&mut self) {
         self.scanline += 1;
         if self.scanline > self.mode.swidth {
             self.scanline = 0;
-        }
-    }
-
-    // (VGA,MCGA) PEL address register (0x03C8)
-    // Sets DAC in write mode and assign start of color register
-    // index (0..255) for following write accesses to 3C9h.
-    // Next access to 03C8h will stop pending mode immediately.
-    pub fn set_pel_address(&mut self, val: u8) {
-        self.pel_address = val;
-    }
-
-    // (VGA,MCGA) PEL data register (0x03C9)
-    // Three consecutive writes in the order: red, green, blue.
-    // The internal DAC index is incremented on every 3rd write.
-    pub fn set_pel_data(&mut self, val: u8) {
-        // map 6-bit color into 8 bits
-        let v = val << 2;
-
-        let addr = self.pel_address;
-        match self.pel_component {
-            0 => self.set_palette_r(addr, v),
-            1 => self.set_palette_g(addr, v),
-            2 => self.set_palette_b(addr, v),
-            _ => {}
-        }
-
-        self.pel_component += 1;
-
-        if self.pel_component > 2 {
-            self.pel_component = 0;
-            self.pel_address = (Wrapping(self.pel_address) + Wrapping(1)).0;
-        }
-    }
-
-    // sets the 0-255 intensity of the red color channel
-    pub fn set_palette_r(&mut self, index: u8, val: u8) {
-        match self.pal[index as usize] {
-            RGB(ref mut r, _, _) => *r = val,
-            _ => {}
-        }
-    }
-
-    // sets the 0-255 intensity of the green color channel
-    pub fn set_palette_g(&mut self, index: u8, val: u8) {
-        match self.pal[index as usize] {
-            RGB(_, ref mut g, _) => *g = val,
-            _ => {}
-        }
-    }
-
-    // sets the 0-255 intensity of the blue color channel
-    pub fn set_palette_b(&mut self, index: u8, val: u8) {
-        match self.pal[index as usize] {
-            RGB(_, _, ref mut b) => *b = val,
-            _ => {}
         }
     }
 
@@ -717,8 +820,7 @@ impl GPU {
     }
 
     fn video_bios_size(&self) -> u16 {
-        // XXX more details in Init_VGABIOS in dosbox-x
-        0x8000
+        0x8000 // XXX
     }
 
     pub fn init(&mut self, mut mmu: &mut MMU) {

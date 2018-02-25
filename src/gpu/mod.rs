@@ -7,3 +7,4 @@ pub mod video_parameters;
 pub mod modes;
 pub mod graphic_card;
 pub mod crtc;
+pub mod dac;

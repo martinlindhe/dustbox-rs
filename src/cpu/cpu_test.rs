@@ -452,14 +452,14 @@ fn can_execute_rep_outsb() {
     ];
     machine.load_com(&code);
 
-    assert_eq!(0, machine.hw.gpu.pel_address);
+    assert_eq!(0, machine.hw.gpu.dac.write_index);
 
     machine.execute_instructions(3);
     machine.execute_instruction(); // rep outsb
-    assert_eq!(0xBE, machine.hw.gpu.pel_address);
+    assert_eq!(0xBE, machine.hw.gpu.dac.write_index);
 
     machine.execute_instruction(); // rep outsb
-    assert_eq!(0x00, machine.hw.gpu.pel_address);
+    assert_eq!(0x00, machine.hw.gpu.dac.write_index);
 
     assert_eq!(0x0, machine.cpu.get_r16(&R16::CX));
 }
@@ -477,9 +477,9 @@ fn can_execute_es_outsb() {
     ];
     machine.load_com(&code);
 
-    assert_eq!(0, machine.hw.gpu.pel_address);
+    assert_eq!(0, machine.hw.gpu.dac.write_index);
     machine.execute_instructions(6);
-    assert_eq!(0x09, machine.hw.gpu.pel_address);
+    assert_eq!(0x09, machine.hw.gpu.dac.write_index);
 }
 
 #[test]

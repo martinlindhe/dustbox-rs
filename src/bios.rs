@@ -119,10 +119,12 @@ impl BIOS {
     }
 }
 
+/// get the cursor x position
 pub fn cursor_pos_col(mmu: &MMU, page: u8) -> u8 {
     return mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + (page as u16 * 2));
 }
 
+/// get the cursor y position
 pub fn cursor_pos_row(mmu: &MMU, page: u8) -> u8 {
     return mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + (page as u16 * 2) + 1);
 }

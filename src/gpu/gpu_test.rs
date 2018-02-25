@@ -15,9 +15,51 @@ use tools;
 use cpu::CPU;
 use machine::Machine;
 use memory::mmu::MMU;
-use cpu::register::{R16, SR};
+use cpu::register::{R8, R16, SR};
 use gpu::modes::VideoModeBlock;
 
+#[test]
+fn can_get_palette_entry() {
+    let mut machine = Machine::new();
+    let code: Vec<u8> = vec![
+        0xB3, 0x03,         // mov bl,0x3
+        0xB8, 0x15, 0x10,   // mov ax,0x1015
+        0xCD, 0x10,         // int 0x10
+    ];
+    machine.load_com(&code);
+
+    machine.execute_instructions(3);
+    machine.execute_instruction(); // trigger the interrupt
+    assert_eq!(0x00, machine.cpu.get_r8(&R8::DH)); // red
+    assert_eq!(0x2A, machine.cpu.get_r8(&R8::CH)); // green
+    assert_eq!(0x2A, machine.cpu.get_r8(&R8::CL)); // blue
+}
+
+#[test]
+fn can_set_palette_entry() {
+    let mut machine = Machine::new();
+    let code: Vec<u8> = vec![
+        0xBB, 0x03, 0x00,   // mov bx,0x3
+        0xB5, 0x3F,         // mov ch,0x3f      ; red
+        0xB1, 0x3F,         // mov cl,0x3f      ; green
+        0xB6, 0x3F,         // mov dh,0x3f      ; blue
+        0xB8, 0x10, 0x10,   // mov ax,0x1010
+        0xCD, 0x10,         // int 0x10
+
+        0xB3, 0x03,         // mov bl,0x3
+        0xB8, 0x15, 0x10,   // mov ax,0x1015
+        0xCD, 0x10,         // int 0x10
+    ];
+    machine.load_com(&code);
+
+    machine.execute_instructions(6);
+    machine.execute_instruction(); // trigger the interrupt
+    machine.execute_instructions(3);
+    machine.execute_instruction(); // trigger the interrupt
+    assert_eq!(0x3F, machine.cpu.get_r8(&R8::DH)); // red
+    assert_eq!(0x3F, machine.cpu.get_r8(&R8::CH)); // green
+    assert_eq!(0x3F, machine.cpu.get_r8(&R8::CL)); // blue
+}
 
 #[test]
 fn can_get_font_info() {
