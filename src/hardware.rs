@@ -113,15 +113,13 @@ impl Hardware {
             0x0201 => {
                 // W  fire joystick's four one-shots
             }
-            0x03C7 => self.gpu.set_pel_address(data), // XXX unsure if understood correctly
+            0x03B4 => self.gpu.crtc.set_index(data),           // NOTE: mirroring 3d4 is what dosbox does too
+            0x03B5 => self.gpu.crtc.write_current(data),
+            0x03C7 => self.gpu.set_pel_address(data),   // XXX unsure if understood correctly
             0x03C8 => self.gpu.set_pel_address(data),
             0x03C9 => self.gpu.set_pel_data(data),
-            0x03D4 => {
-                // CRT (6845) register index XXX
-            }
-            0x03D5 => {
-                // CRT (6845) data register XXX
-            }
+            0x03D4 => self.gpu.crtc.set_index(data),
+            0x03D5 => self.gpu.crtc.write_current(data),
             0x03D8 => {
                 // RW  CGA mode control register  (except PCjr) (see #P0817)
 	            // cannot be found on native color EGA, color VGA, but on most clones
@@ -167,25 +165,8 @@ impl Hardware {
             }
             PORT 03D4-03D5 - COLOR VIDEO - CRT CONTROL REGISTERS
             */
-            0x03D4 => {
-                // 03D4  rW  CRT (6845) register index   (CGA/MCGA/color EGA/color VGA)
-              // selects which register (0-11h) is to be accessed through 03D5
-               // this port is r/w on some VGA, e.g. ET4000
-                //        bit 7-6 =0: (VGA) reserved
-                //        bit 5   =0: (VGA) reserved for testage
-               //        bit 4-0   : selects which register is to be accessed through 03D5
-            }
-            /*
-                03D5  -W  CRT (6845) data register   (CGA/MCGA/color EGA/color VGA) (see #P0708)
-                    selected by PORT 03D4h. registers 0C-0F may be read
-                    (see also PORT 03B5h)
-                    MCGA, native EGA and VGA use very different defaults from those
-                    mentioned for the other adapters; for additional notes and
-                    registers 00h-0Fh and EGA/VGA registers 10h-18h and ET4000
-                    registers 32h-37h see PORT 03B5h (see #P0654)
-                    registers 10h-11h on CGA, EGA, VGA and 12h-14h on EGA, VGA are
-                    conflictive with MCGA (see #P0710)
-            */
+            0x03D4 => self.gpu.crtc.set_index(data as u8),
+            0x03D5 => self.gpu.crtc.write_current(data as u8),
             _ => println!("out_u16: unhandled port {:04X} = {:04X}", port, data),
         }
     }

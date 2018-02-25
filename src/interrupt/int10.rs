@@ -31,7 +31,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             let page = cpu.get_r8(&R8::BH);
             let row = cpu.get_r8(&R8::DH);
             let column = cpu.get_r8(&R8::DL);
-            println!("XXX set cursor position, page={}, row={}, column={}", page, row, column);
+            hw.gpu.set_cursor_pos(&mut hw.mmu, row, column, page);
         }
         0x06 => {
             // VIDEO - SCROLL UP WINDOW

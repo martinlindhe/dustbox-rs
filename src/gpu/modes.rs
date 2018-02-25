@@ -50,65 +50,79 @@ impl VideoModeBlock {
             _ => panic!("unhandled {:?}", card)
         }
     }
+
+    pub fn crtc_address(&self) -> u16 {
+        if self.mono_mode() {
+            // MDA CRT index register (MDA/mono EGA/mono VGA)
+            0x3B4
+        } else {
+            // CRT (6845) register index (CGA/MCGA/color EGA/color VGA)
+            0x3D4
+        }
+    }
+
+    pub fn mono_mode(&self) -> bool {
+        self.mode == 0x07 || self.mode == 0x0F
+    }
 }
 
 #[derive(Clone, PartialEq)]
 pub struct SpecialMode {
-    pub EGA_HALF_CLOCK: bool,
-    pub DOUBLESCAN: bool,
-    pub VGA_PIXEL_DOUBLE: bool,
-    pub S3_PIXEL_DOUBLE: bool,
-    pub REPEAT1: bool,
-    pub CGA_SYNCDOUBLE: bool,
+    pub ega_half_clock: bool,
+    pub doublescan: bool,
+    pub vga_pixel_double: bool,
+    pub s3_pixel_double: bool,
+    pub repeat1: bool,
+    pub cga_syncdouble: bool,
 }
 
 impl Default for SpecialMode {
     fn default() -> Self {
         SpecialMode {
-            EGA_HALF_CLOCK: false,
-            DOUBLESCAN: false,
-            VGA_PIXEL_DOUBLE: false,
-            S3_PIXEL_DOUBLE: false,
-            REPEAT1: false,
-            CGA_SYNCDOUBLE: false,
+            ega_half_clock: false,
+            doublescan: false,
+            vga_pixel_double: false,
+            s3_pixel_double: false,
+            repeat1: false,
+            cga_syncdouble: false,
         }
     }
 }
 
 // list of video modes based on dosbox-x, int10_modes.cpp
 pub fn ega_mode_block() -> [VideoModeBlock; 12] {[
-    VideoModeBlock{mode: 0x000, kind: GFXMode::TEXT, swidth: 320, sheight: 350, twidth: 40, theight: 25, cwidth: 8, cheight: 14, ptotal: 8, pstart: 0xB8000, plength: 0x0800, htotal: 50,  vtotal: 366, hdispend: 40, vdispend: 350, special: SpecialMode{EGA_HALF_CLOCK: true, ..Default::default()}},
-    VideoModeBlock{mode: 0x001, kind: GFXMode::TEXT, swidth: 320, sheight: 350, twidth: 40, theight: 25, cwidth: 8, cheight: 14, ptotal: 8, pstart: 0xB8000, plength: 0x0800, htotal: 50,  vtotal: 366, hdispend: 40, vdispend: 350, special: SpecialMode{EGA_HALF_CLOCK: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x000, kind: GFXMode::TEXT, swidth: 320, sheight: 350, twidth: 40, theight: 25, cwidth: 8, cheight: 14, ptotal: 8, pstart: 0xB8000, plength: 0x0800, htotal: 50,  vtotal: 366, hdispend: 40, vdispend: 350, special: SpecialMode{ega_half_clock: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x001, kind: GFXMode::TEXT, swidth: 320, sheight: 350, twidth: 40, theight: 25, cwidth: 8, cheight: 14, ptotal: 8, pstart: 0xB8000, plength: 0x0800, htotal: 50,  vtotal: 366, hdispend: 40, vdispend: 350, special: SpecialMode{ega_half_clock: true, ..Default::default()}},
     VideoModeBlock{mode: 0x002, kind: GFXMode::TEXT, swidth: 640, sheight: 350, twidth: 80, theight: 25, cwidth: 8, cheight: 14, ptotal: 8, pstart: 0xB8000, plength: 0x1000, htotal: 96,  vtotal: 366, hdispend: 80, vdispend: 350, special: SpecialMode::default()},
     VideoModeBlock{mode: 0x003, kind: GFXMode::TEXT, swidth: 640, sheight: 350, twidth: 80, theight: 25, cwidth: 8, cheight: 14, ptotal: 8, pstart: 0xB8000, plength: 0x1000, htotal: 96,  vtotal: 366, hdispend: 80, vdispend: 350, special: Default::default()},
-    VideoModeBlock{mode: 0x004, kind: GFXMode::CGA4, swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xB8000, plength: 0x4000, htotal: 60,  vtotal: 262, hdispend: 40, vdispend: 200, special: SpecialMode{EGA_HALF_CLOCK: true, REPEAT1: true, ..Default::default()}},
-    VideoModeBlock{mode: 0x005, kind: GFXMode::CGA4, swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xB8000, plength: 0x4000, htotal: 60,  vtotal: 262, hdispend: 40, vdispend: 200, special: SpecialMode{EGA_HALF_CLOCK: true, REPEAT1: true, ..Default::default()}},
-    VideoModeBlock{mode: 0x006, kind: GFXMode::CGA2, swidth: 640, sheight: 200, twidth: 80, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xB8000, plength: 0x4000, htotal: 120, vtotal: 262, hdispend: 80, vdispend: 200, special: SpecialMode{REPEAT1: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x004, kind: GFXMode::CGA4, swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xB8000, plength: 0x4000, htotal: 60,  vtotal: 262, hdispend: 40, vdispend: 200, special: SpecialMode{ega_half_clock: true, repeat1: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x005, kind: GFXMode::CGA4, swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xB8000, plength: 0x4000, htotal: 60,  vtotal: 262, hdispend: 40, vdispend: 200, special: SpecialMode{ega_half_clock: true, repeat1: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x006, kind: GFXMode::CGA2, swidth: 640, sheight: 200, twidth: 80, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xB8000, plength: 0x4000, htotal: 120, vtotal: 262, hdispend: 80, vdispend: 200, special: SpecialMode{repeat1: true, ..Default::default()}},
     VideoModeBlock{mode: 0x007, kind: GFXMode::TEXT, swidth: 720, sheight: 350, twidth: 80, theight: 25, cwidth: 9, cheight: 14, ptotal: 8, pstart: 0xB0000, plength: 0x1000, htotal: 120, vtotal: 440, hdispend: 80, vdispend: 350, special: Default::default()},
 
-    VideoModeBlock{mode: 0x00D, kind: GFXMode::EGA,  swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 8, pstart: 0xA0000, plength: 0x2000, htotal: 60,  vtotal: 262, hdispend: 40, vdispend: 200, special: SpecialMode{EGA_HALF_CLOCK: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x00D, kind: GFXMode::EGA,  swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 8, pstart: 0xA0000, plength: 0x2000, htotal: 60,  vtotal: 262, hdispend: 40, vdispend: 200, special: SpecialMode{ega_half_clock: true, ..Default::default()}},
     VideoModeBlock{mode: 0x00E, kind: GFXMode::EGA,  swidth: 640, sheight: 200, twidth: 80, theight: 25, cwidth: 8, cheight: 8,  ptotal: 4, pstart: 0xA0000, plength: 0x4000, htotal: 120, vtotal: 262, hdispend: 80, vdispend: 200, special: Default::default()},
     VideoModeBlock{mode: 0x00F, kind: GFXMode::EGA,  swidth: 640, sheight: 350, twidth: 80, theight: 25, cwidth: 8, cheight: 14, ptotal: 2, pstart: 0xA0000, plength: 0x8000, htotal: 96,  vtotal: 366, hdispend: 80, vdispend: 350, special: Default::default()},
     VideoModeBlock{mode: 0x010, kind: GFXMode::EGA,  swidth: 640, sheight: 350, twidth: 80, theight: 25, cwidth: 8, cheight: 14, ptotal: 2, pstart: 0xA0000, plength: 0x8000, htotal: 96,  vtotal: 366, hdispend: 80, vdispend: 350, special: Default::default()},
 ]}
 
 pub fn vga_mode_block() -> [VideoModeBlock; 15] {[
-    VideoModeBlock{mode: 0x000, kind: GFXMode::TEXT, swidth: 360, sheight: 400, twidth: 40, theight: 25, cwidth: 9, cheight: 16, ptotal: 8, pstart: 0xB8000, plength: 0x0800, htotal: 50,  vtotal: 449, hdispend: 40, vdispend: 400, special: SpecialMode{EGA_HALF_CLOCK: true, ..Default::default()}},
-    VideoModeBlock{mode: 0x001, kind: GFXMode::TEXT, swidth: 360, sheight: 400, twidth: 40, theight: 25, cwidth: 9, cheight: 16, ptotal: 8, pstart: 0xB8000, plength: 0x0800, htotal: 50,  vtotal: 449, hdispend: 40, vdispend: 400, special: SpecialMode{EGA_HALF_CLOCK: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x000, kind: GFXMode::TEXT, swidth: 360, sheight: 400, twidth: 40, theight: 25, cwidth: 9, cheight: 16, ptotal: 8, pstart: 0xB8000, plength: 0x0800, htotal: 50,  vtotal: 449, hdispend: 40, vdispend: 400, special: SpecialMode{ega_half_clock: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x001, kind: GFXMode::TEXT, swidth: 360, sheight: 400, twidth: 40, theight: 25, cwidth: 9, cheight: 16, ptotal: 8, pstart: 0xB8000, plength: 0x0800, htotal: 50,  vtotal: 449, hdispend: 40, vdispend: 400, special: SpecialMode{ega_half_clock: true, ..Default::default()}},
     VideoModeBlock{mode: 0x002, kind: GFXMode::TEXT, swidth: 720, sheight: 400, twidth: 80, theight: 25, cwidth: 9, cheight: 16, ptotal: 8, pstart: 0xB8000, plength: 0x1000, htotal: 100, vtotal: 449, hdispend: 80, vdispend: 400, special: Default::default()},
     VideoModeBlock{mode: 0x003, kind: GFXMode::TEXT, swidth: 720, sheight: 400, twidth: 80, theight: 25, cwidth: 9, cheight: 16, ptotal: 8, pstart: 0xB8000, plength: 0x1000, htotal: 100, vtotal: 449, hdispend: 80, vdispend: 400, special: Default::default()},
-    VideoModeBlock{mode: 0x004, kind: GFXMode::CGA4, swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xB8000, plength: 0x4000, htotal: 50,  vtotal: 449, hdispend: 40, vdispend: 400, special: SpecialMode{EGA_HALF_CLOCK: true, DOUBLESCAN: true, REPEAT1: true, ..Default::default()}},
-    VideoModeBlock{mode: 0x005, kind: GFXMode::CGA4, swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xB8000, plength: 0x4000, htotal: 50,  vtotal: 449, hdispend: 40, vdispend: 400, special: SpecialMode{EGA_HALF_CLOCK: true, DOUBLESCAN: true, REPEAT1: true, ..Default::default()}},
-    VideoModeBlock{mode: 0x006, kind: GFXMode::CGA2, swidth: 640, sheight: 200, twidth: 80, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xB8000, plength: 0x4000, htotal: 100, vtotal: 449, hdispend: 80, vdispend: 400, special: SpecialMode{DOUBLESCAN: true, REPEAT1: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x004, kind: GFXMode::CGA4, swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xB8000, plength: 0x4000, htotal: 50,  vtotal: 449, hdispend: 40, vdispend: 400, special: SpecialMode{ega_half_clock: true, doublescan: true, repeat1: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x005, kind: GFXMode::CGA4, swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xB8000, plength: 0x4000, htotal: 50,  vtotal: 449, hdispend: 40, vdispend: 400, special: SpecialMode{ega_half_clock: true, doublescan: true, repeat1: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x006, kind: GFXMode::CGA2, swidth: 640, sheight: 200, twidth: 80, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xB8000, plength: 0x4000, htotal: 100, vtotal: 449, hdispend: 80, vdispend: 400, special: SpecialMode{doublescan: true, repeat1: true, ..Default::default()}},
     VideoModeBlock{mode: 0x007, kind: GFXMode::TEXT, swidth: 720, sheight: 400, twidth: 80, theight: 25, cwidth: 9, cheight: 16, ptotal: 8, pstart: 0xB0000, plength: 0x1000, htotal: 100, vtotal: 449, hdispend: 80, vdispend: 400, special: Default::default()},
 
-    VideoModeBlock{mode: 0x00D, kind: GFXMode::EGA,  swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 8, pstart: 0xA0000, plength: 0x2000, htotal: 50,  vtotal: 449, hdispend: 40, vdispend: 400, special: SpecialMode{EGA_HALF_CLOCK: true, DOUBLESCAN: true, ..Default::default()}},
-    VideoModeBlock{mode: 0x00E, kind: GFXMode::EGA,  swidth: 640, sheight: 200, twidth: 80, theight: 25, cwidth: 8, cheight: 8,  ptotal: 4, pstart: 0xA0000, plength: 0x4000, htotal: 100, vtotal: 449, hdispend: 80, vdispend: 400, special: SpecialMode{DOUBLESCAN: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x00D, kind: GFXMode::EGA,  swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 8, pstart: 0xA0000, plength: 0x2000, htotal: 50,  vtotal: 449, hdispend: 40, vdispend: 400, special: SpecialMode{ega_half_clock: true, doublescan: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x00E, kind: GFXMode::EGA,  swidth: 640, sheight: 200, twidth: 80, theight: 25, cwidth: 8, cheight: 8,  ptotal: 4, pstart: 0xA0000, plength: 0x4000, htotal: 100, vtotal: 449, hdispend: 80, vdispend: 400, special: SpecialMode{doublescan: true, ..Default::default()}},
     VideoModeBlock{mode: 0x00F, kind: GFXMode::EGA,  swidth: 640, sheight: 350, twidth: 80, theight: 25, cwidth: 8, cheight: 14, ptotal: 2, pstart: 0xA0000, plength: 0x8000, htotal: 100, vtotal: 449, hdispend: 80, vdispend: 350, special: Default::default()},
     VideoModeBlock{mode: 0x010, kind: GFXMode::EGA,  swidth: 640, sheight: 350, twidth: 80, theight: 25, cwidth: 8, cheight: 14, ptotal: 2, pstart: 0xA0000, plength: 0x8000, htotal: 100, vtotal: 449, hdispend: 80, vdispend: 350, special: Default::default()},
     VideoModeBlock{mode: 0x011, kind: GFXMode::EGA,  swidth: 640, sheight: 480, twidth: 80, theight: 30, cwidth: 8, cheight: 16, ptotal: 1, pstart: 0xA0000, plength: 0xA000, htotal: 100, vtotal: 525, hdispend: 80, vdispend: 480, special: Default::default()},
     VideoModeBlock{mode: 0x012, kind: GFXMode::EGA,  swidth: 640, sheight: 480, twidth: 80, theight: 30, cwidth: 8, cheight: 16, ptotal: 1, pstart: 0xA0000, plength: 0xA000, htotal: 100, vtotal: 525, hdispend: 80, vdispend: 480, special: Default::default()},
-    VideoModeBlock{mode: 0x013, kind: GFXMode::VGA,  swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xA0000, plength: 0x2000, htotal: 100, vtotal: 449, hdispend: 80, vdispend: 400, special: SpecialMode{REPEAT1: true, ..Default::default()}},
+    VideoModeBlock{mode: 0x013, kind: GFXMode::VGA,  swidth: 320, sheight: 200, twidth: 40, theight: 25, cwidth: 8, cheight: 8,  ptotal: 1, pstart: 0xA0000, plength: 0x2000, htotal: 100, vtotal: 449, hdispend: 80, vdispend: 400, special: SpecialMode{repeat1: true, ..Default::default()}},
     /*
     {0x054  ,M_TEXT   ,1056,344, 132,43, 8,  8, 1 ,0xB8000 ,0x4000, 160, 449, 132,344, 0   },
     {0x055  ,M_TEXT   ,1056,400, 132,25, 8, 16, 1 ,0xB8000 ,0x2000, 160, 449, 132,400, 0   },

@@ -12,6 +12,7 @@ use gpu::modes::GFXMode::*;
 use gpu::modes::VideoModeBlock;
 use gpu::graphic_card::GraphicCard;
 use bios::BIOS;
+use gpu::crtc::VgaCRTC;
 
 #[cfg(test)]
 #[path = "./gpu_test.rs"]
@@ -51,6 +52,7 @@ pub struct GPU {
     pub card: GraphicCard,
     pub mode: VideoModeBlock,
     modes: Vec<VideoModeBlock>,
+    pub crtc: VgaCRTC, // out_3d4, out_3d5
 }
 
 impl GPU {
@@ -75,6 +77,7 @@ impl GPU {
             card: generation,
             mode: mode,
             modes: modes,
+            crtc: VgaCRTC::default(),
         }
     }
 
@@ -187,7 +190,7 @@ impl GPU {
         buf
     }
 
-    // int 10, ah = 00h
+    // int 10h, ah = 00h
     pub fn set_mode(&mut self, mmu: &mut MMU, bios: &mut BIOS, mode: u8) {
         let mut found = false;
         for block in &self.modes {
@@ -214,6 +217,37 @@ impl GPU {
 
         let clear_mem = true;
         bios.set_video_mode(mmu, &self.mode, clear_mem);
+    }
+
+    // int 10h, ah = 02h
+    pub fn set_cursor_pos(&mut self, mmu: &mut MMU, row: u8, col: u8, page: u8) {
+        // page = page number:
+        //    0-3 in modes 2&3
+        //    0-7 in modes 0&1
+        //    0 in graphics modes
+        // row = 0 is top
+        // col = column (0 is left)
+        if page > 7 {
+            println!("error: set_cursor_pos page {}", page);
+        }
+        // BIOS cursor pos
+        let cursor_ofs = (page * 2) as u16;
+        mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + cursor_ofs, col);
+        mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + cursor_ofs + 1, row);
+
+        let current = mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_PAGE);
+        if page == current {
+            // Set the hardware cursor
+            let ncols = mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS);
+
+            // Calculate the address knowing nbcols nbrows and page num
+            // NOTE: OFFSET_CURRENT_START counts in colour/flag pairs
+            let address = (ncols * row as u16) + col as u16 + mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_CURRENT_START) / 2;
+            self.crtc.set_index(0x0E);
+            self.crtc.write_current((address >> 8) as u8);
+            self.crtc.set_index(0x0F);
+            self.crtc.write_current(address as u8);
+        }
     }
 
     // HACK to have a source of info to toggle CGA status register

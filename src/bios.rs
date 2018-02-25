@@ -22,7 +22,7 @@ impl BIOS {
     pub const DATA_CURSOR_POS: u16    = 0x0050;
     pub const DATA_CURSOR_TYPE: u16   = 0x0060;
     pub const DATA_CURRENT_PAGE: u16  = 0x0062;
-    pub const DATA_CRTC_ADDRESS: u16  = 0x0063;   // value is a port?!?
+    pub const DATA_CRTC_ADDRESS: u16  = 0x0063;
     pub const DATA_CURRENT_MSR: u16   = 0x0065;
     pub const DATA_CURRENT_PAL: u16   = 0x0066;
     pub const DATA_NB_ROWS: u16       = 0x0084;
@@ -52,12 +52,7 @@ impl BIOS {
         }
         mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS, mode.twidth as u16);
         mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_PAGE_SIZE, mode.plength as u16);
-        let crtc_address = if mode.mode == 7 || mode.mode == 0x0F {
-            0x3B4   // MDA CRT index register	 (MDA/mono EGA/mono VGA)
-        } else {
-            0x3D4   // CRT (6845) register index   (CGA/MCGA/color EGA/color VGA)
-        };
-        mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_CRTC_ADDRESS, crtc_address);
+        mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_CRTC_ADDRESS, mode.crtc_address());
         mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_NB_ROWS, (mode.theight - 1) as u8);
         mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_CHAR_HEIGHT, mode.cheight as u16);
         let video_ctl = 0x60 | if clear_mem {

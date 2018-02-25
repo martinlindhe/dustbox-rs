@@ -91,7 +91,7 @@ impl Interface {
                 //but it's stupid, and we shouldn't do this
                 let mem = app.machine.hw.mmu.dump_mem();
                 let frame = app.machine.hw.gpu.render_frame(&mem);
-                draw_canvas(ctx, frame, app.machine.hw.gpu.width, app.machine.hw.gpu.height);
+                draw_canvas(ctx, frame, app.machine.hw.gpu.mode.swidth, app.machine.hw.gpu.mode.sheight);
                 ctx.paint();
                 Inhibit(false)
             });
@@ -291,7 +291,7 @@ impl Interface {
 // render video frame to canvas `c`
 fn draw_canvas(c: &cairo::Context, buf: Vec<u8>, width: u32, height: u32) {
     if buf.is_empty() {
-        println!("draw_canvas: no buffer to draw!");
+        // println!("draw_canvas: no buffer to draw!");
         return;
     }
     let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(
