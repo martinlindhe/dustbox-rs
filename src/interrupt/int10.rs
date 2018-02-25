@@ -116,6 +116,14 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
                 }
             }
         }
+        0x0C => {
+            // VIDEO - WRITE GRAPHICS PIXEL
+            let page = cpu.get_r8(&R8::BH);
+            let color = cpu.get_r8(&R8::AL);
+            let col = cpu.get_r16(&R16::CX);
+            let row = cpu.get_r16(&R16::DX);
+            hw.gpu.put_pixel(&mut hw.mmu, col, row, page, color);
+        }
         0x0E => {
             // VIDEO - TELETYPE OUTPUT
             // Display a character on the screen, advancing the cursor

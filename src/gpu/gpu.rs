@@ -8,7 +8,7 @@ use gpu::palette::{ColorSpace, ega_palette, vga_palette};
 use gpu::palette::ColorSpace::RGB;
 use gpu::font;
 use gpu::video_parameters;
-use gpu::modes::GFXMode::*;
+use gpu::modes::GFXMode;
 use gpu::modes::VideoModeBlock;
 use gpu::graphic_card::GraphicCard;
 use bios::BIOS;
@@ -204,10 +204,10 @@ impl GPU {
         }
 
         match self.mode.kind {
-            EGA => {
+            GFXMode::EGA => {
                 self.pal = ega_palette().to_vec();
             }
-            VGA => {
+            GFXMode::VGA => {
                 self.pal = vga_palette().to_vec();
             }
             _ => {
@@ -247,6 +247,17 @@ impl GPU {
             self.crtc.write_current((address >> 8) as u8);
             self.crtc.set_index(0x0F);
             self.crtc.write_current(address as u8);
+        }
+    }
+
+    /// int 10h, ah = 0Ch
+    /// WRITE GRAPHICS PIXEL
+    /// color: if bit 7 is set, value is XOR'ed onto screen except in 256-color modes
+    pub fn put_pixel(&mut self, mmu: &mut MMU, x: u16, y: u16, _page: u8, color: u8) {
+        match self.mode.kind {
+            GFXMode::TEXT => {}, // Valid only in graphics modes
+            GFXMode::VGA => mmu.write_u8(0xA000, y * 320 + x, color),
+            _ => panic!("put_pixel TODO unimplemented mode {:?}", self.mode.kind),
         }
     }
 
