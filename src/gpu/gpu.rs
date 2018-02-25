@@ -21,7 +21,7 @@ mod gpu_test;
 
 const DEBUG_FONT: bool = false;
 
-const ECHO_TELETYPE: bool = true; // if set, character output from dos programs will be echoed to stdout
+const ECHO_TELETYPE: bool = false; // if set, character output from dos programs will be echoed to stdout
 
 const CGA_MASKS: [u8; 4]  = [0x3f, 0xcf, 0xf3, 0xfc];
 const CGA_MASKS2: [u8; 8] = [0x7f, 0xbf, 0xdf, 0xef, 0xf7, 0xfb, 0xfd, 0xfe];
@@ -354,17 +354,80 @@ impl GPU {
     /// TELETYPE OUTPUT
     /// Display a character on the screen, advancing the cursor
     /// and scrolling the screen as necessary
-    pub fn teletype_output(&mut self, chr: u8, _page: u8, _color: u8) {
+    pub fn teletype_output(&mut self, mmu: &mut MMU, chr: u8, page: u8, attr: u8) {
         // BL = foreground color (graphics modes only)
         if ECHO_TELETYPE {
             print!("{}", chr as char);
         }
-
-        // XXX code in gpu branch:
-        //self.teletype_output_attr(chr, attr, self.mode.kind != GFXMode::TEXT);
+        let use_attr = self.mode.kind != GFXMode::TEXT;
+        self.teletype_output_attr(mmu, chr, attr, page, use_attr);
     }
 
-    fn write_char_internal(&mut self, mmu: &mut MMU, col: u16, row: u16, page: u8, mut chr: u16, mut attr: u8, useattr: bool) {
+    fn teletype_output_attr(&mut self, mmu: &mut MMU, chr: u8, attr: u8, page: u8, use_attr: bool) {
+        let ncols = mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS);
+        let nrows = mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_ROWS) + 1;
+        let mut cur_row = bios::cursor_pos_row(mmu, page) as u16;
+        let mut cur_col = bios::cursor_pos_col(mmu, page) as u16;
+        match chr {
+            /*
+            7 => {
+                // enable speaker
+                hw.out_u8(0x61, IO_Read(0x61) | 0x3);
+                for (Bitu i=0; i < 333; i++) {
+                    CALLBACK_Idle();
+                }
+                hw.out_u8(0x61, IO_Read(0x61) & ~0x3);
+            }
+            */
+            8 => {
+                if cur_col > 0 {
+                    cur_col -= 1;
+                }
+            }
+            b'\r' => {
+                cur_col = 0;
+            }
+            b'\n' => {
+                // cur_col=0; //Seems to break an old chess game
+                cur_row += 1;
+            }
+            /*
+            b'\t' => {
+                do {
+                    INT10_TeletypeOutputAttr(' ',attr,useattr,page);
+                    cur_row = cursor_pos_row(page);
+                    cur_col = CURSOR_POS_COL(page);
+                } while (cur_col % 8);
+            }
+            */
+            _ => {
+                self.write_char_internal(mmu, cur_col, cur_row, page, chr as u16, attr, use_attr);
+                cur_col += 1;
+            }
+        }
+        if cur_col == ncols {
+            cur_col = 0;
+            cur_row += 1;
+        }
+        // Do we need to scroll ?
+        if cur_row == nrows {
+            // Fill with black on non-text modes and with 0x7 on textmode
+
+            // XXX in gpu branch:
+            /*
+            let fill = if self.mode.kind == GFXMode::TEXT {
+                7
+            } else {
+                0
+            };
+            int10_scroll_window(hw, 0, 0, (nrows-1) as u8, (ncols-1) as u8, -1, fill, page);
+            */
+            cur_row -= 1;
+        }
+        self.set_cursor_pos(mmu, cur_row as u8, cur_col as u8, page);
+    }
+
+    fn write_char_internal(&mut self, mmu: &mut MMU, col: u16, row: u16, page: u8, mut chr: u16, mut attr: u8, use_attr: bool) {
         chr &= 0xFF;
         let cheight = mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CHAR_HEIGHT);
         let (fontdata_seg, mut fontdata_off) = match self.mode.kind {
@@ -373,7 +436,7 @@ impl GPU {
                 address += ((row * mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS) + col) * 2) as u32;
                 let dst = self.mode.pstart + address;
                 mmu.memory.borrow_mut().write_u8(dst, chr as u8);
-                if useattr {
+                if use_attr {
                     mmu.memory.borrow_mut().write_u8(dst + 1, attr);
                 }
                 (0, 0)
@@ -393,7 +456,7 @@ impl GPU {
             }
         };
 
-        if !useattr {
+        if !use_attr {
             attr = match self.mode.kind {
                 GFXMode::CGA4 => 0x3,
                 GFXMode::CGA2 => 0x1,
@@ -511,6 +574,33 @@ impl GPU {
             0x02 | _ => 24,
         };
         mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_NB_ROWS, val);
+    }
+
+    /// int 10h, ah = 13h
+    /// WRITE STRING (AT and later,EGA)
+    pub fn write_string(&mut self, mmu: &mut MMU, mut row: u8, mut col: u8, flag: u8, mut attr: u8, str_seg: u16, mut str_off: u16, mut count: u16, page: u8) {
+        //void INT10_WriteString(Bit8u row,Bit8u col,Bit8u flag,Bit8u attr,PhysPt string,Bit16u count,Bit8u page) {
+        let cur_row = bios::cursor_pos_row(mmu, page);
+        let cur_col = bios::cursor_pos_col(mmu, page);
+        if row == 0xFF {
+            // use current cursor position
+            row = cur_row;
+            col = cur_col;
+        }
+        self.set_cursor_pos(mmu, row, col, page);
+        while count > 0 {
+            let chr = mmu.read_u8(str_seg, str_off);
+            str_off += 1;
+            if flag & 2 != 0 {
+                attr = mmu.read_u8(str_seg, str_off);
+                str_off += 1;
+            };
+            self.teletype_output_attr(mmu, chr, attr, page, true);
+            count -= 1;
+        }
+        if flag & 1 == 0 {
+            self.set_cursor_pos(mmu, cur_row, cur_col, page);
+        }
     }
 
     // HACK to have a source of info to toggle CGA status register

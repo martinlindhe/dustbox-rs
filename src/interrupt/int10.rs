@@ -123,7 +123,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             let chr = cpu.get_r8(&R8::AL);
             let page = cpu.get_r8(&R8::BH);
             let color = cpu.get_r8(&R8::BL);
-            hw.gpu.teletype_output(chr, page, color);
+            hw.gpu.teletype_output(&mut hw.mmu, chr, page, color);
         }
         0x0F => {
             // VIDEO - GET CURRENT VIDEO MODE
@@ -243,18 +243,15 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
         }
         0x13 => {
             // VIDEO - WRITE STRING (AT and later,EGA)
-            //
-            // AH = 13h
-            // AL = write mode:
-            //      bit 0: Update cursor after writing
-            //      bit 1: String contains alternating characters and attributes
-            //      bits 2-7: Reserved (0).
-            // BH = page number.
-            // BL = attribute if string contains only characters.
-            // CX = number of characters in string.
-            // DH,DL = row,column at which to start writing.
-            // ES:BP -> string to write
-            println!("XXX int10: VIDEO - WRITE STRING unhandled");
+            let row = cpu.get_r8(&R8::DH);
+            let col = cpu.get_r8(&R8::DL);
+            let flag = cpu.get_r8(&R8::AL);
+            let attr = cpu.get_r8(&R8::BL);
+            let str_seg = cpu.get_sr(&SR::ES);
+            let str_offs = cpu.get_r16(&R16::BP);
+            let count = cpu.get_r16(&R16::CX);
+            let page = cpu.get_r8(&R8::BH);
+            hw.gpu.write_string(&mut hw.mmu, row, col, flag, attr, str_seg, str_offs, count, page);
         }
         0x4F => {
             // VESA
