@@ -88,10 +88,7 @@ impl Interface {
             let app = Rc::clone(&self.app);
             canvas.connect_draw(move |_, ctx| {
                 let app = app.borrow();
-                //This makes a copy for every draw, maybe not a problem
-                //but it's stupid, and we shouldn't do this
-                let mem = app.machine.hw.mmu.dump_mem();
-                let frame = app.machine.hw.gpu.render_frame(&mem);
+                let frame = app.machine.hw.gpu.render_frame(&app.machine.hw.mmu);
                 draw_canvas(ctx, frame, &app.machine.hw.gpu.mode);
                 ctx.paint();
                 Inhibit(false)

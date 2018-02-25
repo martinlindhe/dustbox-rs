@@ -6,6 +6,8 @@ use std::rc::Rc;
 #[path = "./mmu_test.rs"]
 mod mmu_test;
 
+const DEBUG_VEC: bool = false;
+
 #[derive(Clone, Default)]
 pub struct MMU {
     pub memory: Rc<RefCell<FlatMemory>>
@@ -53,15 +55,26 @@ impl MMU {
         self.memory.borrow_mut().write_u32(addr, data);
     }
 
-    pub fn read_vec(&mut self, v: u32) -> (u16, u16) {
-        let v = v << 2;
-        let seg = self.memory.borrow_mut().read_u16(v);
-        let off = self.memory.borrow_mut().read_u16(v + 2);
+    /// read interrupt vector, returns segment, offset
+    pub fn read_vec(&self, v: u16) -> (u16, u16) {
+        let v_abs = (v as u32) << 2;
+        let seg = self.memory.borrow().read_u16(v_abs);
+        let off = self.memory.borrow().read_u16(v_abs + 2);
+        if DEBUG_VEC {
+            println!("mmu.read_vec: {:04X} = {:04X}:{:04X}", v, seg, off);
+        }
         (seg, off)
     }
 
-    pub fn write_vec(&mut self, v: u32, data: u32) {
-        self.memory.borrow_mut().write_u32(v << 2, data);
+    /// write interrupt vector
+    pub fn write_vec(&mut self, v: u16, data: &MemoryAddress) {
+        let v_abs = (v as u32) << 2;
+        //self.memory.borrow_mut().write_u32((v as u32) << 2, data.value());
+        self.memory.borrow_mut().write_u16(v_abs, data.segment());
+        self.memory.borrow_mut().write_u16(v_abs + 2, data.offset());
+        if DEBUG_VEC {
+            println!("mmu.write_vec: {:04X} = {:04X}:{:04X}", v, data.segment(), data.offset());
+        }
     }
 
     pub fn dump_mem(&self) -> Vec<u8> {

@@ -34,6 +34,38 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             let column = cpu.get_r8(&R8::DL);
             hw.gpu.set_cursor_pos(&mut hw.mmu, row, column, page);
         }
+        0x05 => {
+            let al = cpu.get_r8(&R8::AL);
+            /*
+            if (al & 0x80 != 0) && hw.gpu.card.is_tandy() {
+                let crtcpu = hw.mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CRTCPU_PAGE);
+                match al {
+                    0x80 => {
+                        reg_bh = crtcpu & 7;
+                        reg_bl = (crtcpu >> 3) & 0x7;
+                    }
+                    0x81 => {
+                        crtcpu = (crtcpu & 0xc7) | ((reg_bl & 7) << 3);
+                    }
+                    0x82 => {
+                        crtcpu = (crtcpu & 0xf8) | (reg_bh & 7);
+                    }
+                    0x83 => {
+                        crtcpu = (crtcpu & 0xc0) | (reg_bh & 7) | ((reg_bl & 7) << 3);
+                    }
+                }
+                if hw.gpu.card.is_pc_jr() {
+                    // always return graphics mapping, even for invalid values of AL
+                    reg_bh = crtcpu & 7;
+                    reg_bl = (crtcpu >> 3) & 0x7;
+                }
+                IO_WriteB(0x3DF, crtcpu);
+                hw.mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CRTCPU_PAGE, crtcpu);
+            } else {
+            */
+                hw.gpu.set_active_page(&mut hw.mmu, al);
+            //}
+        }
         0x09 => {
             // VIDEO - WRITE CHARACTER AND ATTRIBUTE AT CURSOR POSITION
             let chr = cpu.get_r8(&R8::AL);
@@ -84,7 +116,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             let color = cpu.get_r8(&R8::AL);
             let col = cpu.get_r16(&R16::CX);
             let row = cpu.get_r16(&R16::DX);
-            hw.gpu.put_pixel(&mut hw.mmu, col, row, page, color);
+            hw.gpu.write_pixel(&mut hw.mmu, col, row, page, color);
         }
         0x0E => {
             // VIDEO - TELETYPE OUTPUT

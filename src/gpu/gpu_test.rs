@@ -9,7 +9,7 @@ use std::fs::File;
 
 use tera::Context;
 use image;
-use image::{ImageBuffer, Rgb, Pixel};
+use image::{ImageBuffer, Rgb, Pixel, GenericImage};
 
 use tools;
 use cpu::CPU;
@@ -36,19 +36,58 @@ fn can_get_font_info() {
 }
 
 #[test]
+fn can_int10_put_pixel() {
+    let mut machine = Machine::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x13, 0x00,   // mov ax,0x13
+        0xCD, 0x10,         // int 0x10
+        0xB4, 0x0C,         // mov ah,0xc       ; int 10h, ah = 0Ch
+        0xB7, 0x00,         // mov bh,0x0
+        0xB0, 0x0D,         // mov al,0xd       color
+        0xB9, 0x01, 0x00,   // mov cx,0x1       x
+        0xBA, 0x04, 0x00,   // mov dx,0x4       y
+        0xCD, 0x10,         // int 0x10
+    ];
+    machine.load_com(&code);
+
+    machine.execute_instructions(2);
+    machine.execute_instruction(); // trigger the interrupt
+    machine.execute_instructions(6);
+    machine.execute_instruction(); // trigger the interrupt
+    assert_eq!(0x0113, machine.cpu.ip);
+
+    let frame = machine.hw.gpu.render_frame(&machine.hw.mmu);
+    let mut img = draw_image(&frame, &machine.hw.gpu.mode);
+    let img = img.sub_image(0, 0, 12, 12).to_image();
+    assert_eq!("\
+............
+............
+............
+............
+.O..........
+............
+............
+............
+............
+............
+............
+............
+", draw_ascii(&img));
+}
+
+#[test]
 fn can_write_vga_text() {
 let mut machine = Machine::new();
     let code: Vec<u8> = vec![
         0xB8, 0x13, 0x00,   // mov ax,0x13
         0xCD, 0x10,         // int 0x10
-        0xB4, 0x0A,         // mov ah,0xa
-        0xB0, 0x53,         // mov al,0x53
-        0xB7, 0x00,         // mov bh,0x0
-        0xB3, 0x01,         // mov bl,0x1
-        0xB9, 0x01, 0x00,   // mov cx,0x1
+        0xB4, 0x0A,         // mov ah,0xa       ; int 10h, ah = 0Ah
+        0xB0, 0x53,         // mov al,'S'       ; char
+        0xB7, 0x00,         // mov bh,0x0       ; page
+        0xB3, 0x01,         // mov bl,0x1       ; attrib
+        0xB9, 0x01, 0x00,   // mov cx,0x1       ; count
         0xCD, 0x10,         // int 0x10
     ];
-
     machine.load_com(&code);
 
     machine.execute_instructions(2);
@@ -57,16 +96,29 @@ let mut machine = Machine::new();
     machine.execute_instruction(); // trigger the interrupt
     assert_eq!(0x0112, machine.cpu.ip);
 
-    // XXX img to ascii ???
     let frame = machine.hw.gpu.render_frame(&machine.hw.mmu);
-    assert_eq!("xxx", draw_ascii(&frame, &machine.hw.gpu.mode));
+    let mut img = draw_image(&frame, &machine.hw.gpu.mode);
+    let img = img.sub_image(0, 0, 12, 12).to_image();
+    assert_eq!("\
+.,,,,.......
+,,..,,......
+,,,.........
+.,,,........
+...,,,......
+,,..,,......
+.,,,,.......
+............
+............
+............
+............
+............
+", draw_ascii(&img));
 }
 
-fn draw_ascii(buf: &[u8], mode: &VideoModeBlock) -> String {
-    let img = draw_image(buf, mode);
+fn draw_ascii(img: &ImageBuffer<Rgb<u8>, Vec<u8>>) -> String {
     let mut res = String::new();
-    for y in 0..mode.sheight {
-        for x in 0..mode.swidth {
+    for y in 0..img.height() {
+        for x in 0..img.width() {
             let pixel = img.get_pixel(x, y);
             res.push(pixel_256_to_ascii(pixel));
         }
@@ -76,12 +128,12 @@ fn draw_ascii(buf: &[u8], mode: &VideoModeBlock) -> String {
 }
 
 fn pixel_256_to_ascii(v: &image::Rgb<u8>) -> char {
-    let vals: [char; 10] = [' ', '.', ',', '+', 'o', '5', '6', 'O', '0', '#'];
+    let vals: [char; 9] = ['.', ',', '+', 'o', '5', '6', 'O', '0', '#'];
 
 	let col = v.to_rgb();
     let avg = (col.data[0] as f64 + col.data[1] as f64 + col.data[2] as f64) / 3.;
 
-    let n = scale(avg, 0., 255., 0., 9.) as usize;
+    let n = scale(avg, 0., 255., 0., (vals.len() - 1) as f64) as usize;
     assert_eq!(true, n <= vals.len());
 
     vals[n]
@@ -252,10 +304,11 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
             pub_filename.push_str(stem.to_str().unwrap());
             pub_filename.push_str(".png");
             out_images.push(pub_filename);
-/*
+            /*
             let frame = machine.hw.gpu.render_frame(&machine.hw.mmu);
-            print!("{}", draw_ascii(&frame, &machine.hw.gpu.mode));
-*/
+            let img = draw_image(&frame, &machine.hw.gpu.mode);
+            print!("{}", draw_ascii(&img));
+            */
         } else {
             println!("failed to write {} to disk", filename.to_str().unwrap());
         }
@@ -263,7 +316,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
 
     let mut tera = compile_templates!("docs/templates/**/*");
 
-    // disable autoescaping
+    // disable auto-escaping
     tera.autoescape_on(vec![]);
 
     let mut context = Context::new();

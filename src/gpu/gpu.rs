@@ -19,6 +19,8 @@ use gpu::crtc::VgaCRTC;
 #[path = "./gpu_test.rs"]
 mod gpu_test;
 
+const DEBUG_FONT: bool = false;
+
 const ECHO_TELETYPE: bool = true; // if set, character output from dos programs will be echoed to stdout
 
 const CGA_MASKS: [u8; 4]  = [0x3f, 0xcf, 0xf3, 0xfc];
@@ -198,6 +200,7 @@ impl GPU {
     }
 
     /// int 10h, ah = 00h
+    /// SET VIDEO MODE
     pub fn set_mode(&mut self, mmu: &mut MMU, bios: &mut BIOS, mode: u8) {
         let mut found = false;
         for block in &self.modes {
@@ -224,9 +227,72 @@ impl GPU {
 
         let clear_mem = true;
         bios.set_video_mode(mmu, &self.mode, clear_mem);
+
+        /*
+        // Set cursor shape
+        if self.current_mode.kind == M_TEXT {
+            INT10_SetCursorShape(0x06, 07);
+        }
+        */
+        // Set cursor pos for page 0..7
+        for ct in 0..8 {
+            self.set_cursor_pos(mmu, 0, 0, ct);
+        }
+        self.set_active_page(mmu, 0);
+
+        // Set some interrupt vectors
+        match self.mode.cheight {
+            0...3 | 7 => mmu.write_vec(0x43, &self.font_8_first),
+            8 => mmu.write_vec(0x43, &self.font_8_first),
+            14 => mmu.write_vec(0x43, &self.font_14),
+            16 => mmu.write_vec(0x43, &self.font_16),
+            _ => {},
+        }
+        // FIXME
+        //VGA_DAC_UpdateColorPalette(); // XXX from dosbox: updates their palette cache
+
+        // Tell mouse resolution change
+        //Mouse_NewVideoMode();
+    }
+
+    /// int 10h, ah = 05h
+    /// SELECT ACTIVE DISPLAY PAGE
+    pub fn set_active_page(&mut self, mmu: &mut MMU, page: u8) {
+        if page > 7 {
+            println!("error: int10_set_active_page page {}", page);
+        }
+        /*
+        if IS_EGAVGA_ARCH && (svgaCard == SVGA_S3Trio) {
+            page &= 7;
+        }
+        */
+        let mut mem_address = (page as u16) * mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_PAGE_SIZE);
+        // write the new page start
+        mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_CURRENT_START, mem_address);
+        if self.card.is_ega_vga() {
+            if self.mode.mode < 8 {
+                mem_address >>= 1;
+            }
+            // rare alternative: if mode.kind == TEXT { mem_address >>= 1; }
+        } else {
+            mem_address >>= 1;
+        }
+        // write the new start address in vga hardware
+        self.crtc.set_index(0x0C);
+        self.crtc.write_current((mem_address >> 8) as u8);
+        self.crtc.set_index(0x0D);
+        self.crtc.write_current((mem_address) as u8);
+
+        // and change the BIOS page
+        mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_PAGE, page);
+
+        let cur_row = bios::cursor_pos_row(mmu, page);
+        let cur_col = bios::cursor_pos_col(mmu, page);
+        self.set_cursor_pos(mmu, cur_row, cur_col, page);
     }
 
     /// int 10h, ah = 02h
+    /// SET CURSOR POSITION
     pub fn set_cursor_pos(&mut self, mmu: &mut MMU, row: u8, col: u8, page: u8) {
         // page = page number:
         //    0-3 in modes 2&3
@@ -299,8 +365,6 @@ impl GPU {
     }
 
     fn write_char_internal(&mut self, mmu: &mut MMU, col: u16, row: u16, page: u8, mut chr: u16, mut attr: u8, useattr: bool) {
-        // dosbox-x WriteChar in int10_char.cpp
-        // Externally used by the mouse routine
         chr &= 0xFF;
         let cheight = mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CHAR_HEIGHT);
         let (fontdata_seg, mut fontdata_off) = match self.mode.kind {
@@ -359,16 +423,22 @@ impl GPU {
             hw.out_u8(0x3C5, 0xF);
         }
         */
-        for _ in 0..cheight {
+        if DEBUG_FONT {
+            println!("reading fontdata from {:04X}:{:04X}", fontdata_seg, fontdata_off);
+        }
+        for idx in 0..cheight {
             let mut bitsel = 128;
             let bitline = mmu.read_u8(fontdata_seg, fontdata_off);
+            if DEBUG_FONT {
+                println!("read fontdata {} = {:02x}", idx, bitline);
+            }
             fontdata_off += 1;
             let mut tx = x as u16;
             while bitsel != 0 {
                 if bitline & bitsel != 0 {
-                    self.put_pixel(mmu, tx, y as u16, page, attr);
+                    self.write_pixel(mmu, tx, y as u16, page, attr);
                 } else {
-                    self.put_pixel(mmu, tx, y as u16, page, attr & xor_mask);
+                    self.write_pixel(mmu, tx, y as u16, page, attr & xor_mask);
                 }
                 tx += 1;
                 bitsel >>= 1;
@@ -380,7 +450,7 @@ impl GPU {
     /// int 10h, ah = 0Ch
     /// WRITE GRAPHICS PIXEL
     /// color: if bit 7 is set, value is XOR'ed onto screen except in 256-color modes
-    pub fn put_pixel(&mut self, mmu: &mut MMU, x: u16, y: u16, _page: u8, mut color: u8) {
+    pub fn write_pixel(&mut self, mmu: &mut MMU, x: u16, y: u16, _page: u8, mut color: u8) {
         match self.mode.kind {
             GFXMode::TEXT => {}, // Valid only in graphics modes
             GFXMode::CGA4 => {
@@ -432,7 +502,7 @@ impl GPU {
         if !self.card.is_vga() {
             return;
         }
-        mmu.write_vec(0x43, self.font_16.value());
+        mmu.write_vec(0x43, &self.font_16);
         mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_CHAR_HEIGHT, 16);
         let val = match row {
             0x00 => dl - 1, // row 0 = user specified in DL
@@ -591,6 +661,9 @@ impl GPU {
 
         // cga font
         self.font_8_first = MemoryAddress::RealSegmentOffset(seg, pos);
+        if DEBUG_FONT {
+            println!("font_8_first = {:04X}:{:04X}", self.font_8_first.segment(), self.font_8_first.offset());
+        }
         for i in 0..(128 * 8) {
             mmu.write_u8(seg, pos, font::FONT_08[i]);
             pos += 1;
@@ -599,6 +672,9 @@ impl GPU {
         if self.card.is_ega_vga() {
             // cga second half
             self.font_8_second = MemoryAddress::RealSegmentOffset(seg, pos);
+            if DEBUG_FONT {
+                println!("font_8_second = {:04X}:{:04X}", self.font_8_second.segment(), self.font_8_second.offset());
+            }
             for i in 0..(128 * 8) {
                 mmu.write_u8(seg, pos, font::FONT_08[i + (128 * 8)]);
                 pos += 1;
@@ -608,6 +684,9 @@ impl GPU {
         if self.card.is_ega_vga() {
             // ega font
             self.font_14 = MemoryAddress::RealSegmentOffset(seg, pos);
+            if DEBUG_FONT {
+                println!("font_14 = {:04X}:{:04X}", self.font_14.segment(), self.font_14.offset());
+            }
             for i in 0..(256 * 14) {
                 mmu.write_u8(seg, pos, font::FONT_14[i]);
                 pos += 1;
@@ -617,6 +696,9 @@ impl GPU {
         if self.card.is_vga() {
             // vga font
             self.font_16 = MemoryAddress::RealSegmentOffset(seg, pos);
+            if DEBUG_FONT {
+                println!("font_16 = {:04X}:{:04X}", self.font_16.segment(), self.font_16.offset());
+            }
             for i in 0..(256 * 16) {
                 mmu.write_u8(seg, pos, font::FONT_16[i]);
                 pos += 1;
@@ -629,7 +711,7 @@ impl GPU {
             }
         }
 
-        mmu.write_vec(0x1F, self.font_8_second.value());
+        mmu.write_vec(0x1F, &self.font_8_second);
         self.font_14_alternate = MemoryAddress::RealSegmentOffset(seg, pos);
         self.font_16_alternate = MemoryAddress::RealSegmentOffset(seg, pos);
 
@@ -691,7 +773,7 @@ impl GPU {
         }
 
         if self.card.is_tandy() {
-            mmu.write_vec(0x44, self.font_8_first.value());
+            mmu.write_vec(0x44, &self.font_8_first);
         }
     }
 }
