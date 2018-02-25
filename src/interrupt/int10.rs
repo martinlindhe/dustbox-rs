@@ -76,20 +76,11 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
         }
         0x0A => {
             // VIDEO - WRITE CHARACTER ONLY AT CURSOR POSITION
-            //
-            // AL = character to display
-            // BH = page number (00h to number of pages - 1) (see #00010)
-            //      background color in 256-color graphics modes (ET4000)
-            // BL = attribute (PCjr, Tandy 1000 only) or color (graphics mode)
-            //      if bit 7 set in <256-color graphics mode, character is XOR'ed
-            //      onto screen
-            // CX = number of times to write character
-            // Return: Nothing
-             println!("XXX impl VIDEO - WRITE CHARACTER ONLY AT CURSOR POSITION. char={}, page={}, attrib={}, count={}",
-                     cpu.get_r8(&R8::AL) as char,
-                     cpu.get_r8(&R8::BH),
-                     cpu.get_r8(&R8::BL),
-                     cpu.get_r16(&R16::CX));
+            let chr = cpu.get_r8(&R8::AL);
+            let page = cpu.get_r8(&R8::BH);
+            let attrib = cpu.get_r8(&R8::BL);
+            let count = cpu.get_r16(&R16::CX);
+            hw.gpu.write_char(&mut hw.mmu, chr as u16, attrib, page, count, false);
         }
         0x0B => {
             match cpu.get_r8(&R8::BH) {

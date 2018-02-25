@@ -24,14 +24,14 @@ impl Default for GFXMode {
 #[derive(Clone, Default)]
 pub struct VideoModeBlock {
     pub mode: u16,
-    pub kind: GFXMode,      // called "type" in dosbox-x
+    pub kind: GFXMode,
     pub swidth: u32,
     pub sheight: u32,
     pub twidth: usize,
     pub theight: usize,
     pub cwidth: usize,      // Character Width
     pub cheight: usize,     // Character Height
-    pub ptotal: usize,
+    pub ptotal: u8,         // Total Pages
     pub pstart: u32,
     pub plength: usize,
     pub htotal: u32,        // Horizontal Total
@@ -49,6 +49,10 @@ impl VideoModeBlock {
             }
             _ => panic!("unhandled {:?}", card)
         }
+    }
+
+    pub fn is_text(&self) -> bool {
+        self.kind == GFXMode::TEXT
     }
 
     pub fn crtc_address(&self) -> u16 {

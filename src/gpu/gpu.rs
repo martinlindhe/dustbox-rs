@@ -12,6 +12,7 @@ use gpu::modes::GFXMode;
 use gpu::modes::VideoModeBlock;
 use gpu::graphic_card::GraphicCard;
 use bios::BIOS;
+use bios;
 use gpu::crtc::VgaCRTC;
 
 #[cfg(test)]
@@ -247,6 +248,112 @@ impl GPU {
             self.crtc.write_current((address >> 8) as u8);
             self.crtc.set_index(0x0F);
             self.crtc.write_current(address as u8);
+        }
+    }
+
+    /// int 10h, ah = 0Ah
+    /// WRITE CHARACTER ONLY AT CURSOR POSITION
+    pub fn write_char(&mut self, mut mmu: &mut MMU, chr: u16, attr: u8, mut page: u8, mut count: u16, mut showattr: bool) {
+        if !self.mode.is_text() {
+            showattr = true;
+            match self.card {
+                GraphicCard::EGA | GraphicCard::VGA => page %= self.mode.ptotal,
+                GraphicCard::CGA => page = 0,
+                _ => {},
+            }
+        }
+
+        let mut cur_row = bios::cursor_pos_row(mmu, page);
+        let mut cur_col = bios::cursor_pos_col(mmu, page);
+        let ncols = mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS);
+
+        while count > 0 {
+            self.write_char_internal(&mut mmu, cur_col as u16, cur_row as u16, page, chr, attr, showattr);
+            count -= 1;
+            cur_col += 1;
+            if cur_col as u16 == ncols {
+                cur_col = 0;
+                cur_row += 1;
+            }
+        }
+    }
+
+    fn write_char_internal(&mut self, mmu: &mut MMU, col: u16, row: u16, page: u8, mut chr: u16, mut attr: u8, useattr: bool) {
+        // dosbox-x WriteChar in int10_char.cpp
+        // Externally used by the mouse routine
+        chr &= 0xFF;
+        let cheight = mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CHAR_HEIGHT);
+        let (fontdata_seg, mut fontdata_off) = match self.mode.kind {
+            GFXMode::TEXT => {
+                let mut address = ((page as u16) * mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_PAGE_SIZE)) as u32;
+                address += ((row * mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS) + col) * 2) as u32;
+                let dst = self.mode.pstart + address;
+                mmu.memory.borrow_mut().write_u8(dst, chr as u8);
+                if useattr {
+                    mmu.memory.borrow_mut().write_u8(dst + 1, attr);
+                }
+                (0, 0)
+            }
+            GFXMode::CGA4 | GFXMode::CGA2 | GFXMode::TANDY16 => {
+                let (seg, off) = if chr < 0x80 {
+                    mmu.read_vec(0x43)
+                } else {
+                    chr -= 0x80;
+                    mmu.read_vec(0x1F)
+                };
+                (seg, off + (chr * (cheight as u16)))
+            }
+            _ => {
+                let (seg, off) = mmu.read_vec(0x43);
+                (seg, off + (chr * (cheight as u16)))
+            }
+        };
+
+        if !useattr {
+            attr = match self.mode.kind {
+                GFXMode::CGA4 => 0x3,
+                GFXMode::CGA2 => 0x1,
+                _ => 0x7,
+            };
+        }
+
+        //Some weird behavior of mode 6
+        //(same fix for 11 fixes vgatest2, but it's not entirely correct according to wd)
+        if self.mode.mode == 0x6 {
+            attr = (attr & 0x80) | 1;
+        }
+
+        let x = 8 * col;
+        let mut y = (cheight as u16) * row;
+        let xor_mask = if self.mode.kind == GFXMode::VGA {
+            0
+        } else {
+            0x80
+        };
+        /*
+        if self.mode.kind == GFXMode::EGA {
+            // enable all planes for EGA modes (Ultima 1 colour bug)
+            // might be put into INT10_PutPixel but different vga bios
+            // implementations have different opinions about this
+            hw.out_u8(0x3C4, 0x2);
+            hw.out_u8(0x3C5, 0xF);
+        }
+        */
+        for _ in 0..cheight {
+            let mut bitsel = 128;
+            let bitline = mmu.read_u8(fontdata_seg, fontdata_off);
+            fontdata_off += 1;
+            let mut tx = x as u16;
+            while bitsel != 0 {
+                if bitline & bitsel != 0 {
+                    self.put_pixel(mmu, tx, y as u16, page, attr);
+                } else {
+                    self.put_pixel(mmu, tx, y as u16, page, attr & xor_mask);
+                }
+                tx += 1;
+                bitsel >>= 1;
+            }
+            y += 1;
         }
     }
 

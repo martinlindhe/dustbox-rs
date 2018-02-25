@@ -118,3 +118,11 @@ impl BIOS {
         mmu.write_u16(BIOS::ROM_SEG, BIOS::ROM_EQUIPMENT_WORD, 0x0021);
     }
 }
+
+pub fn cursor_pos_col(mmu: &MMU, page: u8) -> u8 {
+    return mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + (page as u16 * 2));
+}
+
+pub fn cursor_pos_row(mmu: &MMU, page: u8) -> u8 {
+    return mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + (page as u16 * 2) + 1);
+}
