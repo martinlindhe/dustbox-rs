@@ -1,4 +1,4 @@
-use gpu::palette::{ColorSpace, vga_palette};
+use gpu::palette::{ColorSpace, text_palette};
 use gpu::palette::ColorSpace::RGB;
 
 const DEBUG_DAL: bool = false;
@@ -14,8 +14,6 @@ pub struct DAC {
     first_changed: usize,
     pub combine: [u8; 16],
     pub pal: Vec<ColorSpace>,
-    xlat16: [u16; 256],
-    xlat32: [u32; 256],
     pub hidac_counter: u8,
     reg02: u8,
 }
@@ -31,9 +29,7 @@ impl Default for DAC {
             write_index: 0,
             first_changed: 0,
             combine: [0; 16],
-            pal: vga_palette().to_vec(), // XXX init it when gfx mode is changed
-            xlat16: [0; 256],
-            xlat32: [0; 256],
+            pal: text_palette().to_vec(),
             hidac_counter: 0,
             reg02: 0,
         }
@@ -44,11 +40,7 @@ impl DAC {
     // (VGA) DAC state register (0x03C7)
     pub fn get_state(&mut self) -> u8 {
         self.hidac_counter = 0;
-        let res = if self.state == State::Read {
-            0b11
-        } else {
-            0b00
-        };
+        let res = self.state.register();
         if DEBUG_DAL {
             println!("read port 03C7: get_state = {:02X}", res);
         }
@@ -158,4 +150,14 @@ impl DAC {
 #[derive(Clone, PartialEq)]
 pub enum State {
     Read, Write,
+}
+
+impl State {
+    // encodes state for the DAC state register (0x03C7)
+    pub fn register(&self) -> u8 {
+        match *self {
+            State::Read  => 0b11,
+            State::Write => 0b00,
+        }
+    }
 }
