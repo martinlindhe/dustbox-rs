@@ -1,7 +1,7 @@
 // GraphicCard indicates the gfx card generation to emulate
 #[derive(Clone, Debug, PartialEq)]
 pub enum GraphicCard {
-    CGA, EGA, VGA, Tandy,
+    CGA, EGA, VGA, Tandy, PcJr,
 }
 
 impl GraphicCard {
@@ -14,6 +14,12 @@ impl GraphicCard {
     pub fn is_tandy(&self) -> bool {
         match *self {
             GraphicCard::Tandy => true,
+            _ => false,
+        }
+    }
+    pub fn is_pc_jr(&self) -> bool {
+        match *self {
+            GraphicCard::PcJr => true,
             _ => false,
         }
     }

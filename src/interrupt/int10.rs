@@ -4,6 +4,7 @@ use cpu::register::{R8, R16, SR};
 use memory::mmu::{MMU, MemoryAddress};
 use gpu::modes::{VideoModeBlock, GFXMode, SpecialMode, ega_mode_block, vga_mode_block};
 use gpu::modes::GFXMode::*;
+use bios::BIOS;
 
 // video related interrupts
 pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
@@ -33,46 +34,16 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             let column = cpu.get_r8(&R8::DL);
             hw.gpu.set_cursor_pos(&mut hw.mmu, row, column, page);
         }
-        0x06 => {
-            // VIDEO - SCROLL UP WINDOW
-            //
-            // AL = number of lines by which to scroll up (00h = clear entire window)
-            // BH = attribute used to write blank lines at bottom of window
-            // CH,CL = row,column of window's upper left corner
-            // DH,DL = row,column of window's lower right corner
-            // Return: Nothing
-            //
-            // Note: Affects only the currently active page (see AH=05h)
-            println!("XXX scroll window up: lines={},attrib={},topleft={},{},btmright={},{}",
-                     cpu.get_r8(&R8::AL),
-                     cpu.get_r8(&R8::BH),
-                     cpu.get_r8(&R8::CH),
-                     cpu.get_r8(&R8::CL),
-                     cpu.get_r8(&R8::DH),
-                     cpu.get_r8(&R8::DL));
-        }
         0x09 => {
             // VIDEO - WRITE CHARACTER AND ATTRIBUTE AT CURSOR POSITION
-            //
-            // AL = character to display
-            // BH = page number (00h to number of pages - 1) (see #00010)
-            //      background color in 256-color graphics modes (ET4000)
-            // BL = attribute (text mode) or color (graphics mode)
-            //      if bit 7 set in <256-color graphics mode, character
-            //      is XOR'ed onto screen
-            // CX = number of times to write character
-            // Return: Nothing
-            //
-            // Notes: All characters are displayed, including CR, LF, and BS.
-            // Replication count in CX may produce an unpredictable result
-            // in graphics modes if it is greater than the number of positions
-            // remaining in the current row. With PhysTechSoft's PTS ROM-DOS
-            // the BH, BL, and CX values are ignored on entry.
-            println!("XXX impl VIDEO - WRITE CHARACTER AND ATTRIBUTE AT CURSOR POSITION. char={}, page={}, attrib={}, count={}",
-                     cpu.get_r8(&R8::AL) as char,
-                     cpu.get_r8(&R8::BH),
-                     cpu.get_r8(&R8::BL),
-                     cpu.get_r16(&R16::CX));
+            let chr = cpu.get_r8(&R8::AL);
+            let page = cpu.get_r8(&R8::BH);
+            let mut attrib = cpu.get_r8(&R8::BL);
+            let count = cpu.get_r16(&R16::CX);
+            if hw.mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_MODE) == 0x11 {
+                attrib = (attrib & 0x80) | 0x3F;
+            }
+            hw.gpu.write_char(&mut hw.mmu, chr as u16, attrib, page, count, true);
         }
         0x0A => {
             // VIDEO - WRITE CHARACTER ONLY AT CURSOR POSITION
@@ -117,22 +88,10 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
         }
         0x0E => {
             // VIDEO - TELETYPE OUTPUT
-            // Display a character on the screen, advancing the cursor
-            // and scrolling the screen as necessary
-            //
-            // AL = character to write
-            // BH = page number
-            // BL = foreground color (graphics modes only)
-            // Return: Nothing
-            //
-            // Notes: Characters 07h (BEL), 08h (BS), 0Ah (LF),
-            // and 0Dh (CR) are interpreted and do the expected things.
-            // IBM PC ROMs dated 1981/4/24 and 1981/10/19 require
-            // that BH be the same as the current active page
-            //
-            // BUG: If the write causes the screen to scroll, BP is destroyed
-            // by BIOSes for which AH=06h destroys BP
-            print!("{}", cpu.get_r8(&R8::AL) as char);
+            let chr = cpu.get_r8(&R8::AL);
+            let page = cpu.get_r8(&R8::BH);
+            let color = cpu.get_r8(&R8::BL);
+            hw.gpu.teletype_output(chr, page, color);
         }
         0x0F => {
             // VIDEO - GET CURRENT VIDEO MODE

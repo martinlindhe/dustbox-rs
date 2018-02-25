@@ -1,3 +1,5 @@
+; scrolls screen in gfx mode
+
 org 0x100
 
 section .text
@@ -10,6 +12,16 @@ start:
     mov al, 13      ; pixel color
     mov cx, 50      ; x
     mov dx, 50      ; y
+    int 0x10
+
+
+    mov ah, 0x06 ; scroll up
+    mov ch, 10 ; upper_y
+    mov cl, 10 ; upper_x
+    mov dh, 100 ; lower_y
+    mov dl, 100 ; lower_x
+    mov al, 5 ; lines
+    mov bh, 1 ; attr
     int 0x10
 
     ; wait for any key and exit

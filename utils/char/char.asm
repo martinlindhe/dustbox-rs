@@ -7,12 +7,11 @@ start:
     mov ax,13h
     int 10h
 
-    ; draw a pixel with int 10 call
-    mov ah, 0xa
+    mov ah, 0xa         ; draw a character
     mov al, 'S'
-    mov bh, 0 ; page
-    mov bl, 1 ; attrib
-    mov cx, 1; count
+    mov bh, 0           ; page
+    mov bl, 1           ; attrib
+    mov cx, 1           ; count
     int 0x10
 
 

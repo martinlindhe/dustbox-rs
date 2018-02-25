@@ -19,6 +19,11 @@ use gpu::crtc::VgaCRTC;
 #[path = "./gpu_test.rs"]
 mod gpu_test;
 
+const ECHO_TELETYPE: bool = true; // if set, character output from dos programs will be echoed to stdout
+
+const CGA_MASKS: [u8; 4]  = [0x3f, 0xcf, 0xf3, 0xfc];
+const CGA_MASKS2: [u8; 8] = [0x7f, 0xbf, 0xdf, 0xef, 0xf7, 0xfb, 0xfd, 0xfe];
+
 pub static STATIC_FUNCTIONALITY: [u8; 0x10] = [
  /* 0 */ 0xff,  // All modes supported #1
  /* 1 */ 0xff,  // All modes supported #2
@@ -82,13 +87,14 @@ impl GPU {
         }
     }
 
-    pub fn render_frame(&self, memory: &[u8]) -> Vec<u8> {
+    pub fn render_frame(&self, mmu: &MMU) -> Vec<u8> {
+        let memory = mmu.dump_mem();
         match self.mode.mode {
             // 00: 40x25 Black and White text (CGA,EGA,MCGA,VGA)
             // 01: 40x25 16 color text (CGA,EGA,MCGA,VGA)
             // 02: 80x25 16 shades of gray text (CGA,EGA,MCGA,VGA)
             //0x03 => self.render_mode03_frame(memory), // 80x25 16 color text (CGA,EGA,MCGA,VGA)
-            0x04 => self.render_mode04_frame(memory), // 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
+            0x04 => self.render_mode04_frame(&memory), // 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
             // 05: 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
             //0x06 => self.render_mode06_frame(memory), // 640x200 B/W graphics (CGA,EGA,MCGA,VGA)
             // 07: 80x25 Monochrome text (MDA,HERC,EGA,VGA)
@@ -102,7 +108,7 @@ impl GPU {
             //     640x350 4 color graphics (64K EGA)
             //0x11 => self.render_mode11_frame(memory), // 640x480 B/W graphics (MCGA,VGA)
             //0x12 => self.render_mode12_frame(memory), // 640x480 16 color graphics (VGA)
-            0x13 => self.render_mode13_frame(memory), // 320x200 256 color graphics (MCGA,VGA)
+            0x13 => self.render_mode13_frame(&memory), // 320x200 256 color graphics (MCGA,VGA)
             _ => {
                 println!("XXX fixme render_frame for mode {:02x}", self.mode.mode);
                 Vec::new()
@@ -278,6 +284,20 @@ impl GPU {
         }
     }
 
+    /// int 10h, ah = 0Eh
+    /// TELETYPE OUTPUT
+    /// Display a character on the screen, advancing the cursor
+    /// and scrolling the screen as necessary
+    pub fn teletype_output(&mut self, chr: u8, _page: u8, _color: u8) {
+        // BL = foreground color (graphics modes only)
+        if ECHO_TELETYPE {
+            print!("{}", chr as char);
+        }
+
+        // XXX code in gpu branch:
+        //self.teletype_output_attr(chr, attr, self.mode.kind != GFXMode::TEXT);
+    }
+
     fn write_char_internal(&mut self, mmu: &mut MMU, col: u16, row: u16, page: u8, mut chr: u16, mut attr: u8, useattr: bool) {
         // dosbox-x WriteChar in int10_char.cpp
         // Externally used by the mouse routine
@@ -360,9 +380,47 @@ impl GPU {
     /// int 10h, ah = 0Ch
     /// WRITE GRAPHICS PIXEL
     /// color: if bit 7 is set, value is XOR'ed onto screen except in 256-color modes
-    pub fn put_pixel(&mut self, mmu: &mut MMU, x: u16, y: u16, _page: u8, color: u8) {
+    pub fn put_pixel(&mut self, mmu: &mut MMU, x: u16, y: u16, _page: u8, mut color: u8) {
         match self.mode.kind {
             GFXMode::TEXT => {}, // Valid only in graphics modes
+            GFXMode::CGA4 => {
+                if mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_MODE) <= 5 {
+                    // this is a 16k mode
+                    let mut off = ((y >> 1) * 80 + (x >> 2)) as u16;
+                    if y & 1 != 0 {
+                        off += 8 * 1024;
+                    }
+                    let mut old = mmu.read_u8(0xB800, off);
+                    if color & 0x80 != 0 {
+                        color &= 3;
+                        old ^= color << (2 * (3 - (x & 3)));
+                    } else {
+                        old = (old & CGA_MASKS[x as usize & 3]) | ((color & 3) << (2 * (3 - (x & 3))));
+                    }
+                    mmu.write_u8(0xB800, off, old);
+                } else {
+                    let seg: u16 = if self.card.is_pc_jr() {
+                        // a 32k mode: PCJr special case (see M_TANDY16)
+                        let cpupage = (mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CRTCPU_PAGE) >> 3) & 0x7;
+                        (cpupage as u16) << 10 // A14-16 to addr bits 14-16
+                    } else {
+                        0xB800
+                    };
+                    let mut off = ((y >> 2) * 160 + ((x >> 2) & (!1))) as u16;
+                    off += (8 * 1024) * (y & 3);
+
+                    let mut old = mmu.read_u16(seg, off);
+                    if color & 0x80 != 0 {
+                        old ^= (color as u16 & 1) << (7 - (x & 7));
+                        old ^= ((color as u16 & 2) >> 1) << ((7 - (x & 7)) + 8);
+                    } else {
+                        old = (old & (!(0x101          <<  (7 - (x & 7))))) |
+                             ((color as u16 & 1)       <<  (7 - (x & 7))) |
+                            (((color as u16 & 2) >> 1) << ((7 - (x & 7)) + 8));
+                    }
+                    mmu.write_u16(seg, off, old);
+                }
+            }
             GFXMode::VGA => mmu.write_u8(0xA000, y * 320 + x, color),
             _ => panic!("put_pixel TODO unimplemented mode {:?}", self.mode.kind),
         }

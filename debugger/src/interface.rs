@@ -19,6 +19,7 @@ use cairo;
 use dustbox::cpu::CPU;
 use dustbox::cpu;
 use dustbox::cpu::register::{R8, R16, SR};
+use dustbox::gpu::modes::VideoModeBlock;
 
 use debugger;
 
@@ -91,7 +92,7 @@ impl Interface {
                 //but it's stupid, and we shouldn't do this
                 let mem = app.machine.hw.mmu.dump_mem();
                 let frame = app.machine.hw.gpu.render_frame(&mem);
-                draw_canvas(ctx, frame, app.machine.hw.gpu.mode.swidth, app.machine.hw.gpu.mode.sheight);
+                draw_canvas(ctx, frame, &app.machine.hw.gpu.mode);
                 ctx.paint();
                 Inhibit(false)
             });
@@ -289,7 +290,7 @@ impl Interface {
 }
 
 // render video frame to canvas `c`
-fn draw_canvas(c: &cairo::Context, buf: Vec<u8>, width: u32, height: u32) {
+fn draw_canvas(c: &cairo::Context, buf: Vec<u8>, mode: &VideoModeBlock) {
     if buf.is_empty() {
         // println!("draw_canvas: no buffer to draw!");
         return;
@@ -299,9 +300,9 @@ fn draw_canvas(c: &cairo::Context, buf: Vec<u8>, width: u32, height: u32) {
         0,
         false,
         8,
-        width as i32,
-        height as i32,
-        width as i32 * 3,
+        mode.swidth as i32,
+        mode.sheight as i32,
+        mode.swidth as i32 * 3,
     );
     c.set_source_pixbuf(&pixbuf, 0., 0.);
 }

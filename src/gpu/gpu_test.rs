@@ -9,13 +9,14 @@ use std::fs::File;
 
 use tera::Context;
 use image;
-use image::{ImageBuffer, Rgb};
+use image::{ImageBuffer, Rgb, Pixel};
 
 use tools;
 use cpu::CPU;
 use machine::Machine;
 use memory::mmu::MMU;
 use cpu::register::{R16, SR};
+use gpu::modes::VideoModeBlock;
 
 
 #[test]
@@ -32,6 +33,62 @@ fn can_get_font_info() {
     machine.execute_instruction(); // trigger the interrupt
     assert_eq!(0xC000, machine.cpu.get_sr(&SR::ES));
     assert_eq!(0x1700, machine.cpu.get_r16(&R16::BP));
+}
+
+#[test]
+fn can_write_vga_text() {
+let mut machine = Machine::new();
+    let code: Vec<u8> = vec![
+        0xB8, 0x13, 0x00,   // mov ax,0x13
+        0xCD, 0x10,         // int 0x10
+        0xB4, 0x0A,         // mov ah,0xa
+        0xB0, 0x53,         // mov al,0x53
+        0xB7, 0x00,         // mov bh,0x0
+        0xB3, 0x01,         // mov bl,0x1
+        0xB9, 0x01, 0x00,   // mov cx,0x1
+        0xCD, 0x10,         // int 0x10
+    ];
+
+    machine.load_com(&code);
+
+    machine.execute_instructions(2);
+    machine.execute_instruction(); // trigger the interrupt
+    machine.execute_instructions(6);
+    machine.execute_instruction(); // trigger the interrupt
+    assert_eq!(0x0112, machine.cpu.ip);
+
+    // XXX img to ascii ???
+    let frame = machine.hw.gpu.render_frame(&machine.hw.mmu);
+    assert_eq!("xxx", draw_ascii(&frame, &machine.hw.gpu.mode));
+}
+
+fn draw_ascii(buf: &[u8], mode: &VideoModeBlock) -> String {
+    let img = draw_image(buf, mode);
+    let mut res = String::new();
+    for y in 0..mode.sheight {
+        for x in 0..mode.swidth {
+            let pixel = img.get_pixel(x, y);
+            res.push(pixel_256_to_ascii(pixel));
+        }
+        res.push('\n');
+    }
+    res
+}
+
+fn pixel_256_to_ascii(v: &image::Rgb<u8>) -> char {
+    let vals: [char; 10] = [' ', '.', ',', '+', 'o', '5', '6', 'O', '0', '#'];
+
+	let col = v.to_rgb();
+    let avg = (col.data[0] as f64 + col.data[1] as f64 + col.data[2] as f64) / 3.;
+
+    let n = scale(avg, 0., 255., 0., 9.) as usize;
+    assert_eq!(true, n <= vals.len());
+
+    vals[n]
+}
+
+fn scale(value_in:f64, base_min:f64, base_max:f64, limit_min:f64, limit_max:f64) -> f64 {
+	((limit_max - limit_min) * (value_in - base_min) / (base_max - base_min)) + limit_min
 }
 
 #[test] #[ignore] // expensive test
@@ -195,6 +252,12 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
             pub_filename.push_str(stem.to_str().unwrap());
             pub_filename.push_str(".png");
             out_images.push(pub_filename);
+/*
+            let frame = machine.hw.gpu.render_frame(&machine.hw.mmu);
+            print!("{}", draw_ascii(&frame, &machine.hw.gpu.mode));
+*/
+        } else {
+            println!("failed to write {} to disk", filename.to_str().unwrap());
         }
     }
 
@@ -219,9 +282,9 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
 }
 
 // converts a video frame to a ImageBuffer, used for saving video frame to disk in gpu_test
-fn draw_image(frame: &[u8], width: u32, height: u32) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
-    let img = ImageBuffer::from_fn(width, height, |x, y| {
-        let offset = 3 * ((y * width) + x) as usize;
+fn draw_image(frame: &[u8], mode: &VideoModeBlock) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+    let img = ImageBuffer::from_fn(mode.swidth, mode.sheight, |x, y| {
+        let offset = 3 * ((y * mode.swidth) + x) as usize;
         let r = frame[offset];
         let g = frame[offset + 1];
         let b = frame[offset + 2];
@@ -232,13 +295,12 @@ fn draw_image(frame: &[u8], width: u32, height: u32) -> ImageBuffer<Rgb<u8>, Vec
 
 // returns true on success
 fn write_video_frame_to_disk(machine: &Machine, pngfile: &str) -> bool {
-    let mem = machine.hw.mmu.dump_mem();
-    let frame = machine.hw.gpu.render_frame(&mem);
+    let frame = machine.hw.gpu.render_frame(&machine.hw.mmu);
     if frame.len() == 0 {
         println!("ERROR: no frame rendered");
         return false;
     }
-    let img = draw_image(&frame, machine.hw.gpu.mode.swidth, machine.hw.gpu.mode.sheight);
+    let img = draw_image(&frame, &machine.hw.gpu.mode);
     if let Err(why) = img.save(pngfile) {
         println!("save err: {:?}", why);
         return false;
