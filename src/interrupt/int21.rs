@@ -4,6 +4,7 @@ use hardware::Hardware;
 use cpu::CPU;
 use cpu::register::{R8, R16, SR};
 use codepage::cp437;
+use memory::mmu::MemoryAddress;
 
 // dos related interrupts
 pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
@@ -79,7 +80,14 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             //
             // Note: If AL is not one of 01h,06h,07h,08h, or 0Ah, the
             // buffer is flushed but no input is attempted
-            println!("XXX int21, 0x0c - read stdin");
+            // println!("XXX int21, 0x0c - read stdin");
+        }
+        0x25 => {
+            // DOS 1+ - SET INTERRUPT VECTOR
+            let seg = cpu.get_sr(&SR::DS);
+            let off = cpu.get_r16(&R16::DX);
+            let int = cpu.get_r8(&R8::AL);
+            hw.mmu.write_vec(int as u16, &MemoryAddress::LongSegmentOffset(seg, off));
         }
         0x2C => {
             // DOS 1+ - GET SYSTEM TIME
@@ -126,6 +134,13 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // fake MS-DOS 3.10, as needed by msdos32/APPEND.COM
             cpu.set_r8(&R8::AL, 3); // AL = major version number (00h if DOS 1.x)
             cpu.set_r8(&R8::AH, 10); // AH = minor version number
+        }
+        0x35 => {
+            // DOS 2+ - GET INTERRUPT VECTOR
+            let int = cpu.get_r8(&R8::AL);
+            let (seg, off) = hw.mmu.read_vec(int as u16);
+            cpu.set_sr(&SR::ES, seg);
+            cpu.set_r16(&R16::BX, off);
         }
         0x40 => {
             // DOS 2+ - WRITE - WRITE TO FILE OR DEVICE
