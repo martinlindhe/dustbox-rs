@@ -4,7 +4,7 @@ use std::io::Error as IoError;
 use std::process::exit;
 
 use dustbox::machine::Machine;
-use dustbox::cpu::register::{R16, SR, RegisterSnapshot};
+use dustbox::cpu::register::{R, SR, RegisterSnapshot};
 use dustbox::cpu::decoder::Decoder;
 use dustbox::tools;
 use dustbox::memory::MemoryAddress;
@@ -468,14 +468,14 @@ impl Debugger {
             usize::from_str_radix(&x[2..], 16)
         } else {
             match x.as_ref() {
-                "ax" => Ok(self.machine.cpu.get_r16(&R16::AX) as usize),
-                "bx" => Ok(self.machine.cpu.get_r16(&R16::BX) as usize),
-                "cx" => Ok(self.machine.cpu.get_r16(&R16::CX) as usize),
-                "dx" => Ok(self.machine.cpu.get_r16(&R16::DX) as usize),
-                "sp" => Ok(self.machine.cpu.get_r16(&R16::SP) as usize),
-                "bp" => Ok(self.machine.cpu.get_r16(&R16::BP) as usize),
-                "si" => Ok(self.machine.cpu.get_r16(&R16::SI) as usize),
-                "di" => Ok(self.machine.cpu.get_r16(&R16::DI) as usize),
+                "ax" => Ok(self.machine.cpu.get_r16(&R::AX) as usize),
+                "bx" => Ok(self.machine.cpu.get_r16(&R::BX) as usize),
+                "cx" => Ok(self.machine.cpu.get_r16(&R::CX) as usize),
+                "dx" => Ok(self.machine.cpu.get_r16(&R::DX) as usize),
+                "sp" => Ok(self.machine.cpu.get_r16(&R::SP) as usize),
+                "bp" => Ok(self.machine.cpu.get_r16(&R::BP) as usize),
+                "si" => Ok(self.machine.cpu.get_r16(&R::SI) as usize),
+                "di" => Ok(self.machine.cpu.get_r16(&R::DI) as usize),
                 "es" => Ok(self.machine.cpu.get_sr(&SR::ES) as usize),
                 "cs" => Ok(self.machine.cpu.get_sr(&SR::CS) as usize),
                 "ss" => Ok(self.machine.cpu.get_sr(&SR::SS) as usize),
@@ -491,27 +491,27 @@ impl Debugger {
         let mut res = String::new();
 
         res += format!("AX:{:04X}  SI:{:04X}  DS:{:04X}  IP:{:04X}  cnt:{}\n",
-                       self.machine.cpu.get_r16(&R16::AX),
-                       self.machine.cpu.get_r16(&R16::SI),
+                       self.machine.cpu.get_r16(&R::AX),
+                       self.machine.cpu.get_r16(&R::SI),
                        self.machine.cpu.get_sr(&SR::DS),
                        self.machine.cpu.ip,
                        self.machine.cpu.instruction_count)
                 .as_ref();
         res += format!("BX:{:04X}  DI:{:04X}  CS:{:04X}  fl:{:04X}\n",
-                       self.machine.cpu.get_r16(&R16::BX),
-                       self.machine.cpu.get_r16(&R16::DI),
+                       self.machine.cpu.get_r16(&R::BX),
+                       self.machine.cpu.get_r16(&R::DI),
                        self.machine.cpu.get_sr(&SR::CS),
                        self.machine.cpu.flags.u16())
                 .as_ref();
         res += format!("CX:{:04X}  BP:{:04X}  ES:{:04X}  GS:{:04X}\n",
-                       self.machine.cpu.get_r16(&R16::CX),
-                       self.machine.cpu.get_r16(&R16::BP),
+                       self.machine.cpu.get_r16(&R::CX),
+                       self.machine.cpu.get_r16(&R::BP),
                        self.machine.cpu.get_sr(&SR::ES),
                        self.machine.cpu.get_sr(&SR::GS))
                 .as_ref();
         res += format!("DX:{:04X}  SP:{:04X}  FS:{:04X}  SS:{:04X}\n",
-                       self.machine.cpu.get_r16(&R16::DX),
-                       self.machine.cpu.get_r16(&R16::SP),
+                       self.machine.cpu.get_r16(&R::DX),
+                       self.machine.cpu.get_r16(&R::SP),
                        self.machine.cpu.get_sr(&SR::FS),
                        self.machine.cpu.get_sr(&SR::SS))
                 .as_ref();

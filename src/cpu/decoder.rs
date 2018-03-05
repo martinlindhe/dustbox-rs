@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
 use cpu::parameter::{Parameter, ParameterSet};
 use cpu::op::{Op, InvalidOp};
-use cpu::register::{R8, R16, SR};
+use cpu::register::{R, SR, r8, r16};
 use cpu::segment::Segment;
 use memory::{MMU, MemoryAddress};
 
@@ -103,13 +103,13 @@ impl Decoder {
             0x04 => {
                 // add AL, imm8
                 op.command = Op::Add8;
-                op.params.dst = Parameter::Reg8(R8::AL);
+                op.params.dst = Parameter::Reg8(R::AL);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x05 => {
                 // add AX, imm16
                 op.command = Op::Add16;
-                op.params.dst = Parameter::Reg16(R16::AX);
+                op.params.dst = Parameter::Reg16(R::AX);
                 op.params.src = Parameter::Imm16(self.read_u16(mmu));
             }
             0x06 => {
@@ -145,13 +145,13 @@ impl Decoder {
             0x0C => {
                 // or AL, imm8
                 op.command = Op::Or8;
-                op.params.dst = Parameter::Reg8(R8::AL);
+                op.params.dst = Parameter::Reg8(R::AL);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x0D => {
                 // or AX, imm16
                 op.command = Op::Or16;
-                op.params.dst = Parameter::Reg16(R16::AX);
+                op.params.dst = Parameter::Reg16(R::AX);
                 op.params.src = Parameter::Imm16(self.read_u16(mmu));
             }
             0x0E => {
@@ -282,13 +282,13 @@ impl Decoder {
             0x14 => {
                 // adc al, imm8
                 op.command = Op::Adc8;
-                op.params.dst = Parameter::Reg8(R8::AL);
+                op.params.dst = Parameter::Reg8(R::AL);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x15 => {
                 // adc ax, imm16
                 op.command = Op::Adc16;
-                op.params.dst = Parameter::Reg16(R16::AX);
+                op.params.dst = Parameter::Reg16(R::AX);
                 op.params.src = Parameter::Imm16(self.read_u16(mmu));
             }
             0x16 => {
@@ -314,13 +314,13 @@ impl Decoder {
             0x1C => {
                 // sbb al, imm8
                 op.command = Op::Sbb8;
-                op.params.dst = Parameter::Reg8(R8::AL);
+                op.params.dst = Parameter::Reg8(R::AL);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x1D => {
                 // sbb ax, imm16
                 op.command = Op::Sbb16;
-                op.params.dst = Parameter::Reg16(R16::AX);
+                op.params.dst = Parameter::Reg16(R::AX);
                 op.params.src = Parameter::Imm16(self.read_u16(mmu));
             }
             0x1E => {
@@ -356,13 +356,13 @@ impl Decoder {
             0x24 => {
                 // and AL, imm8
                 op.command = Op::And8;
-                op.params.dst = Parameter::Reg8(R8::AL);
+                op.params.dst = Parameter::Reg8(R::AL);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x25 => {
                 // and AX, imm16
                 op.command = Op::And16;
-                op.params.dst = Parameter::Reg16(R16::AX);
+                op.params.dst = Parameter::Reg16(R::AX);
                 op.params.src = Parameter::Imm16(self.read_u16(mmu));
             }
             0x26 => {
@@ -394,13 +394,13 @@ impl Decoder {
             0x2C => {
                 // sub AL, imm8
                 op.command = Op::Sub8;
-                op.params.dst = Parameter::Reg8(R8::AL);
+                op.params.dst = Parameter::Reg8(R::AL);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x2D => {
                 // sub AX, imm16
                 op.command = Op::Sub16;
-                op.params.dst = Parameter::Reg16(R16::AX);
+                op.params.dst = Parameter::Reg16(R::AX);
                 op.params.src = Parameter::Imm16(self.read_u16(mmu));
             }
             0x2E => {
@@ -432,13 +432,13 @@ impl Decoder {
             0x34 => {
                 // xor AL, imm8
                 op.command = Op::Xor8;
-                op.params.dst = Parameter::Reg8(R8::AL);
+                op.params.dst = Parameter::Reg8(R::AL);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x35 => {
                 // xor AX, imm16
                 op.command = Op::Xor16;
-                op.params.dst = Parameter::Reg16(R16::AX);
+                op.params.dst = Parameter::Reg16(R::AX);
                 op.params.src = Parameter::Imm16(self.read_u16(mmu));
             }
             0x36 => {
@@ -470,13 +470,13 @@ impl Decoder {
             0x3C => {
                 // cmp AL, imm8
                 op.command = Op::Cmp8;
-                op.params.dst = Parameter::Reg8(R8::AL);
+                op.params.dst = Parameter::Reg8(R::AL);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x3D => {
                 // cmp AX, imm16
                 op.command = Op::Cmp16;
-                op.params.dst = Parameter::Reg16(R16::AX);
+                op.params.dst = Parameter::Reg16(R::AX);
                 op.params.src = Parameter::Imm16(self.read_u16(mmu));
             }
             0x3E => {
@@ -488,22 +488,22 @@ impl Decoder {
             0x40...0x47 => {
                 // inc r16
                 op.command = Op::Inc16;
-                op.params.dst = Parameter::Reg16(Into::into(b & 7));
+                op.params.dst = Parameter::Reg16(r16(b & 7));
             }
             0x48...0x4F => {
                 // dec r16
                 op.command = Op::Dec16;
-                op.params.dst = Parameter::Reg16(Into::into(b & 7));
+                op.params.dst = Parameter::Reg16(r16(b & 7));
             }
             0x50...0x57 => {
                 // push r16
                 op.command = Op::Push16;
-                op.params.dst = Parameter::Reg16(Into::into(b & 7));
+                op.params.dst = Parameter::Reg16(r16(b & 7));
             }
             0x58...0x5F => {
                 // pop r16
                 op.command = Op::Pop16;
-                op.params.dst = Parameter::Reg16(Into::into(b & 7));
+                op.params.dst = Parameter::Reg16(r16(b & 7));
             }
             0x60 => op.command = Op::Pusha,
             0x61 => op.command = Op::Popa,
@@ -764,8 +764,8 @@ impl Decoder {
                 // xchg AX, r16 | xchg r16, AX
                 // NOTE: "xchg ax,ax" is an alias of "nop"
                 op.command = Op::Xchg16;
-                op.params.dst = Parameter::Reg16(R16::AX);
-                op.params.src = Parameter::Reg16(Into::into(b & 7));
+                op.params.dst = Parameter::Reg16(R::AX);
+                op.params.src = Parameter::Reg16(r16(b & 7));
             }
             0x98 => op.command = Op::Cbw,
             0x99 => op.command = Op::Cwd,
@@ -778,26 +778,26 @@ impl Decoder {
             0xA0 => {
                 // mov AL, [moffs8]
                 op.command = Op::Mov8;
-                op.params.dst = Parameter::Reg8(R8::AL);
+                op.params.dst = Parameter::Reg8(R::AL);
                 op.params.src = Parameter::Ptr8(op.segment_prefix, self.read_u16(mmu));
             }
             0xA1 => {
                 // mov AX, [moffs16]
                 op.command = Op::Mov16;
-                op.params.dst = Parameter::Reg16(R16::AX);
+                op.params.dst = Parameter::Reg16(R::AX);
                 op.params.src = Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu));
             }
             0xA2 => {
                 // mov [moffs8], AL
                 op.command = Op::Mov8;
                 op.params.dst = Parameter::Ptr8(op.segment_prefix, self.read_u16(mmu));
-                op.params.src = Parameter::Reg8(R8::AL);
+                op.params.src = Parameter::Reg8(R::AL);
             }
             0xA3 => {
                 // mov [moffs16], AX
                 op.command = Op::Mov16;
                 op.params.dst = Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu));
-                op.params.src = Parameter::Reg16(R16::AX);
+                op.params.src = Parameter::Reg16(R::AX);
             }
             0xA4 => op.command = Op::Movsb,
             0xA5 => op.command = Op::Movsw,
@@ -806,13 +806,13 @@ impl Decoder {
             0xA8 => {
                 // test AL, imm8
                 op.command = Op::Test8;
-                op.params.dst = Parameter::Reg8(R8::AL);
+                op.params.dst = Parameter::Reg8(R::AL);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0xA9 => {
                 // test AX, imm16
                 op.command = Op::Test16;
-                op.params.dst = Parameter::Reg16(R16::AX);
+                op.params.dst = Parameter::Reg16(R::AX);
                 op.params.src = Parameter::Imm16(self.read_u16(mmu));
             }
             0xAA => op.command = Op::Stosb,
@@ -824,13 +824,13 @@ impl Decoder {
             0xB0...0xB7 => {
                 // mov r8, u8
                 op.command = Op::Mov8;
-                op.params.dst = Parameter::Reg8(Into::into(b & 7));
+                op.params.dst = Parameter::Reg8(r8(b & 7));
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0xB8...0xBF => {
                 // mov r16, u16
                 op.command = Op::Mov16;
-                op.params.dst = Parameter::Reg16(Into::into(b & 7));
+                op.params.dst = Parameter::Reg16(r16(b & 7));
                 op.params.src = Parameter::Imm16(self.read_u16(mmu));
             }
             0xC0 => {
@@ -969,7 +969,7 @@ impl Decoder {
                     _ => Op::Invalid(InvalidOp::Op),
                 };
                 op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
-                op.params.src = Parameter::Reg8(R8::CL);
+                op.params.src = Parameter::Reg8(R::CL);
             }
             0xD3 => {
                 // bit shift word by CL
@@ -985,7 +985,7 @@ impl Decoder {
                     _ => Op::Invalid(InvalidOp::Op),
                 };
                 op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
-                op.params.src = Parameter::Reg8(R8::CL);
+                op.params.src = Parameter::Reg8(R::CL);
             }
             0xD4 => {
                 // aam imm8
@@ -1023,26 +1023,26 @@ impl Decoder {
             0xE4 => {
                 // in AL, imm8
                 op.command = Op::In8;
-                op.params.dst = Parameter::Reg8(R8::AL);
+                op.params.dst = Parameter::Reg8(R::AL);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0xE5 => {
                 // in AX, imm8
                 op.command = Op::In16;
-                op.params.dst = Parameter::Reg16(R16::AX);
+                op.params.dst = Parameter::Reg16(R::AX);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0xE6 => {
                 // OUT imm8, AL
                 op.command = Op::Out8;
                 op.params.dst = Parameter::Imm8(self.read_u8(mmu));
-                op.params.src = Parameter::Reg8(R8::AL);
+                op.params.src = Parameter::Reg8(R::AL);
             }
             0xE7 => {
                 // OUT imm8, AX
                 op.command = Op::Out16;
                 op.params.dst = Parameter::Imm8(self.read_u8(mmu));
-                op.params.src = Parameter::Reg16(R16::AX);
+                op.params.src = Parameter::Reg16(R::AX);
             }
             0xE8 => {
                 // call near s16
@@ -1069,26 +1069,26 @@ impl Decoder {
             0xEC => {
                 // in AL, DX
                 op.command = Op::In8;
-                op.params.dst = Parameter::Reg8(R8::AL);
-                op.params.src = Parameter::Reg16(R16::DX);
+                op.params.dst = Parameter::Reg8(R::AL);
+                op.params.src = Parameter::Reg16(R::DX);
             }
             0xED => {
                 // in AX, DX
                 op.command = Op::In16;
-                op.params.dst = Parameter::Reg16(R16::AX);
-                op.params.src = Parameter::Reg16(R16::DX);
+                op.params.dst = Parameter::Reg16(R::AX);
+                op.params.src = Parameter::Reg16(R::DX);
             }
             0xEE => {
                 // out DX, AL
                 op.command = Op::Out8;
-                op.params.dst = Parameter::Reg16(R16::DX);
-                op.params.src = Parameter::Reg8(R8::AL);
+                op.params.dst = Parameter::Reg16(R::DX);
+                op.params.src = Parameter::Reg8(R::AL);
             }
             0xEF => {
                 // out DX, AX
                 op.command = Op::Out16;
-                op.params.dst = Parameter::Reg16(R16::DX);
-                op.params.src = Parameter::Reg16(R16::AX);
+                op.params.dst = Parameter::Reg16(R::DX);
+                op.params.src = Parameter::Reg16(R::AX);
             }
             0xF0 => {
                 // lock prefix
@@ -1235,7 +1235,7 @@ impl Decoder {
             // [amode+s16]
             2 => Parameter::Ptr8AmodeS16(seg, Into::into(rm), self.read_s16(mmu)),
             // reg
-            3 => Parameter::Reg8(Into::into(rm)),
+            3 => Parameter::Reg8(r8(rm)),
             _ => unreachable!(),
         }
     }
@@ -1257,7 +1257,7 @@ impl Decoder {
             // [amode+s16]
             2 => Parameter::Ptr16AmodeS16(seg, Into::into(rm), self.read_s16(mmu)),
             // [reg]
-            _ => Parameter::Reg16(Into::into(rm)),
+            _ => Parameter::Reg16(r16(rm)),
         }
     }
 
@@ -1265,7 +1265,7 @@ impl Decoder {
     fn r8_rm8(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
-            dst: Parameter::Reg8(Into::into(x.reg)),
+            dst: Parameter::Reg8(r8(x.reg)),
             src: self.rm8(&mut mmu, seg, x.rm, x.md),
             src2: Parameter::None,
         }
@@ -1276,7 +1276,7 @@ impl Decoder {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
             dst: self.rm8(&mut mmu, seg, x.rm, x.md),
-            src: Parameter::Reg8(Into::into(x.reg)),
+            src: Parameter::Reg8(r8(x.reg)),
             src2: Parameter::None,
         }
     }
@@ -1305,7 +1305,7 @@ impl Decoder {
     fn r16_rm8(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
-            dst: Parameter::Reg16(Into::into(x.reg)),
+            dst: Parameter::Reg16(r16(x.reg)),
             src: self.rm8(&mut mmu, seg, x.rm, x.md),
             src2: Parameter::None,
         }
@@ -1315,7 +1315,7 @@ impl Decoder {
     fn r16_rm16(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
-            dst: Parameter::Reg16(Into::into(x.reg)),
+            dst: Parameter::Reg16(r16(x.reg)),
             src: self.rm16(&mut mmu, seg, x.rm, x.md),
             src2: Parameter::None,
         }
@@ -1326,7 +1326,7 @@ impl Decoder {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
             dst: self.rm16(&mut mmu, seg, x.rm, x.md),
-            src: Parameter::Reg16(Into::into(x.reg)),
+            src: Parameter::Reg16(r16(x.reg)),
             src2: Parameter::None,
         }
     }
@@ -1338,7 +1338,7 @@ impl Decoder {
             println!("r16_m16 error: invalid encoding, ip={:04X}", self.c_offset);
         }
         ParameterSet {
-            dst: Parameter::Reg16(Into::into(x.reg)),
+            dst: Parameter::Reg16(r16(x.reg)),
             src: self.rm16(&mut mmu, seg, x.rm, x.md),
             src2: Parameter::None,
         }

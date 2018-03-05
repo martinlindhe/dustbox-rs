@@ -2,22 +2,22 @@ use time;
 
 use hardware::Hardware;
 use cpu::CPU;
-use cpu::register::{R8, R16, SR};
+use cpu::register::{R, SR};
 use codepage::cp437;
 use memory::MemoryAddress;
 
 // dos related interrupts
 pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
-    match cpu.get_r8(&R8::AH) {
+    match cpu.get_r8(&R::AH) {
         0x02 => {
             // DOS 1+ - WRITE CHARACTER TO STANDARD OUTPUT
             // DL = character to write
-            let dl = cpu.get_r8(&R8::DL);
+            let dl = cpu.get_r8(&R::DL);
             print!("{}", cp437::u8_as_char(dl));
             // Return:
             // AL = last character output (despite the official docs which state
             // nothing is returned) (at least DOS 2.1-7.0)
-            cpu.set_r8(&R8::AL, dl);
+            cpu.set_r8(&R::AL, dl);
         }
         0x06 => {
             // DOS 1+ - DIRECT CONSOLE OUTPUT
@@ -26,14 +26,14 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // Notes: Does not check ^C/^Break. Writes to standard output,
             // which is always the screen under DOS 1.x, but may be redirected
             // under DOS 2+
-            let dl = cpu.get_r8(&R8::DL);
+            let dl = cpu.get_r8(&R::DL);
             if dl != 0xFF {
                 print!("{}", cp437::u8_as_char(dl));
             }
             // Return:
             // AL = character output (despite official docs which
             // state nothing is returned) (at least DOS 2.1-7.0)
-            cpu.set_r8(&R8::AL, dl);
+            cpu.set_r8(&R::AL, dl);
         }
         0x07 => {
             // DOS 1+ - DIRECT CHARACTER INPUT, WITHOUT ECHO
@@ -55,14 +55,14 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // the pointer is in DS:EDX
             let mut count = 0;
             loop {
-                let b = hw.mmu.read_u8(cpu.get_sr(&SR::DS), cpu.get_r16(&R16::DX) + count);
+                let b = hw.mmu.read_u8(cpu.get_sr(&SR::DS), cpu.get_r16(&R::DX) + count);
                 count += 1;
                 if b as char == '$' {
                     break;
                 }
                 print!("{}", cp437::u8_as_char(b));
             }
-            cpu.set_r8(&R8::AL, b'$');
+            cpu.set_r8(&R::AL, b'$');
         }
         0x0B => {
             // DOS 1+ - GET STDIN STATUS
@@ -85,22 +85,22 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
         0x25 => {
             // DOS 1+ - SET INTERRUPT VECTOR
             let seg = cpu.get_sr(&SR::DS);
-            let off = cpu.get_r16(&R16::DX);
-            let int = cpu.get_r8(&R8::AL);
+            let off = cpu.get_r16(&R::DX);
+            let int = cpu.get_r8(&R::AL);
             hw.mmu.write_vec(int as u16, &MemoryAddress::LongSegmentOffset(seg, off));
         }
         0x2C => {
             // DOS 1+ - GET SYSTEM TIME
             if cpu.deterministic {
-                cpu.set_r16(&R16::CX, 0);
-                cpu.set_r16(&R16::DX, 0);
+                cpu.set_r16(&R::CX, 0);
+                cpu.set_r16(&R::DX, 0);
             } else {
                 let now = time::now();
                 let centi_sec = now.tm_nsec / 1000_0000; // nanosecond to 1/100 sec
-                cpu.set_r8(&R8::CH, now.tm_hour as u8); // hour
-                cpu.set_r8(&R8::CL, now.tm_min as u8);  // minute
-                cpu.set_r8(&R8::DH, now.tm_sec as u8);  // second
-                cpu.set_r8(&R8::DL, centi_sec as u8);   // 1/100 second
+                cpu.set_r8(&R::CH, now.tm_hour as u8); // hour
+                cpu.set_r8(&R::CL, now.tm_min as u8);  // minute
+                cpu.set_r8(&R::DH, now.tm_sec as u8);  // second
+                cpu.set_r8(&R::DL, centi_sec as u8);   // 1/100 second
             }
         }
         0x30 => {
@@ -132,15 +132,15 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // 05h *  ZDS (Zenith Electronics, Zenith Electronics).
 
             // fake MS-DOS 3.10, as needed by msdos32/APPEND.COM
-            cpu.set_r8(&R8::AL, 3); // AL = major version number (00h if DOS 1.x)
-            cpu.set_r8(&R8::AH, 10); // AH = minor version number
+            cpu.set_r8(&R::AL, 3); // AL = major version number (00h if DOS 1.x)
+            cpu.set_r8(&R::AH, 10); // AH = minor version number
         }
         0x35 => {
             // DOS 2+ - GET INTERRUPT VECTOR
-            let int = cpu.get_r8(&R8::AL);
+            let int = cpu.get_r8(&R::AL);
             let (seg, off) = hw.mmu.read_vec(int as u16);
             cpu.set_sr(&SR::ES, seg);
-            cpu.set_r16(&R16::BX, off);
+            cpu.set_r16(&R::BX, off);
         }
         0x40 => {
             // DOS 2+ - WRITE - WRITE TO FILE OR DEVICE
@@ -162,10 +162,10 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // to expand the file beyond 2GB; otherwise the write will fail with error code
             // 0005h (access denied). The usual cause for AX < CX on return is a full disk
             println!("XXX DOS - WRITE TO FILE OR DEVICE, handle={:04X}, count={:04X}, data from {:04X}:{:04X}",
-                     cpu.get_r16(&R16::BX),
-                     cpu.get_r16(&R16::CX),
+                     cpu.get_r16(&R::BX),
+                     cpu.get_r16(&R::CX),
                      cpu.get_sr(&SR::DS),
-                     cpu.get_r16(&R16::DX));
+                     cpu.get_r16(&R::DX));
         }
         0x48 => {
             // DOS 2+ - ALLOCATE MEMORY
@@ -177,7 +177,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // AX = error code (07h,08h) (see #01680 at AH=59h/BX=0000h)
             // BX = size of largest available block
             println!("XXX impl DOS 2+ - ALLOCATE MEMORY. bx={:04X}",
-                     cpu.get_r16(&R16::BX));
+                     cpu.get_r16(&R::BX));
         }
         0x4A => {
             // DOS 2+ - RESIZE MEMORY BLOCK
@@ -189,7 +189,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // AX = error code (07h,08h,09h) (see #01680 at AH=59h/BX=0000h)
             // BX = maximum paragraphs available for specified memory block
             println!("XXX impl DOS 2+ - RESIZE MEMORY BLOCK. bx={:04X}, es={:04X}",
-                     cpu.get_r16(&R16::BX),
+                     cpu.get_r16(&R::BX),
                      cpu.get_sr(&SR::ES));
         }
         0x4C => {
@@ -199,14 +199,14 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // Notes: Unless the process is its own parent (see #01378 [offset 16h] at AH=26h),
             // all open files are closed and all memory belonging to the process is freed. All
             // network file locks should be removed before calling this function
-            let al = cpu.get_r8(&R8::AL);
+            let al = cpu.get_r8(&R::AL);
             println!("DOS - TERMINATE WITH RETURN CODE {:02X}", al);
             cpu.fatal_error = true; // XXX just to stop debugger.run() function
         }
         _ => {
             println!("int21 error: unknown ah={:02X}, ax={:04X}",
-                     cpu.get_r8(&R8::AH),
-                     cpu.get_r16(&R16::AX));
+                     cpu.get_r8(&R::AH),
+                     cpu.get_r16(&R::AX));
         }
     }
 }

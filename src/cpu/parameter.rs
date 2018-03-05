@@ -2,7 +2,7 @@ use std::fmt;
 use std::num::Wrapping;
 
 use cpu::segment::Segment;
-use cpu::register::{R8, R16, SR, AMode};
+use cpu::register::{R, SR, AMode};
 
 /// A set of Parameters for an Instruction
 #[derive(Clone, Debug, PartialEq)]
@@ -42,8 +42,8 @@ pub enum Parameter {
     Ptr16Amode(Segment, AMode),         // word [amode], like "word [bx]"
     Ptr16AmodeS8(Segment, AMode, i8),   // word [amode+s8], like "word [bp-0x20]"
     Ptr16AmodeS16(Segment, AMode, i16), // word [amode+s16], like "word [bp-0x2020]"
-    Reg8(R8),                           // index into the low 4 of CPU.r16
-    Reg16(R16),                         // index into CPU.r16
+    Reg8(R),                            // index into the low 4 of CPU.r16
+    Reg16(R),                           // index into CPU.r16
     SReg16(SR),                         // index into cpu.sreg16
     None,
 }

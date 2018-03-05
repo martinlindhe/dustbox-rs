@@ -23,100 +23,82 @@ impl Register16 {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum R8 {
-    AL, CL, DL, BL, AH, CH, DH, BH
+pub enum R {
+    AL, CL, DL, BL, AH, CH, DH, BH,
+    AX, CX, DX, BX, SP, BP, SI, DI,
 }
 
-impl R8 {
+impl R {
     pub fn index(&self) -> usize {
           match *self {
-            R8::AL => 0,
-            R8::CL => 1,
-            R8::DL => 2,
-            R8::BL => 3,
-            R8::AH => 4,
-            R8::CH => 5,
-            R8::DH => 6,
-            R8::BH => 7,
+            R::AL => 0,
+            R::CL => 1,
+            R::DL => 2,
+            R::BL => 3,
+            R::AH => 4,
+            R::CH => 5,
+            R::DH => 6,
+            R::BH => 7,
+
+            R::AX => 0,
+            R::CX => 1,
+            R::DX => 2,
+            R::BX => 3,
+            R::SP => 4,
+            R::BP => 5,
+            R::SI => 6,
+            R::DI => 7,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match *self {
-            R8::AL => "al",
-            R8::CL => "cl",
-            R8::DL => "dl",
-            R8::BL => "bl",
-            R8::AH => "ah",
-            R8::CH => "ch",
-            R8::DH => "dh",
-            R8::BH => "bh",
+            R::AL => "al",
+            R::CL => "cl",
+            R::DL => "dl",
+            R::BL => "bl",
+            R::AH => "ah",
+            R::CH => "ch",
+            R::DH => "dh",
+            R::BH => "bh",
+
+            R::AX => "ax",
+            R::CX => "cx",
+            R::DX => "dx",
+            R::BX => "bx",
+            R::SP => "sp",
+            R::BP => "bp",
+            R::SI => "si",
+            R::DI => "di",
         }
     }
 }
 
-impl Into<R8> for u8 {
-    fn into(self) -> R8 {
-        match self {
-            0 => R8::AL,
-            1 => R8::CL,
-            2 => R8::DL,
-            3 => R8::BL,
-            4 => R8::AH,
-            5 => R8::CH,
-            6 => R8::DH,
-            7 => R8::BH,
-            _ => unreachable!(),
-        }
+pub fn r8(v: u8) -> R {
+    match v {
+        0 => R::AL,
+        1 => R::CL,
+        2 => R::DL,
+        3 => R::BL,
+        4 => R::AH,
+        5 => R::CH,
+        6 => R::DH,
+        7 => R::BH,
+        _ => unreachable!(),
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum R16 {
-    AX, CX, DX, BX, SP, BP, SI, DI
-}
-
-impl R16 {
-    pub fn index(&self) -> usize {
-        match *self {
-            R16::AX => 0,
-            R16::CX => 1,
-            R16::DX => 2,
-            R16::BX => 3,
-            R16::SP => 4,
-            R16::BP => 5,
-            R16::SI => 6,
-            R16::DI => 7,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match *self {
-            R16::AX => "ax",
-            R16::CX => "cx",
-            R16::DX => "dx",
-            R16::BX => "bx",
-            R16::SP => "sp",
-            R16::BP => "bp",
-            R16::SI => "si",
-            R16::DI => "di",
-        }
-    }
-}
-
-impl Into<R16> for u8 {
-    fn into(self) -> R16 {
-        match self {
-            0 => R16::AX,
-            1 => R16::CX,
-            2 => R16::DX,
-            3 => R16::BX,
-            4 => R16::SP,
-            5 => R16::BP,
-            6 => R16::SI,
-            7 => R16::DI,
-            _ => unreachable!(),
-        }
+pub fn r16(v: u8) -> R {
+    match v {
+        0 => R::AX,
+        1 => R::CX,
+        2 => R::DX,
+        3 => R::BX,
+        4 => R::SP,
+        5 => R::BP,
+        6 => R::SI,
+        7 => R::DI,
+        _ => unreachable!(),
     }
 }
 
@@ -215,6 +197,6 @@ impl Into<AMode> for u8 {
 pub struct RegisterSnapshot {
     pub ip: u16,
     pub r16: [Register16; 8], // general purpose registers
-    pub sreg16: [u16; 6],               // segment registers
+    pub sreg16: [u16; 6],     // segment registers
     pub flags: Flags,
 }

@@ -1,17 +1,17 @@
 use hardware::Hardware;
 use cpu::CPU;
-use cpu::register::{R8, R16};
+use cpu::register::R;
 use cpu::flags;
 
 // keyboard related interrupts
 pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
-    match cpu.get_r8(&R8::AH) {
+    match cpu.get_r8(&R::AH) {
         0x00 => {
             // KEYBOARD - GET KEYSTROKE
             // Return:
             // AH = BIOS scan code
             // AL = ASCII character
-            cpu.set_r16(&R16::AX, 0); // XXX
+            cpu.set_r16(&R::AX, 0); // XXX
             println!("XXX impl KEYBOARD - GET KEYSTROKE");
         }
         0x01 => {
@@ -37,8 +37,8 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
         }
         _ => {
             println!("int16 error: unknown ah={:02X}, ax={:04X}",
-                     cpu.get_r8(&R8::AH),
-                     cpu.get_r16(&R16::AX));
+                     cpu.get_r8(&R::AH),
+                     cpu.get_r16(&R::AX));
         }
     }
 }

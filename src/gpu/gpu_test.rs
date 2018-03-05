@@ -15,7 +15,7 @@ use tools;
 use cpu::CPU;
 use machine::Machine;
 use memory::MMU;
-use cpu::register::{R8, R16, SR};
+use cpu::register::{R, SR};
 use gpu::modes::VideoModeBlock;
 
 #[test]
@@ -30,9 +30,9 @@ fn can_get_palette_entry() {
 
     machine.execute_instructions(3);
     machine.execute_instruction(); // trigger the interrupt
-    assert_eq!(0x00, machine.cpu.get_r8(&R8::DH)); // red
-    assert_eq!(0x2A, machine.cpu.get_r8(&R8::CH)); // green
-    assert_eq!(0x2A, machine.cpu.get_r8(&R8::CL)); // blue
+    assert_eq!(0x00, machine.cpu.get_r8(&R::DH)); // red
+    assert_eq!(0x2A, machine.cpu.get_r8(&R::CH)); // green
+    assert_eq!(0x2A, machine.cpu.get_r8(&R::CL)); // blue
 }
 
 #[test]
@@ -56,9 +56,9 @@ fn can_set_palette_entry() {
     machine.execute_instruction(); // trigger the interrupt
     machine.execute_instructions(3);
     machine.execute_instruction(); // trigger the interrupt
-    assert_eq!(0x3F, machine.cpu.get_r8(&R8::DH)); // red
-    assert_eq!(0x3F, machine.cpu.get_r8(&R8::CH)); // green
-    assert_eq!(0x3F, machine.cpu.get_r8(&R8::CL)); // blue
+    assert_eq!(0x3F, machine.cpu.get_r8(&R::DH)); // red
+    assert_eq!(0x3F, machine.cpu.get_r8(&R::CH)); // green
+    assert_eq!(0x3F, machine.cpu.get_r8(&R::CL)); // blue
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn can_get_font_info() {
     machine.execute_instructions(3);
     machine.execute_instruction(); // trigger the interrupt
     assert_eq!(0xC000, machine.cpu.get_sr(&SR::ES));
-    assert_eq!(0x1700, machine.cpu.get_r16(&R16::BP));
+    assert_eq!(0x1700, machine.cpu.get_r16(&R::BP));
 }
 
 #[test]

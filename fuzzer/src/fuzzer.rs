@@ -10,7 +10,7 @@ use tempdir::TempDir;
 
 use dustbox::machine::Machine;
 use dustbox::cpu::CPU;
-use dustbox::cpu::register::R16;
+use dustbox::cpu::register::{R, r16};
 use dustbox::cpu::op::Op;
 
 #[cfg(test)]
@@ -167,7 +167,7 @@ fn compare_regs<'a>(cpu: &CPU, vm_regs: &HashMap<String, u16>, reg_names: &[&'a 
 // returns true if registers dont match
 fn compare_reg(reg_name: &str, cpu: &CPU, vm_val: u16) -> bool {
     let idx = reg_str_to_index(reg_name);
-    let reg: R16 = Into::into(idx as u8);
+    let reg = r16(idx as u8);
     let dustbox_val = cpu.get_r16(&reg);
     if dustbox_val != vm_val {
         println!("{} differs. dustbox {:04x}, vm {:04x}", reg_name, dustbox_val, vm_val);

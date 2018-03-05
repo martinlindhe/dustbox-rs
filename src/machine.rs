@@ -1,7 +1,7 @@
 use cpu::CPU;
 use gpu::GPU;
 use cpu::op::{Op, InvalidOp};
-use cpu::register::{SR, R16, RegisterSnapshot};
+use cpu::register::{SR, R, RegisterSnapshot};
 use cpu::segment::Segment;
 use memory::MMU;
 use hardware::Hardware;
@@ -34,15 +34,15 @@ impl Machine {
         self.cpu.set_sr(&SR::SS, psp_segment);
 
         // offset of last word available in first 64k segment
-        self.cpu.set_r16(&R16::SP, 0xFFFE);
-        self.cpu.set_r16(&R16::BP, 0x091C); // is what dosbox used
+        self.cpu.set_r16(&R::SP, 0xFFFE);
+        self.cpu.set_r16(&R::BP, 0x091C); // is what dosbox used
 
         // This is what dosbox initializes the registers to
         // at program load
-        self.cpu.set_r16(&R16::CX, 0x00FF);
-        self.cpu.set_r16(&R16::DX, psp_segment);
-        self.cpu.set_r16(&R16::SI, 0x0100);
-        self.cpu.set_r16(&R16::DI, 0xFFFE);
+        self.cpu.set_r16(&R::CX, 0x00FF);
+        self.cpu.set_r16(&R::DX, psp_segment);
+        self.cpu.set_r16(&R::SI, 0x0100);
+        self.cpu.set_r16(&R::DI, 0xFFFE);
 
         self.cpu.ip = 0x0100;
         let min = self.cpu.get_address();

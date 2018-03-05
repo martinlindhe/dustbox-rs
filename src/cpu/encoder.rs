@@ -2,8 +2,8 @@ use simple_error::SimpleError;
 
 use cpu::instruction::{Instruction, ModRegRm};
 use cpu::parameter::{Parameter, ParameterSet};
-use cpu::register::{R8, R16};
 use cpu::segment::Segment;
+use cpu::register::R;
 use cpu::op::{Op};
 
 #[cfg(test)]
@@ -171,7 +171,7 @@ impl Encoder {
             Op::Mov8 => {
                 match op.params.dst {
                     Parameter::Reg8(r) => {
-                        if r == R8::AL {
+                        if r == R::AL {
                             if let Parameter::Ptr8(_, imm16) = op.params.src {
                                 // 0xA0: mov AL, [moffs8]
                                 out.push(0xA0);
@@ -200,7 +200,7 @@ impl Encoder {
                     Parameter::Ptr8AmodeS16(_, _, _) => {
                         if let Parameter::Ptr8(_, imm16) = op.params.dst {
                             if let Parameter::Reg8(r) =  op.params.src {
-                                if r == R8::AL {
+                                if r == R::AL {
                                     // 0xA2: mov [moffs8], AL
                                     out.push(0xA2);
                                     out.push((imm16 & 0xFF) as u8);
@@ -305,7 +305,7 @@ impl Encoder {
         };
 
         if let Parameter::Reg8(r) = ins.params.dst {
-            if r == R8::AL {
+            if r == R::AL {
                 if let Parameter::Imm8(imm) = ins.params.src {
                     // 0x0C: or AL, imm8
                     // 0x1C: sbb al, imm8
@@ -372,7 +372,7 @@ impl Encoder {
             Parameter::Reg8(r) => {
                 if ins.command == Op::Test8 {
                     if let Parameter::Imm8(i) = ins.params.src {
-                        if r == R8::AL {
+                        if r == R::AL {
                             // 0xA8: test AL, imm8
                             out.push(0xA8);
                         } else {
