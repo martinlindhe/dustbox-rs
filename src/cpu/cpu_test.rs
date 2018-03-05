@@ -3,7 +3,7 @@ use std::num::Wrapping;
 use machine::Machine;
 use cpu::register::{R8, R16, SR};
 use cpu::segment::Segment;
-use memory::mmu::MMU;
+use memory::MMU;
 
 #[test]
 fn can_execute_push_pop() {

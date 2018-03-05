@@ -6,7 +6,7 @@ use cpu::parameter::{Parameter, ParameterSet};
 use cpu::op::{Op, InvalidOp};
 use cpu::register::{R8, R16, SR};
 use cpu::segment::Segment;
-use memory::mmu::{MMU, MemoryAddress};
+use memory::{MMU, MemoryAddress};
 
 const DEBUG_DECODER: bool = false;
 

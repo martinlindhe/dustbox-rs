@@ -7,7 +7,7 @@ use dustbox::machine::Machine;
 use dustbox::cpu::register::{R16, SR, RegisterSnapshot};
 use dustbox::cpu::decoder::Decoder;
 use dustbox::tools;
-use dustbox::memory::mmu::MemoryAddress;
+use dustbox::memory::MemoryAddress;
 
 use breakpoints::Breakpoints;
 use memory_breakpoints::MemoryBreakpoints;

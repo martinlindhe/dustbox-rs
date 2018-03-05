@@ -9,7 +9,7 @@ use cpu::op::{Op, InvalidOp};
 use cpu::register::{Register16, R8, R16, SR, AMode};
 use cpu::decoder::Decoder;
 use cpu::segment::Segment;
-use memory::mmu::{MMU, MemoryAddress};
+use memory::{MMU, MemoryAddress};
 use interrupt;
 use gpu::GPU;
 use machine::Machine;

@@ -19,7 +19,7 @@ use cpu::instruction::{Instruction, InstructionInfo, RepeatMode};
 use cpu::op::Op;
 use cpu::register::{R8, R16, AMode, SR};
 use machine::Machine;
-use memory::mmu::MMU;
+use memory::MMU;
 use hex::hex_bytes;
 
 #[test] #[ignore] // expensive test

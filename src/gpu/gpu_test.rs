@@ -14,7 +14,7 @@ use image::{ImageBuffer, Rgb, Pixel, GenericImage};
 use tools;
 use cpu::CPU;
 use machine::Machine;
-use memory::mmu::MMU;
+use memory::MMU;
 use cpu::register::{R8, R16, SR};
 use gpu::modes::VideoModeBlock;
 

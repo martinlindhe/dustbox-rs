@@ -3,7 +3,7 @@
 
 use cpu::CPU;
 use cpu::flags::Flags;
-use memory::mmu::{MMU, MemoryAddress};
+use memory::{MMU, MemoryAddress};
 use gpu::modes::{GFXMode, VideoModeBlock};
 
 #[derive(Clone)]

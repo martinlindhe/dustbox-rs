@@ -1,7 +1,7 @@
 use hardware::Hardware;
 use cpu::CPU;
 use cpu::register::{R8, R16, SR};
-use memory::mmu::{MMU, MemoryAddress};
+use memory::{MMU, MemoryAddress};
 use gpu::modes::{VideoModeBlock, GFXMode, SpecialMode, ega_mode_block, vga_mode_block};
 use gpu::modes::GFXMode::*;
 use bios::BIOS;

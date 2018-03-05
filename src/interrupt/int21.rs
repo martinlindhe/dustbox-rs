@@ -4,7 +4,7 @@ use hardware::Hardware;
 use cpu::CPU;
 use cpu::register::{R8, R16, SR};
 use codepage::cp437;
-use memory::mmu::MemoryAddress;
+use memory::MemoryAddress;
 
 // dos related interrupts
 pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {

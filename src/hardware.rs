@@ -1,5 +1,5 @@
 use gpu::GPU;
-use memory::mmu::MMU;
+use memory::MMU;
 use pit::PIT;
 use pic::PIC;
 use bios::BIOS;

@@ -1,4 +1,9 @@
-pub use self::flat_memory::*;
-mod flat_memory;
+// these modules are re-exported as a single module
 
-pub mod mmu;
+pub use self::flat_memory::*;
+pub use self::mmu::*;
+pub use self::memory_address::*;
+
+mod mmu;
+mod flat_memory;
+mod memory_address;
