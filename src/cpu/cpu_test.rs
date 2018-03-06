@@ -156,7 +156,6 @@ fn can_execute_mov_r8() {
     assert_eq!(0x13, machine.cpu.get_r8(&R::AL));
 }
 
-/*
 #[test]
 fn can_execute_mov_r32() {
     let mut machine = Machine::new();
@@ -165,10 +164,11 @@ fn can_execute_mov_r32() {
     ];
     machine.load_com(&code);
 
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 1);
+    assert_eq!("[085F:0100] 66B878563412     Mov32    eax, 0x12345678", res);
     machine.execute_instruction();
     assert_eq!(0x12345678, machine.cpu.get_r32(&R::EAX));
 }
-*/
 
 #[test]
 fn can_execute_mov_r8_rm8() {

@@ -2,21 +2,25 @@ use std::convert::From;
 
 use cpu::flags::Flags;
 
+#[cfg(test)]
+#[path = "./register_test.rs"]
+mod register_test;
+
 // 32-bit general purpose register (AL->AX->EAX)
 #[derive(Copy, Clone, Debug, Default)]
-pub struct Register16 { // XXX rename to GPR
-    pub val: u32,
+pub struct GPR {
+    val: u32,
 }
 
-impl Register16 {
+impl GPR {
     /// sets the high byte of the word register
     pub fn set_hi(&mut self, val: u8) {
-        self.val = (self.val & 0xFF) + (u32::from(val) << 8);
+        self.val = (self.val & 0xFFFF_00FF) + (u32::from(val) << 8);
     }
 
     /// sets the low byte of the word register
     pub fn set_lo(&mut self, val: u8) {
-        self.val = (self.val & 0xFF00) + u32::from(val);
+        self.val = (self.val & 0xFFFF_FF00) + u32::from(val);
     }
 
     // gets the low byte of the word register
@@ -27,6 +31,14 @@ impl Register16 {
     // gets the hi byte of the word register
     pub fn hi_u8(&self) -> u8 {
         (self.val >> 8) as u8
+    }
+
+    pub fn set16(&mut self, val: u16) {
+        self.val = (self.val & 0xFFFF_0000) | val as u32;
+    }
+
+    pub fn set32(&mut self, val: u32) {
+        self.val = val;
     }
 }
 
@@ -226,8 +238,8 @@ impl Into<AMode> for u8 {
 #[derive(Clone, Default)]
 pub struct RegisterSnapshot {
     pub ip: u16,
-    pub gpr: [Register16; 8 + 6 + 1],   // 8 general purpose registers, 6 segment registers, 1 ip
-    pub sreg16: [u16; 6],               // segment registers
+    pub gpr: [GPR; 8 + 6 + 1],   // 8 general purpose registers, 6 segment registers, 1 ip
+    pub sreg16: [u16; 6],        // segment registers
     pub flags: Flags,
 }
 
@@ -285,14 +297,14 @@ impl RegisterSnapshot {
 
     pub fn set_r16(&mut self, r: &R, val: u16) {
         match *r {
-            R::AX => self.gpr[0].val = val as u32,
-            R::CX => self.gpr[1].val = val as u32,
-            R::DX => self.gpr[2].val = val as u32,
-            R::BX => self.gpr[3].val = val as u32,
-            R::SP => self.gpr[4].val = val as u32,
-            R::BP => self.gpr[5].val = val as u32,
-            R::SI => self.gpr[6].val = val as u32,
-            R::DI => self.gpr[7].val = val as u32,
+            R::AX => self.gpr[0].set16(val),
+            R::CX => self.gpr[1].set16(val),
+            R::DX => self.gpr[2].set16(val),
+            R::BX => self.gpr[3].set16(val),
+            R::SP => self.gpr[4].set16(val),
+            R::BP => self.gpr[5].set16(val),
+            R::SI => self.gpr[6].set16(val),
+            R::DI => self.gpr[7].set16(val),
 
             R::ES => self.sreg16[0] = val,
             R::CS => self.sreg16[1] = val,
@@ -300,7 +312,7 @@ impl RegisterSnapshot {
             R::DS => self.sreg16[3] = val,
             R::FS => self.sreg16[4] = val,
             R::GS => self.sreg16[5] = val,
-                
+
               _ => panic!("set_r16 on {:?}", r),
           }
     }
@@ -316,6 +328,20 @@ impl RegisterSnapshot {
             R::ESI => self.gpr[6].val,
             R::EDI => self.gpr[7].val,
             _ => panic!(),
+        }
+    }
+
+    pub fn set_r32(&mut self, r: &R, val: u32) {
+        match *r {
+            R::EAX => self.gpr[0].set32(val),
+            R::ECX => self.gpr[1].set32(val),
+            R::EDX => self.gpr[2].set32(val),
+            R::EBX => self.gpr[3].set32(val),
+            R::ESP => self.gpr[4].set32(val),
+            R::EBP => self.gpr[5].set32(val),
+            R::ESI => self.gpr[6].set32(val),
+            R::EDI => self.gpr[7].set32(val),
+             _ => panic!("set_r32 on {:?}", r),
         }
     }
 }

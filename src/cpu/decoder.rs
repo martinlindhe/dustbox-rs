@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
 use cpu::parameter::{Parameter, ParameterSet};
 use cpu::op::{Op, InvalidOp};
-use cpu::register::{R, r8, r16, sr};
+use cpu::register::{R, r8, r16, r32, sr};
 use cpu::segment::Segment;
 use memory::{MMU, MemoryAddress};
 
@@ -834,10 +834,20 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0xB8...0xBF => {
-                // mov r16, u16
-                op.command = Op::Mov16;
-                op.params.dst = Parameter::Reg16(r16(b & 7));
-                op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                match op_size {
+                    OperandSize::_16bit => {
+                        // mov r16, u16
+                        op.command = Op::Mov16;
+                        op.params.dst = Parameter::Reg16(r16(b & 7));
+                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                    }
+                    OperandSize::_32bit => {
+                        // mov r32, u32
+                        op.command = Op::Mov32;
+                        op.params.dst = Parameter::Reg32(r32(b & 7));
+                        op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                    }
+                }
             }
             0xC0 => {
                 // r8, byte imm8
@@ -1384,6 +1394,12 @@ impl Decoder {
         let lo = self.read_u8(mmu);
         let hi = self.read_u8(mmu);
         u16::from(hi) << 8 | u16::from(lo)
+    }
+
+    fn read_u32(&mut self, mmu: &MMU) -> u32 {
+        let lo = self.read_u16(mmu);
+        let hi = self.read_u16(mmu);
+        u32::from(hi) << 16 | u32::from(lo)
     }
 
     fn read_s16(&mut self, mmu: &MMU) -> i16 {

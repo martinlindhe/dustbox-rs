@@ -6,7 +6,7 @@ use cpu::flags::Flags;
 use cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
 use cpu::parameter::{Parameter, ParameterSet};
 use cpu::op::{Op, InvalidOp};
-use cpu::register::{Register16, R, AMode, RegisterSnapshot};
+use cpu::register::{R, AMode, RegisterSnapshot};
 use cpu::decoder::Decoder;
 use cpu::segment::Segment;
 use memory::{MMU, MemoryAddress};
@@ -75,6 +75,10 @@ impl CPU {
 
     pub fn get_r32(&self, r: &R) -> u32 {
         self.regs.get_r32(r)
+    }
+
+    pub fn set_r32(&mut self, r: &R, val: u32) {
+        self.regs.set_r32(r, val);
     }
 
     // base address the rom was loaded to
@@ -830,6 +834,11 @@ impl CPU {
                 // two arguments (dst=reg)
                 let data = self.read_parameter_value(&hw.mmu, &op.params.src) as u16;
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, data);
+            }
+            Op::Mov32 => {
+                // two arguments (dst=reg)
+                let data = self.read_parameter_value(&hw.mmu, &op.params.src) as u32;
+                self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, data);
             }
             Op::Movsb => {
                 // move byte from address DS:(E)SI to ES:(E)DI.
@@ -1874,12 +1883,7 @@ impl CPU {
             Parameter::Ptr16AmodeS8(_, ref amode, imm) => (Wrapping(self.amode16(amode) as usize) + Wrapping(imm as usize)).0,
             Parameter::Ptr16AmodeS16(_, ref amode, imm) => (Wrapping(self.amode16(amode) as usize) + Wrapping(imm as usize)).0,
             Parameter::Ptr16(_, imm) => imm as usize,
-            _ => {
-                println!("read_parameter_address error: unhandled parameter: {:?} at {:06X}",
-                         p,
-                         self.get_address());
-                0
-            }
+            _ => panic!("unhandled parameter: {:?} at {:06X}", p, self.get_address()),
         }
     }
 
@@ -1896,7 +1900,12 @@ impl CPU {
         match *p {
             Parameter::Imm8(imm) => imm as usize,
             Parameter::Imm16(imm) => imm as usize,
+            Parameter::Imm32(imm) => imm as usize,
             Parameter::ImmS8(imm) => imm as usize,
+            Parameter::Reg8(ref r) => self.get_r8(r) as usize,
+            Parameter::Reg16(ref r) => self.get_r16(r) as usize,
+            Parameter::Reg32(ref r) => self.get_r32(r) as usize,
+            Parameter::SReg16(ref sr) => self.get_r16(sr) as usize,
             Parameter::Ptr8(seg, imm) => mmu.read_u8(self.segment(seg), imm) as usize,
             Parameter::Ptr16(seg, imm) => mmu.read_u16(self.segment(seg), imm) as usize,
             Parameter::Ptr8Amode(seg, ref amode) => {
@@ -1929,15 +1938,7 @@ impl CPU {
                 let seg = self.segment(seg);
                 mmu.read_u16(seg, offset) as usize
             }
-            Parameter::Reg8(ref r) => self.get_r8(r) as usize,
-            Parameter::Reg16(ref r) => self.get_r16(r) as usize,
-            Parameter::SReg16(ref sr) => self.get_r16(sr) as usize,
-            _ => {
-                println!("read_parameter_value error: unhandled parameter: {:?} at {:06X}",
-                         p,
-                         self.get_address());
-                0
-            }
+            _ => panic!("unhandled parameter: {:?} at {:06X}", p, self.get_address()),
         }
     }
 
@@ -1963,7 +1964,7 @@ impl CPU {
                 let offset = Wrapping(self.amode16(amode)) + Wrapping(imm as u16);
                 mmu.write_u8(seg, offset.0, data);
             }
-            _ => println!("write_parameter_u8 unhandled type {:?} at {:06X}", p, self.get_address()),
+            _ => panic!("write_parameter_u8 unhandled type {:?} at {:06X}", p, self.get_address()),
         }
     }
 
@@ -1994,11 +1995,14 @@ impl CPU {
                 let offset = Wrapping(self.amode16(amode)) + Wrapping(imm as u16);
                 mmu.write_u16(seg, offset.0, data);
             }
-            _ => {
-                println!("write_u16_param unhandled type {:?} at {:06X}",
-                         p,
-                         self.get_address());
-            }
+            _ => panic!("unhandled type {:?} at {:06X}", p, self.get_address()),
+        }
+    }
+
+    fn write_parameter_u32(&mut self, _mmu: &mut MMU, _segment: Segment, p: &Parameter, data: u32) {
+        match *p {
+            Parameter::Reg32(ref r) => self.set_r32(r, data),
+            _ => panic!("unhandled type {:?} at {:06X}", p, self.get_address()),
         }
     }
 

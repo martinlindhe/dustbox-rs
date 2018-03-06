@@ -79,6 +79,7 @@ pub enum Op {
     Loopne,
     Mov8,
     Mov16,
+    Mov32,
     Movsb,
     Movsw,
     Movsx16(),
