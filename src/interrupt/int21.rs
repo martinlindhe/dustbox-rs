@@ -2,7 +2,7 @@ use time;
 
 use hardware::Hardware;
 use cpu::CPU;
-use cpu::register::{R, SR};
+use cpu::register::R;
 use codepage::cp437;
 use memory::MemoryAddress;
 
@@ -55,7 +55,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // the pointer is in DS:EDX
             let mut count = 0;
             loop {
-                let b = hw.mmu.read_u8(cpu.get_sr(&SR::DS), cpu.get_r16(&R::DX) + count);
+                let b = hw.mmu.read_u8(cpu.get_r16(&R::DS), cpu.get_r16(&R::DX) + count);
                 count += 1;
                 if b as char == '$' {
                     break;
@@ -84,7 +84,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
         }
         0x25 => {
             // DOS 1+ - SET INTERRUPT VECTOR
-            let seg = cpu.get_sr(&SR::DS);
+            let seg = cpu.get_r16(&R::DS);
             let off = cpu.get_r16(&R::DX);
             let int = cpu.get_r8(&R::AL);
             hw.mmu.write_vec(int as u16, &MemoryAddress::LongSegmentOffset(seg, off));
@@ -139,7 +139,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // DOS 2+ - GET INTERRUPT VECTOR
             let int = cpu.get_r8(&R::AL);
             let (seg, off) = hw.mmu.read_vec(int as u16);
-            cpu.set_sr(&SR::ES, seg);
+            cpu.set_r16(&R::ES, seg);
             cpu.set_r16(&R::BX, off);
         }
         0x40 => {
@@ -164,7 +164,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             println!("XXX DOS - WRITE TO FILE OR DEVICE, handle={:04X}, count={:04X}, data from {:04X}:{:04X}",
                      cpu.get_r16(&R::BX),
                      cpu.get_r16(&R::CX),
-                     cpu.get_sr(&SR::DS),
+                     cpu.get_r16(&R::DS),
                      cpu.get_r16(&R::DX));
         }
         0x48 => {
@@ -190,7 +190,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // BX = maximum paragraphs available for specified memory block
             println!("XXX impl DOS 2+ - RESIZE MEMORY BLOCK. bx={:04X}, es={:04X}",
                      cpu.get_r16(&R::BX),
-                     cpu.get_sr(&SR::ES));
+                     cpu.get_r16(&R::ES));
         }
         0x4C => {
             // DOS 2+ - EXIT - TERMINATE WITH RETURN CODE

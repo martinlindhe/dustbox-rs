@@ -18,7 +18,7 @@ use cairo;
 
 use dustbox::cpu::CPU;
 use dustbox::cpu;
-use dustbox::cpu::register::{R, SR};
+use dustbox::cpu::register::R;
 use dustbox::gpu::modes::VideoModeBlock;
 
 use debugger;
@@ -304,7 +304,9 @@ fn draw_canvas(c: &cairo::Context, buf: Vec<u8>, mode: &VideoModeBlock) {
     c.set_source_pixbuf(&pixbuf, 0., 0.);
 }
 
-fn u16_as_register_str(v: u16, prev: u16) -> String {
+fn u16_as_register_str(app: &debugger::Debugger, r: &R) -> String {
+    let v = app.machine.cpu.get_r16(r);
+    let prev = app.prev_regs.get_r16(r);
     if v == prev {
         format!("<span font_desc=\"mono\">{:04X}</span>", v)
     } else {
@@ -333,80 +335,38 @@ fn update_registers(
     let cx_value: gtk::Label = builder.get_object("cx_value").unwrap();
     let dx_value: gtk::Label = builder.get_object("dx_value").unwrap();
 
-    ax_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_r16(&R::AX),
-        app.prev_regs.r16[R::AX.index()].val,
-    ));
-    bx_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_r16(&R::BX),
-        app.prev_regs.r16[R::BX.index()].val,
-    ));
-    cx_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_r16(&R::CX),
-        app.prev_regs.r16[R::CX.index()].val,
-    ));
-    dx_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_r16(&R::DX),
-        app.prev_regs.r16[R::DX.index()].val,
-    ));
+    ax_value.set_markup(&u16_as_register_str(&app, &R::AX));
+    bx_value.set_markup(&u16_as_register_str(&app, &R::BX));
+    cx_value.set_markup(&u16_as_register_str(&app, &R::CX));
+    dx_value.set_markup(&u16_as_register_str(&app, &R::DX));
 
     let si_value: gtk::Label = builder.get_object("si_value").unwrap();
     let di_value: gtk::Label = builder.get_object("di_value").unwrap();
     let bp_value: gtk::Label = builder.get_object("bp_value").unwrap();
     let sp_value: gtk::Label = builder.get_object("sp_value").unwrap();
 
-    si_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_r16(&R::SI),
-        app.prev_regs.r16[R::SI.index()].val,
-    ));
-    di_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_r16(&R::DI),
-        app.prev_regs.r16[R::DI.index()].val,
-    ));
-    bp_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_r16(&R::BP),
-        app.prev_regs.r16[R::BP.index()].val,
-    ));
-    sp_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_r16(&R::SP),
-        app.prev_regs.r16[R::SP.index()].val,
-    ));
+    si_value.set_markup(&u16_as_register_str(&app, &R::SI));
+    di_value.set_markup(&u16_as_register_str(&app, &R::DI));
+    bp_value.set_markup(&u16_as_register_str(&app, &R::BP));
+    sp_value.set_markup(&u16_as_register_str(&app, &R::SP));
 
     let ds_value: gtk::Label = builder.get_object("ds_value").unwrap();
     let cs_value: gtk::Label = builder.get_object("cs_value").unwrap();
     let es_value: gtk::Label = builder.get_object("es_value").unwrap();
     let fs_value: gtk::Label = builder.get_object("fs_value").unwrap();
 
-    ds_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_sr(&SR::DS),
-        app.prev_regs.sreg16[SR::DS.index()],
-    ));
-    cs_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_sr(&SR::CS),
-        app.prev_regs.sreg16[SR::CS.index()],
-    ));
-    es_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_sr(&SR::ES),
-        app.prev_regs.sreg16[SR::ES.index()],
-    ));
-    fs_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_sr(&SR::FS),
-        app.prev_regs.sreg16[SR::FS.index()],
-    ));
+    ds_value.set_markup(&u16_as_register_str(&app, &R::DS));
+    cs_value.set_markup(&u16_as_register_str(&app, &R::CS));
+    es_value.set_markup(&u16_as_register_str(&app, &R::ES));
+    fs_value.set_markup(&u16_as_register_str(&app, &R::FS));
 
     let gs_value: gtk::Label = builder.get_object("gs_value").unwrap();
     let ss_value: gtk::Label = builder.get_object("ss_value").unwrap();
     let ip_value: gtk::Label = builder.get_object("ip_value").unwrap();
 
-    gs_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_sr(&SR::GS),
-        app.prev_regs.sreg16[SR::GS.index()],
-    ));
-    ss_value.set_markup(&u16_as_register_str(
-        app.machine.cpu.get_sr(&SR::SS),
-        app.prev_regs.sreg16[SR::SS.index()],
-    ));
-    ip_value.set_markup(&u16_as_register_str(app.machine.cpu.ip, app.prev_regs.ip));
+    gs_value.set_markup(&u16_as_register_str(&app, &R::GS));
+    ss_value.set_markup(&u16_as_register_str(&app, &R::SS));
+    ip_value.set_markup(&u16_as_register_str(&app, &R::IP));
 
     // XXX: color changes for flag changes too
     let c_flag: gtk::CheckButton = builder.get_object("c_flag").unwrap();
@@ -418,18 +378,15 @@ fn update_registers(
     let d_flag: gtk::CheckButton = builder.get_object("d_flag").unwrap();
     let i_flag: gtk::CheckButton = builder.get_object("i_flag").unwrap();
 
-    c_flag.set_active(app.machine.cpu.flags.carry);
-    z_flag.set_active(app.machine.cpu.flags.zero);
-    s_flag.set_active(app.machine.cpu.flags.sign);
-    o_flag.set_active(app.machine.cpu.flags.overflow);
-    a_flag.set_active(app.machine.cpu.flags.adjust);
-    p_flag.set_active(app.machine.cpu.flags.parity);
-    d_flag.set_active(app.machine.cpu.flags.direction);
-    i_flag.set_active(app.machine.cpu.flags.interrupt);
+    c_flag.set_active(app.machine.cpu.regs.flags.carry);
+    z_flag.set_active(app.machine.cpu.regs.flags.zero);
+    s_flag.set_active(app.machine.cpu.regs.flags.sign);
+    o_flag.set_active(app.machine.cpu.regs.flags.overflow);
+    a_flag.set_active(app.machine.cpu.regs.flags.adjust);
+    p_flag.set_active(app.machine.cpu.regs.flags.parity);
+    d_flag.set_active(app.machine.cpu.regs.flags.direction);
+    i_flag.set_active(app.machine.cpu.regs.flags.interrupt);
 
     // save previous values for next update
-    app.prev_regs.ip = app.machine.cpu.ip;
-    app.prev_regs.r16 = app.machine.cpu.r16;
-    app.prev_regs.sreg16 = app.machine.cpu.sreg16;
-    app.prev_regs.flags = app.machine.cpu.flags;
+    app.prev_regs = app.machine.cpu.regs.clone();
 }

@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
 use cpu::parameter::{Parameter, ParameterSet};
 use cpu::op::{Op, InvalidOp};
-use cpu::register::{R, SR, r8, r16};
+use cpu::register::{R, r8, r16, sr};
 use cpu::segment::Segment;
 use memory::{MMU, MemoryAddress};
 
@@ -13,6 +13,11 @@ const DEBUG_DECODER: bool = false;
 #[cfg(test)]
 #[path = "./decoder_test.rs"]
 mod decoder_test;
+
+
+enum OperandSize {
+    _16bit, _32bit,
+}
 
 #[derive(Clone)]
 pub struct Decoder {
@@ -60,10 +65,11 @@ impl Decoder {
     pub fn get_instruction(&mut self, mut mmu: &mut MMU, seg: Segment, iseg: u16, ioffset: u16) -> (Instruction, usize) {
         self.c_seg = iseg;
         self.c_offset = ioffset;
-        self.decode(&mut mmu, seg)
+        self.decode(&mut mmu, seg, OperandSize::_16bit)
     }
 
-    fn decode(&mut self, mut mmu: &mut MMU, seg: Segment) -> (Instruction, usize) {
+    // decodes 8 and 16 bit instructions
+    fn decode(&mut self, mut mmu: &mut MMU, seg: Segment, op_size: OperandSize) -> (Instruction, usize) {
         let ioffset = self.c_offset;
         let b = self.read_u8(mmu);
 
@@ -115,12 +121,12 @@ impl Decoder {
             0x06 => {
                 // push es
                 op.command = Op::Push16;
-                op.params.dst = Parameter::SReg16(SR::ES);
+                op.params.dst = Parameter::SReg16(R::ES);
             }
             0x07 => {
                 // pop es
                 op.command = Op::Pop16;
-                op.params.dst = Parameter::SReg16(SR::ES);
+                op.params.dst = Parameter::SReg16(R::ES);
             }
             0x08 => {
                 // or r/m8, r8
@@ -157,7 +163,7 @@ impl Decoder {
             0x0E => {
                 // push cs
                 op.command = Op::Push16;
-                op.params.dst = Parameter::SReg16(SR::CS);
+                op.params.dst = Parameter::SReg16(R::CS);
             }
             0x0F => {
                 let b = self.read_u8(mmu);
@@ -202,12 +208,12 @@ impl Decoder {
                     0xA0 => {
                         // push fs
                         op.command = Op::Push16;
-                        op.params.dst = Parameter::SReg16(SR::FS);
+                        op.params.dst = Parameter::SReg16(R::FS);
                     }
                     0xA1 => {
                         // pop fs
                         op.command = Op::Pop16;
-                        op.params.dst = Parameter::SReg16(SR::FS);
+                        op.params.dst = Parameter::SReg16(R::FS);
                     }
                     0xA3 => {
                         // bt r/m16, r16
@@ -223,12 +229,12 @@ impl Decoder {
                     0xA8 => {
                         // push gs
                         op.command = Op::Push16;
-                        op.params.dst = Parameter::SReg16(SR::GS);
+                        op.params.dst = Parameter::SReg16(R::GS);
                     }
                     0xA9 => {
                         // pop gs
                         op.command = Op::Pop16;
-                        op.params.dst = Parameter::SReg16(SR::GS);
+                        op.params.dst = Parameter::SReg16(R::GS);
                     }
                     0xAC => {
                         // shrd r/m16, r16, imm8
@@ -294,12 +300,12 @@ impl Decoder {
             0x16 => {
                 // push ss
                 op.command = Op::Push16;
-                op.params.dst = Parameter::SReg16(SR::SS);
+                op.params.dst = Parameter::SReg16(R::SS);
             }
             0x17 => {
                 // pop ss
                 op.command = Op::Pop16;
-                op.params.dst = Parameter::SReg16(SR::SS);
+                op.params.dst = Parameter::SReg16(R::SS);
             }
             0x18 => {
                 // sbb r/m8, r8
@@ -326,12 +332,12 @@ impl Decoder {
             0x1E => {
                 // push ds
                 op.command = Op::Push16;
-                op.params.dst = Parameter::SReg16(SR::DS);
+                op.params.dst = Parameter::SReg16(R::DS);
             }
             0x1F => {
                 // pop ds
                 op.command = Op::Pop16;
-                op.params.dst = Parameter::SReg16(SR::DS);
+                op.params.dst = Parameter::SReg16(R::DS);
             }
             0x20 => {
                 // and r/m8, r8
@@ -367,7 +373,7 @@ impl Decoder {
             }
             0x26 => {
                 // es segment prefix
-                let (mut op, length) = self.decode(&mut mmu, Segment::ES);
+                let (mut op, length) = self.decode(&mut mmu, Segment::ES, op_size);
                 return (op, length + 1);
             }
             0x27 => op.command = Op::Daa,
@@ -405,7 +411,7 @@ impl Decoder {
             }
             0x2E => {
                 // cs segment prefix
-                let (mut op, length) = self.decode(&mut mmu, Segment::CS);
+                let (mut op, length) = self.decode(&mut mmu, Segment::CS, op_size);
                 return (op, length + 1);
             }
             0x2F => op.command = Op::Das,
@@ -443,7 +449,7 @@ impl Decoder {
             }
             0x36 => {
                 // ss segment prefix
-                let (mut op, length) = self.decode(&mut mmu, Segment::SS);
+                let (mut op, length) = self.decode(&mut mmu, Segment::SS, op_size);
                 return (op, length + 1);
             }
             0x37 => op.command = Op::Aaa,
@@ -481,7 +487,7 @@ impl Decoder {
             }
             0x3E => {
                 // ds segment prefix
-                let (mut op, length) = self.decode(&mut mmu, Segment::DS);
+                let (mut op, length) = self.decode(&mut mmu, Segment::DS, op_size);
                 return (op, length + 1);
             }
             0x3F => op.command = Op::Aas,
@@ -520,18 +526,18 @@ impl Decoder {
             }
             0x64 => {
                 // fs segment prefix
-                let (mut op, length) = self.decode(&mut mmu, Segment::FS);
+                let (mut op, length) = self.decode(&mut mmu, Segment::FS, op_size);
                 return (op, length + 1);
             }
             0x65 => {
                 // gs segment prefix
-                let (mut op, length) = self.decode(&mut mmu, Segment::GS);
+                let (mut op, length) = self.decode(&mut mmu, Segment::GS, op_size);
                 return (op, length + 1);
             }
             0x66 => {
                 // 80386+ Operand-size override prefix
-                println!("ERROR: unsupported 386 operand-size override prefix");
-                op.command = Op::Invalid(InvalidOp::Op);
+                let (mut op, length) = self.decode(&mut mmu, seg, OperandSize::_32bit);
+                return (op, length + 1);
             }
             0x67 => {
                 // 80386+ Address-size override prefix
@@ -1092,7 +1098,7 @@ impl Decoder {
             }
             0xF0 => {
                 // lock prefix
-                let (mut op, length) = self.decode(&mut mmu, seg);
+                let (mut op, length) = self.decode(&mut mmu, seg, op_size);
                 op.lock = true;
                 return (op, length + 1)
             }
@@ -1285,7 +1291,7 @@ impl Decoder {
     fn sreg_rm16(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
-            dst: Parameter::SReg16(Into::into(x.reg)),
+            dst: Parameter::SReg16(sr(x.reg)),
             src: self.rm16(&mut mmu, seg, x.rm, x.md),
             src2: Parameter::None,
         }
@@ -1296,7 +1302,7 @@ impl Decoder {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
             dst: self.rm16(&mut mmu, seg, x.rm, x.md),
-            src: Parameter::SReg16(Into::into(x.reg)),
+            src: Parameter::SReg16(sr(x.reg)),
             src2: Parameter::None,
         }
     }

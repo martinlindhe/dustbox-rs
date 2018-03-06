@@ -1,5 +1,5 @@
 use machine::Machine;
-use cpu::register::{R, SR};
+use cpu::register::R;
 use cpu::segment::Segment;
 use memory::MMU;
 

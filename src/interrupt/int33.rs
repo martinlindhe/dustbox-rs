@@ -1,6 +1,6 @@
 use hardware::Hardware;
 use cpu::CPU;
-use cpu::register::{R, SR};
+use cpu::register::R;
 
 // mouse related interrupts
 pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
@@ -17,8 +17,8 @@ pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
         _ => {
             println!("int33 error: unknown ax={:04X}, ip={:04X}:{:04X}",
                      cpu.get_r16(&R::AX),
-                     cpu.get_sr(&SR::CS),
-                     cpu.ip);
+                     cpu.get_r16(&R::CS),
+                     cpu.regs.ip);
         }
     }
 }

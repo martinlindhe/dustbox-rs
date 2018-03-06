@@ -4,7 +4,7 @@ use std::io::Error as IoError;
 use std::process::exit;
 
 use dustbox::machine::Machine;
-use dustbox::cpu::register::{R, SR, RegisterSnapshot};
+use dustbox::cpu::register::{R, RegisterSnapshot};
 use dustbox::cpu::decoder::Decoder;
 use dustbox::tools;
 use dustbox::memory::MemoryAddress;
@@ -48,8 +48,8 @@ impl Debugger {
         if self.is_ip_at_breakpoint() {
             println!(
                 "Breakpoint reached, ip = {:04X}:{:04X}",
-                self.machine.cpu.get_sr(&SR::CS),
-                self.machine.cpu.ip
+                self.machine.cpu.get_r16(&R::CS),
+                self.machine.cpu.regs.ip
             );
             return true;
         }
@@ -85,9 +85,9 @@ impl Debugger {
 
     pub fn step_over(&mut self) {
         let mut decoder = Decoder::new();
-        let op = decoder.decode_instruction(&mut self.machine.hw.mmu, self.machine.cpu.get_sr(&SR::CS), self.machine.cpu.ip);
+        let op = decoder.decode_instruction(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip);
 
-        let dst_ip = self.machine.cpu.ip + op.bytes.len() as u16;
+        let dst_ip = self.machine.cpu.regs.ip + op.bytes.len() as u16;
         println!("Step-over running to {:04X}", dst_ip);
 
         let mut cnt = 0;
@@ -97,7 +97,7 @@ impl Debugger {
             if self.should_break() {
                 break;
             }
-            if self.machine.cpu.ip == dst_ip {
+            if self.machine.cpu.regs.ip == dst_ip {
                 break;
             }
         }
@@ -111,7 +111,7 @@ impl Debugger {
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
         let mut decoder = Decoder::new();
-        decoder.disassemble_block_to_str(&mut self.machine.hw.mmu, self.machine.cpu.get_sr(&SR::CS), self.machine.cpu.ip, n)
+        decoder.disassemble_block_to_str(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip, n)
     }
 
     pub fn dump_memory(&self, filename: &str, base: u32, len: u32) -> Result<usize, IoError> {
@@ -316,7 +316,7 @@ impl Debugger {
             }
             "d" | "disasm" => {
                 let mut decoder = Decoder::new();
-                let op = decoder.decode_instruction(&mut self.machine.hw.mmu, self.machine.cpu.get_sr(&SR::CS), self.machine.cpu.ip);
+                let op = decoder.decode_instruction(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip);
                 println!("{:?}", op);
                 println!("{}", op);
             }
@@ -428,8 +428,8 @@ impl Debugger {
         let rom_offset = offset - self.machine.cpu.get_rom_base() + 0x100;
         println!(
             "{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
-            self.machine.cpu.get_sr(&SR::CS),
-            self.machine.cpu.ip,
+            self.machine.cpu.get_r16(&R::CS),
+            self.machine.cpu.regs.ip,
             offset,
             rom_offset
         );
@@ -476,12 +476,12 @@ impl Debugger {
                 "bp" => Ok(self.machine.cpu.get_r16(&R::BP) as usize),
                 "si" => Ok(self.machine.cpu.get_r16(&R::SI) as usize),
                 "di" => Ok(self.machine.cpu.get_r16(&R::DI) as usize),
-                "es" => Ok(self.machine.cpu.get_sr(&SR::ES) as usize),
-                "cs" => Ok(self.machine.cpu.get_sr(&SR::CS) as usize),
-                "ss" => Ok(self.machine.cpu.get_sr(&SR::SS) as usize),
-                "ds" => Ok(self.machine.cpu.get_sr(&SR::DS) as usize),
-                "fs" => Ok(self.machine.cpu.get_sr(&SR::FS) as usize),
-                "gs" => Ok(self.machine.cpu.get_sr(&SR::GS) as usize),
+                "es" => Ok(self.machine.cpu.get_r16(&R::ES) as usize),
+                "cs" => Ok(self.machine.cpu.get_r16(&R::CS) as usize),
+                "ss" => Ok(self.machine.cpu.get_r16(&R::SS) as usize),
+                "ds" => Ok(self.machine.cpu.get_r16(&R::DS) as usize),
+                "fs" => Ok(self.machine.cpu.get_r16(&R::FS) as usize),
+                "gs" => Ok(self.machine.cpu.get_r16(&R::GS) as usize),
                 _ => usize::from_str_radix(&x, 16)
             }
         }
@@ -493,37 +493,37 @@ impl Debugger {
         res += format!("AX:{:04X}  SI:{:04X}  DS:{:04X}  IP:{:04X}  cnt:{}\n",
                        self.machine.cpu.get_r16(&R::AX),
                        self.machine.cpu.get_r16(&R::SI),
-                       self.machine.cpu.get_sr(&SR::DS),
-                       self.machine.cpu.ip,
+                       self.machine.cpu.get_r16(&R::DS),
+                       self.machine.cpu.regs.ip,
                        self.machine.cpu.instruction_count)
                 .as_ref();
         res += format!("BX:{:04X}  DI:{:04X}  CS:{:04X}  fl:{:04X}\n",
                        self.machine.cpu.get_r16(&R::BX),
                        self.machine.cpu.get_r16(&R::DI),
-                       self.machine.cpu.get_sr(&SR::CS),
-                       self.machine.cpu.flags.u16())
+                       self.machine.cpu.get_r16(&R::CS),
+                       self.machine.cpu.regs.flags.u16())
                 .as_ref();
         res += format!("CX:{:04X}  BP:{:04X}  ES:{:04X}  GS:{:04X}\n",
                        self.machine.cpu.get_r16(&R::CX),
                        self.machine.cpu.get_r16(&R::BP),
-                       self.machine.cpu.get_sr(&SR::ES),
-                       self.machine.cpu.get_sr(&SR::GS))
+                       self.machine.cpu.get_r16(&R::ES),
+                       self.machine.cpu.get_r16(&R::GS))
                 .as_ref();
         res += format!("DX:{:04X}  SP:{:04X}  FS:{:04X}  SS:{:04X}\n",
                        self.machine.cpu.get_r16(&R::DX),
                        self.machine.cpu.get_r16(&R::SP),
-                       self.machine.cpu.get_sr(&SR::FS),
-                       self.machine.cpu.get_sr(&SR::SS))
+                       self.machine.cpu.get_r16(&R::FS),
+                       self.machine.cpu.get_r16(&R::SS))
                 .as_ref();
         res += format!("C{} Z{} S{} O{} A{} P{} D{} I{}",
-                       self.machine.cpu.flags.carry_numeric(),
-                       self.machine.cpu.flags.zero_numeric(),
-                       self.machine.cpu.flags.sign_numeric(),
-                       self.machine.cpu.flags.overflow_numeric(),
-                       self.machine.cpu.flags.adjust_numeric(),
-                       self.machine.cpu.flags.parity_numeric(),
-                       self.machine.cpu.flags.direction_numeric(),
-                       self.machine.cpu.flags.interrupt_numeric())
+                       self.machine.cpu.regs.flags.carry_numeric(),
+                       self.machine.cpu.regs.flags.zero_numeric(),
+                       self.machine.cpu.regs.flags.sign_numeric(),
+                       self.machine.cpu.regs.flags.overflow_numeric(),
+                       self.machine.cpu.regs.flags.adjust_numeric(),
+                       self.machine.cpu.regs.flags.parity_numeric(),
+                       self.machine.cpu.regs.flags.direction_numeric(),
+                       self.machine.cpu.regs.flags.interrupt_numeric())
                 .as_ref();
 
         res

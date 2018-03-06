@@ -15,7 +15,7 @@ use tools;
 use cpu::CPU;
 use machine::Machine;
 use memory::MMU;
-use cpu::register::{R, SR};
+use cpu::register::R;
 use gpu::modes::VideoModeBlock;
 
 #[test]
@@ -73,7 +73,7 @@ fn can_get_font_info() {
 
     machine.execute_instructions(3);
     machine.execute_instruction(); // trigger the interrupt
-    assert_eq!(0xC000, machine.cpu.get_sr(&SR::ES));
+    assert_eq!(0xC000, machine.cpu.get_r16(&R::ES));
     assert_eq!(0x1700, machine.cpu.get_r16(&R::BP));
 }
 
@@ -96,7 +96,7 @@ fn can_int10_put_pixel() {
     machine.execute_instruction(); // trigger the interrupt
     machine.execute_instructions(6);
     machine.execute_instruction(); // trigger the interrupt
-    assert_eq!(0x0113, machine.cpu.ip);
+    assert_eq!(0x0113, machine.cpu.regs.ip);
 
     let frame = machine.hw.gpu.render_frame(&machine.hw.mmu);
     let mut img = draw_image(&frame, &machine.hw.gpu.mode);
@@ -136,7 +136,7 @@ let mut machine = Machine::new();
     machine.execute_instruction(); // trigger the interrupt
     machine.execute_instructions(6);
     machine.execute_instruction(); // trigger the interrupt
-    assert_eq!(0x0112, machine.cpu.ip);
+    assert_eq!(0x0112, machine.cpu.regs.ip);
 
     let frame = machine.hw.gpu.render_frame(&machine.hw.mmu);
     let mut img = draw_image(&frame, &machine.hw.gpu.mode);

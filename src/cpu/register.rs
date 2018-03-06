@@ -2,21 +2,29 @@ use std::convert::From;
 
 use cpu::flags::Flags;
 
+// 32-bit general purpose register (AL->AX->EAX)
 #[derive(Copy, Clone, Debug, Default)]
-pub struct Register16 {
-    pub val: u16,
+pub struct Register16 { // XXX rename to GPR
+    pub val: u32,
 }
 
 impl Register16 {
+    /// sets the high byte of the word register
     pub fn set_hi(&mut self, val: u8) {
-        self.val = (self.val & 0xFF) + (u16::from(val) << 8);
+        self.val = (self.val & 0xFF) + (u32::from(val) << 8);
     }
+
+    /// sets the low byte of the word register
     pub fn set_lo(&mut self, val: u8) {
-        self.val = (self.val & 0xFF00) + u16::from(val);
+        self.val = (self.val & 0xFF00) + u32::from(val);
     }
+
+    // gets the low byte of the word register
     pub fn lo_u8(&self) -> u8 {
         (self.val & 0xFF) as u8
     }
+
+    // gets the hi byte of the word register
     pub fn hi_u8(&self) -> u8 {
         (self.val >> 8) as u8
     }
@@ -24,8 +32,11 @@ impl Register16 {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum R {
-    AL, CL, DL, BL, AH, CH, DH, BH,
-    AX, CX, DX, BX, SP, BP, SI, DI,
+    AL, CL, DL, BL, AH, CH, DH, BH,         // 8-bit gpr
+    AX, CX, DX, BX, SP, BP, SI, DI,         // 16-bit gpr
+    ES, CS, SS, DS, FS, GS,                 // sr
+    IP,                                     // ip
+    EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, //
 }
 
 impl R {
@@ -48,6 +59,24 @@ impl R {
             R::BP => 5,
             R::SI => 6,
             R::DI => 7,
+
+            R::ES => 0,
+            R::CS => 1,
+            R::SS => 2,
+            R::DS => 3,
+            R::FS => 4,
+            R::GS => 5,
+
+            R::EAX => 0,
+            R::ECX => 1,
+            R::EDX => 2,
+            R::EBX => 3,
+            R::ESP => 4,
+            R::EBP => 5,
+            R::ESI => 6,
+            R::EDI => 7,
+
+            _ => unreachable!(),
         }
     }
 
@@ -70,6 +99,22 @@ impl R {
             R::BP => "bp",
             R::SI => "si",
             R::DI => "di",
+            R::ES => "es",
+            R::CS => "cs",
+            R::SS => "ss",
+            R::DS => "ds",
+            R::FS => "fs",
+            R::GS => "gs",
+            R::IP => "ip",
+
+            R::EAX => "eax",
+            R::ECX => "ecx",
+            R::EDX => "edx",
+            R::EBX => "ebx",
+            R::ESP => "esp",
+            R::EBP => "ebp",
+            R::ESI => "esi",
+            R::EDI => "edi",
         }
     }
 }
@@ -102,48 +147,32 @@ pub fn r16(v: u8) -> R {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum SR {
-    ES, CS, SS, DS, FS, GS
-}
-
-impl SR {
-   pub fn index(&self) -> usize {
-        match *self {
-            SR::ES => 0,
-            SR::CS => 1,
-            SR::SS => 2,
-            SR::DS => 3,
-            SR::FS => 4,
-            SR::GS => 5,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match *self {
-            SR::ES => "es",
-            SR::CS => "cs",
-            SR::SS => "ss",
-            SR::DS => "ds",
-            SR::FS => "fs",
-            SR::GS => "gs",
-        }
+pub fn r32(v: u8) -> R {
+    match v {
+        0 => R::EAX,
+        1 => R::ECX,
+        2 => R::EDX,
+        3 => R::EBX,
+        4 => R::ESP,
+        5 => R::EBP,
+        6 => R::ESI,
+        7 => R::EDI,
+        _ => unreachable!(),
     }
 }
 
-impl Into<SR> for u8 {
-    fn into(self) -> SR {
-        match self {
-            0 => SR::ES,
-            1 => SR::CS,
-            2 => SR::SS,
-            3 => SR::DS,
-            4 => SR::FS,
-            5 => SR::GS,
-            _ => unreachable!(),
-        }
+pub fn sr(v: u8) -> R {
+    match v {
+        0 => R::ES,
+        1 => R::CS,
+        2 => R::SS,
+        3 => R::DS,
+        4 => R::FS,
+        5 => R::GS,
+        _ => unreachable!(),
     }
 }
+
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AMode {
@@ -194,9 +223,99 @@ impl Into<AMode> for u8 {
     }
 }
 
+#[derive(Clone, Default)]
 pub struct RegisterSnapshot {
     pub ip: u16,
-    pub r16: [Register16; 8], // general purpose registers
-    pub sreg16: [u16; 6],     // segment registers
+    pub gpr: [Register16; 8 + 6 + 1],   // 8 general purpose registers, 6 segment registers, 1 ip
+    pub sreg16: [u16; 6],               // segment registers
     pub flags: Flags,
+}
+
+impl RegisterSnapshot {
+    pub fn get_r8(&self, r: &R) -> u8 {
+        match *r {
+            R::AL => self.gpr[0].lo_u8(),
+            R::CL => self.gpr[1].lo_u8(),
+            R::DL => self.gpr[2].lo_u8(),
+            R::BL => self.gpr[3].lo_u8(),
+            R::AH => self.gpr[0].hi_u8(),
+            R::CH => self.gpr[1].hi_u8(),
+            R::DH => self.gpr[2].hi_u8(),
+            R::BH => self.gpr[3].hi_u8(),
+            _ => panic!(),
+        }
+    }
+
+    pub fn set_r8(&mut self, r: &R, val: u8) {
+        match *r {
+            R::AL => self.gpr[0].set_lo(val),
+            R::CL => self.gpr[1].set_lo(val),
+            R::DL => self.gpr[2].set_lo(val),
+            R::BL => self.gpr[3].set_lo(val),
+            R::AH => self.gpr[0].set_hi(val),
+            R::CH => self.gpr[1].set_hi(val),
+            R::DH => self.gpr[2].set_hi(val),
+            R::BH => self.gpr[3].set_hi(val),
+            _ => panic!(),
+        }
+    }
+
+    pub fn get_r16(&self, r: &R) -> u16 {
+        match *r {
+            R::AX => self.gpr[0].val as u16,
+            R::CX => self.gpr[1].val as u16,
+            R::DX => self.gpr[2].val as u16,
+            R::BX => self.gpr[3].val as u16,
+            R::SP => self.gpr[4].val as u16,
+            R::BP => self.gpr[5].val as u16,
+            R::SI => self.gpr[6].val as u16,
+            R::DI => self.gpr[7].val as u16,
+
+            R::ES => self.sreg16[0],
+            R::CS => self.sreg16[1],
+            R::SS => self.sreg16[2],
+            R::DS => self.sreg16[3],
+            R::FS => self.sreg16[4],
+            R::GS => self.sreg16[5],
+
+            R::IP => self.ip,
+            _ => panic!("get_r16 on {:?}", r),
+        }
+    }
+
+    pub fn set_r16(&mut self, r: &R, val: u16) {
+        match *r {
+            R::AX => self.gpr[0].val = val as u32,
+            R::CX => self.gpr[1].val = val as u32,
+            R::DX => self.gpr[2].val = val as u32,
+            R::BX => self.gpr[3].val = val as u32,
+            R::SP => self.gpr[4].val = val as u32,
+            R::BP => self.gpr[5].val = val as u32,
+            R::SI => self.gpr[6].val = val as u32,
+            R::DI => self.gpr[7].val = val as u32,
+
+            R::ES => self.sreg16[0] = val,
+            R::CS => self.sreg16[1] = val,
+            R::SS => self.sreg16[2] = val,
+            R::DS => self.sreg16[3] = val,
+            R::FS => self.sreg16[4] = val,
+            R::GS => self.sreg16[5] = val,
+                
+              _ => panic!("set_r16 on {:?}", r),
+          }
+    }
+
+    pub fn get_r32(&self, r: &R) -> u32 {
+        match *r {
+            R::EAX => self.gpr[0].val,
+            R::ECX => self.gpr[1].val,
+            R::EDX => self.gpr[2].val,
+            R::EBX => self.gpr[3].val,
+            R::ESP => self.gpr[4].val,
+            R::EBP => self.gpr[5].val,
+            R::ESI => self.gpr[6].val,
+            R::EDI => self.gpr[7].val,
+            _ => panic!(),
+        }
+    }
 }

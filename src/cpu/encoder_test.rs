@@ -17,7 +17,7 @@ use cpu::segment::Segment;
 use cpu::parameter::Parameter;
 use cpu::instruction::{Instruction, InstructionInfo, RepeatMode};
 use cpu::op::Op;
-use cpu::register::{R, SR, AMode};
+use cpu::register::{R, AMode};
 use machine::Machine;
 use memory::MMU;
 use hex::hex_bytes;
@@ -39,7 +39,7 @@ fn can_encode_random_seq() {
         let encoder = Encoder::new();
 
         // randomizes a byte sequence and tries to decode the first instruction
-        let cs = machine.cpu.get_sr(&SR::CS);
+        let cs = machine.cpu.get_r16(&R::CS);
         let ops = machine.cpu.decoder.decode_to_block(&mut machine.hw.mmu, cs, 0x100, 1);
         let op = &ops[0];
         if op.instruction.command.is_valid() {
@@ -482,7 +482,7 @@ fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u
 
     let mut machine = Machine::new();
     machine.load_com(&code);
-    let cs = machine.cpu.get_sr(&SR::CS);
+    let cs = machine.cpu.get_r16(&R::CS);
     let ops = machine.cpu.decoder.decode_to_block(&mut machine.hw.mmu, cs, 0x100, 1);
     let decoded_op = &ops[0].instruction;
     assert_eq!(op, decoded_op, "decoded resulting op from instruction encode does not match input op");

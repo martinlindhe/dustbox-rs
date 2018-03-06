@@ -52,7 +52,7 @@ fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&
 
     let vm_flags = vm_regs["flag"];
     let vm_masked_flags = vm_flags & affected_flag_mask;
-    let dustbox_flags = machine.cpu.flags.u16();
+    let dustbox_flags = machine.cpu.regs.flags.u16();
     let dustbox_masked_flags = dustbox_flags & affected_flag_mask;
     if vm_masked_flags != dustbox_masked_flags {
         let xored = vm_masked_flags ^ dustbox_masked_flags;

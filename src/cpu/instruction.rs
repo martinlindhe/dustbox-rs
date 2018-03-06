@@ -2,7 +2,6 @@ use std::fmt;
 use std::num::Wrapping;
 
 use cpu::segment::Segment;
-use cpu::register::{SR, AMode};
 use cpu::op::Op;
 use cpu::parameter::{Parameter, ParameterSet};
 use hex::hex_bytes;

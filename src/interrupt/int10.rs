@@ -1,6 +1,6 @@
 use hardware::Hardware;
 use cpu::CPU;
-use cpu::register::{R, SR};
+use cpu::register::R;
 use memory::{MMU, MemoryAddress};
 use gpu::modes::{VideoModeBlock, GFXMode, SpecialMode, ega_mode_block, vga_mode_block};
 use gpu::modes::GFXMode::*;
@@ -164,7 +164,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
                     // VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA)
                     let start = cpu.get_r16(&R::BX);
                     let count = cpu.get_r16(&R::CX);
-                    let seg = cpu.get_sr(&SR::ES);
+                    let seg = cpu.get_r16(&R::ES);
                     let off = cpu.get_r16(&R::DX);
                     hw.gpu.set_dac_block(&mut hw.mmu, start, count, seg, off);
                 }
@@ -180,7 +180,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
                     // VIDEO - READ BLOCK OF DAC REGISTERS (VGA/MCGA)
                     let index = cpu.get_r16(&R::BX);
                     let count = cpu.get_r16(&R::CX);
-                    let seg = cpu.get_sr(&SR::ES);
+                    let seg = cpu.get_r16(&R::ES);
                     let off = cpu.get_r16(&R::DX);
                     hw.gpu.read_dac_block(&mut hw.mmu, index, count, seg, off);
                 }
@@ -207,14 +207,14 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
                     match bh { // BH = pointer specifier
                         0x00 => { // INT 1Fh pointer
                             let (seg, off) = hw.mmu.read_vec(0x1F);
-                            cpu.set_sr(&SR::ES, seg);
+                            cpu.set_r16(&R::ES, seg);
                             cpu.set_r16(&R::BP, off);
                         }
                         // 01h INT 43h pointer
                         0x02 => {
                             // ROM 8x14 character font pointer
                             if let MemoryAddress::RealSegmentOffset(seg, off) = hw.gpu.font_14 {
-                                cpu.set_sr(&SR::ES, seg);
+                                cpu.set_r16(&R::ES, seg);
                                 cpu.set_r16(&R::BP, off);
                             }
                         }
@@ -225,7 +225,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
                             // ROM 8x16 font (MCGA, VGA)
                             if hw.gpu.card.is_vga() {
                                 if let MemoryAddress::RealSegmentOffset(seg, off) = hw.gpu.font_16 {
-                                    cpu.set_sr(&SR::ES, seg);
+                                    cpu.set_r16(&R::ES, seg);
                                     cpu.set_r16(&R::BP, off);
                                 }
                             }
@@ -247,7 +247,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             let col = cpu.get_r8(&R::DL);
             let flag = cpu.get_r8(&R::AL);
             let attr = cpu.get_r8(&R::BL);
-            let str_seg = cpu.get_sr(&SR::ES);
+            let str_seg = cpu.get_r16(&R::ES);
             let str_offs = cpu.get_r16(&R::BP);
             let count = cpu.get_r16(&R::CX);
             let page = cpu.get_r8(&R::BH);

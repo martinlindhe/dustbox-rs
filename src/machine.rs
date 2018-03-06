@@ -1,7 +1,7 @@
 use cpu::CPU;
 use gpu::GPU;
 use cpu::op::{Op, InvalidOp};
-use cpu::register::{SR, R, RegisterSnapshot};
+use cpu::register::{R, RegisterSnapshot};
 use cpu::segment::Segment;
 use memory::MMU;
 use hardware::Hardware;
@@ -28,10 +28,10 @@ impl Machine {
     pub fn load_com(&mut self, data: &[u8]) {
         // CS,DS,ES,SS = PSP segment
         let psp_segment = 0x085F; // is what dosbox used
-        self.cpu.set_sr(&SR::CS, psp_segment);
-        self.cpu.set_sr(&SR::DS, psp_segment);
-        self.cpu.set_sr(&SR::ES, psp_segment);
-        self.cpu.set_sr(&SR::SS, psp_segment);
+        self.cpu.set_r16(&R::CS, psp_segment);
+        self.cpu.set_r16(&R::DS, psp_segment);
+        self.cpu.set_r16(&R::ES, psp_segment);
+        self.cpu.set_r16(&R::SS, psp_segment);
 
         // offset of last word available in first 64k segment
         self.cpu.set_r16(&R::SP, 0xFFFE);
@@ -44,22 +44,17 @@ impl Machine {
         self.cpu.set_r16(&R::SI, 0x0100);
         self.cpu.set_r16(&R::DI, 0xFFFE);
 
-        self.cpu.ip = 0x0100;
+        self.cpu.regs.ip = 0x0100;
         let min = self.cpu.get_address();
         self.cpu.rom_base = min;
 
-        let cs = self.cpu.get_sr(&SR::CS);
-        self.hw.mmu.write(cs, self.cpu.ip, data);
+        let cs = self.cpu.get_r16(&R::CS);
+        self.hw.mmu.write(cs, self.cpu.regs.ip, data);
     }
 
     // returns a copy of register values at a given time
     pub fn register_snapshot(&self) -> RegisterSnapshot {
-        RegisterSnapshot {
-            ip: self.cpu.ip,
-            r16: self.cpu.r16,
-            sreg16: self.cpu.sreg16,
-            flags: self.cpu.flags,
-        }
+        self.cpu.regs.clone()
     }
 
     // executes enough instructions that can run for 1 video frame
@@ -88,14 +83,14 @@ impl Machine {
     }
 
     pub fn execute_instruction(&mut self) {
-        let cs = self.cpu.get_sr(&SR::CS);
+        let cs = self.cpu.get_r16(&R::CS);
+        let ip = self.cpu.regs.ip;
         if cs == 0xF000 {
             // we are in interrupt vector code, execute high-level interrupt.
             // the default interrupt vector table has a IRET
-            let int = self.cpu.ip as u8;
-            self.cpu.handle_interrupt(&mut self.hw, int);
+            self.cpu.handle_interrupt(&mut self.hw, ip as u8);
         }
-        let ip = self.cpu.ip;
+
         let (op, length) = self.cpu.decoder.get_instruction(&mut self.hw.mmu, Segment::DS, cs, ip);
 
         match op.command {

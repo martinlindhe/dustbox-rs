@@ -1,6 +1,6 @@
 use std::fmt;
 
-use cpu::register;
+use cpu::register::R;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Segment {
@@ -31,14 +31,14 @@ impl Segment {
         }
     }
 
-    pub fn as_register(&self) -> register::SR {
+    pub fn as_register(&self) -> R {
         match *self {
-            Segment::Default | Segment::DS => register::SR::DS,
-            Segment::CS => register::SR::CS,
-            Segment::ES => register::SR::ES,
-            Segment::FS => register::SR::FS,
-            Segment::GS => register::SR::GS,
-            Segment::SS => register::SR::SS,
+            Segment::Default | Segment::DS => R::DS,
+            Segment::CS => R::CS,
+            Segment::ES => R::ES,
+            Segment::FS => R::FS,
+            Segment::GS => R::GS,
+            Segment::SS => R::SS,
         }
     }
 }
