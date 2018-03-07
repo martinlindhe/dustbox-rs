@@ -1,7 +1,6 @@
 use hardware::Hardware;
-use cpu::CPU;
-use cpu::register::R;
-use cpu::flags;
+use cpu::{CPU, R};
+use cpu::*;
 
 // keyboard related interrupts
 pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
@@ -23,7 +22,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // AL = ASCII character
 
             // println!("XXX impl KEYBOARD - CHECK FOR KEYSTROKE");
-            hw.bios.set_flag(&mut hw.mmu, flags::FLAG_ZF, true);
+            hw.bios.set_flag(&mut hw.mmu, FLAG_ZF, true);
         }
         0x11 => {
             // KEYBOARD - CHECK FOR ENHANCED KEYSTROKE (enh kbd support only)
@@ -33,7 +32,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // AH = BIOS scan code
             // AL = ASCII character
             println!("XXX impl KEYBOARD - CHECK FOR ENHANCED KEYSTROKE");
-            hw.bios.set_flag(&mut hw.mmu, flags::FLAG_ZF, true);
+            hw.bios.set_flag(&mut hw.mmu, FLAG_ZF, true);
         }
         _ => {
             println!("int16 error: unknown ah={:02X}, ax={:04X}",

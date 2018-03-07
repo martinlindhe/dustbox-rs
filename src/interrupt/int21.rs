@@ -1,8 +1,7 @@
 use time;
 
 use hardware::Hardware;
-use cpu::CPU;
-use cpu::register::R;
+use cpu::{CPU, R};
 use codepage::cp437;
 use memory::MemoryAddress;
 

@@ -4,8 +4,7 @@ use std::io::Error as IoError;
 use std::process::exit;
 
 use dustbox::machine::Machine;
-use dustbox::cpu::register::{R, RegisterSnapshot};
-use dustbox::cpu::decoder::Decoder;
+use dustbox::cpu::{R, RegisterSnapshot, Decoder};
 use dustbox::tools;
 use dustbox::memory::MemoryAddress;
 

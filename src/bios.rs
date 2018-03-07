@@ -1,8 +1,7 @@
 // https://wiki.osdev.org/BIOS
 // dosbox-x: src/hardware/bios.cpp
 
-use cpu::CPU;
-use cpu::flags::Flags;
+use cpu::{CPU, Flags};
 use memory::{MMU, MemoryAddress};
 use gpu::{GFXMode, VideoModeBlock};
 

@@ -1,8 +1,5 @@
-use cpu::CPU;
 use gpu::GPU;
-use cpu::op::{Op, InvalidOp};
-use cpu::register::{R, RegisterSnapshot};
-use cpu::segment::Segment;
+use cpu::{CPU, Op, InvalidOp, R, RegisterSnapshot, Segment};
 use memory::MMU;
 use hardware::Hardware;
 

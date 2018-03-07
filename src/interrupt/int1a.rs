@@ -1,8 +1,7 @@
 use time;
 
 use hardware::Hardware;
-use cpu::CPU;
-use cpu::register::R;
+use cpu::{CPU, R};
 
 // time related interrupts
 pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {

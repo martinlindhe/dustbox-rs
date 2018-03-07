@@ -16,9 +16,7 @@ use gdk::prelude::*;
 use gdk_pixbuf;
 use cairo;
 
-use dustbox::cpu::CPU;
-use dustbox::cpu;
-use dustbox::cpu::register::R;
+use dustbox::cpu::{CPU, R};
 use dustbox::gpu::VideoModeBlock;
 
 use debugger;

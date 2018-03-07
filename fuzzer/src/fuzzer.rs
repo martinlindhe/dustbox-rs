@@ -9,9 +9,7 @@ use tera::Context;
 use tempdir::TempDir;
 
 use dustbox::machine::Machine;
-use dustbox::cpu::CPU;
-use dustbox::cpu::register::r16;
-use dustbox::cpu::op::Op;
+use dustbox::cpu::{CPU, Op, r16};
 
 #[cfg(test)]
 #[path = "./fuzzer_test.rs"]

@@ -1,6 +1,5 @@
 use hardware::Hardware;
-use cpu::CPU;
-use cpu::register::R;
+use cpu::{CPU, R};
 use memory::{MMU, MemoryAddress};
 use gpu::{VideoModeBlock, GFXMode, SpecialMode, ega_mode_block, vga_mode_block};
 use gpu::GFXMode::*;

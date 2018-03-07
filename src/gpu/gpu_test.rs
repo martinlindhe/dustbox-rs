@@ -12,11 +12,10 @@ use image;
 use image::{ImageBuffer, Rgb, Pixel, GenericImage};
 
 use tools;
-use cpu::CPU;
+use cpu::{CPU, R};
 use machine::Machine;
 use memory::MMU;
-use cpu::register::R;
-use gpu::modes::VideoModeBlock;
+use gpu::VideoModeBlock;
 
 #[test]
 fn can_get_palette_entry() {

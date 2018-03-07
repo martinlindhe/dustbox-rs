@@ -2,14 +2,7 @@ use std::io::{self, Write};
 
 use rand::{Rng, XorShiftRng};
 
-use dustbox::cpu::instruction::Instruction;
-use dustbox::cpu::op::Op;
-use dustbox::cpu::parameter::Parameter;
-use dustbox::cpu::segment::Segment;
-use dustbox::cpu::register::{R, AMode};
-use dustbox::cpu::decoder::instructions_to_str;
-use dustbox::cpu::encoder::Encoder;
-
+use dustbox::cpu::{Instruction, Op, Parameter, Segment, R, AMode, Encoder, instructions_to_str};
 use fuzzer::{fuzz, VmRunner, AffectedFlags};
 
 #[test] #[ignore] // expensive test
@@ -49,9 +42,9 @@ fn fuzz_instruction() {
             let affected_flags_mask = AffectedFlags::for_op(&op);
 
             let mut ops = vec!(
-                // clear ax,dx
-                Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(0)),
-                Instruction::new2(Op::Mov16, Parameter::Reg16(R::DX), Parameter::Imm16(0)),
+                // clear eax,edx
+                Instruction::new2(Op::Mov32, Parameter::Reg32(R::EAX), Parameter::Imm32(0)),
+                Instruction::new2(Op::Mov32, Parameter::Reg32(R::EDX), Parameter::Imm32(0)),
 
                 // clear flags
                 Instruction::new1(Op::Push16, Parameter::Imm16(0)),
