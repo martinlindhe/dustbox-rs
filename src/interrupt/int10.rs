@@ -2,8 +2,8 @@ use hardware::Hardware;
 use cpu::CPU;
 use cpu::register::R;
 use memory::{MMU, MemoryAddress};
-use gpu::modes::{VideoModeBlock, GFXMode, SpecialMode, ega_mode_block, vga_mode_block};
-use gpu::modes::GFXMode::*;
+use gpu::{VideoModeBlock, GFXMode, SpecialMode, ega_mode_block, vga_mode_block};
+use gpu::GFXMode::*;
 use bios::BIOS;
 
 // video related interrupts

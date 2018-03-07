@@ -19,7 +19,7 @@ use cairo;
 use dustbox::cpu::CPU;
 use dustbox::cpu;
 use dustbox::cpu::register::R;
-use dustbox::gpu::modes::VideoModeBlock;
+use dustbox::gpu::VideoModeBlock;
 
 use debugger;
 

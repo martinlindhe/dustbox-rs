@@ -4,7 +4,7 @@
 use cpu::CPU;
 use cpu::flags::Flags;
 use memory::{MMU, MemoryAddress};
-use gpu::modes::{GFXMode, VideoModeBlock};
+use gpu::{GFXMode, VideoModeBlock};
 
 #[derive(Clone)]
 pub struct BIOS {
