@@ -237,7 +237,7 @@ impl CPU {
                 self.regs.flags.set_parity(res);
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u16);
             }
-            Op::Arpl() => {
+            Op::Arpl => {
                 // Adjust RPL Field of Segment Selector
                 println!("XXX impl {}", op);
                 /*
@@ -274,7 +274,7 @@ impl CPU {
                 let bit_offset = self.read_parameter_value(&hw.mmu, &op.params.src);
                 self.regs.flags.carry = bit_base & (1 << (bit_offset & 15)) != 0;
             }
-            Op::Bound() => {
+            Op::Bound => {
                 // Check Array Index Against Bounds
                 // XXX throw BR exception if out of bounds
                 println!("XXX impl {}", op);
@@ -482,7 +482,7 @@ impl CPU {
                 let sp = self.get_r16(&R::SP) - alloc_size;
                 self.set_r16(&R::SP, sp);
             }
-            Op::Hlt() => {
+            Op::Hlt => {
                 // println!("XXX impl {}", op);
                 // self.fatal_error = true;
             }
@@ -921,7 +921,7 @@ impl CPU {
                 };
                 self.set_r16(&R::DI, di);
             }
-            Op::Movsx16() => {
+            Op::Movsx16 => {
                 // 80386+
                 // Move with Sign-Extension
                 // moves a signed value into a register and sign-extends it with 1.
@@ -935,7 +935,7 @@ impl CPU {
                 }
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, data);
             }
-            Op::Movzx16() => {
+            Op::Movzx16 => {
                 // 80386+
                 // Move with Zero-Extend
                 // moves an unsigned value into a register and zero-extends it with zero.

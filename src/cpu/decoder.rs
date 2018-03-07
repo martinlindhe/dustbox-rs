@@ -267,7 +267,7 @@ impl Decoder {
                     }
                     0xB6 => {
                         // movzx r16, r/m8
-                        op.command = Op::Movzx16();
+                        op.command = Op::Movzx16;
                         op.params = self.r16_rm8(&mut mmu, op.segment_prefix);
                     }
                     0xBC => {
@@ -277,7 +277,7 @@ impl Decoder {
                     }
                     0xBE => {
                         // movsx r16, r/m8
-                        op.command = Op::Movsx16();
+                        op.command = Op::Movsx16;
                         op.params = self.r16_rm8(&mut mmu, op.segment_prefix);
                     }
                     _ => op.command = Op::Invalid(InvalidOp::Op),
@@ -561,13 +561,13 @@ impl Decoder {
             0x61 => op.command = Op::Popa,
             0x62 => {
                 // bound r16, m16&16
-                op.command = Op::Bound();
+                op.command = Op::Bound;
                 // XXX not all modes of 2nd argument is valid
                 op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
             }
             0x63 => {
                 // arpl r/m16, r16
-                op.command = Op::Arpl();
+                op.command = Op::Arpl;
                 op.params = self.rm16_r16(&mut mmu, op.segment_prefix);
             }
             0x64 => {
@@ -993,7 +993,7 @@ impl Decoder {
                 op.command = Op::Int;
                 op.params.dst = Parameter::Imm8(self.read_u8(mmu));
             }
-            0xCE => op.command = Op::Into(),
+            0xCE => op.command = Op::Into,
 	        0xCF => op.command = Op::Iret,
             0xD0 => {
                 // bit shift byte by 1
@@ -1208,7 +1208,7 @@ impl Decoder {
                     _ => op.command = Op::Invalid(InvalidOp::Op),
                 }
             }
-            0xF4 => op.command = Op::Hlt(),
+            0xF4 => op.command = Op::Hlt,
             0xF5 => op.command = Op::Cmc,
             0xF6 => {
                 // <math> r/m8
