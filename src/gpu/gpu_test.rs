@@ -260,20 +260,16 @@ fn demo_512() {
 #[test] #[ignore] // expensive test
 fn demo_256_32bit() {
     let test_bins = vec![
-        "../dos-software-decoding/demo-256-32bit/analride/analride.com",
         "../dos-software-decoding/demo-256-32bit/anding/anding.com",
-        "../dos-software-decoding/demo-256-32bit/bump/bump.com",
         "../dos-software-decoding/demo-256-32bit/enchante/enchante.com",
         "../dos-software-decoding/demo-256-32bit/fire!/fire!.com",
         "../dos-software-decoding/demo-256-32bit/fire3d/fire3d.com",
-        "../dos-software-decoding/demo-256-32bit/firework/firework.com",
         "../dos-software-decoding/demo-256-32bit/flame/flame.com",
         "../dos-software-decoding/demo-256-32bit/fractal/fractal.com",
         "../dos-software-decoding/demo-256-32bit/frcmirez/frcmirez.com",
         "../dos-software-decoding/demo-256-32bit/juls/juls.com",
         "../dos-software-decoding/demo-256-32bit/mbl/mbl.com",
         "../dos-software-decoding/demo-256-32bit/noc200/noc200.com",
-        "../dos-software-decoding/demo-256-32bit/pl/pl.com",
         "../dos-software-decoding/demo-256-32bit/ripped/ripped.com",
         "../dos-software-decoding/demo-256-32bit/sierpins/sierpins.com",
         "../dos-software-decoding/demo-256-32bit/stars/stars.com",
@@ -284,7 +280,6 @@ fn demo_256_32bit() {
     ];
     run_and_save_video_frames(test_bins, "demo_256_32bit", "256_32bit");
 }
-
 
 #[test] #[ignore] // expensive test
 fn games_com() {

@@ -1969,6 +1969,21 @@ fn can_execute_call_far() {
 }
 
 #[test]
+fn can_execute_sldt() {
+    let mut machine = Machine::new();
+    let code: Vec<u8> = vec![
+        0x0F, 0x00, 0x00,   // sldt [bx+si]
+    ];
+    machine.load_com(&code);
+        let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 1);
+    assert_eq!("[085F:0100] 0F0000           Sldt     word [ds:bx+si]", res);
+
+    machine.execute_instruction();
+
+    // XXX actually test emulation
+}
+
+#[test]
 fn can_execute_imul16_1_arg() {
     let mut machine = Machine::new();
     let code: Vec<u8> = vec![

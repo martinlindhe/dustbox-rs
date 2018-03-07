@@ -1611,6 +1611,9 @@ impl CPU {
                 // If a shift occurs, the AF flag is undefined. If the count is greater than the operand size,
                 // the flags are undefined.
             }
+            Op::Sldt => {
+                println!("XXX impl {:?}", op);
+            }
             Op::Stc => {
                 // Set Carry Flag
                 self.regs.flags.carry = true;

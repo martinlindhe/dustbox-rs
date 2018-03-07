@@ -133,6 +133,7 @@ pub enum Op {
     Shr8,
     Shr16,
     Shrd,
+    Sldt,
     Stc,
     Std,
     Sti,

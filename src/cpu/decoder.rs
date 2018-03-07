@@ -168,6 +168,14 @@ impl Decoder {
             0x0F => {
                 let b = self.read_u8(mmu);
                 match b {
+                    0x00 => {
+                        let x = self.read_mod_reg_rm(mmu);
+                        op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        match x.reg {
+                            0 => op.command = Op::Sldt, // sldt r/m16
+                            _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
+                        }
+                    }
                     0x82 => {
                         // jc rel16
                         op.command = Op::Jc;
@@ -312,10 +320,20 @@ impl Decoder {
                 op.command = Op::Sbb8;
                 op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
             }
+            0x19 => {
+                // sbb r/m16, r16
+                op.command = Op::Sbb16;
+                op.params = self.rm16_r16(&mut mmu, op.segment_prefix);
+            }
             0x1A => {
                 // sbb r8, r/m8
                 op.command = Op::Sbb8;
                 op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
+            }
+            0x1B => {
+                // sbb r16, r/m16
+                op.command = Op::Sbb16;
+                op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
             }
             0x1C => {
                 // sbb al, imm8
@@ -800,7 +818,11 @@ impl Decoder {
                 let seg = self.read_u16(mmu);
                 op.params.dst = Parameter::Ptr16Imm(seg, imm);
             }
-            // 0x9B = "wait"
+            0x9B => {
+                // fpu
+                println!("ERROR: unsupported FPU opcode {:02X}", b);
+                op.command = Op::Invalid(InvalidOp::Op);
+            }
             0x9C => op.command = Op::Pushf,
             0x9D => op.command = Op::Popf,
             0x9E => op.command = Op::Sahf,
