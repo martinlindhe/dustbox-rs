@@ -33,10 +33,10 @@ impl BIOS {
     pub const DATA_CRTCPU_PAGE: u16   = 0x008A;
     pub const DATA_VS_POINTER: u16    = 0x00A8;
 
-    const ROM_SEG: u16                = 0xF000; // bios rom segment, 64k at F0000 to FFFFF
+    const ROM_SEG: u16                = 0xF000; // bios rom segment, 64k at F_0000 to F_FFFF
     const ROM_EQUIPMENT_WORD: u16     = 0x0410;
 
-    pub fn new() -> Self {
+    pub fn default() -> Self {
         // XXX see ROMBIOS_Init in dosbox-x
         BIOS {
             flags_address: MemoryAddress::Unset,
@@ -75,9 +75,9 @@ impl BIOS {
         }
         let mut flags = mmu.memory.borrow().read_u16(self.flags_address.value());
         if flag_value {
-            flags = flags | flag_mask;
+            flags |= flag_mask;
         } else {
-            flags = flags & !flag_mask;
+            flags &= !flag_mask;
         }
         mmu.memory.borrow_mut().write_u16(self.flags_address.value(), flags);
     }
@@ -90,40 +90,40 @@ impl BIOS {
     fn init_ivt(&mut self, mmu: &mut MMU) {
         const IRET: u8 = 0xCF;
         for irq in 0..0xFF {
-            self.write_ivt_entry(mmu, irq, BIOS::ROM_SEG, irq as u16);
-            mmu.write_u8(BIOS::ROM_SEG, irq as u16, IRET);
+            self.write_ivt_entry(mmu, irq, BIOS::ROM_SEG, u16::from(irq));
+            mmu.write_u8(BIOS::ROM_SEG, u16::from(irq), IRET);
         }
     }
 
     fn write_ivt_entry(&self, mmu: &mut MMU, number: u8, seg: u16, offset: u16) {
         let _seg = 0;
-        let _offset = (number as u16) * 4;
+        let _offset = u16::from(number) * 4;
         mmu.write_u16(_seg, _offset, offset);
         mmu.write_u16(_seg, _offset + 2, seg);
     }
 
     // initializes the Configuration Data Table
     fn write_configuration_data_table(&self, mmu: &mut MMU) {
-        let base: u16 = 0xE6F5;
-        mmu.write_u16(BIOS::ROM_SEG, base + 0, 8);         // table size
-        mmu.write_u8(BIOS::ROM_SEG, base + 2, 0xFC);       // model: AT
-        mmu.write_u8(BIOS::ROM_SEG, base + 3, 0);          // submodel
-        mmu.write_u8(BIOS::ROM_SEG, base + 4, 0);          // BIOS revision
-        mmu.write_u8(BIOS::ROM_SEG, base + 5, 0b00000000); // feature byte 1
-        mmu.write_u8(BIOS::ROM_SEG, base + 6, 0b00000000); // feature byte 2
-        mmu.write_u8(BIOS::ROM_SEG, base + 7, 0b00000000); // feature byte 3
-        mmu.write_u8(BIOS::ROM_SEG, base + 8, 0b00000000); // feature byte 4
-        mmu.write_u8(BIOS::ROM_SEG, base + 9, 0b00000000); // feature byte 5
+        let mut addr = MemoryAddress::RealSegmentOffset(BIOS::ROM_SEG, 0xE6F5);
+        mmu.write_u16_inc(&mut addr, 8);          // table size
+        mmu.write_u8_inc(&mut addr, 0xFC);        // model: AT
+        mmu.write_u8_inc(&mut addr, 0);           // submodel
+        mmu.write_u8_inc(&mut addr, 0);           // BIOS revision
+        mmu.write_u8_inc(&mut addr, 0b0000_0000); // feature byte 1
+        mmu.write_u8_inc(&mut addr, 0b0000_0000); // feature byte 2
+        mmu.write_u8_inc(&mut addr, 0b0000_0000); // feature byte 3
+        mmu.write_u8_inc(&mut addr, 0b0000_0000); // feature byte 4
+        mmu.write_u8_inc(&mut addr, 0b0000_0000); // feature byte 5
         mmu.write_u16(BIOS::ROM_SEG, BIOS::ROM_EQUIPMENT_WORD, 0x0021);
     }
 }
 
 /// get the cursor x position
 pub fn cursor_pos_col(mmu: &MMU, page: u8) -> u8 {
-    return mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + (page as u16 * 2));
+    mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + u16::from(page) * 2)
 }
 
 /// get the cursor y position
 pub fn cursor_pos_row(mmu: &MMU, page: u8) -> u8 {
-    return mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + (page as u16 * 2) + 1);
+    mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + (u16::from(page) * 2) + 1)
 }

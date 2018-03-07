@@ -24,7 +24,7 @@ pub struct PIC {
 }
 
 impl PIC {
-    pub fn new() -> Self {
+    pub fn default() -> Self {
         PIC {
             command: 0,
             data: 0,

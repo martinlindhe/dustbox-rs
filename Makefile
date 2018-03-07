@@ -41,7 +41,6 @@ run-release:
 	cargo run --release --package dustbox_gtk
 
 lint:
-	# rm -rf target
 	rustup run nightly cargo clippy --all
 
 typos:

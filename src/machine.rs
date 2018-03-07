@@ -10,16 +10,16 @@ pub struct Machine {
 }
 
 impl Machine {
-    pub fn new() -> Self {
+    pub fn default() -> Self {
         Machine {
-            cpu: CPU::new(),
-            hw: Hardware::new(),
+            cpu: CPU::default(),
+            hw: Hardware::default(),
         }
     }
 
    // reset the CPU and memory
     pub fn hard_reset(&mut self) {
-        self.cpu = CPU::new();
+        self.cpu = CPU::default();
     }
 
     // load .com program into CS:0100 and set IP to program start

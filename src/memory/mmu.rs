@@ -16,7 +16,7 @@ pub struct MMU {
 }
 
 impl MMU {
-    pub fn new() -> Self{
+    pub fn default() -> Self{
         MMU {
             memory: Rc::new(RefCell::new(FlatMemory::new()))
         }
@@ -76,7 +76,7 @@ impl MMU {
 
     /// read interrupt vector, returns segment, offset
     pub fn read_vec(&self, v: u16) -> (u16, u16) {
-        let v_abs = (v as u32) << 2;
+        let v_abs = u32::from(v) << 2;
         let seg = self.memory.borrow().read_u16(v_abs);
         let off = self.memory.borrow().read_u16(v_abs + 2);
         if DEBUG_VEC {
@@ -87,8 +87,7 @@ impl MMU {
 
     /// write interrupt vector
     pub fn write_vec(&mut self, v: u16, data: &MemoryAddress) {
-        let v_abs = (v as u32) << 2;
-        //self.memory.borrow_mut().write_u32((v as u32) << 2, data.value());
+        let v_abs = u32::from(v) << 2;
         self.memory.borrow_mut().write_u16(v_abs, data.segment());
         self.memory.borrow_mut().write_u16(v_abs + 2, data.offset());
         if DEBUG_VEC {

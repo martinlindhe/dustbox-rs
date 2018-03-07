@@ -6,7 +6,7 @@ pub struct CMOS {
 }
 
 impl CMOS {
-    pub fn new() -> Self {
+    pub fn default() -> Self {
         // XXX see CMOS_Init in dosbox-x
         CMOS {
         }

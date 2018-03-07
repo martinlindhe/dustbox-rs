@@ -19,20 +19,13 @@ enum OperandSize {
     _16bit, _32bit,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Decoder {
     c_seg: u16,
     c_offset: u16,
 }
 
 impl Decoder {
-    pub fn new() -> Self {
-        Decoder {
-            c_seg: 0,
-            c_offset: 0,
-        }
-    }
-
     pub fn decode_to_block(&mut self, mut mmu: &mut MMU, seg: u16, offset: u16, n: usize) -> Vec<InstructionInfo> {
         let mut ops: Vec<InstructionInfo> = Vec::new();
         let mut inst_offset = 0;

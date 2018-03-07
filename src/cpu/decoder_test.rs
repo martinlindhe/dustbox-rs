@@ -5,7 +5,7 @@ use memory::MMU;
 
 #[test]
 fn can_disassemble_basic() {
-    let mut machine = Machine::new();
+    let mut machine = Machine::default();
     let code: Vec<u8> = vec![
         0xE8, 0x05, 0x00, // call l_0x108   ; call a later offset
         0xBA, 0x0B, 0x01, // mov dx,0x10b
@@ -26,7 +26,7 @@ fn can_disassemble_basic() {
 
 #[test]
 fn can_disassemble_lea() {
-    let mut machine = Machine::new();
+    let mut machine = Machine::default();
     let code: Vec<u8> = vec![
         0x8D, 0x47, 0x80, // lea ax,[bx-0x80]
  ];
@@ -39,7 +39,7 @@ fn can_disassemble_lea() {
 
 #[test]
 fn can_disassemble_segment_prefixed() {
-    let mut machine = Machine::new();
+    let mut machine = Machine::default();
     let code: Vec<u8> = vec![
         0x26, 0x88, 0x25, // mov [es:di],ah
         0x26, 0x8A, 0x25, // mov ah,[es:di]
@@ -54,7 +54,7 @@ fn can_disassemble_segment_prefixed() {
 
 #[test]
 fn can_disassemble_values() {
-    let mut machine = Machine::new();
+    let mut machine = Machine::default();
     let code: Vec<u8> = vec![
         0x80, 0x3E, 0x31, 0x10, 0x00, // cmp byte [0x1031],0x0
         0x81, 0xC7, 0xC0, 0x00,       // add di,0xc0
@@ -73,7 +73,7 @@ fn can_disassemble_values() {
 
 #[test]
 fn can_disassemble_relative_short_jumps() {
-    let mut machine = Machine::new();
+    let mut machine = Machine::default();
     let code: Vec<u8> = vec![
         0x74, 0x04, // jz 0x106
         0x74, 0xFE, // jz 0x102

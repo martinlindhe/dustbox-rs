@@ -9,12 +9,6 @@ pub struct Breakpoints {
 
 // a list of addresses for the debugger to break on when CS:IP reach one of them
 impl Breakpoints {
-     pub fn new() -> Self {
-        Breakpoints {
-            breakpoints: vec![0; 0],
-        }
-    }
-
     pub fn add(&mut self, bp: u32) -> Option<u32> {
         if self.breakpoints.iter().find(|&&x|x == bp).is_none() {
             self.breakpoints.push(bp);

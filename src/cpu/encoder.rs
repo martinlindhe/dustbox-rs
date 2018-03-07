@@ -523,7 +523,7 @@ impl Encoder {
 
     fn encode_r_rm(&self, params: &ParameterSet) -> Vec<u8> {
         match params.dst {
-            Parameter::Reg8(ref r) => self.encode_rm(&params.src, r.index() as u8),
+            Parameter::Reg8(ref r) |
             Parameter::Reg16(ref r) => self.encode_rm(&params.src, r.index() as u8),
             _ => unreachable!(),
         }
@@ -531,7 +531,7 @@ impl Encoder {
 
     fn encode_rm_r(&self, params: &ParameterSet) -> Vec<u8> {
         match params.src {
-            Parameter::Reg8(ref r) => self.encode_rm(&params.dst, r.index() as u8),
+            Parameter::Reg8(ref r) |
             Parameter::Reg16(ref r) => self.encode_rm(&params.dst, r.index() as u8),
             _ => panic!("unexpected parameter type: {:?}", params.src),
         }
@@ -541,7 +541,7 @@ impl Encoder {
         let mut out = Vec::new();
         // shld r/m16, r16, imm8
         out.extend(match params.src {
-            Parameter::Reg8(ref r) => self.encode_rm(&params.dst, r.index() as u8),
+            Parameter::Reg8(ref r) |
             Parameter::Reg16(ref r) => self.encode_rm(&params.dst, r.index() as u8),
             _ => panic!("unexpected parameter type: {:?}", params.src),
         });
@@ -557,29 +557,29 @@ impl Encoder {
         let mut out = Vec::new();
         match *dst {
             Parameter::Ptr8(_, imm16) => {
-                out.push(ModRegRm{md: 0, rm: 6, reg: reg}.u8());
+                out.push(ModRegRm{md: 0, rm: 6, reg}.u8());
                 out.push(imm16 as u8);
                 out.push((imm16 >> 8) as u8);
             }
             Parameter::Ptr8Amode(_, ref amode) |
             Parameter::Ptr16Amode(_, ref amode) => {
-                // XXX how doe md:0, rm: 0 not collide with above one...
-                out.push(ModRegRm{md: 0, rm: amode.index() as u8, reg: reg}.u8());
+                // XXX how does md:0, rm: 0 not collide with above one...
+                out.push(ModRegRm{md: 0, rm: amode.index() as u8, reg}.u8());
             }
             Parameter::Ptr8AmodeS8(_, ref amode, imm) |
             Parameter::Ptr16AmodeS8(_, ref amode, imm) => {
-                out.push(ModRegRm{md: 1, rm: amode.index() as u8, reg: reg}.u8());
+                out.push(ModRegRm{md: 1, rm: amode.index() as u8, reg}.u8());
                 out.push(imm as u8);
             },
             Parameter::Ptr8AmodeS16(_, ref amode, imm16) => {
-                out.push(ModRegRm{md: 2, rm: amode.index() as u8, reg: reg}.u8());
+                out.push(ModRegRm{md: 2, rm: amode.index() as u8, reg}.u8());
                 out.push(imm16 as u8);
                 out.push((imm16 >> 8) as u8);
             }
             Parameter::Reg8(ref r) |
             Parameter::Reg16(ref r) |
             Parameter::Reg32(ref r) => {
-                out.push(ModRegRm{md: 3, rm: r.index() as u8, reg: reg}.u8());
+                out.push(ModRegRm{md: 3, rm: r.index() as u8, reg}.u8());
             }
             _ => panic!("encode_rm: unhandled md {:?}", dst),
         }

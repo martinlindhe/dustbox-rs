@@ -12,7 +12,7 @@ pub struct MemoryBreakpoints {
 
 // a list of addresses for the debugger to break on when memory content changes
 impl MemoryBreakpoints {
-     pub fn new() -> Self {
+     pub fn default() -> Self {
         MemoryBreakpoints {
             breakpoints: vec![0; 0],
             map: HashMap::new(),

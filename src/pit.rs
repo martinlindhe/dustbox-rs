@@ -11,6 +11,47 @@ use std::num::Wrapping;
 mod pit_test;
 
 #[derive(Clone)]
+pub struct PIT {
+    pub counter0: Counter,
+    pub counter1: Counter,
+    pub counter2: Counter,
+    //divisor: u32, // XXX size?!?!
+}
+
+impl PIT {
+    pub fn default() -> Self {
+        PIT {
+            counter0: Counter::new(0),
+            counter1: Counter::new(1),
+            counter2: Counter::new(2),
+            //divisor: 0x1_0000, // XXX
+        }
+    }
+
+    fn counter(&mut self, n: u8) -> &mut Counter {
+        match n {
+            0 => &mut self.counter0,
+            1 => &mut self.counter1,
+            2 => &mut self.counter2,
+            _ => unreachable!(),
+        }
+    }
+
+    // port 0043: control word register for counters 0-2
+    // called "8253/8254 PIT mode control word" in the interrupt list
+    pub fn set_mode_command(&mut self, val: u8) {
+        let channel = (val >> 6) & 0b11; // bits 7-6
+        let access_mode = (val >> 4) & 0b11; // bits 5-4
+        let operating_mode = (val >> 1) & 0b11; // bits 3-1
+        let bcd_mode = val & 1; // bit 0
+        if channel == 3 {
+            panic!("TODO channel == 3: Read-back command (8254 only)");
+        }
+        self.counter(channel).set_mode(access_mode, operating_mode, bcd_mode);
+    }
+}
+
+#[derive(Clone)]
 pub struct Counter {
     pub count: u16,
     pub reload: u16,
@@ -31,7 +72,7 @@ impl Counter {
             reload: 0, // 0 = 0x10000
             latch: 0,
             hi: false,
-            channel: channel,
+            channel,
 
             access_mode: AccessMode::LoByteHiByte, // XXX default?
             operating_mode: OperatingMode::Mode0, // XXX default?
@@ -156,45 +197,4 @@ enum OperatingMode {
 enum BcdMode {
     SixteenBitBinary,   // 16-bit binary
     FourDigitBCD,       // four-digit BCD
-}
-
-#[derive(Clone)]
-pub struct PIT {
-    pub counter0: Counter,
-    pub counter1: Counter,
-    pub counter2: Counter,
-    //divisor: u32, // XXX size?!?!
-}
-
-impl PIT {
-    pub fn new() -> Self {
-        PIT {
-            counter0: Counter::new(0),
-            counter1: Counter::new(1),
-            counter2: Counter::new(2),
-            //divisor: 0x1_0000, // XXX
-        }
-    }
-
-    fn counter(&mut self, n: u8) -> &mut Counter {
-        match n {
-            0 => &mut self.counter0,
-            1 => &mut self.counter1,
-            2 => &mut self.counter2,
-            _ => unreachable!(),
-        }
-    }
-
-    // port 0043: control word register for counters 0-2
-    // called "8253/8254 PIT mode control word" in the interrupt list
-    pub fn set_mode_command(&mut self, val: u8) {
-        let channel = (val >> 6) & 0b11; // bits 7-6
-        let access_mode = (val >> 4) & 0b11; // bits 5-4
-        let operating_mode = (val >> 1) & 0b11; // bits 3-1
-        let bcd_mode = val & 1; // bit 0
-        if channel == 3 {
-            panic!("TODO channel == 3: Read-back command (8254 only)");
-        }
-        self.counter(channel).set_mode(access_mode, operating_mode, bcd_mode);
-    }
 }

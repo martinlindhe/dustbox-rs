@@ -28,7 +28,7 @@ fn can_encode_random_seq() {
     let mut rng = XorShiftRng::new_unseeded();
     let mut code = vec![0u8; 10];
 
-    let mut machine = Machine::new();
+    let mut machine = Machine::default();
 
     for _ in 0..1000 {
         for mut b in &mut code {
@@ -492,7 +492,7 @@ fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u
     let code = encoder.encode(&op).unwrap();
     assert_eq!(expected_bytes, code, "encoded byte sequence does not match expected bytes");
 
-    let mut machine = Machine::new();
+    let mut machine = Machine::default();
     machine.load_com(&code);
     let cs = machine.cpu.get_r16(&R::CS);
     let ops = machine.cpu.decoder.decode_to_block(&mut machine.hw.mmu, cs, 0x100, 1);

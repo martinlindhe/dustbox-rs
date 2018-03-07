@@ -16,19 +16,19 @@ pub struct Hardware {
 }
 
 impl Hardware {
-    pub fn new() -> Self {
-        let mut mmu = MMU::new();
-        let mut gpu = GPU::new();
-        let mut bios = BIOS::new();
+    pub fn default() -> Self {
+        let mut mmu = MMU::default();
+        let mut gpu = GPU::default();
+        let mut bios = BIOS::default();
         bios.init(&mut mmu);
         gpu.init(&mut mmu);
         Hardware {
-            mmu: mmu,
-            gpu: gpu,
-            bios: bios,
-            pit: PIT::new(),
-            pic: PIC::new(),
-            pic2: PIC::new(),
+            mmu,
+            gpu,
+            bios,
+            pit: PIT::default(),
+            pic: PIC::default(),
+            pic2: PIC::default(),
         }
     }
 

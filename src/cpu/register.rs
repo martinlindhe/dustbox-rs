@@ -34,7 +34,7 @@ impl GPR {
     }
 
     pub fn set16(&mut self, val: u16) {
-        self.val = (self.val & 0xFFFF_0000) | val as u32;
+        self.val = (self.val & 0xFFFF_0000) | u32::from(val);
     }
 
     pub fn set32(&mut self, val: u32) {
@@ -54,40 +54,14 @@ pub enum R {
 impl R {
     pub fn index(&self) -> usize {
           match *self {
-            R::AL => 0,
-            R::CL => 1,
-            R::DL => 2,
-            R::BL => 3,
-            R::AH => 4,
-            R::CH => 5,
-            R::DH => 6,
-            R::BH => 7,
-
-            R::AX => 0,
-            R::CX => 1,
-            R::DX => 2,
-            R::BX => 3,
-            R::SP => 4,
-            R::BP => 5,
-            R::SI => 6,
-            R::DI => 7,
-
-            R::ES => 0,
-            R::CS => 1,
-            R::SS => 2,
-            R::DS => 3,
-            R::FS => 4,
-            R::GS => 5,
-
-            R::EAX => 0,
-            R::ECX => 1,
-            R::EDX => 2,
-            R::EBX => 3,
-            R::ESP => 4,
-            R::EBP => 5,
-            R::ESI => 6,
-            R::EDI => 7,
-
+            R::AL | R::AX | R::EAX | R::ES => 0,
+            R::CL | R::CX | R::ECX | R::CS => 1,
+            R::DL | R::DX | R::EDX | R::SS => 2,
+            R::BL | R::BX | R::EBX | R::DS => 3,
+            R::AH | R::SP | R::ESP | R::FS => 4,
+            R::CH | R::BP | R::EBP | R::GS => 5,
+            R::DH | R::SI | R::ESI => 6,
+            R::BH | R::DI | R::EDI => 7,
             _ => unreachable!(),
         }
     }

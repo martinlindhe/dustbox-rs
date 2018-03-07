@@ -86,7 +86,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             let seg = cpu.get_r16(&R::DS);
             let off = cpu.get_r16(&R::DX);
             let int = cpu.get_r8(&R::AL);
-            hw.mmu.write_vec(int as u16, &MemoryAddress::LongSegmentOffset(seg, off));
+            hw.mmu.write_vec(u16::from(int), &MemoryAddress::LongSegmentOffset(seg, off));
         }
         0x2C => {
             // DOS 1+ - GET SYSTEM TIME
@@ -137,7 +137,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
         0x35 => {
             // DOS 2+ - GET INTERRUPT VECTOR
             let int = cpu.get_r8(&R::AL);
-            let (seg, off) = hw.mmu.read_vec(int as u16);
+            let (seg, off) = hw.mmu.read_vec(u16::from(int));
             cpu.set_r16(&R::ES, seg);
             cpu.set_r16(&R::BX, off);
         }

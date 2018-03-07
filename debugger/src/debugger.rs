@@ -24,14 +24,14 @@ pub struct Debugger {
 }
 
 impl Debugger {
-    pub fn new() -> Self {
-        let machine = Machine::new();
+    pub fn default() -> Self {
+        let machine = Machine::default();
         Debugger {
             prev_regs: machine.register_snapshot(),
-            machine: machine,
+            machine,
             last_program: None,
-            ip_breakpoints: Breakpoints::new(),
-            memory_breakpoints: MemoryBreakpoints::new(),
+            ip_breakpoints: Breakpoints::default(),
+            memory_breakpoints: MemoryBreakpoints::default(),
         }
     }
 
@@ -83,7 +83,7 @@ impl Debugger {
     }
 
     pub fn step_over(&mut self) {
-        let mut decoder = Decoder::new();
+        let mut decoder = Decoder::default();
         let op = decoder.decode_instruction(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip);
 
         let dst_ip = self.machine.cpu.regs.ip + op.bytes.len() as u16;
@@ -109,7 +109,7 @@ impl Debugger {
     }
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
-        let mut decoder = Decoder::new();
+        let mut decoder = Decoder::default();
         decoder.disassemble_block_to_str(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip, n)
     }
 
@@ -314,7 +314,7 @@ impl Debugger {
                 self.show_flat_address();
             }
             "d" | "disasm" => {
-                let mut decoder = Decoder::new();
+                let mut decoder = Decoder::default();
                 let op = decoder.decode_instruction(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip);
                 println!("{:?}", op);
                 println!("{}", op);

@@ -74,7 +74,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             if hw.mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_MODE) == 0x11 {
                 attrib = (attrib & 0x80) | 0x3F;
             }
-            hw.gpu.write_char(&mut hw.mmu, chr as u16, attrib, page, count, true);
+            hw.gpu.write_char(&mut hw.mmu, u16::from(chr), attrib, page, count, true);
         }
         0x0A => {
             // VIDEO - WRITE CHARACTER ONLY AT CURSOR POSITION
@@ -82,7 +82,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             let page = cpu.get_r8(&R::BH);
             let attrib = cpu.get_r8(&R::BL);
             let count = cpu.get_r16(&R::CX);
-            hw.gpu.write_char(&mut hw.mmu, chr as u16, attrib, page, count, false);
+            hw.gpu.write_char(&mut hw.mmu, u16::from(chr), attrib, page, count, false);
         }
         0x0B => {
             match cpu.get_r8(&R::BH) {

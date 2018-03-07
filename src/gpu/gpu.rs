@@ -68,7 +68,7 @@ pub struct GPU {
 }
 
 impl GPU {
-    pub fn new() -> Self {
+    pub fn default() -> Self {
         let generation = GraphicCard::VGA;
         let modes = VideoModeBlock::get_mode_block(&generation);
         let mode = modes[3].clone();
@@ -86,8 +86,8 @@ impl GPU {
             video_parameter_table: MemoryAddress::Unset,
             video_dcc_table: MemoryAddress::Unset,
             card: generation,
-            mode: mode,
-            modes: modes,
+            mode,
+            modes,
         }
     }
 
@@ -152,7 +152,7 @@ impl GPU {
                 let pal = &self.dac.pal[pal1_map[bits as usize]];
 
                 let dst = (((y * self.mode.swidth) + x) * 3) as usize;
-                if let &RGB(r, g, b) = pal {
+                if let RGB(r, g, b) = *pal {
                     buf[dst] = r;
                     buf[dst+1] = g;
                     buf[dst+2] = b;
@@ -191,7 +191,7 @@ impl GPU {
                 let byte = memory[offset];
                 let pal = &self.dac.pal[byte as usize];
                 let i = ((y * self.mode.swidth + x) * 3) as usize;
-                if let &RGB(r, g, b) = pal {
+                if let RGB(r, g, b) = *pal {
                     buf[i] = r;
                     buf[i+1] = g;
                     buf[i+2] = b;
@@ -210,7 +210,7 @@ impl GPU {
 
         let mut found = false;
         for block in &self.modes {
-            if block.mode == mode as u16 {
+            if block.mode == u16::from(mode) {
                 self.mode = block.clone();
                 found = true;
             }
@@ -245,8 +245,7 @@ impl GPU {
 
         // Set some interrupt vectors
         match self.mode.cheight {
-            0...3 | 7 => mmu.write_vec(0x43, &self.font_8_first),
-            8 => mmu.write_vec(0x43, &self.font_8_first),
+            0...3 | 7 | 8 => mmu.write_vec(0x43, &self.font_8_first),
             14 => mmu.write_vec(0x43, &self.font_14),
             16 => mmu.write_vec(0x43, &self.font_16),
             _ => {},
@@ -267,7 +266,7 @@ impl GPU {
             page &= 7;
         }
         */
-        let mut mem_address = (page as u16) * mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_PAGE_SIZE);
+        let mut mem_address = u16::from(page) * mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_PAGE_SIZE);
         // write the new page start
         mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_CURRENT_START, mem_address);
         if self.card.is_ega_vga() {
@@ -308,7 +307,7 @@ impl GPU {
             println!("error: set_cursor_pos page {}", page);
         }
         // BIOS cursor pos
-        let cursor_ofs = (page * 2) as u16;
+        let cursor_ofs = u16::from(page) * 2;
         mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + cursor_ofs, col);
         mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + cursor_ofs + 1, row);
 
@@ -319,7 +318,7 @@ impl GPU {
 
             // Calculate the address knowing nbcols nbrows and page num
             // NOTE: OFFSET_CURRENT_START counts in colour/flag pairs
-            let address = (ncols * row as u16) + col as u16 + mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_CURRENT_START) / 2;
+            let address = (ncols * u16::from(row)) + u16::from(col) + mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_CURRENT_START) / 2;
             self.crtc.set_index(0x0E);
             self.crtc.write_current((address >> 8) as u8);
             self.crtc.set_index(0x0F);
@@ -347,10 +346,10 @@ impl GPU {
         let ncols = mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS);
 
         while count > 0 {
-            self.write_char_internal(&mut mmu, cur_col as u16, cur_row as u16, page, chr, attr, showattr);
+            self.write_char_internal(&mut mmu, u16::from(cur_col), u16::from(cur_row), page, chr, attr, showattr);
             count -= 1;
             cur_col += 1;
-            if cur_col as u16 == ncols {
+            if u16::from(cur_col) == ncols {
                 cur_col = 0;
                 cur_row += 1;
             }
@@ -376,8 +375,8 @@ impl GPU {
     fn teletype_output_attr(&mut self, mmu: &mut MMU, chr: u8, attr: u8, page: u8, use_attr: bool) {
         let ncols = mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS);
         let nrows = mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_ROWS) + 1;
-        let mut cur_row = bios::cursor_pos_row(mmu, page) as u16;
-        let mut cur_col = bios::cursor_pos_col(mmu, page) as u16;
+        let mut cur_row = u16::from(bios::cursor_pos_row(mmu, page));
+        let mut cur_col = u16::from(bios::cursor_pos_col(mmu, page));
         match chr {
             /*
             7 => {
@@ -411,7 +410,7 @@ impl GPU {
             }
             */
             _ => {
-                self.write_char_internal(mmu, cur_col, cur_row, page, chr as u16, attr, use_attr);
+                self.write_char_internal(mmu, cur_col, cur_row, page, u16::from(chr), attr, use_attr);
                 cur_col += 1;
             }
         }
@@ -442,8 +441,8 @@ impl GPU {
         let cheight = mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CHAR_HEIGHT);
         let (fontdata_seg, mut fontdata_off) = match self.mode.kind {
             GFXMode::TEXT => {
-                let mut address = ((page as u16) * mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_PAGE_SIZE)) as u32;
-                address += ((row * mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS) + col) * 2) as u32;
+                let mut address = u32::from(u16::from(page) * mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_PAGE_SIZE));
+                address += u32::from((row * mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS) + col) * 2);
                 let dst = self.mode.pstart + address;
                 mmu.memory.borrow_mut().write_u8(dst, chr as u8);
                 if use_attr {
@@ -458,11 +457,11 @@ impl GPU {
                     chr -= 0x80;
                     mmu.read_vec(0x1F)
                 };
-                (seg, off + (chr * (cheight as u16)))
+                (seg, off + (chr * u16::from(cheight)))
             }
             _ => {
                 let (seg, off) = mmu.read_vec(0x43);
-                (seg, off + (chr * (cheight as u16)))
+                (seg, off + (chr * u16::from(cheight)))
             }
         };
 
@@ -481,7 +480,7 @@ impl GPU {
         }
 
         let x = 8 * col;
-        let mut y = (cheight as u16) * row;
+        let mut y = u16::from(cheight) * row;
         let xor_mask = if self.mode.kind == GFXMode::VGA {
             0
         } else {
@@ -548,7 +547,7 @@ impl GPU {
                     let seg: u16 = if self.card.is_pc_jr() {
                         // a 32k mode: PCJr special case (see M_TANDY16)
                         let cpupage = (mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CRTCPU_PAGE) >> 3) & 0x7;
-                        (cpupage as u16) << 10 // A14-16 to addr bits 14-16
+                        u16::from(cpupage) << 10 // A14-16 to addr bits 14-16
                     } else {
                         0xB800
                     };
@@ -557,12 +556,12 @@ impl GPU {
 
                     let mut old = mmu.read_u16(seg, off);
                     if color & 0x80 != 0 {
-                        old ^= (color as u16 & 1) << (7 - (x & 7));
-                        old ^= ((color as u16 & 2) >> 1) << ((7 - (x & 7)) + 8);
+                        old ^=  (u16::from(color) & 1)       <<  (7 - (x & 7));
+                        old ^= ((u16::from(color) & 2) >> 1) << ((7 - (x & 7)) + 8);
                     } else {
-                        old = (old & (!(0x101          <<  (7 - (x & 7))))) |
-                             ((color as u16 & 1)       <<  (7 - (x & 7))) |
-                            (((color as u16 & 2) >> 1) << ((7 - (x & 7)) + 8));
+                        old = (old & (!(0x101              <<  (7 - (x & 7))))) |
+                             ((u16::from(color) & 1)       <<  (7 - (x & 7))) |
+                            (((u16::from(color) & 2) >> 1) << ((7 - (x & 7)) + 8));
                     }
                     mmu.write_u16(seg, off, old);
                 }
@@ -680,11 +679,11 @@ impl GPU {
             self.dac.set_pel_data(b);
         } else {
             // calculate clamped intensity, taken from VGABIOS
-            let i = (( 77 * (r as u32) + 151 * (g as u32) + 28 * (b as u32) ) + 0x80) >> 8;
+            let i = (( 77 * u32::from(r) + 151 * u32::from(g) + 28 * u32::from(b) ) + 0x80) >> 8;
             let ic = if i > 0x3F {
                 0x3F
             } else {
-                ((i as u8) & 0xFF)
+                i as u8
             };
             self.dac.set_pel_data(ic);
             self.dac.set_pel_data(ic);
@@ -723,11 +722,11 @@ impl GPU {
                 let b = mmu.read_u8(seg, off); off += 1;
 
                 // calculate clamped intensity, taken from VGABIOS
-                let i = (( 77 * (r as u32) + 151 * (g as u32) + 28 * (b as u32) ) + 0x80) >> 8;
+                let i = (( 77 * u32::from(r) + 151 * u32::from(g) + 28 * u32::from(b) ) + 0x80) >> 8;
                 let ic = if i > 0x3F {
                     0x3F
                 } else {
-                    ((i as u8) & 0xFF)
+                    i as u8
                 };
                 self.dac.set_pel_data(ic);
                 self.dac.set_pel_data(ic);
@@ -819,7 +818,8 @@ impl GPU {
             addr.set_offset(base + i as u16);
             mmu.write_u8(addr.segment(), addr.offset(), *b);
         }
-        return video_parameters::TABLE_EGA.len() as u16;
+
+        video_parameters::TABLE_EGA.len() as u16
     }
 
     fn video_bios_size(&self) -> u16 {
@@ -896,8 +896,8 @@ impl GPU {
             }
 
             self.static_config = addr.clone();
-            for i in 0..0x10 {
-                mmu.write_u8_inc(&mut addr, STATIC_FUNCTIONALITY[i]);
+            for item in STATIC_FUNCTIONALITY.iter().take(0x10) {
+                mmu.write_u8_inc(&mut addr, *item);
             }
         }
 

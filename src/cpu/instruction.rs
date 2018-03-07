@@ -45,11 +45,7 @@ impl Instruction {
             segment_prefix: Segment::Default,
             lock: false,
             repeat: RepeatMode::None,
-            params: ParameterSet {
-                dst: dst,
-                src: src,
-                src2: src2,
-            },
+            params: ParameterSet {dst, src, src2},
         }
     }
 
@@ -147,7 +143,7 @@ impl ModRegRm {
     pub fn rm_reg(rm: u8, reg: u8) -> u8 {
         // md 3 = register adressing
         // XXX ModRegRm.rm really should use enum AMode, not like AMode is now. naming there is wrong
-        ModRegRm{md: 3, rm: rm, reg: reg}.u8()
+        ModRegRm{md: 3, rm, reg}.u8()
     }
 }
 

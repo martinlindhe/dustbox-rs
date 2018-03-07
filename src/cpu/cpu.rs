@@ -44,7 +44,7 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new() -> Self {
+    pub fn default() -> Self {
         CPU {
             instruction_count: 0,
             cycle_count: 0,
@@ -52,7 +52,7 @@ impl CPU {
             rom_base: 0,
             fatal_error: false,
             deterministic: false,
-            decoder: Decoder::new(),
+            decoder: Decoder::default(),
             clock_hz: 5_000_000, // Intel 8086: 0.330 MIPS at 5.000 MHz
         }
     }
@@ -1910,7 +1910,7 @@ impl CPU {
             Parameter::Ptr16Amode(_, ref amode) => self.get_amode_addr(amode),
             Parameter::Ptr16AmodeS8(_, ref amode, imms) => {
                 let (seg, off) = self.get_amode_addr(amode);
-                (seg, ((off as i32) + (imms as i32)) as u16)
+                (seg, (i32::from(off) + i32::from(imms)) as u16)
             }
             _ => panic!("unhandled parameter {:?}", p),
         };
@@ -2124,7 +2124,7 @@ impl CPU {
         self.push16(&mut hw.mmu, cs);
         self.push16(&mut hw.mmu, ip);
         let base = 0;
-        let idx = (int as u16) << 2;
+        let idx = u16::from(int) << 2;
         let ip = hw.mmu.read_u16(base, idx);
         let cs = hw.mmu.read_u16(base, idx + 2);
         // println!("int: jumping to interrupt handler for interrupt {:02X} pos at {:04X}:{:04X} = {:04X}:{:04X}", int, base, idx, cs, ip);
