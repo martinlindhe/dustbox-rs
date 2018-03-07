@@ -1956,6 +1956,19 @@ fn can_execute_ret_imm() {
 }
 
 #[test]
+fn can_execute_call_far() {
+    let mut machine = Machine::new();
+    let code: Vec<u8> = vec![
+        0x9A, 0xD3, 0x00, 0x00, 0x00,   // call 0x0:0xd3
+    ];
+    machine.load_com(&code);
+    machine.execute_instruction(); // call
+
+    assert_eq!(0x0000, machine.cpu.get_r16(&R::CS));
+    assert_eq!(0x00D3, machine.cpu.regs.ip);
+}
+
+#[test]
 fn can_execute_imul16_1_arg() {
     let mut machine = Machine::new();
     let code: Vec<u8> = vec![

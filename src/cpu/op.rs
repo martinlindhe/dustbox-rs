@@ -15,6 +15,7 @@ pub enum Op {
     Bound(),
     Bsf,
     Bt,
+    CallFar,
     CallNear,
     Cbw,
     Clc,

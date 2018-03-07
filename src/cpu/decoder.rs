@@ -793,7 +793,13 @@ impl Decoder {
             }
             0x98 => op.command = Op::Cbw,
             0x99 => op.command = Op::Cwd,
-            // 0x9A = "call word imm16:imm16"
+            0x9A => {
+                // call ptr16:16
+                op.command = Op::CallFar;
+                let imm = self.read_u16(mmu);
+                let seg = self.read_u16(mmu);
+                op.params.dst = Parameter::Ptr16Imm(seg, imm);
+            }
             // 0x9B = "wait"
             0x9C => op.command = Op::Pushf,
             0x9D => op.command = Op::Popf,

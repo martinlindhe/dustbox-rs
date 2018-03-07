@@ -280,11 +280,22 @@ impl CPU {
                 println!("XXX impl {}", op);
             }
             Op::CallNear => {
-                // call near rel
                 let old_ip = self.regs.ip;
                 let temp_ip = self.read_parameter_value(&hw.mmu, &op.params.dst);
                 self.push16(&mut hw.mmu, old_ip);
                 self.regs.ip = temp_ip as u16;
+            }
+            Op::CallFar => {
+                if let Parameter::Ptr16Imm(seg, offs) = op.params.dst {
+                    let old_seg = self.regs.get_r16(&R::CS);
+                    let old_ip = self.regs.ip;
+                    self.push16(&mut hw.mmu, old_seg);
+                    self.push16(&mut hw.mmu, old_ip);
+                    self.regs.ip = offs;
+                    self.regs.set_r16(&R::CS, seg);
+                } else {
+                    panic!("unhandled src type {:?}", op.params.dst);
+                }
             }
             Op::Cbw => {
                 // Convert Byte to Word

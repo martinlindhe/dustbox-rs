@@ -10,7 +10,7 @@ fn fuzz_instruction() {
     let affected_registers = vec!("ax", "dx");
 
     let ops_to_fuzz = vec!(
-        Op::Cmpsw,
+        //Op::Cmpsw,
         //Op::Shrd,
         Op::Shld, //  overflow differs from winxp. may be wrong in both
         Op::Aaa, Op::Aas, Op::Aad, Op::Daa, Op::Das,
