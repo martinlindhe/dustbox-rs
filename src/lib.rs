@@ -30,5 +30,6 @@ pub mod bios;
 pub mod codepage;
 pub mod tools;
 pub mod hex;
+pub mod ndisasm;
 
 mod interrupt;

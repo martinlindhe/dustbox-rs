@@ -2,6 +2,7 @@ use gpu::GPU;
 use cpu::{CPU, Op, InvalidOp, R, RegisterSnapshot, Segment};
 use memory::MMU;
 use hardware::Hardware;
+use ndisasm::ndisasm_bytes;
 
 pub struct Machine {
     pub hw: Hardware,
@@ -101,12 +102,15 @@ impl Machine {
                 match reason {
                     InvalidOp::Op => {
                         let mut ops_str = Vec::new();
+                        let mut bytes = Vec::new();
                         for i in 0..16 {
-                            let x = self.hw.mmu.read_u8(cs, ip + i);
-                            let hex = format!("0x{:02X}", x);
-                            ops_str.push(hex);
+                            let b = self.hw.mmu.read_u8(cs, ip + i);
+                            bytes.push(b);
+                            ops_str.push(format!("0x{:02X}", b));
                         }
                         println!("Error unhandled OP {} at {:04X}:{:04X}", ops_str.join(", "), cs, ip);
+                        let ndisasm_of_input = ndisasm_bytes(&bytes).unwrap();
+                        println!("ndisasm: {}", ndisasm_of_input);
                     }
                     InvalidOp::Reg(reg) => {
                         println!("Error invalid register {:02X} at {:04X}:{:04X}", reg, cs, ip);
