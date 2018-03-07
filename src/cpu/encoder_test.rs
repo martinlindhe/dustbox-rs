@@ -21,7 +21,7 @@ use cpu::register::{R, AMode};
 use machine::Machine;
 use memory::MMU;
 use hex::hex_bytes;
-use ndisasm::ndisasm_bytes;
+use ndisasm::ndisasm_first_instr;
 
 #[test] #[ignore] // expensive test
 fn can_encode_random_seq() {
@@ -51,8 +51,8 @@ fn can_encode_random_seq() {
                 Ok(enc) => {
                     let in_bytes = Vec::from_iter(code[0..enc.len()].iter().cloned());
                     if enc != in_bytes {
-                        let ndisasm_of_input = ndisasm_bytes(&in_bytes).unwrap();
-                        let ndisasm_of_encode = ndisasm_bytes(&enc).unwrap();
+                        let ndisasm_of_input = ndisasm_first_instr(&in_bytes).unwrap();
+                        let ndisasm_of_encode = ndisasm_first_instr(&enc).unwrap();
                         if ndisasm_of_input != ndisasm_of_encode {
                             panic!("encoding resulted in wrong sequence.\n\ninput  {:?}\noutput {:?}\ninstr {:?}\nndisasm of\ninput '{}'\nencode '{}'",
                                 hex_bytes(&in_bytes),
@@ -499,5 +499,5 @@ fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u
     let decoded_op = &ops[0].instruction;
     assert_eq!(op, decoded_op, "decoded resulting op from instruction encode does not match input op");
 
-    assert_eq!(expected_ndisasm.to_owned(), ndisasm_bytes(&code).unwrap(), "disasm of encoded byte sequence does not match expected ndisasm output");
+    assert_eq!(expected_ndisasm.to_owned(), ndisasm_first_instr(&code).unwrap(), "disasm of encoded byte sequence does not match expected ndisasm output");
 }
