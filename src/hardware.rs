@@ -116,6 +116,9 @@ impl Hardware {
             0x0201 => {
                 // W  fire joystick's four one-shots
             }
+            // 02C6-02C9 - VGA/MCGA - DAC REGISTERS (alternate address)
+            0x02C9 => self.gpu.dac.set_pel_data(data),
+
             0x03B4 => self.gpu.crtc.set_index(data),           // NOTE: mirroring 3d4 is what dosbox does too
             0x03B5 => self.gpu.crtc.write_current(data),
             0x03C7 => self.gpu.dac.set_pel_read_index(data),

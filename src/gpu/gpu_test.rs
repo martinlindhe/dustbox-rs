@@ -282,6 +282,32 @@ fn demo_256_32bit() {
 }
 
 #[test] #[ignore] // expensive test
+fn demo_512_32bit() {
+    let test_bins = vec![
+        "../dos-software-decoding/demo-512-32bit/3wabbztro/3wabbztro.com",
+        "../dos-software-decoding/demo-512-32bit/200h/200h.com",
+        "../dos-software-decoding/demo-512-32bit/blobsf/blobsf.com",
+        "../dos-software-decoding/demo-512-32bit/bt7/bt7.com",
+        "../dos-software-decoding/demo-512-32bit/delinus/delinus.com",
+        "../dos-software-decoding/demo-512-32bit/distant/distant.com",
+        "../dos-software-decoding/demo-512-32bit/ems/ems.com",
+        "../dos-software-decoding/demo-512-32bit/entry2/entry2.com",
+        "../dos-software-decoding/demo-512-32bit/europe/europe.com",
+        "../dos-software-decoding/demo-512-32bit/fireline/fireline.com",
+        "../dos-software-decoding/demo-512-32bit/fountain_of_sparks/fountain_of_sparks.com",
+        "../dos-software-decoding/demo-512-32bit/fract/fract.com",
+        "../dos-software-decoding/demo-512-32bit/fromd2l/fromd2l.com",
+        "../dos-software-decoding/demo-512-32bit/glasenapy/glasenapy.com",
+        "../dos-software-decoding/demo-512-32bit/gob4k/gob4k.com",
+        "../dos-software-decoding/demo-512-32bit/grindkng/grindkng.com",
+        "../dos-software-decoding/demo-512-32bit/rwater/rwater.com",
+        "../dos-software-decoding/demo-512-32bit/sign/sign.com",
+        "../dos-software-decoding/demo-512-32bit/voronoy/voronoy.com",
+    ];
+    run_and_save_video_frames(test_bins, "demo_512_32bit", "512_32bit");
+}
+
+#[test] #[ignore] // expensive test
 fn games_com() {
     let test_bins = vec![
         "../dos-software-decoding/games-com/8088 Othello (1985)(Bayley)/8088_othello.com",

@@ -10,6 +10,12 @@ expensive-256:
 expensive-512:
 	cargo test demo_512 --release -- --color always --nocapture --ignored
 
+expensive-256-32bit:
+	cargo test demo_256_32bit --release -- --color always --nocapture --ignored
+
+expensive-512-32bit:
+	cargo test demo_512_32bit --release -- --color always --nocapture --ignored
+
 expensive-32bit:
 	cargo test 32bit --release -- --color always --nocapture --ignored
 
