@@ -378,7 +378,7 @@ impl CPU {
                 self.regs.flags.set_adjust(res, src, dst);
                 self.regs.flags.set_parity(res);
 
-                self.write_parameter_u8(&mut hw.mmu, &op.params.dst, (res & 0xFF) as u8);
+                self.write_parameter_u8(&mut hw.mmu, &op.params.dst, res as u8);
             }
             Op::Dec16 => {
                 // single parameter (dst)
@@ -394,7 +394,23 @@ impl CPU {
                 self.regs.flags.set_adjust(res, src, dst);
                 self.regs.flags.set_parity(res);
 
-                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u16);
+            }
+            Op::Dec32 => {
+                // single parameter (dst)
+                let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                let src = 1;
+                let res = (Wrapping(dst) - Wrapping(src)).0;
+
+                // The CF flag is not affected. The OF, SF, ZF, AF,
+                // and PF flags are set according to the result.
+                self.regs.flags.set_overflow_sub_u32(res, src, dst);
+                self.regs.flags.set_sign_u32(res);
+                self.regs.flags.set_zero_u32(res);
+                self.regs.flags.set_adjust(res, src, dst);
+                self.regs.flags.set_parity(res);
+
+                self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u32);
             }
             Op::Div8 => {
                 let ax = self.get_r16(&R::AX) as u16;
@@ -573,7 +589,7 @@ impl CPU {
                 self.regs.flags.set_adjust(res, src, dst);
                 self.regs.flags.set_parity(res);
 
-                self.write_parameter_u8(&mut hw.mmu, &op.params.dst, (res & 0xFF) as u8);
+                self.write_parameter_u8(&mut hw.mmu, &op.params.dst, res as u8);
             }
             Op::Inc16 => {
                 let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
@@ -588,6 +604,20 @@ impl CPU {
                 self.regs.flags.set_parity(res);
 
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u16);
+            }
+            Op::Inc32 => {
+                let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                let src = 1;
+                let res = (Wrapping(dst) + Wrapping(src)).0;
+
+                // The OF, SF, ZF, AF, and PF flags are set according to the result.
+                self.regs.flags.set_overflow_add_u32(res, src, dst);
+                self.regs.flags.set_sign_u32(res);
+                self.regs.flags.set_zero_u32(res);
+                self.regs.flags.set_adjust(res, src, dst);
+                self.regs.flags.set_parity(res);
+
+                self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u32);
             }
             Op::Insb => {
                 // Input from Port to String

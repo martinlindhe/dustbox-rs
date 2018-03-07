@@ -30,6 +30,7 @@ pub enum Op {
     Das,
     Dec8,
     Dec16,
+    Dec32,
     Div8,
     Div16,
     Enter,
@@ -42,6 +43,7 @@ pub enum Op {
     In16,
     Inc8,
     Inc16,
+    Inc32,
     Insb,
     Insw,
     Int,
@@ -173,8 +175,8 @@ impl Op {
     // used by encoder
     pub fn feff_index(&self) -> u8 {
         match *self {
-            Op::Inc8 | Op::Inc16 => 0,
-            Op::Dec8 | Op::Dec16 => 1,
+            Op::Inc8 | Op::Inc16 | Op::Inc32 => 0,
+            Op::Dec8 | Op::Dec16 | Op::Dec32 => 1,
             Op::CallNear => 2,
             // 3 => call far
             Op::JmpNear => 4,

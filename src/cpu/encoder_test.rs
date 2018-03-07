@@ -367,6 +367,9 @@ fn can_encode_inc() {
 
     let op = Instruction::new1(Op::Inc16, Parameter::Ptr16AmodeS8(Segment::Default, AMode::BP, 0x10));
     assert_encdec(&op, "inc word [bp+0x10]", vec!(0xFF, 0x46, 0x10));
+
+    let op = Instruction::new1(Op::Inc32, Parameter::Reg32(R::EBX));
+    assert_encdec(&op, "inc ebx", vec!(0x66, 0x43));
 }
 
 #[test]
@@ -379,9 +382,10 @@ fn can_encode_dec() {
 
     let op = Instruction::new1(Op::Dec16, Parameter::Ptr16AmodeS8(Segment::Default, AMode::BP, 0x10));
     assert_encdec(&op, "dec word [bp+0x10]", vec!(0xFF, 0x4E, 0x10));
+
+    let op = Instruction::new1(Op::Dec32, Parameter::Reg32(R::EBX));
+    assert_encdec(&op, "dec ebx", vec!(0x66, 0x4B));
 }
-
-
 
 #[test]
 fn can_encode_push() {
@@ -473,6 +477,13 @@ fn can_encode_mov16() {
     let op = Instruction::new2(Op::Mov16, Parameter::Ptr16Amode(Segment::Default, AMode::SI), Parameter::Imm16(0x8844));  // mov [si], word xxxx
     assert_encdec(&op, "mov word [si],0x8844", vec!(0xC7, 0x04, 0x44, 0x88));
 */
+}
+
+#[test]
+fn can_encode_mov32() {
+    // r16, imm16
+    let op = Instruction::new2(Op::Mov32, Parameter::Reg32(R::EBX), Parameter::Imm32(0x1122_8844));
+    assert_encdec(&op, "mov ebx,0x11228844", vec!(0x66, 0xBB, 0x44, 0x88, 0x22, 0x11));
 }
 
 fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u8>) {

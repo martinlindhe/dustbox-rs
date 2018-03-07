@@ -35,13 +35,16 @@ fn fuzz_instruction() {
         Op::Clc, Op::Cld, Op::Cli, Op::Cmc, Op::Stc, Op::Std, Op::Sti,
         Op::Cbw, Op::Cwd,
         Op::Lea16,
+        Op::Inc8, Op::Inc16, Op::Inc32,
+        Op::Dec8, Op::Dec16, Op::Dec32,
     );
 
+    let iterations_per_op = 500;
     let mut rng = XorShiftRng::new_unseeded();
     for op in ops_to_fuzz {
         println!("------");
-        println!("fuzzing {:?} ...", op);
-        for it in 0..3 {
+        println!("fuzzing {} forms of {:?} ...", iterations_per_op, op);
+        for _ in 0..iterations_per_op {
             let runner = VmRunner::VmHttp;
             let affected_flags_mask = AffectedFlags::for_op(&op);
 
@@ -57,9 +60,6 @@ fn fuzz_instruction() {
 
             // mutate parameters
             let snippet = get_mutator_snippet(&op, &mut rng);
-            if it == 0 {
-                println!("{}", instructions_to_str(&snippet));
-            }
             ops.extend(snippet.to_vec());
 
             io::stdout().flush().ok().expect("Could not flush stdout");
@@ -131,7 +131,7 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
             Instruction::new(op.clone()),
         )}
-        Op::Not8 | Op::Neg8 => { vec!(
+        Op::Not8 | Op::Neg8 | Op::Inc8 | Op::Dec8 => { vec!(
             // mutate al: r/m8
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
             Instruction::new1(op.clone(), Parameter::Reg8(R::AL)),
@@ -146,6 +146,11 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new(op.clone()),
         )}
+        Op::Inc16 | Op::Dec16 => { vec!(
+            // mutate ax: r/m16
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
+            Instruction::new1(op.clone(), Parameter::Reg8(R::AX)),
+        )}
         Op::Aad | Op::Aam => { vec!(
             // mutate ax: imm8
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
@@ -155,6 +160,11 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             // lea r16, m
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Ptr16Amode(Segment::Default, AMode::BX)),
+        )}
+        Op::Inc32 | Op::Dec32 => { vec!(
+            // mutate eax: r/m16
+            Instruction::new2(Op::Mov32, Parameter::Reg32(R::EAX), Parameter::Imm32(rng.gen())),
+            Instruction::new1(op.clone(), Parameter::Reg32(R::EAX)),
         )}
         Op::Nop => vec!(Instruction::new(op.clone())),
         _ => panic!("get_mutator_snippet: unhandled op {:?}", op),

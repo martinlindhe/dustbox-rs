@@ -10,7 +10,7 @@ use tempdir::TempDir;
 
 use dustbox::machine::Machine;
 use dustbox::cpu::CPU;
-use dustbox::cpu::register::{R, r16};
+use dustbox::cpu::register::r16;
 use dustbox::cpu::op::Op;
 
 #[cfg(test)]
@@ -111,7 +111,7 @@ impl AffectedFlags {
             Op::Xor8 => AffectedFlags{o:1, s:1, z:1, p:1, c:1, a:0, d:0, i:0}.mask(), // O C S Z P
             Op::Shrd | Op::Cmpsw => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:1, d:0, i:0}.mask(), // C A S Z P O
             Op::Daa | Op::Das => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:0, d:0, i:0}.mask(), // C A S Z P
-            Op::Shld => AffectedFlags{s:1, z:1, a:1, p:1, o:1, c:0, d:0, i:0}.mask(), // S Z P O A
+            Op::Inc8 | Op::Inc16 | Op::Inc32 | Op::Dec8 | Op::Dec16 | Op::Dec32 | Op::Shld => AffectedFlags{s:1, z:1, a:1, p:1, o:1, c:0, d:0, i:0}.mask(), // S Z P O A
             Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1, d:0, i:0}.mask(), // C O S Z
             Op::Aaa | Op::Aas => AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0, d:0, i:0}.mask(),  // C A
             Op::Rol8 | Op::Rcl8 | Op::Ror8 | Op::Rcr8 | Op::Mul8 | Op::Imul8 => AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0, d:0, i:0}.mask(), // C O

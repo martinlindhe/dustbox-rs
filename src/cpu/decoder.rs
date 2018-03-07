@@ -492,14 +492,32 @@ impl Decoder {
             }
             0x3F => op.command = Op::Aas,
             0x40...0x47 => {
-                // inc r16
-                op.command = Op::Inc16;
-                op.params.dst = Parameter::Reg16(r16(b & 7));
+                match op_size {
+                    OperandSize::_16bit => {
+                        // inc r16
+                        op.command = Op::Inc16;
+                        op.params.dst = Parameter::Reg16(r16(b & 7));
+                    }
+                    OperandSize::_32bit => {
+                        // inc r32
+                        op.command = Op::Inc32;
+                        op.params.dst = Parameter::Reg32(r32(b & 7));
+                    }
+                }
             }
             0x48...0x4F => {
-                // dec r16
-                op.command = Op::Dec16;
-                op.params.dst = Parameter::Reg16(r16(b & 7));
+                match op_size {
+                    OperandSize::_16bit => {
+                        // dec r16
+                        op.command = Op::Dec16;
+                        op.params.dst = Parameter::Reg16(r16(b & 7));
+                    }
+                    OperandSize::_32bit => {
+                        // dec r32
+                        op.command = Op::Dec32;
+                        op.params.dst = Parameter::Reg32(r32(b & 7));
+                    }
+                }
             }
             0x50...0x57 => {
                 // push r16

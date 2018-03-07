@@ -124,6 +124,22 @@ impl Encoder {
                     out.extend(self.encode_rm(&op.params.dst, op.command.feff_index()));
                 }
             }
+            Op::Dec32 | Op::Inc32 => {
+                out.push(0x66);
+                if let Parameter::Reg32(ref r) = op.params.dst {
+                    match op.command {
+                        Op::Inc32 => out.push(0x40 | r.index() as u8), // 0x40...0x47: inc r32
+                        Op::Dec32 => out.push(0x48 | r.index() as u8), // 0x48...0x4F: dec r32
+                        // 0x50...0x57: push r16
+                        // 0x58...0x5F: pop r16
+                        _ => panic!("unhandled {:?}", op.command),
+                    }
+                } else {
+                    // 0xFF: // 0xFF: r/m16
+                    out.push(0xFF);
+                    out.extend(self.encode_rm(&op.params.dst, op.command.feff_index()));
+                }
+            }
             Op::Int => {
                 if let Parameter::Imm8(imm) = op.params.dst {
                     if imm == 1 {
@@ -175,7 +191,7 @@ impl Encoder {
                             if let Parameter::Ptr8(_, imm16) = op.params.src {
                                 // 0xA0: mov AL, [moffs8]
                                 out.push(0xA0);
-                                out.push((imm16 & 0xFF) as u8);
+                                out.push(imm16 as u8);
                                 out.push((imm16 >> 8) as u8);
                                 return Ok(out);
                             }
@@ -203,7 +219,7 @@ impl Encoder {
                                 if r == R::AL {
                                     // 0xA2: mov [moffs8], AL
                                     out.push(0xA2);
-                                    out.push((imm16 & 0xFF) as u8);
+                                    out.push(imm16 as u8);
                                     out.push((imm16 >> 8) as u8);
                                     return Ok(out);
                                 }
@@ -231,7 +247,7 @@ impl Encoder {
                         //0xB8...0xBF: mov r16, u16
                         out.push(0xB8 | r.index() as u8);
                         if let Parameter::Imm16(imm16) = op.params.src {
-                            out.push((imm16 & 0xFF) as u8);
+                            out.push(imm16 as u8);
                             out.push((imm16 >> 8) as u8);
                         } else {
                             return Err(EncodeError::UnhandledParameter(op.params.src.clone()));
@@ -249,6 +265,28 @@ impl Encoder {
                     out.push(0x88);
                     out.extend(self.encode_rm8_r8(&op.params));
                 }*/
+                } else {
+                    return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
+                }
+            }
+            Op::Mov32 => {
+                // XXX TODO handle more forms
+                out.push(0x66);
+                if op.params.src.is_imm() {
+                    if let Parameter::Reg32(ref r) = op.params.dst {
+                        //0x66 0xB8...0xBF: mov r32, u32
+                        out.push(0xB8 | r.index() as u8);
+                        if let Parameter::Imm32(imm32) = op.params.src {
+                            out.push(imm32 as u8);
+                            out.push((imm32 >> 8) as u8);
+                            out.push((imm32 >> 16) as u8);
+                            out.push((imm32 >> 24) as u8);
+                        } else {
+                            return Err(EncodeError::UnhandledParameter(op.params.src.clone()));
+                        }
+                    } else {
+                        return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
+                    }
                 } else {
                     return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                 }
@@ -276,7 +314,7 @@ impl Encoder {
                 if let Parameter::Imm16(imm16) = op.params.dst {
                     // 0x68: push imm16
                     out.push(0x68);
-                    out.push((imm16 & 0xFF) as u8);
+                    out.push(imm16 as u8);
                     out.push((imm16 >> 8) as u8);
                 } else {
                     return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
@@ -520,7 +558,7 @@ impl Encoder {
         match *dst {
             Parameter::Ptr8(_, imm16) => {
                 out.push(ModRegRm{md: 0, rm: 6, reg: reg}.u8());
-                out.push((imm16 & 0xFF) as u8);
+                out.push(imm16 as u8);
                 out.push((imm16 >> 8) as u8);
             }
             Parameter::Ptr8Amode(_, ref amode) |
@@ -535,13 +573,12 @@ impl Encoder {
             },
             Parameter::Ptr8AmodeS16(_, ref amode, imm16) => {
                 out.push(ModRegRm{md: 2, rm: amode.index() as u8, reg: reg}.u8());
-                out.push((imm16 & 0xFF) as u8);
+                out.push(imm16 as u8);
                 out.push((imm16 >> 8) as u8);
             }
-            Parameter::Reg8(ref r) => {
-                out.push(ModRegRm{md: 3, rm: r.index() as u8, reg: reg}.u8());
-            }
-            Parameter::Reg16(ref r) => {
+            Parameter::Reg8(ref r) |
+            Parameter::Reg16(ref r) |
+            Parameter::Reg32(ref r) => {
                 out.push(ModRegRm{md: 3, rm: r.index() as u8, reg: reg}.u8());
             }
             _ => panic!("encode_rm: unhandled md {:?}", dst),

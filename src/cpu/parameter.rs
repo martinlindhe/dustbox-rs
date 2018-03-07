@@ -133,6 +133,7 @@ impl Parameter {
         match *self {
             Parameter::Imm8(_) |
             Parameter::Imm16(_) |
+            Parameter::Imm32(_) |
             Parameter::ImmS8(_) => true,
             _ => false,
         }
@@ -157,6 +158,7 @@ impl Parameter {
         match *self {
             Parameter::Reg8(_) |
             Parameter::Reg16(_) |
+            Parameter::Reg32(_) |
             Parameter::SReg16(_) => true,
             _ => false,
         }

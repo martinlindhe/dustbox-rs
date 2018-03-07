@@ -92,6 +92,9 @@ impl Flags {
     pub fn set_sign_u16(&mut self, v: usize) {
         self.sign = v & 0x8000 != 0;
     }
+    pub fn set_sign_u32(&mut self, v: usize) {
+        self.sign = v & 0x8000_0000 != 0;
+    }
     pub fn set_parity(&mut self, v: usize) {
         // Set if the least-significant byte of the result contains an
         // even number of 1 bits; cleared otherwise.
@@ -105,6 +108,9 @@ impl Flags {
     }
     pub fn set_zero_u16(&mut self, v: usize) {
         self.zero = v.trailing_zeros() >= 16;
+    }
+    pub fn set_zero_u32(&mut self, v: usize) {
+        self.zero = v.trailing_zeros() >= 32;
     }
     pub fn set_adjust(&mut self, res: usize, v1: usize, v2: usize) {
         // Set if an arithmetic operation generates a carry or a borrow out
@@ -122,11 +128,17 @@ impl Flags {
     pub fn set_overflow_add_u16(&mut self, res: usize, v1: usize, v2: usize) {
         self.overflow = (res ^ v1) & (res ^ v2) & 0x8000 != 0;
     }
+    pub fn set_overflow_add_u32(&mut self, res: usize, v1: usize, v2: usize) {
+        self.overflow = (res ^ v1) & (res ^ v2) & 0x8000_0000 != 0;
+    }
     pub fn set_overflow_sub_u8(&mut self, res: usize, v1: usize, v2: usize) {
         self.overflow = (v2 ^ v1) & (v2 ^ res) & 0x80 != 0;
     }
     pub fn set_overflow_sub_u16(&mut self, res: usize, v1: usize, v2: usize) {
         self.overflow = (v2 ^ v1) & (v2 ^ res) & 0x8000 != 0;
+    }
+    pub fn set_overflow_sub_u32(&mut self, res: usize, v1: usize, v2: usize) {
+        self.overflow = (v2 ^ v1) & (v2 ^ res) & 0x8000_0000 != 0;
     }
     pub fn set_carry_u8(&mut self, res: usize) {
         // Set if an arithmetic operation generates a carry or a borrow out of

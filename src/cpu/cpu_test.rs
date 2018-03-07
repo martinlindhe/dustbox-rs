@@ -31,6 +31,31 @@ fn can_execute_push_pop() {
 }
 
 #[test]
+fn can_execute_inc32() {
+    let mut machine = Machine::new();
+    let code: Vec<u8> = vec![
+        0x66, 0xB8, 0xFF, 0xFF, 0x00, 0x80, // mov eax,0x8000ffff
+        0x66, 0x40,                         // inc eax
+    ];
+    machine.load_com(&code);
+    machine.execute_instructions(2);
+    assert_eq!(0x8001_0000, machine.cpu.get_r32(&R::EAX));
+}
+
+#[test]
+fn can_execute_dec32() {
+    let mut machine = Machine::new();
+    let code: Vec<u8> = vec![
+        0x66, 0xB8, 0x00, 0x00, 0x01, 0x80, // mov eax,0x80010000
+        0x66, 0x48,                         // dec eax
+    ];
+    machine.load_com(&code);
+
+    machine.execute_instructions(2);
+    assert_eq!(0x8000_FFFF, machine.cpu.get_r32(&R::EAX));
+}
+
+#[test]
 fn can_execute_add8() {
     let mut machine = Machine::new();
     let code: Vec<u8> = vec![
