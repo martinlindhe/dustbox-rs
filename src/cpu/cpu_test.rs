@@ -186,6 +186,8 @@ fn can_execute_mov_r32() {
     let mut machine = Machine::default();
     let code: Vec<u8> = vec![
         0x66, 0xB8, 0x78, 0x56, 0x34, 0x12, // mov eax,0x12345678
+        0x66, 0xB8, 0x23, 0x01, 0xFF, 0x00, // mov eax,0xff0123
+        0x66, 0x89, 0xC5,                   // mov ebp,eax
     ];
     machine.load_com(&code);
 
@@ -193,6 +195,9 @@ fn can_execute_mov_r32() {
     assert_eq!("[085F:0100] 66B878563412     Mov32    eax, 0x12345678", res);
     machine.execute_instruction();
     assert_eq!(0x12345678, machine.cpu.get_r32(&R::EAX));
+
+    machine.execute_instructions(2);
+    assert_eq!(0x00FF_0123, machine.cpu.get_r32(&R::EBP));
 }
 
 #[test]
@@ -1791,6 +1796,29 @@ fn can_execute_imul16_3_args() {
     machine.execute_instructions(2);
     assert_eq!(0xF100, machine.cpu.get_r16(&R::AX));
     // 3887
+}
+
+#[test]
+fn can_execute_imul32_3_args() {
+    let mut machine = Machine::default();
+    let code: Vec<u8> = vec![
+        0x66, 0xB8, 0xFF, 0xFF, 0xFF, 0xFF,         // mov eax,0xffffffff
+        0x66, 0x6B, 0xC0, 0x02,                     // imul eax,eax,byte +0x2
+        0x66, 0xB8, 0x00, 0x00, 0x00, 0x00,         // mov eax,0x0
+        0x66, 0x6B, 0xC0, 0x02,                     // imul eax,eax,byte +0x2
+        0x66, 0xB8, 0xF0, 0x0F, 0x00, 0x00,         // mov eax,0xff0
+        0x66, 0x69, 0xC0, 0xF0, 0x00, 0x00, 0x00,   // imul eax,eax,dword 0xf0
+    ];
+    machine.load_com(&code);
+
+    machine.execute_instructions(2);
+    assert_eq!(0xFFFF_FFFE, machine.cpu.get_r32(&R::EAX));
+
+    machine.execute_instructions(2);
+    assert_eq!(0x0000_0000, machine.cpu.get_r32(&R::EAX));
+
+    machine.execute_instructions(2);
+    assert_eq!(0x000E_F100, machine.cpu.get_r32(&R::EAX));
 }
 
 #[test]

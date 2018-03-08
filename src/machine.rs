@@ -1,5 +1,5 @@
 use gpu::GPU;
-use cpu::{CPU, Op, InvalidOp, R, RegisterSnapshot, Segment};
+use cpu::{CPU, Op, InvalidOp, R, RegisterSnapshot, Segment, OperandSize};
 use memory::MMU;
 use hardware::Hardware;
 use ndisasm::ndisasm_bytes;
@@ -90,6 +90,14 @@ impl Machine {
         }
 
         let (op, length) = self.cpu.decoder.get_instruction(&mut self.hw.mmu, Segment::DS, cs, ip);
+
+        // 32-bit decoding sanity check. TODO move this check into a test
+        if op.op_size == OperandSize::_32bit {
+            let s = format!("{:?}", op.command);
+            if s.len() > 2 && &s[s.len()-2..s.len()] != "32" {
+                panic!("expected 32bit op, found: {} at {:04X}:{:04X}", op, cs, ip);
+            }
+        }
 
         match op.command {
             Op::Unknown => {

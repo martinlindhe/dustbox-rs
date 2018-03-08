@@ -40,6 +40,7 @@ pub enum Op {
     Idiv16,
     Imul8,
     Imul16,
+    Imul32,
     In8,
     In16,
     Inc8,

@@ -487,6 +487,7 @@ fn can_encode_mov32() {
     assert_encdec(&op, "mov ebx,0x11228844", vec!(0x66, 0xBB, 0x44, 0x88, 0x22, 0x11));
 }
 
+// TODO make this into a macro to retain caller line numbers in the asserts
 fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u8>) {
     let encoder = Encoder::new();
     let code = encoder.encode(&op).unwrap();

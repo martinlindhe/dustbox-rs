@@ -1,9 +1,10 @@
 use std::fmt;
 use std::num::Wrapping;
 
-use cpu::segment::Segment;
-use cpu::op::Op;
-use cpu::parameter::{Parameter, ParameterSet};
+use cpu::Segment;
+use cpu::Op;
+use cpu::{Parameter, ParameterSet};
+use cpu::OperandSize;
 use hex::hex_bytes;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -11,8 +12,9 @@ pub struct Instruction {
     pub command: Op,
     pub params: ParameterSet,
     pub segment_prefix: Segment,
-    pub repeat: RepeatMode, // REPcc prefix
-    pub lock: bool,         // LOCK prefix
+    pub repeat: RepeatMode,     // REPcc prefix
+    pub lock: bool,             // LOCK prefix
+    pub op_size: OperandSize,   // 0x66 prefix
 }
 
 impl fmt::Display for Instruction {
@@ -40,12 +42,21 @@ impl Instruction {
     }
 
     pub fn new3(op: Op, dst: Parameter, src: Parameter, src2: Parameter) -> Self {
+        let op_size = Instruction::op_size_from_op(&op);
         Instruction {
             command: op,
             segment_prefix: Segment::Default,
+            params: ParameterSet {dst, src, src2},
             lock: false,
             repeat: RepeatMode::None,
-            params: ParameterSet {dst, src, src2},
+            op_size,
+        }
+    }
+
+    fn op_size_from_op(op: &Op) -> OperandSize {
+        match *op {
+            Op::Mov32 | Op::Inc32 | Op::Dec32 => OperandSize::_32bit,
+            _ => OperandSize::_16bit,
         }
     }
 

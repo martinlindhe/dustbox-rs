@@ -529,7 +529,7 @@ impl CPU {
                 // For the one operand form of the instruction, the CF and OF flags are set when significant
                 // bits are carried into the upper half of the result and cleared when the result fits
                 // exactly in the lower half of the result.
-                if (ax & 0xff80) == 0xff80 || (ax & 0xff80) == 0x0000 {
+                if (ax & 0xFF80) == 0xFF80 || (ax & 0xFF80) == 0x0000 {
                     self.regs.flags.carry = false;
                     self.regs.flags.overflow = false;
                 } else {
@@ -551,7 +551,7 @@ impl CPU {
                         let a = self.read_parameter_value(&hw.mmu, &op.params.dst);
                         let b = self.read_parameter_value(&hw.mmu, &op.params.src);
                         let tmp = a as isize * b as isize;
-                        self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (tmp & 0xFFFF) as u16);
+                        self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, tmp as u16);
                     }
                     3 => {
                         // IMUL r16, r/m16, imm8    : word register ← r/m16 ∗ sign-extended immediate byte.
@@ -559,7 +559,7 @@ impl CPU {
                         let a = self.read_parameter_value(&hw.mmu, &op.params.src);
                         let b = self.read_parameter_value(&hw.mmu, &op.params.src2);
                         let tmp = b as isize * a as isize;
-                        self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (tmp & 0xFFFF) as u16);
+                        self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, tmp as u16);
                     }
                     _ => {
                         panic!("imul16 with {} parameters: {}", op.params.count(), op);
@@ -573,6 +573,22 @@ impl CPU {
                 // For the two- and three-operand forms of the instruction, the CF and OF flags are set when the result must be
                 // truncated to fit in the destination operand size and cleared when the result fits exactly in the destination
                 // operand size. The SF, ZF, AF, and PF flags are undefined.
+            }
+            Op::Imul32 => {
+                match op.params.count() {
+                    3 => {
+                        // IMUL r32, r/m32, imm8     : doubleword register ← r/m32 ∗ sign- extended immediate byte.
+                        // IMUL r32, r/m32, imm32    : doubleword register ← r/m32 ∗ immediate doubleword.
+                        let a = self.read_parameter_value(&hw.mmu, &op.params.src);
+                        let b = self.read_parameter_value(&hw.mmu, &op.params.src2);
+                        let tmp = b as isize * a as isize;
+                        self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, tmp as u32);
+                    }
+                    _ => {
+                        panic!("imul32 with {} parameters: {}", op.params.count(), op);
+                    }
+                }
+                // XXX flags
             }
             Op::In8 => {
                 // Input from Port
