@@ -26,7 +26,7 @@ fn fuzz_instruction() {
         Op::Sahf, Op::Salc,
         Op::Nop,
         Op::Clc, Op::Cld, Op::Cli, Op::Cmc, Op::Stc, Op::Std, Op::Sti,
-        Op::Cbw, Op::Cwd,
+        Op::Cbw, Op::Cwd16,
         Op::Lea16,
         Op::Inc8, Op::Inc16, Op::Inc32,
         Op::Dec8, Op::Dec16, Op::Dec32,
@@ -134,7 +134,7 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::AH), Parameter::Imm8(rng.gen())),
             Instruction::new(op.clone()),
         )}
-        Op::Cwd => { vec!(
+        Op::Cwd16 => { vec!(
             // mutate ax: no args
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new(op.clone()),

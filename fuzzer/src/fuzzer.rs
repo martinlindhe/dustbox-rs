@@ -102,7 +102,7 @@ impl AffectedFlags {
     // returns a flag mask for affected flag registers by op
     pub fn for_op(op: &Op) -> u16 {
         match *op {
-            Op::Nop | Op::Salc | Op::Not8 | Op::Div8 | Op::Idiv8 | Op::Cbw | Op::Cwd | Op::Lahf |
+            Op::Nop | Op::Salc | Op::Not8 | Op::Div8 | Op::Idiv8 | Op::Cbw | Op::Cwd16 | Op::Lahf |
             Op::Lea16 | Op::Xchg8 | Op::Xlatb => AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // no affected flags
             Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 |
             Op::Neg8 | Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::Sahf => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1, d:1, i:1}.mask(), // all

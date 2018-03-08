@@ -86,9 +86,18 @@ impl Decoder {
                 op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
             }
             0x01 => {
-                // add r/m16, r16
-                op.command = Op::Add16;
-                op.params = self.rm16_r16(&mut mmu, op.segment_prefix);
+                match op_size {
+                    OperandSize::_16bit => {
+                        // add r/m16, r16
+                        op.command = Op::Add16;
+                        op.params = self.rm16_r16(&mut mmu, op.segment_prefix);
+                    }
+                    OperandSize::_32bit => {
+                        // add r/m32, r32
+                        op.command = Op::Add32;
+                        op.params = self.rm32_r32(&mut mmu, op.segment_prefix);
+                    }
+                }
             }
             0x02 => {
                 // add r8, r/m8
@@ -96,9 +105,18 @@ impl Decoder {
                 op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
             }
             0x03 => {
-                // add r16, r/m16
-                op.command = Op::Add16;
-                op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
+                match op_size {
+                    OperandSize::_16bit => {
+                        // add r16, r/m16
+                        op.command = Op::Add16;
+                        op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
+                    }
+                    OperandSize::_32bit => {
+                        // add r32, r/m32
+                        op.command = Op::Add32;
+                        op.params = self.r32_rm32(&mut mmu, op.segment_prefix);
+                    }
+                }
             }
             0x04 => {
                 // add AL, imm8
@@ -107,10 +125,20 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x05 => {
-                // add AX, imm16
-                op.command = Op::Add16;
-                op.params.dst = Parameter::Reg16(R::AX);
-                op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                match op_size {
+                    OperandSize::_16bit => {
+                        // add AX, imm16
+                        op.command = Op::Add16;
+                        op.params.dst = Parameter::Reg16(R::AX);
+                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                    }
+                    OperandSize::_32bit => {
+                        // add EAX, imm32
+                        op.command = Op::Add32;
+                        op.params.dst = Parameter::Reg32(R::EAX);
+                        op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                    }
+                }
             }
             0x06 => {
                 // push es
@@ -255,14 +283,32 @@ impl Decoder {
                         op.params.src2 = Parameter::Imm8(self.read_u8(mmu));
                     }
                     0xAF => {
-                        // imul r16, r/m16
-                        op.command = Op::Imul16;
-                        op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
+                        match op_size {
+                            OperandSize::_16bit => {
+                                // imul r16, r/m16
+                                op.command = Op::Imul16;
+                                op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
+                            }
+                            OperandSize::_32bit => {
+                                // imul r32, r/m32
+                                op.command = Op::Imul32;
+                                op.params = self.r32_rm32(&mut mmu, op.segment_prefix);
+                            }
+                        }
                     }
                     0xB6 => {
-                        // movzx r16, r/m8
-                        op.command = Op::Movzx16;
-                        op.params = self.r16_rm8(&mut mmu, op.segment_prefix);
+                        match op_size {
+                            OperandSize::_16bit => {
+                                // movzx r16, r/m8
+                                op.command = Op::Movzx16;
+                                op.params = self.r16_rm8(&mut mmu, op.segment_prefix);
+                            }
+                            OperandSize::_32bit => {
+                                // movzx r32, r/m8
+                                op.command = Op::Movzx32;
+                                op.params = self.r32_rm8(&mut mmu, op.segment_prefix);
+                            }
+                        }
                     }
                     0xBC => {
                         // bsf r16, r/m16
@@ -270,11 +316,30 @@ impl Decoder {
                         op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
                     }
                     0xBE => {
-                        // movsx r16, r/m8
-                        op.command = Op::Movsx16;
-                        op.params = self.r16_rm8(&mut mmu, op.segment_prefix);
+                        match op_size {
+                            OperandSize::_16bit => {
+                                // movsx r16, r/m8
+                                op.command = Op::Movsx16;
+                                op.params = self.r16_rm8(&mut mmu, op.segment_prefix);
+                            }
+                            OperandSize::_32bit => {
+                                // movsx r32, r/m8
+                                op.command = Op::Movsx32;
+                                op.params = self.r32_rm8(&mut mmu, op.segment_prefix);
+                            }
+                        }
                     }
-                    _ => op.command = Op::Invalid(InvalidOp::Op),
+                    0xBF => {
+                        match op_size {
+                            OperandSize::_16bit => op.command = Op::Invalid(InvalidOp::Op),
+                            OperandSize::_32bit => {
+                                // movsx r32, r/m16
+                                op.command = Op::Movsx32;
+                                op.params = self.r32_rm16(&mut mmu, op.segment_prefix);
+                            }
+                        }
+                    }
+                    _ => panic!("unhandled 0F {:02X}, ip = {:04X}:{:04X}", b, self.c_seg, self.c_offset),
                 }
             }
             0x10 => {
@@ -415,9 +480,18 @@ impl Decoder {
                 op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
             }
             0x2B => {
-                // sub r16, r/m16
-                op.command = Op::Sub16;
-                op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
+                match op_size {
+                    OperandSize::_16bit => {
+                        // sub r16, r/m16
+                        op.command = Op::Sub16;
+                        op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
+                    }
+                    OperandSize::_32bit => {
+                        // sub r32, r/m32
+                        op.command = Op::Sub32;
+                        op.params = self.r32_rm32(&mut mmu, op.segment_prefix);
+                    }
+                }
             }
             0x2C => {
                 // sub AL, imm8
@@ -426,10 +500,20 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x2D => {
-                // sub AX, imm16
-                op.command = Op::Sub16;
-                op.params.dst = Parameter::Reg16(R::AX);
-                op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                match op_size {
+                    OperandSize::_16bit => {
+                        // sub AX, imm16
+                        op.command = Op::Sub16;
+                        op.params.dst = Parameter::Reg16(R::AX);
+                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                    }
+                    OperandSize::_32bit => {
+                        // sub EAX, imm32
+                        op.command = Op::Sub32;
+                        op.params.dst = Parameter::Reg32(R::EAX);
+                        op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                    }
+                }
             }
             0x2E => {
                 // cs segment prefix
@@ -443,9 +527,18 @@ impl Decoder {
                 op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
             }
             0x31 => {
-                // xor r/m16, r16
-                op.command = Op::Xor16;
-                op.params = self.rm16_r16(&mut mmu, op.segment_prefix);
+                match op_size {
+                    OperandSize::_16bit => {
+                        // xor r/m16, r16
+                        op.command = Op::Xor16;
+                        op.params = self.rm16_r16(&mut mmu, op.segment_prefix);
+                    }
+                    OperandSize::_32bit => {
+                        // xor r/m32, r32
+                        op.command = Op::Xor32;
+                        op.params = self.rm32_r32(&mut mmu, op.segment_prefix);
+                    }
+                }
             }
             0x32 => {
                 // xor r8, r/m8
@@ -453,9 +546,18 @@ impl Decoder {
                 op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
             }
             0x33 => {
-                // xor r16, r/m16
-                op.command = Op::Xor16;
-                op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
+                match op_size {
+                    OperandSize::_16bit => {
+                        // xor r16, r/m16
+                        op.command = Op::Xor16;
+                        op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
+                    }
+                    OperandSize::_32bit => {
+                        // xor r32, r/m32
+                        op.command = Op::Xor32;
+                        op.params = self.r32_rm32(&mut mmu, op.segment_prefix);
+                    }
+                }
             }
             0x34 => {
                 // xor AL, imm8
@@ -491,9 +593,18 @@ impl Decoder {
                 op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
             }
             0x3B => {
-                // cmp r16, r/m16
-                op.command = Op::Cmp16;
-                op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
+                match op_size {
+                    OperandSize::_16bit => {
+                        // cmp r16, r/m16
+                        op.command = Op::Cmp16;
+                        op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
+                    }
+                    OperandSize::_32bit => {
+                        // cmp r32, r/m32
+                        op.command = Op::Cmp32;
+                        op.params = self.r32_rm32(&mut mmu, op.segment_prefix);
+                    }
+                }
             }
             0x3C => {
                 // cmp AL, imm8
@@ -502,10 +613,20 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x3D => {
-                // cmp AX, imm16
-                op.command = Op::Cmp16;
-                op.params.dst = Parameter::Reg16(R::AX);
-                op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                match op_size {
+                    OperandSize::_16bit => {
+                        // cmp AX, imm16
+                        op.command = Op::Cmp16;
+                        op.params.dst = Parameter::Reg16(R::AX);
+                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                    }
+                    OperandSize::_32bit => {
+                        // cmp EAX, imm32
+                        op.command = Op::Cmp32;
+                        op.params.dst = Parameter::Reg32(R::EAX);
+                        op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                    }
+                }
             }
             0x3E => {
                 // ds segment prefix
@@ -542,17 +663,45 @@ impl Decoder {
                 }
             }
             0x50...0x57 => {
-                // push r16
-                op.command = Op::Push16;
-                op.params.dst = Parameter::Reg16(r16(b & 7));
+                match op_size {
+                    OperandSize::_16bit => {
+                        // push r16
+                        op.command = Op::Push16;
+                        op.params.dst = Parameter::Reg16(r16(b & 7));
+                    }
+                    OperandSize::_32bit => {
+                        // push r32
+                        op.command = Op::Push32;
+                        op.params.dst = Parameter::Reg32(r32(b & 7));
+                    }
+                }
             }
             0x58...0x5F => {
-                // pop r16
-                op.command = Op::Pop16;
-                op.params.dst = Parameter::Reg16(r16(b & 7));
+                match op_size {
+                    OperandSize::_16bit => {
+                        // pop r16
+                        op.command = Op::Pop16;
+                        op.params.dst = Parameter::Reg16(r16(b & 7));
+                    }
+                    OperandSize::_32bit => {
+                        // pop r32
+                        op.command = Op::Pop32;
+                        op.params.dst = Parameter::Reg32(r32(b & 7));
+                    }
+                }
             }
-            0x60 => op.command = Op::Pusha,
-            0x61 => op.command = Op::Popa,
+            0x60 => {
+                match op_size {
+                    OperandSize::_16bit => op.command = Op::Pusha16,
+                    OperandSize::_32bit => op.command = Op::Pushad32,
+                }
+            }
+            0x61 => {
+                match op_size {
+                    OperandSize::_16bit => op.command = Op::Popa16,
+                    OperandSize::_32bit => op.command = Op::Popad32,
+                }
+            }
             0x62 => {
                 // bound r16, m16&16
                 op.command = Op::Bound;
@@ -728,38 +877,66 @@ impl Decoder {
                 }
             }
             0x81 => {
-                // <arithmetic> r/m16, imm16
                 let x = self.read_mod_reg_rm(mmu);
-                op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
-                op.params.src = Parameter::Imm16(self.read_u16(mmu));
-                match x.reg {
-                    0 => op.command = Op::Add16,
-                    1 => op.command = Op::Or16,
-                    2 => op.command = Op::Adc16,
-                    3 => op.command = Op::Sbb16,
-                    4 => op.command = Op::And16,
-                    5 => op.command = Op::Sub16,
-                    6 => op.command = Op::Xor16,
-                    7 => op.command = Op::Cmp16,
-                    _ => {}
+                match op_size {
+                    OperandSize::_16bit => {
+                        // <arithmetic> r/m16, imm16
+                        op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                        match x.reg {
+                            0 => op.command = Op::Add16,
+                            1 => op.command = Op::Or16,
+                            2 => op.command = Op::Adc16,
+                            3 => op.command = Op::Sbb16,
+                            4 => op.command = Op::And16,
+                            5 => op.command = Op::Sub16,
+                            6 => op.command = Op::Xor16,
+                            7 => op.command = Op::Cmp16,
+                            _ => {}
+                        }
+                    }
+                    OperandSize::_32bit => {
+                        // <arithmetic> r/m32, imm32
+                        op.params.dst = self.rm32(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                        match x.reg {
+                            0 => op.command = Op::Add32,
+                            5 => op.command = Op::Sub32,
+                            7 => op.command = Op::Cmp32,
+                            _ => panic!("0x81 32bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.c_seg, self.c_offset),
+                        }
+                    }
                 }
             }
             // 0x82 is unrecognized by objdump & ndisasm, but alias to 0x80 on pre Pentium 4:s according to ref.x86asm.net
             0x83 => {
-                // <arithmetic> r/m16, imm8
                 let x = self.read_mod_reg_rm(mmu);
-                op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
-                op.params.src = Parameter::ImmS8(self.read_s8(mmu));
-                match x.reg {
-                    0 => op.command = Op::Add16,
-                    1 => op.command = Op::Or16,
-                    2 => op.command = Op::Adc16,
-                    3 => op.command = Op::Sbb16,
-                    4 => op.command = Op::And16,
-                    5 => op.command = Op::Sub16,
-                    6 => op.command = Op::Xor16,
-                    7 => op.command = Op::Cmp16,
-                    _ => {}
+                match op_size {
+                    OperandSize::_16bit => {
+                        // <arithmetic> r/m16, imm8
+                        op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.src = Parameter::ImmS8(self.read_s8(mmu));
+                        match x.reg {
+                            0 => op.command = Op::Add16,
+                            1 => op.command = Op::Or16,
+                            2 => op.command = Op::Adc16,
+                            3 => op.command = Op::Sbb16,
+                            4 => op.command = Op::And16,
+                            5 => op.command = Op::Sub16,
+                            6 => op.command = Op::Xor16,
+                            7 => op.command = Op::Cmp16,
+                            _ => unreachable!(),
+                        }
+                    }
+                    OperandSize::_32bit => {
+                        // <arithmetic> r/m32, imm8
+                        op.params.dst = self.rm32(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.src = Parameter::ImmS8(self.read_s8(mmu));
+                        match x.reg {
+                            0 => op.command = Op::Add32,
+                            _ => panic!("unhandled 0x83 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.c_seg, self.c_offset),
+                        }
+                    }
                 }
             }
             0x84 => {
@@ -845,14 +1022,28 @@ impl Decoder {
             }
             0x90 => op.command = Op::Nop,
             0x91...0x97 => {
-                // xchg AX, r16 | xchg r16, AX
-                // NOTE: "xchg ax,ax" is an alias of "nop"
-                op.command = Op::Xchg16;
-                op.params.dst = Parameter::Reg16(R::AX);
-                op.params.src = Parameter::Reg16(r16(b & 7));
+                match op_size {
+                    OperandSize::_16bit => {
+                        // xchg AX, r16 | xchg r16, AX
+                        // NOTE: "xchg ax,ax" is an alias of "nop"
+                        op.command = Op::Xchg16;
+                        op.params.dst = Parameter::Reg16(R::AX);
+                        op.params.src = Parameter::Reg16(r16(b & 7));
+                    }
+                    OperandSize::_32bit => {
+                        op.command = Op::Xchg32;
+                        op.params.dst = Parameter::Reg32(R::EAX);
+                        op.params.src = Parameter::Reg32(r32(b & 7));
+                    }
+                }
             }
-            0x98 => op.command = Op::Cbw,
-            0x99 => op.command = Op::Cwd,
+            0x98 => {
+                match op_size {
+                    OperandSize::_16bit => op.command = Op::Cbw,
+                    OperandSize::_32bit => op.command = Op::Cwde32,
+                }
+            }
+            0x99 => op.command = Op::Cwd16,
             0x9A => {
                 // call ptr16:16
                 op.command = Op::CallFar;
@@ -876,10 +1067,20 @@ impl Decoder {
                 op.params.src = Parameter::Ptr8(op.segment_prefix, self.read_u16(mmu));
             }
             0xA1 => {
-                // mov AX, [moffs16]
-                op.command = Op::Mov16;
-                op.params.dst = Parameter::Reg16(R::AX);
-                op.params.src = Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu));
+                match op_size {
+                    OperandSize::_16bit => {
+                        // mov AX, [moffs16]
+                        op.command = Op::Mov16;
+                        op.params.dst = Parameter::Reg16(R::AX);
+                        op.params.src = Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu));
+                    }
+                    OperandSize::_32bit => {
+                        // mov EAX, [moffs32]
+                        op.command = Op::Mov32;
+                        op.params.dst = Parameter::Reg32(R::EAX);
+                        op.params.src = Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu));
+                    }
+                }
             }
             0xA2 => {
                 // mov [moffs8], AL
@@ -888,10 +1089,20 @@ impl Decoder {
                 op.params.src = Parameter::Reg8(R::AL);
             }
             0xA3 => {
-                // mov [moffs16], AX
-                op.command = Op::Mov16;
-                op.params.dst = Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu));
-                op.params.src = Parameter::Reg16(R::AX);
+                match op_size {
+                    OperandSize::_16bit => {
+                        // mov [moffs16], AX
+                        op.command = Op::Mov16;
+                        op.params.dst = Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu));
+                        op.params.src = Parameter::Reg16(R::AX);
+                    }
+                    OperandSize::_32bit => {
+                        // mov [moffs32], EAX
+                        op.command = Op::Mov32;
+                        op.params.dst = Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu));
+                        op.params.src = Parameter::Reg32(R::EAX);
+                    }
+                }
             }
             0xA4 => op.command = Op::Movsb,
             0xA5 => op.command = Op::Movsw,
@@ -910,9 +1121,19 @@ impl Decoder {
                 op.params.src = Parameter::Imm16(self.read_u16(mmu));
             }
             0xAA => op.command = Op::Stosb,
-            0xAB => op.command = Op::Stosw,
+            0xAB => {
+                match op_size {
+                    OperandSize::_16bit => op.command = Op::Stosw,
+                    OperandSize::_32bit => op.command = Op::Stosd,
+                }
+            }
             0xAC => op.command = Op::Lodsb,
-            0xAD => op.command = Op::Lodsw,
+            0xAD => {
+                match op_size {
+                    OperandSize::_16bit => op.command = Op::Lodsw,
+                    OperandSize::_32bit => op.command = Op::Lodsd,
+                }
+            }
             0xAE => op.command = Op::Scasb,
             0xAF => op.command = Op::Scasw,
             0xB0...0xB7 => {
@@ -954,20 +1175,35 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0xC1 => {
-                // r16, byte imm8
                 let x = self.read_mod_reg_rm(mmu);
-                op.command = match x.reg {
-                    0 => Op::Rol16,
-                    1 => Op::Ror16,
-                    2 => Op::Rcl16,
-                    3 => Op::Rcr16,
-                    4 => Op::Shl16,
-                    5 => Op::Shr16,
-                    7 => Op::Sar16,
-                    _ => Op::Invalid(InvalidOp::Op),
-                };
-                op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
-                op.params.src = Parameter::Imm8(self.read_u8(mmu));
+                match op_size {
+                    OperandSize::_16bit => {
+                        // r16, byte imm8
+                        op.command = match x.reg {
+                            0 => Op::Rol16,
+                            1 => Op::Ror16,
+                            2 => Op::Rcl16,
+                            3 => Op::Rcr16,
+                            4 => Op::Shl16,
+                            5 => Op::Shr16,
+                            7 => Op::Sar16,
+                            _ => Op::Invalid(InvalidOp::Op),
+                        };
+                        op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.src = Parameter::Imm8(self.read_u8(mmu));
+                    }
+                    OperandSize::_32bit => {
+                        // r32, byte imm8
+                        op.command = match x.reg {
+                            4 => Op::Shl32,
+                            5 => Op::Shr32,
+                            7 => Op::Sar32,
+                            _ => panic!("unhandled 0xc1 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.c_seg, self.c_offset),
+                        };
+                        op.params.dst = self.rm32(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.src = Parameter::Imm8(self.read_u8(mmu));
+                    }
+                }
             }
             0xC2 => {
                 // ret [near] imm16
@@ -996,11 +1232,23 @@ impl Decoder {
             }
             0xC7 => {
                 let x = self.read_mod_reg_rm(mmu);
-                op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
-                op.params.src = Parameter::Imm16(self.read_u16(mmu));
-                match x.reg {
-                    0 => op.command = Op::Mov16, // mov r/m16, imm16
-                    _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
+                match op_size {
+                    OperandSize::_16bit => {
+                        op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                        match x.reg {
+                            0 => op.command = Op::Mov16, // mov r/m16, imm16
+                            _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
+                        }
+                    }
+                    OperandSize::_32bit => {
+                        op.params.dst = self.rm32(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                        match x.reg {
+                            0 => op.command = Op::Mov32, // mov r/m32, imm32
+                            _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
+                        }
+                    }
                 }
             }
             0xC8 => {
@@ -1262,22 +1510,37 @@ impl Decoder {
                 }
             }
             0xF7 => {
-                // <math> r/m16
                 let x = self.read_mod_reg_rm(mmu);
-                op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
-                match x.reg {
-                    0 | 1 => {
-                        // test r/m16, imm16
-                        op.command = Op::Test16;
-                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                match op_size {
+                    OperandSize::_16bit => {
+                        // <math> r/m16
+                        op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        match x.reg {
+                            0 | 1 => {
+                                // test r/m16, imm16
+                                op.command = Op::Test16;
+                                op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                            }
+                            2 => op.command = Op::Not16,
+                            3 => op.command = Op::Neg16,
+                            4 => op.command = Op::Mul16,
+                            5 => op.command = Op::Imul16,
+                            6 => op.command = Op::Div16,
+                            7 => op.command = Op::Idiv16,
+                            _ => unreachable!(),
+                        }
                     }
-                    2 => op.command = Op::Not16,
-                    3 => op.command = Op::Neg16,
-                    4 => op.command = Op::Mul16,
-                    5 => op.command = Op::Imul16,
-                    6 => op.command = Op::Div16,
-                    7 => op.command = Op::Idiv16,
-                    _ => unreachable!(),
+                    OperandSize::_32bit => {
+                        op.params.dst = self.rm32(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        match x.reg {
+                            3 => op.command = Op::Neg32,
+                            4 => op.command = Op::Mul32,
+                            5 => op.command = Op::Imul32,
+                            6 => op.command = Op::Div32,
+                            7 => op.command = Op::Idiv32,
+                            _ => panic!("unhandled 0xf7 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.c_seg, self.c_offset),
+                        }
+                    }
                 }
             }
             0xF8 => op.command = Op::Clc,
@@ -1300,18 +1563,31 @@ impl Decoder {
                 }
             }
             0xFF => {
-                // r/m16
                 let x = self.read_mod_reg_rm(mmu);
-                op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
-                match x.reg {
-                    0 => op.command = Op::Inc16,
-                    1 => op.command = Op::Dec16,
-                    2 => op.command = Op::CallNear,
-                    // 3 => call far
-                    4 => op.command = Op::JmpNear,
-                    // 5 => jmp far
-                    6 => op.command = Op::Push16,
-                    _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
+                match op_size {
+                    OperandSize::_16bit => {
+                        // r/m16
+                        op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        match x.reg {
+                            0 => op.command = Op::Inc16,
+                            1 => op.command = Op::Dec16,
+                            2 => op.command = Op::CallNear,
+                            // 3 => call far
+                            4 => op.command = Op::JmpNear,
+                            // 5 => jmp far
+                            6 => op.command = Op::Push16,
+                            //_ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
+                            _ => panic!("0xFF 16bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.c_seg, self.c_offset),
+                        }
+                    }
+                    OperandSize::_32bit => {
+                        op.params.dst = self.rm32(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        match x.reg {
+                            0 => op.command = Op::Inc32,
+                            1 => op.command = Op::Dec32,
+                            _ => panic!("0xFF 32bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.c_seg, self.c_offset),
+                        }
+                    }
                 }
             }
             _ => op.command = Op::Invalid(InvalidOp::Op),
@@ -1368,24 +1644,24 @@ impl Decoder {
     // decode rm32
     fn rm32(&mut self, mmu: &mut MMU, seg: Segment, rm: u8, md: u8) -> Parameter {
         match md {
-            /*
             0 => {
                 if rm == 6 {
                     // [u16]
-                    Parameter::Ptr16(seg, self.read_u16(mmu))
+                    Parameter::Ptr32(seg, self.read_u16(mmu))
                 } else {
                     // [amode]
-                    Parameter::Ptr16Amode(seg, Into::into(rm))
+                    Parameter::Ptr32Amode(seg, Into::into(rm))
                 }
             }
             // [amode+s8]
-            1 => Parameter::Ptr16AmodeS8(seg, Into::into(rm), self.read_s8(mmu)),
+            1 => Parameter::Ptr32AmodeS8(seg, Into::into(rm), self.read_s8(mmu)),
+            /*
             // [amode+s16]
             2 => Parameter::Ptr16AmodeS16(seg, Into::into(rm), self.read_s16(mmu)),
             */
             // [reg]
             3 => Parameter::Reg32(r32(rm)),
-            _ => panic!("rm32: unhandled md {}", md),
+            _ => panic!("rm32: unhandled md {}, ip = {:04X}:{:04X}", md, self.c_seg, self.c_offset),
         }
     }
 
@@ -1435,6 +1711,26 @@ impl Decoder {
         ParameterSet {
             dst: Parameter::Reg16(r16(x.reg)),
             src: self.rm8(&mut mmu, seg, x.rm, x.md),
+            src2: Parameter::None,
+        }
+    }
+
+    // decode r32, r/m8 (movzx)
+    fn r32_rm8(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
+        let x = self.read_mod_reg_rm(mmu);
+        ParameterSet {
+            dst: Parameter::Reg32(r32(x.reg)),
+            src: self.rm8(&mut mmu, seg, x.rm, x.md),
+            src2: Parameter::None,
+        }
+    }
+
+    // decode r32, r/m16 (movsx)
+    fn r32_rm16(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
+        let x = self.read_mod_reg_rm(mmu);
+        ParameterSet {
+            dst: Parameter::Reg32(r32(x.reg)),
+            src: self.rm16(&mut mmu, seg, x.rm, x.md),
             src2: Parameter::None,
         }
     }

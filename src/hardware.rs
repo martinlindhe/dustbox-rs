@@ -119,10 +119,11 @@ impl Hardware {
             // 02C6-02C9 - VGA/MCGA - DAC REGISTERS (alternate address)
             0x02C9 => self.gpu.dac.set_pel_data(data),
 
-            0x03B4 => self.gpu.crtc.set_index(data),           // NOTE: mirroring 3d4 is what dosbox does too
+            0x03B4 => self.gpu.crtc.set_index(data),           // NOTE: mirror of 03D4
             0x03B5 => self.gpu.crtc.write_current(data),
 
             // PORT 03C6-03C9 - EGA/VGA/MCGA - DAC REGISTERS
+            0x03C6 => self.gpu.dac.set_pel_mask(data),
             0x03C7 => self.gpu.dac.set_pel_read_index(data),
             0x03C8 => self.gpu.dac.set_pel_write_index(data),
             0x03C9 => self.gpu.dac.set_pel_data(data),

@@ -63,6 +63,10 @@ impl MMU {
         addr.inc_u16();
     }
 
+    pub fn read_u32(&self, seg: u16, offset: u16) -> u32 {
+        self.memory.borrow().read_u32(MemoryAddress::RealSegmentOffset(seg, offset).value())
+    }
+
     pub fn write_u32(&mut self, seg: u16, offset: u16, data: u32) {
         // TODO take MemoryAddress parameter directly
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();

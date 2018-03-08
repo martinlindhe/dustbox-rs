@@ -194,7 +194,7 @@ fn can_execute_mov_r32() {
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 1);
     assert_eq!("[085F:0100] 66B878563412     Mov32    eax, 0x12345678", res);
     machine.execute_instruction();
-    assert_eq!(0x12345678, machine.cpu.get_r32(&R::EAX));
+    assert_eq!(0x1234_5678, machine.cpu.get_r32(&R::EAX));
 
     machine.execute_instructions(2);
     assert_eq!(0x00FF_0123, machine.cpu.get_r32(&R::EBP));
@@ -544,14 +544,14 @@ fn can_execute_lea() {
 }
 
 #[test]
-fn can_execute_addressing() {
+fn can_execute_8bit_16bit_addressing() {
     let mut machine = Machine::default();
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x02,             // mov bx,0x200
         0xC6, 0x47, 0x2C, 0xFF,       // mov byte [bx+0x2c],0xff  ; rm8 [amode+s8]
         0x8B, 0x14,                   // mov dx,[si]              ; rm16 [reg]
         0x8B, 0x47, 0x2C,             // mov ax,[bx+0x2c]         ; rm16 [amode+s8]
-        0x89, 0x87, 0x30, 0x00,       // mov [bx+0x0030],ax       ; rm [amode+s16]
+        0x89, 0x87, 0x30, 0x00,       // mov [bx+0x0030],ax       ; rm16 [amode+s16]
         0x89, 0x05,                   // mov [di],ax              ; rm16 [amode]
         0xC6, 0x85, 0xAE, 0x06, 0xFE, // mov byte [di+0x6ae],0xfe ; rm8 [amode+s16]
         0x8A, 0x85, 0xAE, 0x06,       // mov al,[di+0x6ae]
@@ -567,8 +567,7 @@ fn can_execute_addressing() {
 [085F:010C] 89873000         Mov16    word [ds:bx+0x0030], ax
 [085F:0110] 8905             Mov16    word [ds:di], ax
 [085F:0112] C685AE06FE       Mov8     byte [ds:di+0x06AE], 0xFE
-[085F:0117] 8A85AE06         Mov8     al, byte [ds:di+0x06AE]",
-               res);
+[085F:0117] 8A85AE06         Mov8     al, byte [ds:di+0x06AE]", res);
 
     machine.execute_instruction();
     assert_eq!(0x200, machine.cpu.get_r16(&R::BX));
@@ -602,6 +601,37 @@ fn can_execute_addressing() {
     machine.execute_instruction();
     // should have read byte from [di+0x06AE] to al
     assert_eq!(0xFE, machine.cpu.get_r8(&R::AL));
+}
+
+#[test]
+fn can_execute_32bit_addressing() {
+    let mut machine = Machine::default();
+    let code: Vec<u8> = vec![
+        0x66, 0xBB, 0x00, 0x02, 0x00, 0x00,         // mov ebx,0x200
+        0x66, 0x89, 0x1E, 0x50, 0x02,               // mov [0x250],ebx
+        0x66, 0xC7, 0x05, 0x01, 0x01, 0x01, 0x01,   // mov dword [di],0x1010101
+        0x66, 0x89, 0x5D, 0xF8,                     // mov [di-0x8],ebx
+    ];
+
+    machine.load_com(&code);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 4);
+    assert_eq!("[085F:0100] 66BB00020000     Mov32    ebx, 0x00000200
+[085F:0106] 66891E5002       Mov32    dword [ds:0x0250], ebx
+[085F:010B] 66C70501010101   Mov32    dword [ds:di], 0x01010101
+[085F:0112] 66895DF8         Mov32    dword [ds:di-0x08], ebx", res);
+
+    machine.execute_instructions(2);
+    let ds = machine.cpu.get_r16(&R::DS);
+    assert_eq!(0x0000_0200, machine.hw.mmu.read_u32(ds, 0x250));
+
+    machine.execute_instruction();
+    let di = machine.cpu.get_r16(&R::DI);
+    assert_eq!(0x0101_0101, machine.hw.mmu.read_u32(ds, di));
+
+    machine.execute_instruction();
+    let di = machine.cpu.get_r16(&R::DI);
+    assert_eq!(0x0000_0200, machine.hw.mmu.read_u32(ds, di - 8));
 }
 
 #[test]
@@ -812,6 +842,22 @@ fn can_execute_idiv16() {
     machine.execute_instructions(4);
     assert_eq!(0xFFFF, machine.cpu.get_r16(&R::AX));
     assert_eq!(0x0000, machine.cpu.get_r16(&R::DX));
+}
+
+#[test]
+fn can_execute_idiv32() {
+    let mut machine = Machine::default();
+    let code: Vec<u8> = vec![
+        0x66, 0xBA, 0x00, 0x00, 0x00, 0x00, // mov edx,0x0
+        0x66, 0xB8, 0x00, 0x00, 0x00, 0x44, // mov eax,0x44000000
+        0x66, 0xBB, 0x02, 0x00, 0x00, 0x00, // mov ebx,0x2
+        0x66, 0xF7, 0xFB,                   // idiv ebx            ; 0x4400_0000 / 2 = 0x2200_0000
+    ];
+    machine.load_com(&code);
+
+    machine.execute_instructions(4);
+    assert_eq!(0x2200_0000, machine.cpu.get_r32(&R::EAX)); // quotient
+    assert_eq!(0x0000_0000, machine.cpu.get_r32(&R::EDX)); // remainder
 }
 
 #[test]
@@ -1799,6 +1845,35 @@ fn can_execute_imul16_3_args() {
 }
 
 #[test]
+fn can_execute_imul32_1_args() {
+    let mut machine = Machine::default();
+    let code: Vec<u8> = vec![
+        0x66, 0xB8, 0xFF, 0xFF, 0x00, 0x00, // mov eax,0xffff
+        0x66, 0xBB, 0x02, 0x00, 0x00, 0x00, // mov ebx,0x2
+        0x66, 0xF7, 0xEB,                   // imul ebx
+        0x66, 0xB8, 0x00, 0x00, 0x00, 0x00, // mov eax,0x0
+        0x66, 0xBB, 0x02, 0x00, 0x00, 0x00, // mov ebx,0x2
+        0x66, 0xF7, 0xEB,                   // imul ebx
+        0x66, 0xB8, 0xF0, 0x0F, 0x00, 0x00, // mov eax,0xff0
+        0x66, 0xBB, 0xF0, 0x00, 0x00, 0x00, // mov ebx,0xf0
+        0x66, 0xF7, 0xEB,                   // imul ebx
+    ];
+    machine.load_com(&code);
+
+    machine.execute_instructions(3);
+    assert_eq!(0x0000_0000, machine.cpu.get_r32(&R::EDX)); // hi
+    assert_eq!(0x0001_FFFE, machine.cpu.get_r32(&R::EAX)); // lo
+
+    machine.execute_instructions(3);
+    assert_eq!(0x0000_0000, machine.cpu.get_r32(&R::EDX));
+    assert_eq!(0x0000_0000, machine.cpu.get_r32(&R::EAX));
+
+    machine.execute_instructions(3);
+    assert_eq!(0x0000_0000, machine.cpu.get_r32(&R::EDX));
+    assert_eq!(0x000E_F100, machine.cpu.get_r32(&R::EAX));
+}
+
+#[test]
 fn can_execute_imul32_3_args() {
     let mut machine = Machine::default();
     let code: Vec<u8> = vec![
@@ -1895,15 +1970,27 @@ fn can_execute_shld() {
 }
 
 #[test]
-fn can_execute_movsx() {
+fn can_execute_movsx16() {
     let mut machine = Machine::default();
     let code: Vec<u8> = vec![
-        0xB7, 0xFF,       // mov bh,0xff
-        0x0F, 0xBE, 0xC7, // movsx ax,bh
+        0xB7, 0xFE,             // mov bh,0xfe
+        0x0F, 0xBE, 0xC7,       // movsx ax,bh
     ];
     machine.load_com(&code);
     machine.execute_instructions(2);
-    assert_eq!(0xFFFF, machine.cpu.get_r16(&R::AX));
+    assert_eq!(0xFFFE, machine.cpu.get_r16(&R::AX));
+}
+
+#[test]
+fn can_execute_movsx32() {
+    let mut machine = Machine::default();
+    let code: Vec<u8> = vec![
+        0xB7, 0xFE,             // mov bh,0xfe
+        0x66, 0x0F, 0xBE, 0xC7, // movsx eax,bh
+    ];
+    machine.load_com(&code);
+    machine.execute_instructions(2);
+    assert_eq!(0xFFFF_FFFE, machine.cpu.get_r32(&R::EAX));
 }
 
 #[test]
@@ -2009,27 +2096,6 @@ fn can_execute_sldt() {
     machine.execute_instruction();
 
     // XXX actually test emulation
-}
-
-#[test]
-fn can_execute_imul16_1_arg() {
-    let mut machine = Machine::default();
-    let code: Vec<u8> = vec![
-        0xBB, 0x8F, 0x79, // mov bx,0x798f
-        0xB8, 0xD9, 0xFF, // mov ax,0xffd9
-        0xF7, 0xEB,       // imul bx
-    ];
-    machine.load_com(&code);
-
-    machine.execute_instruction();
-    assert_eq!(0x798F, machine.cpu.get_r16(&R::BX));
-
-    machine.execute_instruction();
-    assert_eq!(0xFFD9, machine.cpu.get_r16(&R::AX));
-
-    machine.execute_instruction();
-    assert_eq!(0xFFED, machine.cpu.get_r16(&R::DX));
-    assert_eq!(0x7B37, machine.cpu.get_r16(&R::AX));
 }
 
 #[test]

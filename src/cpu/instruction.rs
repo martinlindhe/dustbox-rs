@@ -65,10 +65,10 @@ impl Instruction {
         self.command == Op::Adc8 || self.command == Op::Adc16 ||
         self.command == Op::Sub8 || self.command == Op::Sub16 ||
         self.command == Op::Sbb8 || self.command == Op::Sbb16 ||
-        self.command == Op::Inc8 || self.command == Op::Inc16 ||
-        self.command == Op::Dec8 || self.command == Op::Dec16 ||
-        self.command == Op::Mov8 ||
-        self.command == Op::Mov16
+        self.command == Op::Inc8 || self.command == Op::Inc16 || self.command == Op::Inc32 ||
+        self.command == Op::Dec8 || self.command == Op::Dec16 || self.command == Op::Dec32 ||
+        self.command == Op::Mov8 || self.command == Op::Mov16 || self.command == Op::Mov32 ||
+        self.command == Op::Movsx16 || self.command == Op::Movsx32
     }
 
     fn describe_instruction(&self) -> String {

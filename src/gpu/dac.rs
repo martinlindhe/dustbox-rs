@@ -22,7 +22,7 @@ impl Default for DAC {
     fn default() -> Self {
         DAC {
             bits: 0,
-            pel_mask: 0,
+            pel_mask: 0xFF,
             pel_index: 0,
             state: State::Read,
             read_index: 0,
@@ -45,6 +45,11 @@ impl DAC {
             println!("read port 03C7: get_state = {:02X}", res);
         }
         res
+    }
+
+    // (VGA, MCGA) PEL mask register (0x03C6)
+    pub fn set_pel_mask(&mut self, val: u8) {
+        self.pel_mask = val;
     }
 
     // (VGA,MCGA,CEG-VGA) PEL address register (read mode) (0x03C7)

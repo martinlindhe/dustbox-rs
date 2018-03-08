@@ -149,6 +149,9 @@ impl Flags {
     pub fn set_carry_u16(&mut self, res: usize) {
         self.carry = res & 0x1_0000 != 0;
     }
+    pub fn set_carry_u32(&mut self, res: usize) {
+        self.carry = res & 0x1_0000_0000 != 0;
+    }
     pub fn set_u16(&mut self, val: u16) {
         self.carry       = val & 0x1 != 0;
         self.reserved1   = val & 0x2 != 0;

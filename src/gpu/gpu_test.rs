@@ -296,7 +296,6 @@ fn demo_512_32bit() {
         "../dos-software-decoding/demo-512-32bit/fireline/fireline.com",
         "../dos-software-decoding/demo-512-32bit/fountain_of_sparks/fountain_of_sparks.com",
         "../dos-software-decoding/demo-512-32bit/fract/fract.com",
-        "../dos-software-decoding/demo-512-32bit/fromd2l/fromd2l.com",
         "../dos-software-decoding/demo-512-32bit/glasenapy/glasenapy.com",
         "../dos-software-decoding/demo-512-32bit/gob4k/gob4k.com",
         "../dos-software-decoding/demo-512-32bit/grindkng/grindkng.com",

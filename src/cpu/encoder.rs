@@ -80,7 +80,7 @@ impl Encoder {
             Op::Cld => out.push(0xFC),
             Op::Std => out.push(0xFD),
             Op::Cbw => out.push(0x98),
-            Op::Cwd => out.push(0x99),
+            Op::Cwd16 => out.push(0x99),
             Op::Sahf => out.push(0x9E),
             Op::Lahf => out.push(0x9F),
             Op::Nop => out.push(0x90),

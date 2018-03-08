@@ -207,6 +207,19 @@ impl CPU {
                 self.regs.flags.set_overflow_add_u16(res, src as usize, dst as usize);
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u16);
             }
+            Op::Add32 => {
+                // two parameters (dst=reg)
+                let src = self.read_parameter_value(&hw.mmu, &op.params.src) as u32;
+                let dst = self.read_parameter_value(&hw.mmu, &op.params.dst) as u32;
+                let res = src as usize + dst as usize;
+                self.regs.flags.set_carry_u32(res);
+                self.regs.flags.set_parity(res);
+                self.regs.flags.set_adjust(res, src as usize, dst as usize);
+                self.regs.flags.set_zero_u32(res);
+                self.regs.flags.set_sign_u32(res);
+                self.regs.flags.set_overflow_add_u32(res, src as usize, dst as usize);
+                self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u32);
+            }
             Op::And8 => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&hw.mmu, &op.params.src);
@@ -336,6 +349,13 @@ impl CPU {
                 let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
                 self.cmp16(dst, src);
             }
+            Op::Cmp32 => {
+                // two parameters
+                // Modify status flags in the same manner as the SUB instruction
+                let src = self.read_parameter_value(&hw.mmu, &op.params.src);
+                let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                self.cmp32(dst, src);
+            }
             Op::Cmpsw => {
                 // no parameters
                 // Compare word at address DS:(E)SI with word at address ES:(E)DI
@@ -357,7 +377,7 @@ impl CPU {
                 };
                 self.set_r16(&R::DI, di);
             }
-            Op::Cwd => {
+            Op::Cwd16 => {
                 // Convert Word to Doubleword
                 // DX:AX ← sign-extend of AX.
                 let dx = if self.get_r16(&R::AX) & 0x8000 != 0 {
@@ -366,6 +386,12 @@ impl CPU {
                     0
                 };
                 self.set_r16(&R::DX, dx);
+            }
+            Op::Cwde32 => {
+                // Convert Word to Doubleword
+                // EAX ← sign-extend of AX.
+                let ax = self.get_r16(&R::AX) as i16;
+                self.set_r32(&R::EAX, ax as u32);
             }
             Op::Daa => {
                 // Decimal Adjust AL after Addition
@@ -424,6 +450,7 @@ impl CPU {
                 self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u32);
             }
             Op::Div8 => {
+                // Unsigned divide AX by r/m8, with result stored in AL ← Quotient, AH ← Remainder.
                 let ax = self.get_r16(&R::AX) as u16;
                 let op1 = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16;
                 if op1 == 0 {
@@ -440,6 +467,7 @@ impl CPU {
                 // The CF, OF, SF, ZF, AF, and PF flags are undefined.
             }
             Op::Div16 => {
+                // Unsigned divide DX:AX by r/m16, with result stored in AX ← Quotient, DX ← Remainder.
                 let num = (u32::from(self.get_r16(&R::DX)) << 16) + u32::from(self.get_r16(&R::AX)); // DX:AX
                 let op1 = self.read_parameter_value(&hw.mmu, &op.params.dst) as u32;
                 if op1 == 0 {
@@ -453,6 +481,23 @@ impl CPU {
                 }
                 self.set_r16(&R::DX, remainder);
                 self.set_r16(&R::AX, quo16);
+                // The CF, OF, SF, ZF, AF, and PF flags are undefined.
+            }
+            Op::Div32 => {
+                // Unsigned divide EDX:EAX by r/m32, with result stored in EAX ← Quotient, EDX ← Remainder.
+                let num = (u64::from(self.get_r32(&R::EDX)) << 32) + u64::from(self.get_r32(&R::EAX)); // EDX:EAX
+                let op1 = self.read_parameter_value(&hw.mmu, &op.params.dst) as u64;
+                if op1 == 0 {
+                    return self.exception(&Exception::DIV0, 0);
+                }
+                let remainder = (num % op1) as u32;
+                let quotient = num / op1;
+                let quo32 = (quotient & 0xFFFF) as u32;
+                if quotient != u64::from(quo32) {
+                    return self.exception(&Exception::DIV0, 0);
+                }
+                self.set_r32(&R::EDX, remainder);
+                self.set_r32(&R::EAX, quo32);
                 // The CF, OF, SF, ZF, AF, and PF flags are undefined.
             }
             Op::Enter => {
@@ -518,6 +563,22 @@ impl CPU {
                 self.set_r16(&R::DX, rem as u16);
                 // The CF, OF, SF, ZF, AF, and PF flags are undefined.
             }
+            Op::Idiv32 => {
+                let dividend = ((u64::from(self.get_r32(&R::EDX)) << 32) | u64::from(self.get_r32(&R::EAX))) as i64; // EDX:EAX
+                let op1 = self.read_parameter_value(&hw.mmu, &op.params.dst) as i32;
+                if op1 == 0 {
+                    return self.exception(&Exception::DIV0, 0);
+                }
+                let quo = dividend / i64::from(op1);
+                let rem = (dividend % i64::from(op1)) as i32;
+                let quo32s = quo as i32;
+	            if quo != i64::from(quo32s) {
+                    return self.exception(&Exception::DIV0, 0);
+                }
+                self.set_r32(&R::EAX, quo32s as u32);
+                self.set_r32(&R::EDX, rem as u32);
+                // The CF, OF, SF, ZF, AF, and PF flags are undefined.
+            }
             Op::Imul8 => {
                 // NOTE: only 1-parameter imul8 instruction exists
                 // IMUL r/m8               : AX← AL ∗ r/m byte.
@@ -561,9 +622,7 @@ impl CPU {
                         let tmp = b as isize * a as isize;
                         self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, tmp as u16);
                     }
-                    _ => {
-                        panic!("imul16 with {} parameters: {}", op.params.count(), op);
-                    }
+                    _ => unreachable!(),
                 }
 
                 // XXX flags
@@ -576,6 +635,20 @@ impl CPU {
             }
             Op::Imul32 => {
                 match op.params.count() {
+                    1 => {
+                        // IMUL r/m32               : EDX:EAX ← EAX ∗ r/m32.
+                        let a = self.read_parameter_value(&hw.mmu, &op.params.dst) as i32;
+                        let tmp = (self.get_r32(&R::EAX) as i32) as isize * a as isize;
+                        self.set_r32(&R::EAX, tmp as u32);
+                        self.set_r32(&R::EDX, (tmp >> 32) as u32);
+                    }
+                    2 => {
+                        // IMUL r32, r/m32          : doubleword register ← doubleword register ∗ r/m32.
+                        let a = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                        let b = self.read_parameter_value(&hw.mmu, &op.params.src);
+                        let tmp = a as isize * b as isize;
+                        self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, tmp as u32);
+                    }
                     3 => {
                         // IMUL r32, r/m32, imm8     : doubleword register ← r/m32 ∗ sign- extended immediate byte.
                         // IMUL r32, r/m32, imm32    : doubleword register ← r/m32 ∗ immediate doubleword.
@@ -584,9 +657,7 @@ impl CPU {
                         let tmp = b as isize * a as isize;
                         self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, tmp as u32);
                     }
-                    _ => {
-                        panic!("imul32 with {} parameters: {}", op.params.count(), op);
-                    }
+                    _ => unreachable!(),
                 }
                 // XXX flags
             }
@@ -855,6 +926,20 @@ impl CPU {
                 };
                 self.set_r16(&R::SI, si);
             }
+            Op::Lodsd => {
+                // no arguments
+                // Load dword at address DS:(E)SI into EAX.
+                // The DS segment may be over-ridden with a segment override prefix.
+                let val = hw.mmu.read_u32(self.segment(op.segment_prefix), self.get_r16(&R::SI));
+
+                self.set_r32(&R::EAX, val);
+                let si = if !self.regs.flags.direction {
+                    (Wrapping(self.get_r16(&R::SI)) + Wrapping(4)).0
+                } else {
+                    (Wrapping(self.get_r16(&R::SI)) - Wrapping(4)).0
+                };
+                self.set_r16(&R::SI, si);
+            }
             Op::Loop => {
                 // Decrement count; jump short if count ≠ 0.
                 let dst = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16;
@@ -951,6 +1036,20 @@ impl CPU {
                 }
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, data);
             }
+            Op::Movsx32 => {
+                // 80386+
+                // Move with Sign-Extension
+                // moves a signed value into a register and sign-extends it with 1.
+                // two arguments (dst=reg)
+                let src = self.read_parameter_value(&hw.mmu, &op.params.src) as u8;
+
+                let mut data = u32::from(src);
+                // XXX should not work identical as Movzx16
+                if src & 0x80 != 0 {
+                    data += 0xFFFF_FF00;
+                }
+                self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, data);
+            }
             Op::Movzx16 => {
                 // 80386+
                 // Move with Zero-Extend
@@ -962,6 +1061,18 @@ impl CPU {
                     data += 0xFF00;
                 }
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, data);
+            }
+            Op::Movzx32 => {
+                // 80386+
+                // Move with Zero-Extend
+                // moves an unsigned value into a register and zero-extends it with zero.
+                // two arguments (dst=reg)
+                let src = self.read_parameter_value(&hw.mmu, &op.params.src) as u8;
+                let mut data = u32::from(src);
+                if src & 0x80 != 0 {
+                    data += 0xFFFF_FF00;
+                }
+                self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, data);
             }
             Op::Mul8 => {
                 // Unsigned multiply (AX ← AL ∗ r/m8).
@@ -986,12 +1097,25 @@ impl CPU {
                 let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
                 let res = (Wrapping(dst) * Wrapping(src)).0;
 
-                self.set_r16(&R::AX, (res & 0xFFFF) as u16);
-                self.set_r16(&R::DX, (res >> 16) as u16);
+                self.set_r16(&R::AX, res as u16);
+                let dx = (res >> 16) as u16;
+                self.set_r16(&R::DX, dx);
 
-                let dx_true = self.get_r16(&R::DX) != 0;
-                self.regs.flags.carry = dx_true;
-                self.regs.flags.overflow = dx_true;
+                self.regs.flags.carry = dx != 0;
+                self.regs.flags.overflow = dx != 0;
+            }
+            Op::Mul32 => {
+                // Unsigned multiply (EDX:EAX ← EAX ∗ r/m32)
+                let src = self.get_r32(&R::EAX) as usize;
+                let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                let res = (Wrapping(dst) * Wrapping(src)).0;
+
+                self.set_r32(&R::EAX, res as u32);
+                let edx = (res >> 32) as u32;
+                self.set_r32(&R::EDX, edx);
+
+                self.regs.flags.carry = edx != 0;
+                self.regs.flags.overflow = edx != 0;
             }
             Op::Neg8 => {
                 // Two's Complement Negation
@@ -999,7 +1123,7 @@ impl CPU {
                 let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
                 let src = 0;
                 let res = (Wrapping(src) - Wrapping(dst)).0;
-                self.write_parameter_u8(&mut hw.mmu, &op.params.dst, (res & 0xFF) as u8);
+                self.write_parameter_u8(&mut hw.mmu, &op.params.dst, res as u8);
 
                 self.regs.flags.carry = dst != 0;
                 // The OF, SF, ZF, AF, and PF flags are set according to the result.
@@ -1014,13 +1138,28 @@ impl CPU {
                 let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
                 let src = 0;
                 let res = (Wrapping(src) - Wrapping(dst)).0;
-                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u16);
 
                 self.regs.flags.carry = dst != 0;
                 // The OF, SF, ZF, AF, and PF flags are set according to the result.
                 self.regs.flags.overflow = res == 0x8000;
                 self.regs.flags.set_sign_u16(res);
                 self.regs.flags.set_zero_u16(res);
+                self.regs.flags.set_adjust(res, src, dst);
+                self.regs.flags.set_parity(res);
+            }
+            Op::Neg32 => {
+                // one argument
+                let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                let src = 0;
+                let res = (Wrapping(src) - Wrapping(dst)).0;
+                self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u32);
+
+                self.regs.flags.carry = dst != 0;
+                // The OF, SF, ZF, AF, and PF flags are set according to the result.
+                self.regs.flags.overflow = res == 0x8000_0000;
+                self.regs.flags.set_sign_u32(res);
+                self.regs.flags.set_zero_u32(res);
                 self.regs.flags.set_adjust(res, src, dst);
                 self.regs.flags.set_parity(res);
             }
@@ -1110,8 +1249,13 @@ impl CPU {
                 let data = self.pop16(&mut hw.mmu);
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, data);
             }
-            Op::Popa => {
-                // Pop All General-Purpose Registers
+            Op::Pop32 => {
+                // one arguments (dst)
+                let data = self.pop32(&mut hw.mmu);
+                self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, data);
+            }
+            Op::Popa16 => {
+                // Pop DI, SI, BP, BX, DX, CX, and AX.
                 let di = self.pop16(&mut hw.mmu);
                 self.set_r16(&R::DI, di);
                 let si = self.pop16(&mut hw.mmu);
@@ -1129,6 +1273,25 @@ impl CPU {
                 let ax = self.pop16(&mut hw.mmu);
                 self.set_r16(&R::AX, ax);
             }
+            Op::Popad32 => {
+                // Pop EDI, ESI, EBP, EBX, EDX, ECX, and EAX.
+                let edi = self.pop32(&mut hw.mmu);
+                self.set_r32(&R::EDI, edi);
+                let esi = self.pop32(&mut hw.mmu);
+                self.set_r32(&R::ESI, esi);
+                let ebp = self.pop32(&mut hw.mmu);
+                self.set_r32(&R::EBP, ebp);
+                let esp = self.get_r32(&R::ESP) + 4; // skip next dword of stack
+                self.set_r32(&R::ESP, esp);
+                let ebx = self.pop32(&mut hw.mmu);
+                self.set_r32(&R::EBX, ebx);
+                let edx = self.pop32(&mut hw.mmu);
+                self.set_r32(&R::EDX, edx);
+                let ecx = self.pop32(&mut hw.mmu);
+                self.set_r32(&R::ECX, ecx);
+                let eax = self.pop32(&mut hw.mmu);
+                self.set_r32(&R::EAX, eax);
+            }
             Op::Popf => {
                 // Pop top of stack into lower 16 bits of EFLAGS.
                 let data = self.pop16(&mut hw.mmu);
@@ -1139,8 +1302,13 @@ impl CPU {
                 let data = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16;
                 self.push16(&mut hw.mmu, data);
             }
-            Op::Pusha => {
-                // Push All General-Purpose Registers
+            Op::Push32 => {
+                // single parameter (dst)
+                let data = self.read_parameter_value(&hw.mmu, &op.params.dst) as u32;
+                self.push32(&mut hw.mmu, data);
+            }
+            Op::Pusha16 => {
+                // Push AX, CX, DX, BX, original SP, BP, SI, and DI.
                 let ax = self.get_r16(&R::AX);
                 let cx = self.get_r16(&R::CX);
                 let dx = self.get_r16(&R::DX);
@@ -1149,7 +1317,6 @@ impl CPU {
                 let bp = self.get_r16(&R::BP);
                 let si = self.get_r16(&R::SI);
                 let di = self.get_r16(&R::DI);
-
                 self.push16(&mut hw.mmu, ax);
                 self.push16(&mut hw.mmu, cx);
                 self.push16(&mut hw.mmu, dx);
@@ -1158,6 +1325,25 @@ impl CPU {
                 self.push16(&mut hw.mmu, bp);
                 self.push16(&mut hw.mmu, si);
                 self.push16(&mut hw.mmu, di);
+            }
+            Op::Pushad32 => {
+                // Push EAX, ECX, EDX, EBX, original ESP, EBP, ESI, and EDI.
+                let eax = self.get_r32(&R::EAX);
+                let ecx = self.get_r32(&R::ECX);
+                let edx = self.get_r32(&R::EDX);
+                let ebx = self.get_r32(&R::EBX);
+                let esp = self.get_r32(&R::ESP);
+                let ebp = self.get_r32(&R::EBP);
+                let esi = self.get_r32(&R::ESI);
+                let edi = self.get_r32(&R::EDI);
+                self.push32(&mut hw.mmu, eax);
+                self.push32(&mut hw.mmu, ecx);
+                self.push32(&mut hw.mmu, edx);
+                self.push32(&mut hw.mmu, ebx);
+                self.push32(&mut hw.mmu, esp);
+                self.push32(&mut hw.mmu, ebp);
+                self.push32(&mut hw.mmu, esi);
+                self.push32(&mut hw.mmu, edi);
             }
             Op::Pushf => {
                 // push FLAGS register onto stack
@@ -1405,6 +1591,28 @@ impl CPU {
                     self.regs.flags.set_parity(res);
                 }
             }
+            Op::Sar32 => {
+                // Signed divide* r/m8 by 2, imm8 times.
+                // two arguments
+                let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                let count = self.read_parameter_value(&hw.mmu, &op.params.src) & 0xF; // XXX
+                if count > 0 {
+                    let res = if dst & 0x8000_0000 != 0 {
+                        let x = 0xFFFF_FFFF as usize;
+                        dst.rotate_right(count as u32) | x.rotate_left(32 - count as u32)
+                    } else {
+                        dst.rotate_right(count as u32)
+                    };
+                    self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u32);
+                    self.regs.flags.carry = (dst as u32 >> (count - 1)) & 0x1 != 0; // XXX
+                    if count == 1 {
+                        self.regs.flags.overflow = false;
+                    }
+                    self.regs.flags.set_sign_u32(res);
+                    self.regs.flags.set_zero_u32(res);
+                    self.regs.flags.set_parity(res);
+                }
+            }
             Op::Sbb8 => {
                 // Integer Subtraction with Borrow
                 let src = self.read_parameter_value(&hw.mmu, &op.params.src);
@@ -1420,7 +1628,7 @@ impl CPU {
                 self.regs.flags.set_parity(res);
                 self.regs.flags.set_carry_u8(res);
 
-                self.write_parameter_u8(&mut hw.mmu, &op.params.dst, (res & 0xFF) as u8);
+                self.write_parameter_u8(&mut hw.mmu, &op.params.dst, res as u8);
             }
             Op::Sbb16 => {
                 // Integer Subtraction with Borrow
@@ -1437,7 +1645,7 @@ impl CPU {
                 self.regs.flags.set_parity(res);
                 self.regs.flags.set_carry_u16(res);
 
-                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u16);
             }
             Op::Scasb => {
                 // Compare AL with byte at ES:(E)DI then set status flags.
@@ -1508,13 +1716,30 @@ impl CPU {
                 let count = self.read_parameter_value(&hw.mmu, &op.params.src) & 0x1F;
                 if count > 0 {
                     let res = dst.wrapping_shl(count as u32);
-                    self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
+                    self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u16);
                     self.regs.flags.carry = (res & 0x8000) != 0;
                     if count == 1 {
                         self.regs.flags.overflow = self.regs.flags.carry_val() ^ ((res & 0x8000) >> 15) != 0;
                     }
                     self.regs.flags.set_sign_u16(res);
                     self.regs.flags.set_zero_u16(res);
+                    self.regs.flags.set_parity(res);
+                }
+            }
+            Op::Shl32 => {
+                // Multiply `dst` by 2, `src` times.
+                // two arguments    (alias: sal)
+                let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                let count = self.read_parameter_value(&hw.mmu, &op.params.src) & 0x1F; // XXX
+                if count > 0 {
+                    let res = dst.wrapping_shl(count as u32);
+                    self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u32);
+                    self.regs.flags.carry = (res & 0x8000_0000) != 0;
+                    if count == 1 {
+                        self.regs.flags.overflow = self.regs.flags.carry_val() ^ ((res & 0x8000) >> 15) != 0; // XXX
+                    }
+                    self.regs.flags.set_sign_u32(res);
+                    self.regs.flags.set_zero_u32(res);
                     self.regs.flags.set_parity(res);
                 }
             }
@@ -1558,7 +1783,7 @@ impl CPU {
                 let count = self.read_parameter_value(&hw.mmu, &op.params.src) & 0x1F;
                 if count > 0 {
                     let res = dst.wrapping_shr(count as u32);
-                    self.write_parameter_u8(&mut hw.mmu, &op.params.dst, (res & 0xFF) as u8);
+                    self.write_parameter_u8(&mut hw.mmu, &op.params.dst, res as u8);
                     self.regs.flags.carry = (dst.wrapping_shr((count - 1) as u32) & 0x1) != 0;
                     self.regs.flags.overflow = dst & 0x80 != 0;
                     self.regs.flags.set_sign_u8(res);
@@ -1580,11 +1805,25 @@ impl CPU {
                 let count = self.read_parameter_value(&hw.mmu, &op.params.src) & 0x1F;
                 if count > 0 {
                     let res = dst.wrapping_shr(count as u32);
-                    self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
+                    self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u16);
                     self.regs.flags.carry = (dst.wrapping_shr((count - 1) as u32) & 0x1) != 0;
                     self.regs.flags.overflow = dst & 0x8000 != 0;
                     self.regs.flags.set_sign_u16(res);
                     self.regs.flags.set_zero_u16(res);
+                    self.regs.flags.set_parity(res);
+                }
+            }
+            Op::Shr32 => {
+                // two arguments
+                let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                let count = self.read_parameter_value(&hw.mmu, &op.params.src) & 0x1F; // XXX
+                if count > 0 {
+                    let res = dst.wrapping_shr(count as u32);
+                    self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u32);
+                    self.regs.flags.carry = (dst.wrapping_shr((count - 1) as u32) & 0x1) != 0; // XXX
+                    self.regs.flags.overflow = dst & 0x8000_0000 != 0;
+                    self.regs.flags.set_sign_u32(res);
+                    self.regs.flags.set_zero_u32(res);
                     self.regs.flags.set_parity(res);
                 }
             }
@@ -1602,7 +1841,7 @@ impl CPU {
                 // Shift `dst` to right `count` places while shifting bits from `src` in from the left
                 let res = (src & count_to_bitmask(count) as usize) << (16-count) | (dst >> count);
 
-                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u16);
 
                 if count >= 1 {
                     // XXX carry if count is >= 1
@@ -1672,6 +1911,22 @@ impl CPU {
                 };
                 self.set_r16(&R::DI, di);
             }
+            Op::Stosd => {
+                // no parameters
+                // store EAX at address ES:(E)DI
+                // The ES segment cannot be overridden with a segment override prefix.
+                let eax = self.get_r32(&R::EAX);
+                let es = self.get_r16(&R::ES);
+                let di = self.get_r16(&R::DI);
+                hw.mmu.write_u32(es, di, eax);
+                // XXX adjust DI or EDI ?
+                let di = if !self.regs.flags.direction {
+                    (Wrapping(self.get_r16(&R::DI)) + Wrapping(4)).0
+                } else {
+                    (Wrapping(self.get_r16(&R::DI)) - Wrapping(4)).0
+                };
+                self.set_r16(&R::DI, di);
+            }
             Op::Sub8 => {
                 // two parameters (dst=reg)
                 let src = self.read_parameter_value(&hw.mmu, &op.params.src);
@@ -1686,7 +1941,7 @@ impl CPU {
                 self.regs.flags.set_parity(res);
                 self.regs.flags.set_carry_u8(res);
 
-                self.write_parameter_u8(&mut hw.mmu, &op.params.dst, (res & 0xFF) as u8);
+                self.write_parameter_u8(&mut hw.mmu, &op.params.dst, res as u8);
             }
             Op::Sub16 => {
                 // two parameters (dst=reg)
@@ -1702,7 +1957,23 @@ impl CPU {
                 self.regs.flags.set_parity(res);
                 self.regs.flags.set_carry_u16(res);
 
-                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u16);
+            }
+            Op::Sub32 => {
+                // two parameters (dst=reg)
+                let src = self.read_parameter_value(&hw.mmu, &op.params.src);
+                let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                let res = (Wrapping(dst) - Wrapping(src)).0;
+
+                // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
+                self.regs.flags.set_overflow_sub_u32(res, src, dst);
+                self.regs.flags.set_sign_u32(res);
+                self.regs.flags.set_zero_u32(res);
+                self.regs.flags.set_adjust(res, src, dst);
+                self.regs.flags.set_parity(res);
+                self.regs.flags.set_carry_u32(res);
+
+                self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u32);
             }
             Op::Test8 => {
                 // two parameters
@@ -1741,6 +2012,14 @@ impl CPU {
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, dst as u16);
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.src, src as u16);
             }
+            Op::Xchg32 => {
+                // two parameters (registers)
+                let mut src = self.read_parameter_value(&hw.mmu, &op.params.src);
+                let mut dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                mem::swap(&mut src, &mut dst);
+                self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, dst as u32);
+                self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.src, src as u32);
+            }
             Op::Xlatb => {
                 // no parameters
                 // Set AL to memory byte DS:[(E)BX + unsigned AL].
@@ -1762,7 +2041,7 @@ impl CPU {
                 self.regs.flags.set_zero_u8(res);
                 self.regs.flags.set_parity(res);
 
-                self.write_parameter_u8(&mut hw.mmu, &op.params.dst, (res & 0xFF) as u8);
+                self.write_parameter_u8(&mut hw.mmu, &op.params.dst, res as u8);
             }
             Op::Xor16 => {
                 // two parameters (dst=reg)
@@ -1778,7 +2057,23 @@ impl CPU {
                 self.regs.flags.set_zero_u16(res);
                 self.regs.flags.set_parity(res);
 
-                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
+                self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u16);
+            }
+            Op::Xor32 => {
+                // two parameters (dst=reg)
+                let src = self.read_parameter_value(&hw.mmu, &op.params.src);
+                let dst = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                let res = dst ^ src;
+
+                // The OF and CF flags are cleared; the SF, ZF,
+                // and PF flags are set according to the result.
+                self.regs.flags.overflow = false;
+                self.regs.flags.carry = false;
+                self.regs.flags.set_sign_u32(res);
+                self.regs.flags.set_zero_u32(res);
+                self.regs.flags.set_parity(res);
+
+                self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u32);
             }
             _ => {
                 println!("execute error: unhandled '{}' at {:04X}:{:04X} (flat {:06X})",
@@ -1856,6 +2151,18 @@ impl CPU {
         self.regs.flags.set_parity(res);
     }
 
+    fn cmp32(&mut self, dst: usize, src: usize) {
+        let res = (Wrapping(dst) - Wrapping(src)).0;
+
+        // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
+        self.regs.flags.set_carry_u32(res);
+        self.regs.flags.set_overflow_sub_u32(res, src, dst);
+        self.regs.flags.set_sign_u32(res);
+        self.regs.flags.set_zero_u32(res);
+        self.regs.flags.set_adjust(res, src, dst);
+        self.regs.flags.set_parity(res);
+    }
+
     fn push16(&mut self, mmu: &mut MMU, data: u16) {
         let sp = (Wrapping(self.get_r16(&R::SP)) - Wrapping(2)).0;
         self.set_r16(&R::SP, sp);
@@ -1863,9 +2170,23 @@ impl CPU {
         mmu.write_u16(ss, sp, data);
     }
 
+    fn push32(&mut self, mmu: &mut MMU, data: u32) {
+        let sp = (Wrapping(self.get_r16(&R::SP)) - Wrapping(4)).0;
+        self.set_r16(&R::SP, sp);
+        let ss = self.get_r16(&R::SS);
+        mmu.write_u32(ss, sp, data);
+    }
+
     fn pop16(&mut self, mmu: &mut MMU) -> u16 {
         let data = mmu.read_u16(self.get_r16(&R::SS), self.get_r16(&R::SP));
         let sp = (Wrapping(self.get_r16(&R::SP)) + Wrapping(2)).0;
+        self.set_r16(&R::SP, sp);
+        data
+    }
+
+    fn pop32(&mut self, mmu: &mut MMU) -> u32 {
+        let data = mmu.read_u32(self.get_r16(&R::SS), self.get_r16(&R::SP));
+        let sp = (Wrapping(self.get_r16(&R::SP)) + Wrapping(4)).0;
         self.set_r16(&R::SP, sp);
         data
     }
@@ -1967,7 +2288,6 @@ impl CPU {
             Parameter::Reg32(ref r) => self.get_r32(r) as usize,
             Parameter::SReg16(ref sr) => self.get_r16(sr) as usize,
             Parameter::Ptr8(seg, imm) => mmu.read_u8(self.segment(seg), imm) as usize,
-            Parameter::Ptr16(seg, imm) => mmu.read_u16(self.segment(seg), imm) as usize,
             Parameter::Ptr8Amode(seg, ref amode) => {
                 let seg = self.segment(seg);
                 let offset = self.amode16(amode);
@@ -1983,6 +2303,7 @@ impl CPU {
                 let seg = self.segment(seg);
                 mmu.read_u8(seg, offset) as usize
             }
+            Parameter::Ptr16(seg, imm) => mmu.read_u16(self.segment(seg), imm) as usize,
             Parameter::Ptr16Amode(seg, ref amode) => {
                 let seg = self.segment(seg);
                 let offset = self.amode16(amode);
@@ -1997,6 +2318,12 @@ impl CPU {
                 let offset = (Wrapping(self.amode16(amode)) + Wrapping(imm as u16)).0;
                 let seg = self.segment(seg);
                 mmu.read_u16(seg, offset) as usize
+            }
+            Parameter::Ptr32(seg, imm) => mmu.read_u32(self.segment(seg), imm) as usize,
+            Parameter::Ptr32Amode(seg, ref amode) => {
+                let seg = self.segment(seg);
+                let offset = self.amode16(amode);
+                mmu.read_u32(seg, offset) as usize
             }
             _ => panic!("unhandled parameter: {:?} at {:06X}", p, self.get_address()),
         }
@@ -2059,9 +2386,23 @@ impl CPU {
         }
     }
 
-    fn write_parameter_u32(&mut self, _mmu: &mut MMU, _segment: Segment, p: &Parameter, data: u32) {
+    fn write_parameter_u32(&mut self, mmu: &mut MMU, _segment: Segment, p: &Parameter, data: u32) {
         match *p {
             Parameter::Reg32(ref r) => self.set_r32(r, data),
+            Parameter::Ptr32(seg, imm) => {
+                let seg = self.segment(seg);
+                mmu.write_u32(seg, imm, data);
+            }
+            Parameter::Ptr32Amode(seg, ref amode) => {
+                let seg = self.segment(seg);
+                let offset = self.amode16(amode);
+                mmu.write_u32(seg, offset, data);
+            }
+            Parameter::Ptr32AmodeS8(seg, ref amode, imm) => {
+                let seg = self.segment(seg);
+                let offset = Wrapping(self.amode16(amode)) + Wrapping(imm as u16);
+                mmu.write_u32(seg, offset.0, data);
+            }
             _ => panic!("unhandled type {:?} at {:06X}", p, self.get_address()),
         }
     }
@@ -2200,6 +2541,14 @@ fn count_to_bitmask(v: usize) -> usize {
         18 => 0b11_1111_1111_1111_1111,
         19 => 0b111_1111_1111_1111_1111,
         20 => 0b1111_1111_1111_1111_1111,
+        21 => 0b1_1111_1111_1111_1111_1111,
+        22 => 0b11_1111_1111_1111_1111_1111,
+        23 => 0b111_1111_1111_1111_1111_1111,
+        24 => 0b1111_1111_1111_1111_1111_1111,
+        25 => 0b1_1111_1111_1111_1111_1111_1111,
+        26 => 0b11_1111_1111_1111_1111_1111_1111,
+        27 => 0b111_1111_1111_1111_1111_1111_1111,
+        28 => 0b1111_1111_1111_1111_1111_1111_1111,
         _ => panic!("unhandled {}", v)
     }
 }

@@ -36,6 +36,10 @@ impl FlatMemory {
         self.write_u8(addr + 1, (data >> 8) as u8);
     }
 
+    pub fn read_u32(&self, addr: u32) -> u32 {
+        u32::from(self.read_u16(addr + 2)) << 16 | u32::from(self.read_u16(addr))
+    }
+
     pub fn write_u32(&mut self, addr: u32, data: u32) {
         self.write_u16(addr, data as u16);
         self.write_u16(addr + 2, (data >> 16) as u16);
