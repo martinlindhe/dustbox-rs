@@ -1439,6 +1439,21 @@ impl CPU {
                     self.regs.flags.overflow = bit15 ^ bit14 != 0;
                 }
             }
+            Op::Rcr32 => {
+                // two arguments
+                // rotate 9 bits right `op1` times
+                let op1 = self.read_parameter_value(&hw.mmu, &op.params.dst);
+                let count = (self.read_parameter_value(&hw.mmu, &op.params.src) as u32 & 0x1F) % 17;    // XXX
+                if count > 0 {
+                    let cf = self.regs.flags.carry_val();
+                    let res = (op1 >> count) | (cf << (32 - count)) | (op1 << (33 - count));
+                    self.write_parameter_u32(&mut hw.mmu, op.segment_prefix, &op.params.dst, res as u32);
+                    self.regs.flags.carry = (op1 >> (count - 1)) & 1 != 0;
+                    let bit15 = (res >> 15) & 1; // XXX
+                    let bit14 = (res >> 14) & 1;
+                    self.regs.flags.overflow = bit15 ^ bit14 != 0;
+                }
+            }
             Op::Iret => {
                 self.regs.ip = self.pop16(&mut hw.mmu);
                 let cs = self.pop16(&mut hw.mmu);
@@ -2419,6 +2434,11 @@ impl CPU {
                 mmu.write_u32(seg, offset, data);
             }
             Parameter::Ptr32AmodeS8(seg, ref amode, imm) => {
+                let seg = self.segment(seg);
+                let offset = Wrapping(self.amode16(amode)) + Wrapping(imm as u16);
+                mmu.write_u32(seg, offset.0, data);
+            }
+            Parameter::Ptr32AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
                 let offset = Wrapping(self.amode16(amode)) + Wrapping(imm as u16);
                 mmu.write_u32(seg, offset.0, data);

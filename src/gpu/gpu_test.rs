@@ -288,7 +288,6 @@ fn demo_512_32bit() {
         "../dos-software-decoding/demo-512-32bit/200h/200h.com",
         "../dos-software-decoding/demo-512-32bit/blobsf/blobsf.com",
         "../dos-software-decoding/demo-512-32bit/bt7/bt7.com",
-        "../dos-software-decoding/demo-512-32bit/delinus/delinus.com",
         "../dos-software-decoding/demo-512-32bit/distant/distant.com",
         "../dos-software-decoding/demo-512-32bit/ems/ems.com",
         "../dos-software-decoding/demo-512-32bit/entry2/entry2.com",
@@ -300,7 +299,6 @@ fn demo_512_32bit() {
         "../dos-software-decoding/demo-512-32bit/gob4k/gob4k.com",
         "../dos-software-decoding/demo-512-32bit/grindkng/grindkng.com",
         "../dos-software-decoding/demo-512-32bit/rwater/rwater.com",
-        "../dos-software-decoding/demo-512-32bit/sign/sign.com",
         "../dos-software-decoding/demo-512-32bit/voronoy/voronoy.com",
     ];
     run_and_save_video_frames(test_bins, "demo_512_32bit", "512_32bit");

@@ -84,7 +84,7 @@ impl Debugger {
 
     pub fn step_over(&mut self) {
         let mut decoder = Decoder::default();
-        let op = decoder.decode_instruction(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip);
+        let op = decoder.get_instruction_info(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip);
 
         let dst_ip = self.machine.cpu.regs.ip + op.bytes.len() as u16;
         println!("Step-over running to {:04X}", dst_ip);
@@ -315,7 +315,7 @@ impl Debugger {
             }
             "d" | "disasm" => {
                 let mut decoder = Decoder::default();
-                let op = decoder.decode_instruction(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip);
+                let op = decoder.get_instruction_info(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip);
                 println!("{:?}", op);
                 println!("{}", op);
             }

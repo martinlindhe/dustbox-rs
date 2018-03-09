@@ -204,6 +204,11 @@ impl Decoder {
                         op.command = Op::Jc;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
+                    0x83 => {
+                        // jnc rel16
+                        op.command = Op::Jnc;
+                        op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
+                    }
                     0x84 => {
                         // jz rel16
                         op.command = Op::Jz;
@@ -310,6 +315,13 @@ impl Decoder {
                                 op.params = self.r32_rm8(&mut mmu, op.segment_prefix);
                             }
                         }
+                    }
+                    0xBA => {
+                        // bts r/m16, imm8
+                        let x = self.read_mod_reg_rm(mmu);
+                        op.command = Op::Bts;
+                        op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.src = Parameter::Imm8(self.read_u8(mmu));
                     }
                     0xBC => {
                         // bsf r16, r/m16
@@ -1208,6 +1220,7 @@ impl Decoder {
                     OperandSize::_32bit => {
                         // r32, byte imm8
                         op.command = match x.reg {
+                            3 => Op::Rcr32,
                             4 => Op::Shl32,
                             5 => Op::Shr32,
                             7 => Op::Sar32,
@@ -1644,10 +1657,8 @@ impl Decoder {
             }
             // [amode+s8]
             1 => Parameter::Ptr32AmodeS8(seg, Into::into(rm), self.read_s8(mmu)),
-            /*
             // [amode+s16]
-            2 => Parameter::Ptr16AmodeS16(seg, Into::into(rm), self.read_s16(mmu)),
-            */
+            2 => Parameter::Ptr32AmodeS16(seg, Into::into(rm), self.read_s16(mmu)),
             // [reg]
             3 => Parameter::Reg32(r32(rm)),
             _ => panic!("rm32: unhandled md {}, ip = {:04X}:{:04X}", md, self.c_seg, self.c_offset),

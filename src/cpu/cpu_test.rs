@@ -611,15 +611,17 @@ fn can_execute_32bit_addressing() {
         0x66, 0x89, 0x1E, 0x50, 0x02,               // mov [0x250],ebx
         0x66, 0xC7, 0x05, 0x01, 0x01, 0x01, 0x01,   // mov dword [di],0x1010101
         0x66, 0x89, 0x5D, 0xF8,                     // mov [di-0x8],ebx
+        0x66, 0x89, 0x9D, 0xC0, 0xFE,               // mov [di-0x140],ebx
     ];
 
     machine.load_com(&code);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 4);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 5);
     assert_eq!("[085F:0100] 66BB00020000     Mov32    ebx, 0x00000200
 [085F:0106] 66891E5002       Mov32    dword [ds:0x0250], ebx
 [085F:010B] 66C70501010101   Mov32    dword [ds:di], 0x01010101
-[085F:0112] 66895DF8         Mov32    dword [ds:di-0x08], ebx", res);
+[085F:0112] 66895DF8         Mov32    dword [ds:di-0x08], ebx
+[085F:0116] 66899DC0FE       Mov32    dword [ds:di-0x0140], ebx", res);
 
     machine.execute_instructions(2);
     let ds = machine.cpu.get_r16(&R::DS);
@@ -632,6 +634,10 @@ fn can_execute_32bit_addressing() {
     machine.execute_instruction();
     let di = machine.cpu.get_r16(&R::DI);
     assert_eq!(0x0000_0200, machine.hw.mmu.read_u32(ds, di - 8));
+
+    machine.execute_instruction();
+    let di = machine.cpu.get_r16(&R::DI);
+    assert_eq!(0x0000_0200, machine.hw.mmu.read_u32(ds, di - 0x140));
 }
 
 #[test]
@@ -972,6 +978,21 @@ fn can_execute_aas() {
 }
 
 #[test]
+fn can_execute_bts() {
+    let mut machine = Machine::default();
+    let code: Vec<u8> = vec![
+        0x0F, 0xBA, 0x2E, 0xAE, 0x01, 0x0F, // bts word [0x1ae],0xf
+    ];
+    machine.load_com(&code);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 1);
+    assert_eq!("[085F:0100] 0FBA2EAE010F     Bts      word [ds:0x01AE], 0x0F", res);
+
+    // XXX also test emulation
+    machine.execute_instructions(1);
+}
+
+#[test]
 fn can_execute_bsf() {
     let mut machine = Machine::default();
     let code: Vec<u8> = vec![
@@ -1164,8 +1185,7 @@ fn can_execute_jmp_far() {
     machine.load_com(&code);
 
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 1);
-    assert_eq!("[085F:0100] EA00060000       JmpFar   0000:0600",
-               res);
+    assert_eq!("[085F:0100] EA00060000       JmpFar   0000:0600", res);
 
     machine.execute_instruction();
     assert_eq!(0x0000, machine.cpu.get_r16(&R::CS));
