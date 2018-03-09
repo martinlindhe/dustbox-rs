@@ -30,7 +30,7 @@ impl Decoder {
         let mut ops: Vec<InstructionInfo> = Vec::new();
         let mut inst_offset = 0;
         for _ in 0..n {
-            let op = self.decode_instruction(&mut mmu, seg, offset+inst_offset);
+            let op = self.get_instruction_info(&mut mmu, seg, offset+inst_offset);
             inst_offset += op.bytes.len() as u16;
             ops.push(op);
         }
@@ -42,30 +42,24 @@ impl Decoder {
         instruction_info_to_str(&ops)
     }
 
-    pub fn decode_instruction(&mut self, mut mmu: &mut MMU, iseg: u16, ioffset: u16) -> InstructionInfo {
-        let (op, length) = self.get_instruction(&mut mmu, Segment::Default, iseg, ioffset);
+    // decodes op at iseg:ioffset into a InstructionInfo
+    pub fn get_instruction_info(&mut self, mut mmu: &mut MMU, iseg: u16, ioffset: u16) -> InstructionInfo {
+        let (instruction, length) = self.get_instruction(&mut mmu, iseg, ioffset);
         if DEBUG_DECODER {
-            println!("decode_instruction at {:06x}: {:?}", MemoryAddress::RealSegmentOffset(iseg, ioffset).value(), op);
+            println!("decode_instruction at {:06x}: {:?}", MemoryAddress::RealSegmentOffset(iseg, ioffset).value(), instruction);
         }
         InstructionInfo {
             segment: iseg as usize,
             offset: ioffset as usize,
             bytes: mmu.read(iseg, ioffset, length),
-            instruction: op
+            instruction,
         }
     }
 
-    pub fn get_instruction(&mut self, mut mmu: &mut MMU, seg: Segment, iseg: u16, ioffset: u16) -> (Instruction, usize) {
-        self.c_seg = iseg;
-        self.c_offset = ioffset;
-        self.decode(&mut mmu, seg, OperandSize::_16bit)
-    }
-
-    // decodes 8 and 16 bit instructions
-    fn decode(&mut self, mut mmu: &mut MMU, seg: Segment, op_size: OperandSize) -> (Instruction, usize) {
-        let ioffset = self.c_offset;
-        let b = self.read_u8(mmu);
-
+    // decodes op at iseg:ioffset into a Instruction
+    pub fn get_instruction(&mut self, mut mmu: &mut MMU, segment: u16, offset: u16) -> (Instruction, usize) {
+        self.c_seg = segment;
+        self.c_offset = offset;
         let mut op = Instruction {
             command: Op::Unknown,
             params: ParameterSet {
@@ -73,11 +67,18 @@ impl Decoder {
                 src: Parameter::None,
                 src2: Parameter::None,
             },
-            segment_prefix: seg,
+            segment_prefix: Segment::Default,
             repeat: RepeatMode::None,
             lock: false,
-            op_size: op_size.clone(),
+            op_size: OperandSize::_16bit,
         };
+        self.decode(&mut mmu, &mut op)
+    }
+
+    // decodes 8 and 16 bit instructions
+    fn decode(&mut self, mut mmu: &mut MMU, mut op: &mut Instruction) -> (Instruction, usize) {
+        let ioffset = self.c_offset;
+        let b = self.read_u8(mmu);
 
         match b {
             0x00 => {
@@ -86,7 +87,7 @@ impl Decoder {
                 op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
             }
             0x01 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // add r/m16, r16
                         op.command = Op::Add16;
@@ -105,7 +106,7 @@ impl Decoder {
                 op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
             }
             0x03 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // add r16, r/m16
                         op.command = Op::Add16;
@@ -125,7 +126,7 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x05 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // add AX, imm16
                         op.command = Op::Add16;
@@ -283,7 +284,7 @@ impl Decoder {
                         op.params.src2 = Parameter::Imm8(self.read_u8(mmu));
                     }
                     0xAF => {
-                        match op_size {
+                        match op.op_size {
                             OperandSize::_16bit => {
                                 // imul r16, r/m16
                                 op.command = Op::Imul16;
@@ -297,7 +298,7 @@ impl Decoder {
                         }
                     }
                     0xB6 => {
-                        match op_size {
+                        match op.op_size {
                             OperandSize::_16bit => {
                                 // movzx r16, r/m8
                                 op.command = Op::Movzx16;
@@ -316,7 +317,7 @@ impl Decoder {
                         op.params = self.r16_rm16(&mut mmu, op.segment_prefix);
                     }
                     0xBE => {
-                        match op_size {
+                        match op.op_size {
                             OperandSize::_16bit => {
                                 // movsx r16, r/m8
                                 op.command = Op::Movsx16;
@@ -330,7 +331,7 @@ impl Decoder {
                         }
                     }
                     0xBF => {
-                        match op_size {
+                        match op.op_size {
                             OperandSize::_16bit => op.command = Op::Invalid(InvalidOp::Op),
                             OperandSize::_32bit => {
                                 // movsx r32, r/m16
@@ -460,7 +461,8 @@ impl Decoder {
             }
             0x26 => {
                 // es segment prefix
-                let (mut op, length) = self.decode(&mut mmu, Segment::ES, op_size);
+                op.segment_prefix = Segment::ES;
+                let (mut op, length) = self.decode(&mut mmu, &mut op);
                 return (op, length + 1);
             }
             0x27 => op.command = Op::Daa,
@@ -480,7 +482,7 @@ impl Decoder {
                 op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
             }
             0x2B => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // sub r16, r/m16
                         op.command = Op::Sub16;
@@ -500,7 +502,7 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x2D => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // sub AX, imm16
                         op.command = Op::Sub16;
@@ -517,7 +519,8 @@ impl Decoder {
             }
             0x2E => {
                 // cs segment prefix
-                let (mut op, length) = self.decode(&mut mmu, Segment::CS, op_size);
+                op.segment_prefix = Segment::CS;
+                let (mut op, length) = self.decode(&mut mmu, &mut op);
                 return (op, length + 1);
             }
             0x2F => op.command = Op::Das,
@@ -527,7 +530,7 @@ impl Decoder {
                 op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
             }
             0x31 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // xor r/m16, r16
                         op.command = Op::Xor16;
@@ -546,7 +549,7 @@ impl Decoder {
                 op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
             }
             0x33 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // xor r16, r/m16
                         op.command = Op::Xor16;
@@ -573,7 +576,8 @@ impl Decoder {
             }
             0x36 => {
                 // ss segment prefix
-                let (mut op, length) = self.decode(&mut mmu, Segment::SS, op_size);
+                op.segment_prefix = Segment::SS;
+                let (mut op, length) = self.decode(&mut mmu, &mut op);
                 return (op, length + 1);
             }
             0x37 => op.command = Op::Aaa,
@@ -593,7 +597,7 @@ impl Decoder {
                 op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
             }
             0x3B => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // cmp r16, r/m16
                         op.command = Op::Cmp16;
@@ -613,7 +617,7 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x3D => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // cmp AX, imm16
                         op.command = Op::Cmp16;
@@ -630,12 +634,13 @@ impl Decoder {
             }
             0x3E => {
                 // ds segment prefix
-                let (mut op, length) = self.decode(&mut mmu, Segment::DS, op_size);
+                op.segment_prefix = Segment::DS;
+                let (mut op, length) = self.decode(&mut mmu, &mut op);
                 return (op, length + 1);
             }
             0x3F => op.command = Op::Aas,
             0x40...0x47 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // inc r16
                         op.command = Op::Inc16;
@@ -649,7 +654,7 @@ impl Decoder {
                 }
             }
             0x48...0x4F => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // dec r16
                         op.command = Op::Dec16;
@@ -663,7 +668,7 @@ impl Decoder {
                 }
             }
             0x50...0x57 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // push r16
                         op.command = Op::Push16;
@@ -677,7 +682,7 @@ impl Decoder {
                 }
             }
             0x58...0x5F => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // pop r16
                         op.command = Op::Pop16;
@@ -691,13 +696,13 @@ impl Decoder {
                 }
             }
             0x60 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => op.command = Op::Pusha16,
                     OperandSize::_32bit => op.command = Op::Pushad32,
                 }
             }
             0x61 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => op.command = Op::Popa16,
                     OperandSize::_32bit => op.command = Op::Popad32,
                 }
@@ -715,17 +720,20 @@ impl Decoder {
             }
             0x64 => {
                 // fs segment prefix
-                let (mut op, length) = self.decode(&mut mmu, Segment::FS, op_size);
+                op.segment_prefix = Segment::FS;
+                let (mut op, length) = self.decode(&mut mmu, &mut op);
                 return (op, length + 1);
             }
             0x65 => {
                 // gs segment prefix
-                let (mut op, length) = self.decode(&mut mmu, Segment::GS, op_size);
+                op.segment_prefix = Segment::GS;
+                let (mut op, length) = self.decode(&mut mmu, &mut op);
                 return (op, length + 1);
             }
             0x66 => {
                 // 80386+ Operand-size override prefix
-                let (mut op, length) = self.decode(&mut mmu, seg, OperandSize::_32bit);
+                op.op_size = OperandSize::_32bit;
+                let (op, length) = self.decode(&mut mmu, &mut op);
                 return (op, length + 1);
             }
             0x67 => {
@@ -739,7 +747,7 @@ impl Decoder {
                 op.params.dst = Parameter::Imm16(self.read_u16(mmu));
             }
             0x69 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // imul r16, r/m16, imm16
                         op.command = Op::Imul16;
@@ -760,7 +768,7 @@ impl Decoder {
                 op.params.dst = Parameter::ImmS8(self.read_s8(mmu));
             }
             0x6B => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // imul r16, r/m16, imm8
                         op.command = Op::Imul16;
@@ -878,7 +886,7 @@ impl Decoder {
             }
             0x81 => {
                 let x = self.read_mod_reg_rm(mmu);
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // <arithmetic> r/m16, imm16
                         op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
@@ -911,7 +919,7 @@ impl Decoder {
             // 0x82 is unrecognized by objdump & ndisasm, but alias to 0x80 on pre Pentium 4:s according to ref.x86asm.net
             0x83 => {
                 let x = self.read_mod_reg_rm(mmu);
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // <arithmetic> r/m16, imm8
                         op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
@@ -965,7 +973,7 @@ impl Decoder {
                 op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
             }
             0x89 => {
-                 match op_size {
+                 match op.op_size {
                     OperandSize::_16bit => {
                         // mov r/m16, r16
                         op.command = Op::Mov16;
@@ -984,7 +992,7 @@ impl Decoder {
                 op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
             }
             0x8B => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // mov r16, r/m16
                         op.command = Op::Mov16;
@@ -1022,7 +1030,7 @@ impl Decoder {
             }
             0x90 => op.command = Op::Nop,
             0x91...0x97 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // xchg AX, r16 | xchg r16, AX
                         // NOTE: "xchg ax,ax" is an alias of "nop"
@@ -1038,7 +1046,7 @@ impl Decoder {
                 }
             }
             0x98 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => op.command = Op::Cbw,
                     OperandSize::_32bit => op.command = Op::Cwde32,
                 }
@@ -1067,7 +1075,7 @@ impl Decoder {
                 op.params.src = Parameter::Ptr8(op.segment_prefix, self.read_u16(mmu));
             }
             0xA1 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // mov AX, [moffs16]
                         op.command = Op::Mov16;
@@ -1089,7 +1097,7 @@ impl Decoder {
                 op.params.src = Parameter::Reg8(R::AL);
             }
             0xA3 => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // mov [moffs16], AX
                         op.command = Op::Mov16;
@@ -1122,14 +1130,14 @@ impl Decoder {
             }
             0xAA => op.command = Op::Stosb,
             0xAB => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => op.command = Op::Stosw,
                     OperandSize::_32bit => op.command = Op::Stosd,
                 }
             }
             0xAC => op.command = Op::Lodsb,
             0xAD => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => op.command = Op::Lodsw,
                     OperandSize::_32bit => op.command = Op::Lodsd,
                 }
@@ -1143,7 +1151,7 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0xB8...0xBF => {
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // mov r16, u16
                         op.command = Op::Mov16;
@@ -1176,7 +1184,7 @@ impl Decoder {
             }
             0xC1 => {
                 let x = self.read_mod_reg_rm(mmu);
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // r16, byte imm8
                         op.command = match x.reg {
@@ -1232,7 +1240,7 @@ impl Decoder {
             }
             0xC7 => {
                 let x = self.read_mod_reg_rm(mmu);
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
                         op.params.src = Parameter::Imm16(self.read_u16(mmu));
@@ -1444,8 +1452,8 @@ impl Decoder {
             }
             0xF0 => {
                 // lock prefix
-                let (mut op, length) = self.decode(&mut mmu, seg, op_size);
                 op.lock = true;
+                let (op, length) = self.decode(&mut mmu, &mut op);
                 return (op, length + 1)
             }
             0xF1 => {
@@ -1511,7 +1519,7 @@ impl Decoder {
             }
             0xF7 => {
                 let x = self.read_mod_reg_rm(mmu);
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // <math> r/m16
                         op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
@@ -1564,7 +1572,7 @@ impl Decoder {
             }
             0xFF => {
                 let x = self.read_mod_reg_rm(mmu);
-                match op_size {
+                match op.op_size {
                     OperandSize::_16bit => {
                         // r/m16
                         op.params.dst = self.rm16(&mut mmu, op.segment_prefix, x.rm, x.md);
@@ -1595,7 +1603,7 @@ impl Decoder {
 
         // calculate instruction length
         let length = (self.c_offset - ioffset) as usize;
-        (op, length)
+        (op.clone(), length)
     }
 
     // decode rm8

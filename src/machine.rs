@@ -91,7 +91,7 @@ impl Machine {
             self.cpu.handle_interrupt(&mut self.hw, ip as u8);
         }
 
-        let (op, length) = self.cpu.decoder.get_instruction(&mut self.hw.mmu, Segment::DS, cs, ip);
+        let (op, length) = self.cpu.decoder.get_instruction(&mut self.hw.mmu, cs, ip);
 
         // 32-bit decoding sanity check. has some false positives
         if DEBUG_MACHINE && op.op_size == OperandSize::_32bit {

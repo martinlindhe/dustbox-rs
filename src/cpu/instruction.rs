@@ -11,10 +11,11 @@ use hex::hex_bytes;
 pub struct Instruction {
     pub command: Op,
     pub params: ParameterSet,
-    pub segment_prefix: Segment,
-    pub repeat: RepeatMode,     // REPcc prefix
-    pub lock: bool,             // LOCK prefix
-    pub op_size: OperandSize,   // 0x66 prefix
+    // op prefixes
+    pub segment_prefix: Segment,    // segment prefix opcode
+    pub repeat: RepeatMode,         // REPcc prefix
+    pub lock: bool,                 // LOCK prefix
+    pub op_size: OperandSize,       // 0x66 prefix
 }
 
 impl fmt::Display for Instruction {
