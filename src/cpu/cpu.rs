@@ -985,7 +985,7 @@ impl CPU {
             Op::Movsb => {
                 // move byte from address DS:(E)SI to ES:(E)DI.
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
-                let b = hw.mmu.read_u8(self.segment(op.segment_prefix), self.get_r16(&R::SI));
+                let val = hw.mmu.read_u8(self.segment(op.segment_prefix), self.get_r16(&R::SI));
                 let si = if !self.regs.flags.direction {
                     (Wrapping(self.get_r16(&R::SI)) + Wrapping(1)).0
                 } else {
@@ -994,7 +994,7 @@ impl CPU {
                 self.set_r16(&R::SI, si);
                 let es = self.get_r16(&R::ES);
                 let di = self.get_r16(&R::DI);
-                hw.mmu.write_u8(es, di, b);
+                hw.mmu.write_u8(es, di, val);
                 let di = if !self.regs.flags.direction {
                     (Wrapping(self.get_r16(&R::DI)) + Wrapping(1)).0
                 } else {
@@ -1005,7 +1005,7 @@ impl CPU {
             Op::Movsw => {
                 // move word from address DS:(E)SI to ES:(E)DI.
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
-                let b = hw.mmu.read_u16(self.segment(op.segment_prefix), self.get_r16(&R::SI));
+                let val = hw.mmu.read_u16(self.segment(op.segment_prefix), self.get_r16(&R::SI));
                 let si = if !self.regs.flags.direction {
                     (Wrapping(self.get_r16(&R::SI)) + Wrapping(2)).0
                 } else {
@@ -1014,11 +1014,31 @@ impl CPU {
                 self.set_r16(&R::SI, si);
                 let es = self.get_r16(&R::ES);
                 let di = self.get_r16(&R::DI);
-                hw.mmu.write_u16(es, di, b);
+                hw.mmu.write_u16(es, di, val);
                 let di = if !self.regs.flags.direction {
                     (Wrapping(self.get_r16(&R::DI)) + Wrapping(2)).0
                 } else {
                     (Wrapping(self.get_r16(&R::DI)) - Wrapping(2)).0
+                };
+                self.set_r16(&R::DI, di);
+            }
+            Op::Movsd => {
+                // move dword from address DS:(E)SI to ES:(E)DI
+                // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
+                let val = hw.mmu.read_u32(self.segment(op.segment_prefix), self.get_r16(&R::SI));
+                let si = if !self.regs.flags.direction {
+                    (Wrapping(self.get_r16(&R::SI)) + Wrapping(4)).0
+                } else {
+                    (Wrapping(self.get_r16(&R::SI)) - Wrapping(4)).0
+                };
+                self.set_r16(&R::SI, si);
+                let es = self.get_r16(&R::ES);
+                let di = self.get_r16(&R::DI);
+                hw.mmu.write_u32(es, di, val);
+                let di = if !self.regs.flags.direction {
+                    (Wrapping(self.get_r16(&R::DI)) + Wrapping(4)).0
+                } else {
+                    (Wrapping(self.get_r16(&R::DI)) - Wrapping(4)).0
                 };
                 self.set_r16(&R::DI, di);
             }

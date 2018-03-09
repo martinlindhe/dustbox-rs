@@ -92,6 +92,7 @@ pub enum Op {
     Mov32,
     Movsb,
     Movsw,
+    Movsd,
     Movsx16,
     Movsx32,
     Movzx16,

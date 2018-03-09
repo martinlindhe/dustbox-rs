@@ -1113,7 +1113,12 @@ impl Decoder {
                 }
             }
             0xA4 => op.command = Op::Movsb,
-            0xA5 => op.command = Op::Movsw,
+            0xA5 => {
+                match op.op_size {
+                    OperandSize::_16bit => op.command = Op::Movsw,
+                    OperandSize::_32bit => op.command = Op::Movsd,
+                }
+            }
             0xA6 => op.command = Op::Cmpsb,
             0xA7 => op.command = Op::Cmpsw,
             0xA8 => {
@@ -1461,40 +1466,16 @@ impl Decoder {
                 op.params.dst = Parameter::Imm8(1);
             }
             0xF2 => {
-                let b = self.read_u8(mmu);
-                match b {
-                    0xAE => {
-                        op.repeat = RepeatMode::Repne;
-                        op.command = Op::Scasb;
-                    }
-                    _ => op.command = Op::Invalid(InvalidOp::Op),
-                }
+                // repne (cmps, scas) prefix
+                op.repeat = RepeatMode::Repne;
+                let (op, length) = self.decode(&mut mmu, &mut op);
+                return (op, length + 1)
             }
             0xF3 => {
-                let b = self.read_u8(mmu);
-                match b {
-                    0x6E => {
-                        op.repeat = RepeatMode::Rep;
-                        op.command = Op::Outsb;
-                    }
-                    0xA4 => {
-                        op.repeat = RepeatMode::Rep;
-                        op.command = Op::Movsb;
-                    }
-                    0xA5 => {
-                        op.repeat = RepeatMode::Rep;
-                        op.command = Op::Movsw;
-                    }
-                    0xAA => {
-                        op.repeat = RepeatMode::Rep;
-                        op.command = Op::Stosb;
-                    }
-                    0xAB => {
-                        op.repeat = RepeatMode::Rep;
-                        op.command = Op::Stosw;
-                    }
-                    _ => op.command = Op::Invalid(InvalidOp::Op),
-                }
+                // rep (ins, movs, outs, lods, stos), repe (cmps, scas) prefix
+                op.repeat = RepeatMode::Rep; // XXX needs changing to REPE in cmps,scas cases ...
+                let (op, length) = self.decode(&mut mmu, &mut op);
+                return (op, length + 1)
             }
             0xF4 => op.command = Op::Hlt,
             0xF5 => op.command = Op::Cmc,
