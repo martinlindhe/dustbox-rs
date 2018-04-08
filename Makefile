@@ -35,7 +35,7 @@ mips:
 	cargo test --release mips -- --nocapture
 
 run:
-	cargo run --package dustbox_gtk
+	cargo run --package dustbox_debugger
 
 run-release:
 	cargo run --release --package dustbox_gtk

@@ -292,13 +292,12 @@ fn draw_canvas(c: &cairo::Context, buf: Vec<u8>, mode: &VideoModeBlock) {
     }
     let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(
         buf,
-        0,
+        gdk_pixbuf::Colorspace::Rgb,
         false,
         8,
         mode.swidth as i32,
         mode.sheight as i32,
-        mode.swidth as i32 * 3,
-    );
+        mode.swidth as i32 * 3);
     c.set_source_pixbuf(&pixbuf, 0., 0.);
 }
 

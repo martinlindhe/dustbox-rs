@@ -1,9 +1,9 @@
-extern crate dustbox_gtk;
+extern crate dustbox_debugger;
 
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use dustbox_gtk::{debugger, interface};
+use dustbox_debugger::{debugger, interface};
 
 fn main() {
     let app = Rc::new(RefCell::new(debugger::Debugger::default()));
