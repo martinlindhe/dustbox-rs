@@ -49,12 +49,19 @@ impl Hardware {
             0x0040 => self.pit.counter0.get_next_u8(),
             0x0041 => self.pit.counter1.get_next_u8(),
             0x0042 => self.pit.counter2.get_next_u8(),
+
+            // PORT 0060-006F - KEYBOARD CONTROLLER 804x (8041, 8042) (or PPI (8255) on PC,XT)
+            // Note: XT uses ports 60h-63h, AT uses ports 60h-64h
             0x0060 => {
                 // keyboard controller data output buffer
                 0 // XXX
             },
             0x0061 => {
                 // keyboard controller port b control register
+                0 // XXX
+            }
+            0x0064 => {
+                // keyboard controller read status
                 0 // XXX
             }
             0x00A0 => self.pic2.get_register(),
