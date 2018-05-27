@@ -8,7 +8,7 @@ path = "src/lib.rs"
 
 [dependencies]
 time = "0.1"
-rand = "0.4"
+rand = "0.5"
 tempdir = "0.3"
 image = "0.19"
 tera = "0.11"

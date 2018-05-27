@@ -1,6 +1,7 @@
 use std::io::{self, Write};
 
-use rand::{Rng, XorShiftRng};
+use rand::prelude::*;
+use rand::prng::{XorShiftRng};
 
 use dustbox::cpu::{Instruction, Op, Parameter, Segment, R, AMode, Encoder, instructions_to_str};
 use fuzzer::{fuzz, VmRunner, AffectedFlags};
@@ -33,7 +34,7 @@ fn fuzz_instruction() {
     );
 
     let iterations_per_op = 500;
-    let mut rng = XorShiftRng::new_unseeded();
+    let mut rng = XorShiftRng::from_entropy();
     for op in ops_to_fuzz {
         println!("------");
         println!("fuzzing {} forms of {:?} ...", iterations_per_op, op);

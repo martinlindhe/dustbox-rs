@@ -9,7 +9,8 @@ use std::iter::FromIterator;
 
 use tempdir::TempDir;
 use tera::Context;
-use rand::{Rng, XorShiftRng};
+use rand::prelude::*;
+use rand::prng::{XorShiftRng};
 
 use cpu::CPU;
 use cpu::encoder::{Encoder};
@@ -25,7 +26,7 @@ use ndisasm::ndisasm_first_instr;
 
 #[test] #[ignore] // expensive test
 fn can_encode_random_seq() {
-    let mut rng = XorShiftRng::new_unseeded();
+    let mut rng = XorShiftRng::from_entropy();
     let mut code = vec![0u8; 10];
 
     let mut machine = Machine::default();
