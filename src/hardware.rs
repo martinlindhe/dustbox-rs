@@ -135,8 +135,10 @@ impl Hardware {
             0x03C8 => self.gpu.dac.set_pel_write_index(data),
             0x03C9 => self.gpu.dac.set_pel_data(data),
 
+            // PORT 03D4-03D5 - COLOR VIDEO - CRT CONTROL REGISTERS
             0x03D4 => self.gpu.crtc.set_index(data),
             0x03D5 => self.gpu.crtc.write_current(data),
+
             0x03D8 => {
                 // RW  CGA mode control register  (except PCjr) (see #P0817)
 	            // cannot be found on native color EGA, color VGA, but on most clones
@@ -166,24 +168,21 @@ impl Hardware {
             println!("out_u16: write to {:04X} = {:04X}", port, data);
         }
         match port {
+            // PORT 03C4-03C5 - EGA/VGA - SEQUENCER REGISTERS
             0x03C4 => {
-                // XXX
-                /*
-                03C4  -W  EGA  TS index register
-                        bit7-3 : reserved (VGA only)
-                        bit2-0 : current TS index
-                03C4  RW  VGA  sequencer register index (see #P0670)
-                */
-            }
-            /*
-            0x03C5 => {
-                03C5  -W  EGA  TS data register
-                03C5  RW  VGA  sequencer register data
-            }
-            PORT 03D4-03D5 - COLOR VIDEO - CRT CONTROL REGISTERS
-            */
+                // XXX if 16bit, its first INDEX byte, then DATA byte
+                let idx = data >> 8 as u8; // TS index register
+                let val = data as u8; // sequencer register index
+                println!("XXX out_u16 03C4 idx {:02X} = {:02X}", idx, val);
+            },
+
+            // PORT 03C6-03C9 - EGA/VGA/MCGA - DAC REGISTERS
+            0x03C9 => self.gpu.dac.set_pel_data(data as u8),
+
+            // PORT 03D4-03D5 - COLOR VIDEO - CRT CONTROL REGISTERS
             0x03D4 => self.gpu.crtc.set_index(data as u8),
             0x03D5 => self.gpu.crtc.write_current(data as u8),
+
             _ => println!("out_u16: unhandled port {:04X} = {:04X}", port, data),
         }
     }
