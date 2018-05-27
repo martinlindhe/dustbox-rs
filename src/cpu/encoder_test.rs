@@ -460,7 +460,7 @@ fn can_encode_mov8() {
     let op = Instruction::new2(Op::Mov8, Parameter::Ptr8AmodeS16(Segment::Default, AMode::BP, -0x800), Parameter::Reg8(R::BH));
     assert_encdec(&op, "mov [bp-0x800],bh", vec!(0x88, 0xBE, 0x00, 0xF8));
 
-    // r/m8, r8  (dst is [imm16]) // XXX no direct amode mapping in resulting Instruction. can we implement a "Instruction.AMode() -> AMode" ?
+    // r/m8, r8  (dst is [imm16])
     let op = Instruction::new2(Op::Mov8, Parameter::Ptr8(Segment::Default, 0x8000), Parameter::Reg8(R::BH));
     assert_encdec(&op, "mov [0x8000],bh", vec!(0x88, 0x3E, 0x00, 0x80));
 

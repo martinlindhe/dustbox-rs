@@ -4,7 +4,7 @@ use std::num::Wrapping;
 use cpu::Segment;
 use cpu::Op;
 use cpu::{Parameter, ParameterSet};
-use cpu::OperandSize;
+use cpu::{OperandSize, AddressSize};
 use hex::hex_bytes;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -16,6 +16,7 @@ pub struct Instruction {
     pub repeat: RepeatMode,         // REPcc prefix
     pub lock: bool,                 // LOCK prefix
     pub op_size: OperandSize,       // 0x66 prefix
+    pub address_size: AddressSize,  // 0x67 prefix
 }
 
 impl fmt::Display for Instruction {
@@ -51,6 +52,7 @@ impl Instruction {
             lock: false,
             repeat: RepeatMode::None,
             op_size,
+            address_size: AddressSize::_16bit,
         }
     }
 

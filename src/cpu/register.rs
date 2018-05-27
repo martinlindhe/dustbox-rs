@@ -1,6 +1,7 @@
 use std::convert::From;
 
-use cpu::flags::Flags;
+use cpu::flag::Flags;
+use cpu::decoder::AddressSize;
 
 #[cfg(test)]
 #[path = "./register_test.rs"]
@@ -162,20 +163,24 @@ pub fn sr(v: u8) -> R {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AMode {
-    BXSI, BXDI, BPSI, BPDI, SI, DI, BP, BX
+    // 16-bit addressing modes
+    BXSI, BXDI, BPSI, BPDI, SI, DI, BP, BX,
+
+    // 32-bit addressing modes
+    EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI,
 }
 
 impl AMode {
    pub fn index(&self) -> usize {
         match *self {
-            AMode::BXSI => 0,
-            AMode::BXDI => 1,
-            AMode::BPSI => 2,
-            AMode::BPDI => 3,
-            AMode::SI => 4,
-            AMode::DI => 5,
-            AMode::BP => 6,
-            AMode::BX => 7,
+            AMode::BXSI | AMode::EAX => 0,
+            AMode::BXDI | AMode::ECX => 1,
+            AMode::BPSI | AMode::EDX => 2,
+            AMode::BPDI | AMode::EBX => 3,
+            AMode::SI | AMode::ESP => 4,
+            AMode::DI | AMode::EBP => 5,
+            AMode::BP | AMode::ESI => 6,
+            AMode::BX | AMode::EDI => 7,
         }
     }
 
@@ -189,22 +194,48 @@ impl AMode {
             AMode::DI => "di",
             AMode::BP => "bp",
             AMode::BX => "bx",
+
+            AMode::EAX => "eax",
+            AMode::ECX => "ecx",
+            AMode::EDX => "edx",
+            AMode::EBX => "ebx",
+            AMode::ESP => "esp",
+            AMode::EBP => "ebp",
+            AMode::ESI => "esi",
+            AMode::EDI => "edi",
         }
     }
 }
 
-impl Into<AMode> for u8 {
-    fn into(self) -> AMode {
+impl AddressSize {
+    pub fn amode_from(&self, val: u8) -> AMode {
         match self {
-            0 => AMode::BXSI,
-            1 => AMode::BXDI,
-            2 => AMode::BPSI,
-            3 => AMode::BPDI,
-            4 => AMode::SI,
-            5 => AMode::DI,
-            6 => AMode::BP,
-            7 => AMode::BX,
-            _ => unreachable!(),
+            AddressSize::_16bit => {
+                match val {
+                    0 => AMode::BXSI,
+                    1 => AMode::BXDI,
+                    2 => AMode::BPSI,
+                    3 => AMode::BPDI,
+                    4 => AMode::SI,
+                    5 => AMode::DI,
+                    6 => AMode::BP,
+                    7 => AMode::BX,
+                    _ => unreachable!(),
+                }
+            }
+            AddressSize::_32bit => {
+                match val {
+                    0 => AMode::EAX,
+                    1 => AMode::ECX,
+                    2 => AMode::EDX,
+                    3 => AMode::EBX,
+                    4 => AMode::ESP,
+                    5 => AMode::EBP,
+                    6 => AMode::ESI,
+                    7 => AMode::EDI,
+                    _ => unreachable!(),
+                }
+            }
         }
     }
 }
@@ -228,7 +259,7 @@ impl RegisterSnapshot {
             R::CH => self.gpr[1].hi_u8(),
             R::DH => self.gpr[2].hi_u8(),
             R::BH => self.gpr[3].hi_u8(),
-            _ => panic!(),
+            _ => unreachable!(),
         }
     }
 
@@ -242,7 +273,7 @@ impl RegisterSnapshot {
             R::CH => self.gpr[1].set_hi(val),
             R::DH => self.gpr[2].set_hi(val),
             R::BH => self.gpr[3].set_hi(val),
-            _ => panic!(),
+            _ => unreachable!(),
         }
     }
 
@@ -256,16 +287,14 @@ impl RegisterSnapshot {
             R::BP => self.gpr[5].val as u16,
             R::SI => self.gpr[6].val as u16,
             R::DI => self.gpr[7].val as u16,
-
             R::ES => self.sreg16[0],
             R::CS => self.sreg16[1],
             R::SS => self.sreg16[2],
             R::DS => self.sreg16[3],
             R::FS => self.sreg16[4],
             R::GS => self.sreg16[5],
-
             R::IP => self.ip,
-            _ => panic!("get_r16 on {:?}", r),
+            _ => unreachable!(),
         }
     }
 
@@ -279,15 +308,13 @@ impl RegisterSnapshot {
             R::BP => self.gpr[5].set16(val),
             R::SI => self.gpr[6].set16(val),
             R::DI => self.gpr[7].set16(val),
-
             R::ES => self.sreg16[0] = val,
             R::CS => self.sreg16[1] = val,
             R::SS => self.sreg16[2] = val,
             R::DS => self.sreg16[3] = val,
             R::FS => self.sreg16[4] = val,
             R::GS => self.sreg16[5] = val,
-
-              _ => panic!("set_r16 on {:?}", r),
+            _ => unreachable!(),
           }
     }
 
@@ -301,7 +328,7 @@ impl RegisterSnapshot {
             R::EBP => self.gpr[5].val,
             R::ESI => self.gpr[6].val,
             R::EDI => self.gpr[7].val,
-            _ => panic!(),
+            _ => unreachable!(),
         }
     }
 
@@ -315,7 +342,7 @@ impl RegisterSnapshot {
             R::EBP => self.gpr[5].set32(val),
             R::ESI => self.gpr[6].set32(val),
             R::EDI => self.gpr[7].set32(val),
-             _ => panic!("set_r32 on {:?}", r),
+            _ => unreachable!(),
         }
     }
 }

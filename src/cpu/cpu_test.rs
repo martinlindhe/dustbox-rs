@@ -2110,13 +2110,49 @@ fn can_execute_sldt() {
         0x0F, 0x00, 0x00,   // sldt [bx+si]
     ];
     machine.load_com(&code);
-        let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 1);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 1);
     assert_eq!("[085F:0100] 0F0000           Sldt     word [ds:bx+si]", res);
 
     machine.execute_instruction();
 
     // XXX actually test emulation
 }
+
+#[test]
+fn can_execute_operand_prefix() {
+    let mut machine = Machine::default();
+    let code: Vec<u8> = vec![
+        0x67, 0xC7, 0x02, 0x22, 0x44,   // mov word [edx],0x4422
+        0x67, 0x8B, 0x02,               // mov ax,[edx]
+    ];
+    machine.load_com(&code);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 2);
+    assert_eq!("[085F:0100] 67C7022244       Mov16    word [ds:edx], 0x4422
+[085F:0105] 678B02           Mov16    ax, word [ds:edx]", res);
+
+    machine.execute_instruction();
+    machine.execute_instruction();
+    assert_eq!(0x4422, machine.cpu.get_r16(&R::AX));
+}
+
+/*
+#[test]
+fn can_execute_operand_address_prefix() {
+    let mut machine = Machine::default();
+    let code: Vec<u8> = vec![
+        0x66, 0x67, 0x03, 0x04, 0x24,   // add eax,[dword esp]
+    ];
+    machine.load_com(&code);
+        let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 1);
+    assert_eq!("[085F:0100] 6667030424         Add32    eax, dword [dword esp]", res);  // XXX dword esp ...
+
+    // XXX ndisasm: 6667030424        add eax,[dword esp]
+
+    machine.execute_instruction();
+
+    // XXX actually test emulation
+}
+*/
 
 #[test]
 fn estimate_mips() {

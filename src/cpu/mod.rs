@@ -15,8 +15,8 @@ mod segment;
 pub use self::register::*;
 mod register;
 
-pub use self::flags::*;
-mod flags;
+pub use self::flag::*;
+mod flag;
 
 pub use self::parameter::*;
 mod parameter;

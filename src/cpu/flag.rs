@@ -1,8 +1,8 @@
 // TODO later: look into bitflags! macro
 
 #[cfg(test)]
-#[path = "./flags_test.rs"]
-mod flags_test;
+#[path = "./flag_test.rs"]
+mod flag_test;
 
 // https://en.wikipedia.org/wiki/FLAGS_register
 #[derive(Copy, Clone, Default)]

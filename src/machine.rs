@@ -4,8 +4,6 @@ use memory::MMU;
 use hardware::Hardware;
 use ndisasm::ndisasm_bytes;
 
-const DEBUG_MACHINE: bool = true;
-
 pub struct Machine {
     pub hw: Hardware,
     pub cpu: CPU,
@@ -92,15 +90,6 @@ impl Machine {
         }
 
         let (op, length) = self.cpu.decoder.get_instruction(&mut self.hw.mmu, cs, ip);
-
-        // 32-bit decoding sanity check. has some false positives
-        if DEBUG_MACHINE && op.op_size == OperandSize::_32bit {
-            let s = format!("{:?}", op.command);
-            // assume 32-bit ops end with "32" or "d"
-            if s.len() > 2 && &s[s.len()-2..s.len()] != "32" && &s[s.len()-1..s.len()] != "d" {
-                println!("WARNING: expected 32bit op, found: {} at {:04X}:{:04X}", op, cs, ip);
-            }
-        }
 
         match op.command {
             Op::Unknown => {
