@@ -11,6 +11,7 @@ use hex::hex_bytes;
 pub struct Instruction {
     pub command: Op,
     pub params: ParameterSet,
+    pub length: u8,
     // op prefixes
     pub segment_prefix: Segment,    // segment prefix opcode
     pub repeat: RepeatMode,         // REPcc prefix
@@ -53,6 +54,7 @@ impl Instruction {
             repeat: RepeatMode::None,
             op_size,
             address_size: AddressSize::_16bit,
+            length: 0,
         }
     }
 

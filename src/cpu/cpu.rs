@@ -86,9 +86,9 @@ impl CPU {
         self.rom_base
     }
 
-    pub fn execute(&mut self, mut hw: &mut Hardware, op: &Instruction, length: usize) {
+    pub fn execute(&mut self, mut hw: &mut Hardware, op: &Instruction) {
         let start_ip = self.regs.ip;
-        self.regs.ip += length as u16;
+        self.regs.ip += op.length as u16;
         self.instruction_count += 1;
         self.cycle_count += 1; // XXX temp hack; we pretend each instruction takes 8 cycles due to lack of timing
         match op.command {

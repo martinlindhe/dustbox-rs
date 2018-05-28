@@ -89,7 +89,7 @@ impl Machine {
             self.cpu.handle_interrupt(&mut self.hw, ip as u8);
         }
 
-        let (op, length) = self.cpu.decoder.get_instruction(&mut self.hw.mmu, cs, ip);
+        let op = self.cpu.decoder.get_instruction(&mut self.hw.mmu, cs, ip);
 
         match op.command {
             Op::Unknown => {
@@ -118,7 +118,7 @@ impl Machine {
                 }
                 println!("{} Instructions executed", self.cpu.instruction_count);
             }
-            _ => self.cpu.execute(&mut self.hw, &op, length),
+            _ => self.cpu.execute(&mut self.hw, &op),
         }
 
         // XXX need instruction timing to do this properly

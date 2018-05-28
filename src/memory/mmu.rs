@@ -8,7 +8,7 @@ use memory::MemoryAddress;
 #[path = "./mmu_test.rs"]
 mod mmu_test;
 
-const DEBUG_MMU: bool = true;
+const DEBUG_MMU: bool = false;
 const DEBUG_VEC: bool = false;
 
 #[derive(Clone, Default)]

@@ -26,8 +26,9 @@ pub enum AddressSize {
 
 #[derive(Clone, Default)]
 pub struct Decoder {
-    c_seg: u16,
-    c_offset: u16,
+    // starting instruction decoding offset
+    current_seg: u16,
+    current_offset: u16,
 }
 
 impl Decoder {
@@ -49,68 +50,34 @@ impl Decoder {
 
     // decodes op at iseg:ioffset into a InstructionInfo
     pub fn get_instruction_info(&mut self, mut mmu: &mut MMU, iseg: u16, ioffset: u16) -> InstructionInfo {
-        let (instruction, length) = self.get_instruction(&mut mmu, iseg, ioffset);
+        let instr = self.get_instruction(&mut mmu, iseg, ioffset);
         if DEBUG_DECODER {
-            println!("decode_instruction at {:06x}: {:?}", MemoryAddress::RealSegmentOffset(iseg, ioffset).value(), instruction);
+            println!("get_instruction_info at {:06x}: {:?}", MemoryAddress::RealSegmentOffset(iseg, ioffset).value(), instr);
         }
         InstructionInfo {
             segment: iseg as usize,
             offset: ioffset as usize,
-            bytes: mmu.read(iseg, ioffset, length),
-            instruction,
+            bytes: mmu.read(iseg, ioffset, instr.length as usize),
+            instruction: instr,
         }
     }
 
     // decodes op at iseg:ioffset into a Instruction
-    pub fn get_instruction(&mut self, mut mmu: &mut MMU, segment: u16, offset: u16) -> (Instruction, usize) {
-        self.c_seg = segment;
-        self.c_offset = offset;
-        let mut op = Instruction {
-            command: Op::Unknown,
-            params: ParameterSet {
-                dst: Parameter::None,
-                src: Parameter::None,
-                src2: Parameter::None,
-            },
-            segment_prefix: Segment::Default,
-            repeat: RepeatMode::None,
-            lock: false,
-            op_size: OperandSize::_16bit,
-            address_size: AddressSize::_16bit,
-        };
-        self.decode(&mut mmu, &mut op)
+    pub fn get_instruction(&mut self, mut mmu: &mut MMU, segment: u16, offset: u16) -> Instruction {
+        self.current_seg = segment;
+        self.current_offset = offset;
+        let mut op = Instruction::new(Op::Unknown);
+        self.decode(&mut mmu, &mut op);
+        op
     }
 
-    fn prefixed_16_32_rm_r(&mut self, mut mmu: &mut MMU, op: &mut Instruction, op16: Op, op32: Op) {
-        match op.op_size {
-            OperandSize::_16bit => {
-                op.command = op16;
-                op.params = self.rm16_r16(&mut mmu, op);
-            }
-            OperandSize::_32bit => {
-                op.command = op32;
-                op.params = self.rm32_r32(&mut mmu, op.segment_prefix);
-            }
-        }
-    }
-
-    fn prefixed_16_32_r_rm(&mut self, mut mmu: &mut MMU, op: &mut Instruction, op16: Op, op32: Op) {
-        match op.op_size {
-            OperandSize::_16bit => {
-                op.command = op16;
-                op.params = self.r16_rm16(&mut mmu, op);
-            }
-            OperandSize::_32bit => {
-                op.command = op32;
-                op.params = self.r32_rm32(&mut mmu, op.segment_prefix);
-            }
-        }
-    }
-
-    // decodes 8 and 16 bit instructions
-    fn decode(&mut self, mut mmu: &mut MMU, mut op: &mut Instruction) -> (Instruction, usize) {
-        let ioffset = self.c_offset;
+    // decodes the next instruction
+    fn decode(&mut self, mut mmu: &mut MMU, mut op: &mut Instruction) {
+        let start_offset = self.current_offset;
         let b = self.read_u8(mmu);
+        if DEBUG_DECODER {
+            println!("decode op start {:?}", op);
+        }
 
         match b {
             0x00 => {
@@ -357,7 +324,7 @@ impl Decoder {
                             }
                         }
                     }
-                    _ => panic!("unhandled 0F {:02X}, ip = {:04X}:{:04X}", b, self.c_seg, self.c_offset),
+                    _ => panic!("unhandled 0F {:02X}, ip = {:04X}:{:04X}", b, self.current_seg, self.current_offset),
                 }
             }
             0x10 => {
@@ -479,8 +446,9 @@ impl Decoder {
             0x26 => {
                 // es segment prefix
                 op.segment_prefix = Segment::ES;
-                let (mut op, length) = self.decode(&mut mmu, &mut op);
-                return (op, length + 1);
+                self.decode(&mut mmu, &mut op);
+                op.length += 1;
+                return;
             }
             0x27 => op.command = Op::Daa,
             0x28 => {
@@ -528,8 +496,9 @@ impl Decoder {
             0x2E => {
                 // cs segment prefix
                 op.segment_prefix = Segment::CS;
-                let (mut op, length) = self.decode(&mut mmu, &mut op);
-                return (op, length + 1);
+                self.decode(&mut mmu, &mut op);
+                op.length += 1;
+                return;
             }
             0x2F => op.command = Op::Das,
             0x30 => {
@@ -567,8 +536,9 @@ impl Decoder {
             0x36 => {
                 // ss segment prefix
                 op.segment_prefix = Segment::SS;
-                let (mut op, length) = self.decode(&mut mmu, &mut op);
-                return (op, length + 1);
+                self.decode(&mut mmu, &mut op);
+                op.length += 1;
+                return;
             }
             0x37 => op.command = Op::Aaa,
             0x38 => {
@@ -616,8 +586,9 @@ impl Decoder {
             0x3E => {
                 // ds segment prefix
                 op.segment_prefix = Segment::DS;
-                let (mut op, length) = self.decode(&mut mmu, &mut op);
-                return (op, length + 1);
+                self.decode(&mut mmu, &mut op);
+                op.length += 1;
+                return;
             }
             0x3F => op.command = Op::Aas,
             0x40...0x47 => {
@@ -702,26 +673,30 @@ impl Decoder {
             0x64 => {
                 // fs segment prefix
                 op.segment_prefix = Segment::FS;
-                let (mut op, length) = self.decode(&mut mmu, &mut op);
-                return (op, length + 1);
+                self.decode(&mut mmu, &mut op);
+                op.length += 1;
+                return;
             }
             0x65 => {
                 // gs segment prefix
                 op.segment_prefix = Segment::GS;
-                let (mut op, length) = self.decode(&mut mmu, &mut op);
-                return (op, length + 1);
+                self.decode(&mut mmu, &mut op);
+                op.length += 1;
+                return;
             }
             0x66 => {
                 // 80386+ Operand-size override prefix
                 op.op_size = OperandSize::_32bit;
-                let (op, length) = self.decode(&mut mmu, &mut op);
-                return (op, length + 1);
+                self.decode(&mut mmu, &mut op);
+                op.length += 1;
+                return;
             }
             0x67 => {
                 // 80386+ Address-size override prefix
                 op.address_size = AddressSize::_32bit;
-                let (op, length) = self.decode(&mut mmu, &mut op);
-                return (op, length + 1);
+                self.decode(&mut mmu, &mut op);
+                op.length += 1;
+                return;
             }
             0x68 => {
                 // push imm16
@@ -739,7 +714,7 @@ impl Decoder {
                     OperandSize::_32bit => {
                         // imul r32, r/m32, imm32
                         op.command = Op::Imul32;
-                        op.params = self.r32_rm32(&mut mmu, op.segment_prefix);
+                        op.params = self.r32_rm32(&mut mmu, op);
                         op.params.src2 = Parameter::Imm32(self.read_u32(mmu));
                     }
                 }
@@ -760,7 +735,7 @@ impl Decoder {
                     OperandSize::_32bit => {
                         // imul r32, r/m32, imm8
                         op.command = Op::Imul32;
-                        op.params = self.r32_rm32(&mut mmu, op.segment_prefix);
+                        op.params = self.r32_rm32(&mut mmu, op);
                         op.params.src2 = Parameter::Imm8(self.read_u8(mmu));
                     }
                 }
@@ -887,13 +862,13 @@ impl Decoder {
                     }
                     OperandSize::_32bit => {
                         // <arithmetic> r/m32, imm32
-                        op.params.dst = self.rm32(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.dst = self.rm32(&mut mmu, op, x.rm, x.md);
                         op.params.src = Parameter::Imm32(self.read_u32(mmu));
                         match x.reg {
                             0 => op.command = Op::Add32,
                             5 => op.command = Op::Sub32,
                             7 => op.command = Op::Cmp32,
-                            _ => panic!("0x81 32bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.c_seg, self.c_offset),
+                            _ => panic!("0x81 32bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset),
                         }
                     }
                 }
@@ -920,11 +895,11 @@ impl Decoder {
                     }
                     OperandSize::_32bit => {
                         // <arithmetic> r/m32, imm8
-                        op.params.dst = self.rm32(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.dst = self.rm32(&mut mmu, op, x.rm, x.md);
                         op.params.src = Parameter::ImmS8(self.read_s8(mmu));
                         match x.reg {
                             0 => op.command = Op::Add32,
-                            _ => panic!("unhandled 0x83 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.c_seg, self.c_offset),
+                            _ => panic!("unhandled 0x83 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset),
                         }
                     }
                 }
@@ -1176,9 +1151,9 @@ impl Decoder {
                             4 => Op::Shl32,
                             5 => Op::Shr32,
                             7 => Op::Sar32,
-                            _ => panic!("unhandled 0xc1 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.c_seg, self.c_offset),
+                            _ => panic!("unhandled 0xc1 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset),
                         };
-                        op.params.dst = self.rm32(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.dst = self.rm32(&mut mmu, op, x.rm, x.md);
                         op.params.src = Parameter::Imm8(self.read_u8(mmu));
                     }
                 }
@@ -1220,7 +1195,7 @@ impl Decoder {
                         }
                     }
                     OperandSize::_32bit => {
-                        op.params.dst = self.rm32(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.dst = self.rm32(&mut mmu, op, x.rm, x.md);
                         op.params.src = Parameter::Imm32(self.read_u32(mmu));
                         match x.reg {
                             0 => op.command = Op::Mov32, // mov r/m32, imm32
@@ -1423,8 +1398,9 @@ impl Decoder {
             0xF0 => {
                 // lock prefix
                 op.lock = true;
-                let (op, length) = self.decode(&mut mmu, &mut op);
-                return (op, length + 1)
+                self.decode(&mut mmu, &mut op);
+                op.length += 1;
+                return;
             }
             0xF1 => {
                 op.command = Op::Int;
@@ -1433,14 +1409,16 @@ impl Decoder {
             0xF2 => {
                 // repne (cmps, scas) prefix
                 op.repeat = RepeatMode::Repne;
-                let (op, length) = self.decode(&mut mmu, &mut op);
-                return (op, length + 1)
+                self.decode(&mut mmu, &mut op);
+                op.length += 1;
+                return;
             }
             0xF3 => {
                 // rep (ins, movs, outs, lods, stos), repe (cmps, scas) prefix
                 op.repeat = RepeatMode::Rep; // XXX needs changing to REPE in cmps,scas cases ...
-                let (op, length) = self.decode(&mut mmu, &mut op);
-                return (op, length + 1)
+                self.decode(&mut mmu, &mut op);
+                op.length += 1;
+                return;
             }
             0xF4 => op.command = Op::Hlt,
             0xF5 => op.command = Op::Cmc,
@@ -1485,14 +1463,14 @@ impl Decoder {
                         }
                     }
                     OperandSize::_32bit => {
-                        op.params.dst = self.rm32(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.dst = self.rm32(&mut mmu, op, x.rm, x.md);
                         match x.reg {
                             3 => op.command = Op::Neg32,
                             4 => op.command = Op::Mul32,
                             5 => op.command = Op::Imul32,
                             6 => op.command = Op::Div32,
                             7 => op.command = Op::Idiv32,
-                            _ => panic!("unhandled 0xf7 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.c_seg, self.c_offset),
+                            _ => panic!("unhandled 0xf7 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset),
                         }
                     }
                 }
@@ -1531,15 +1509,15 @@ impl Decoder {
                             // 5 => jmp far
                             6 => op.command = Op::Push16,
                             //_ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
-                            _ => panic!("0xFF 16bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.c_seg, self.c_offset),
+                            _ => panic!("0xFF 16bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset),
                         }
                     }
                     OperandSize::_32bit => {
-                        op.params.dst = self.rm32(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.dst = self.rm32(&mut mmu, op, x.rm, x.md);
                         match x.reg {
                             0 => op.command = Op::Inc32,
                             1 => op.command = Op::Dec32,
-                            _ => panic!("0xFF 32bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.c_seg, self.c_offset),
+                            _ => panic!("0xFF 32bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset),
                         }
                     }
                 }
@@ -1548,8 +1526,36 @@ impl Decoder {
         }
 
         // calculate instruction length
-        let length = (self.c_offset - ioffset) as usize;
-        (op.clone(), length)
+        op.length += (self.current_offset - start_offset) as u8;
+        if DEBUG_DECODER {
+            println!("decode op end {:?}", op);
+        }
+    }
+
+    fn prefixed_16_32_rm_r(&mut self, mut mmu: &mut MMU, op: &mut Instruction, op16: Op, op32: Op) {
+        match op.op_size {
+            OperandSize::_16bit => {
+                op.command = op16;
+                op.params = self.rm16_r16(&mut mmu, op);
+            }
+            OperandSize::_32bit => {
+                op.command = op32;
+                op.params = self.rm32_r32(&mut mmu, op);
+            }
+        }
+    }
+
+    fn prefixed_16_32_r_rm(&mut self, mut mmu: &mut MMU, op: &mut Instruction, op16: Op, op32: Op) {
+        match op.op_size {
+            OperandSize::_16bit => {
+                op.command = op16;
+                op.params = self.r16_rm16(&mut mmu, op);
+            }
+            OperandSize::_32bit => {
+                op.command = op32;
+                op.params = self.r32_rm32(&mut mmu, op);
+            }
+        }
     }
 
     // decode rm8
@@ -1598,22 +1604,21 @@ impl Decoder {
     }
 
     // decode rm32
-    fn rm32(&mut self, mmu: &mut MMU, seg: Segment, rm: u8, md: u8) -> Parameter {
-        let adr_size = AddressSize::_16bit;
+    fn rm32(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
         match md {
             0 => {
                 if rm == 6 {
                     // [u16]
-                    Parameter::Ptr32(seg, self.read_u16(mmu))
+                    Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu))
                 } else {
                     // [amode]
-                    Parameter::Ptr32Amode(seg, adr_size.amode_from(rm))
+                    Parameter::Ptr32Amode(op.segment_prefix, op.address_size.amode_from(rm))
                 }
             }
             // [amode+s8]
-            1 => Parameter::Ptr32AmodeS8(seg, adr_size.amode_from(rm), self.read_s8(mmu)),
+            1 => Parameter::Ptr32AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
             // [amode+s16]
-            2 => Parameter::Ptr32AmodeS16(seg, adr_size.amode_from(rm), self.read_s16(mmu)),
+            2 => Parameter::Ptr32AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
             // [reg]
             3 => Parameter::Reg32(r32(rm)),
             _ => unreachable!(),
@@ -1714,7 +1719,7 @@ impl Decoder {
     fn r16_m16(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         if x.md == 3 {
-            println!("r16_m16 error: invalid encoding, ip={:04X}", self.c_offset);
+            println!("r16_m16 error: invalid encoding, ip={:04X}", self.current_offset);
         }
         ParameterSet {
             dst: Parameter::Reg16(r16(x.reg)),
@@ -1724,48 +1729,52 @@ impl Decoder {
     }
 
     // decode r32, r/m32
-    fn r32_rm32(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
+    fn r32_rm32(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
             dst: Parameter::Reg32(r32(x.reg)),
-            src: self.rm32(&mut mmu, seg, x.rm, x.md),
+            src: self.rm32(&mut mmu, op, x.rm, x.md),
             src2: Parameter::None,
         }
     }
 
     // decode r/m32, r32
-    fn rm32_r32(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
+    fn rm32_r32(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
-            dst: self.rm32(&mut mmu, seg, x.rm, x.md),
+            dst: self.rm32(&mut mmu, op, x.rm, x.md),
             src: Parameter::Reg32(r32(x.reg)),
             src2: Parameter::None,
         }
     }
 
     fn read_mod_reg_rm(&mut self, mmu: &MMU) -> ModRegRm {
-        let b = mmu.read_u8(self.c_seg, self.c_offset);
-        self.c_offset += 1;
-        ModRegRm {
+        let b = mmu.read_u8(self.current_seg, self.current_offset);
+        self.current_offset += 1;
+        let res = ModRegRm {
             md: b >> 6, // high 2 bits
             reg: (b >> 3) & 7, // mid 3 bits
             rm: b & 7, // low 3 bits
+        };
+        if DEBUG_DECODER {
+            println!("read_mod_reg_rm byte {:02X} = mod {}, reg {}, rm {}", b, res.md, res.reg, res.rm);
         }
+        res
     }
 
     fn read_rel8(&mut self, mmu: &MMU) -> u16 {
         let val = self.read_s8(mmu);
-        (self.c_offset as i16 + i16::from(val)) as u16
+        (self.current_offset as i16 + i16::from(val)) as u16
     }
 
     fn read_rel16(&mut self, mmu: &MMU) -> u16 {
         let val = self.read_s16(mmu);
-        (self.c_offset as i16 + val) as u16
+        (self.current_offset as i16 + val) as u16
     }
 
     fn read_u8(&mut self, mmu: &MMU) -> u8 {
-        let b = mmu.read_u8(self.c_seg, self.c_offset);
-        self.c_offset += 1;
+        let b = mmu.read_u8(self.current_seg, self.current_offset);
+        self.current_offset += 1;
         b
     }
 
@@ -1787,6 +1796,10 @@ impl Decoder {
 
     fn read_s16(&mut self, mmu: &MMU) -> i16 {
         self.read_u16(mmu) as i16
+    }
+
+    fn current_flat(&self) -> u32 {
+        MemoryAddress::RealSegmentOffset(self.current_seg, self.current_offset).value()
     }
 }
 

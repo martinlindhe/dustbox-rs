@@ -494,12 +494,14 @@ fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u
     let code = encoder.encode(&op).unwrap();
     assert_eq!(expected_bytes, code, "encoded byte sequence does not match expected bytes");
 
+    let mut want_op = op.clone();
     let mut machine = Machine::default();
     machine.load_com(&code);
     let cs = machine.cpu.get_r16(&R::CS);
     let ops = machine.cpu.decoder.decode_to_block(&mut machine.hw.mmu, cs, 0x100, 1);
     let decoded_op = &ops[0].instruction;
-    assert_eq!(op, decoded_op, "decoded resulting op from instruction encode does not match input op");
+    want_op.length = decoded_op.length; // len is not known by Instruction::new()
+    assert_eq!(&want_op, decoded_op, "decoded resulting op from instruction encode does not match input op");
 
     assert_eq!(expected_ndisasm.to_owned(), ndisasm_first_instr(&code).unwrap(), "disasm of encoded byte sequence does not match expected ndisasm output");
 }

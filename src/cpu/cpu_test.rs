@@ -2135,24 +2135,23 @@ fn can_execute_operand_prefix() {
     assert_eq!(0x4422, machine.cpu.get_r16(&R::AX));
 }
 
-/*
 #[test]
-fn can_execute_operand_address_prefix() {
+fn can_execute_operand_and_address_prefix() {
     let mut machine = Machine::default();
     let code: Vec<u8> = vec![
-        0x66, 0x67, 0x03, 0x04, 0x24,   // add eax,[dword esp]
+        0x67, 0xC7, 0x02, 0x22, 0x44,                   // mov word [edx],0x4422
+        0x66, 0x67, 0x81, 0x02, 0x00, 0x00, 0x33, 0x88, // add dword [edx],0x88330000
+        0x66, 0x67, 0x8B, 0x02,                         // mov eax,[edx]
     ];
     machine.load_com(&code);
-        let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 1);
-    assert_eq!("[085F:0100] 6667030424         Add32    eax, dword [dword esp]", res);  // XXX dword esp ...
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 3);
+    assert_eq!("[085F:0100] 67C7022244       Mov16    word [ds:edx], 0x4422
+[085F:0105] 6667810200003388 Add32    dword [ds:edx], 0x88330000
+[085F:010D] 66678B02         Mov32    eax, dword [ds:edx]", res);
 
-    // XXX ndisasm: 6667030424        add eax,[dword esp]
-
-    machine.execute_instruction();
-
-    // XXX actually test emulation
+    machine.execute_instructions(3);
+    assert_eq!(0x88334422, machine.cpu.get_r32(&R::EAX));
 }
-*/
 
 #[test]
 fn estimate_mips() {
