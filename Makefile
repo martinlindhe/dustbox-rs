@@ -17,7 +17,7 @@ expensive-512-32bit:
 	cargo test demo_512_32bit --release -- --color always --nocapture --ignored
 
 expensive-32bit:
-	cargo test 32bit --release -- --color always --nocapture --ignored
+	RUST_TEST_THREADS=1 cargo test 32bit --release -- --color always --nocapture --ignored
 
 expensive-games:
 	cargo test games_com --release -- --color always --nocapture --ignored
@@ -42,6 +42,9 @@ run-release:
 
 lint:
 	rustup run nightly cargo clippy --all
+
+prober:
+	cd utils/prober && make
 
 typos:
 	speller . > spell

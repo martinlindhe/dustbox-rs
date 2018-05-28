@@ -1798,6 +1798,7 @@ impl Decoder {
         self.read_u16(mmu) as i16
     }
 
+    // returns the flat starting offset of the instruction being decoded
     fn current_flat(&self) -> u32 {
         MemoryAddress::RealSegmentOffset(self.current_seg, self.current_offset).value()
     }

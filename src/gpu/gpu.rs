@@ -291,6 +291,11 @@ impl GPU {
         self.set_cursor_pos(mmu, cur_row, cur_col, page);
     }
 
+    // returns the active display page value
+    pub fn get_active_page(&self, mmu: &mut MMU) -> u8 {
+        mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_PAGE)
+    }
+
     /// int 10h, ah = 02h
     /// SET CURSOR POSITION
     pub fn set_cursor_pos(&mut self, mmu: &mut MMU, row: u8, col: u8, page: u8) {
@@ -311,8 +316,7 @@ impl GPU {
         mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + cursor_ofs, col);
         mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + cursor_ofs + 1, row);
 
-        let current = mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_PAGE);
-        if page == current {
+        if page == self.get_active_page(mmu) {
             // Set the hardware cursor
             let ncols = mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS);
 

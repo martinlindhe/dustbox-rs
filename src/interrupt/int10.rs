@@ -34,6 +34,8 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             hw.gpu.set_cursor_pos(&mut hw.mmu, row, column, page);
         }
         0x05 => {
+            // VIDEO - SELECT ACTIVE DISPLAY PAGE
+            // AL = new page number (0 to number of pages - 1)
             let al = cpu.get_r8(&R::AL);
             /*
             if (al & 0x80 != 0) && hw.gpu.card.is_tandy() {
@@ -131,9 +133,9 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // AH = number of character columns
             // AL = display mode (see AH=00h)
             // BH = active page (see AH=05h)
-            //
-            // more info: http://www.ctyme.com/intr/rb-0108.htm
-            println!("XXX int10,0F - get video mode impl");
+            cpu.set_r8(&R::AH, hw.gpu.mode.twidth as u8);
+            cpu.set_r8(&R::AL, hw.gpu.mode.mode as u8);
+            cpu.set_r8(&R::BH, hw.gpu.get_active_page(&mut hw.mmu))
         }
         0x10 => {
             match cpu.get_r8(&R::AL) {
