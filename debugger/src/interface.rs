@@ -130,9 +130,9 @@ impl Interface {
             let app = Rc::clone(&self.app);
             let builder = Rc::clone(&self.builder);
             let text = app.borrow_mut().disasm_n_instructions_to_text(20);
-            disasm_text
-                .get_buffer()
-                .map(|buffer| buffer.set_text(text.as_str()));
+            if let Some(buffer) = disasm_text.get_buffer() {
+                buffer.set_text(text.as_str())
+            }
 
             {
                 let mut app = app.borrow_mut();
@@ -154,9 +154,9 @@ impl Interface {
 
                 // update disasm
                 let text = app.disasm_n_instructions_to_text(20);
-                disasm_text
-                    .get_buffer()
-                    .map(|buffer| buffer.set_text(text.as_str()));
+                if let Some(buffer) = disasm_text.get_buffer() {
+                    buffer.set_text(text.as_str())
+                }
 
                 update_registers(&mut app, &builder);
                 canvas.queue_draw();
@@ -176,9 +176,9 @@ impl Interface {
 
                 // update disasm
                 let text = app.disasm_n_instructions_to_text(20);
-                disasm_text
-                    .get_buffer()
-                    .map(|buffer| buffer.set_text(text.as_str()));
+                if let Some(buffer) = disasm_text.get_buffer() {
+                    buffer.set_text(text.as_str())
+                }
 
                 update_registers(&mut app, &builder);
                 update_canvas(&builder);
@@ -200,9 +200,9 @@ impl Interface {
 
                 // update disasm
                 let text = app.disasm_n_instructions_to_text(20);
-                disasm_text
-                    .get_buffer()
-                    .map(|buffer| buffer.set_text(text.as_str()));
+                if let Some(buffer) = disasm_text.get_buffer() {
+                    buffer.set_text(text.as_str())
+                }
 
                 update_registers(&mut app, &builder);
                 update_canvas(&builder);
@@ -223,9 +223,9 @@ impl Interface {
 
                 // update disasm
                 let text = app.disasm_n_instructions_to_text(20);
-                disasm_text
-                    .get_buffer()
-                    .map(|buffer| buffer.set_text(text.as_str()));
+                if let Some(buffer) = disasm_text.get_buffer() {
+                    buffer.set_text(text.as_str())
+                }
 
                 update_registers(&mut app, &builder);
                 update_canvas(&builder);
@@ -262,9 +262,9 @@ impl Interface {
 
                     // update disasm
                     let text = app.disasm_n_instructions_to_text(20);
-                    disasm_text
-                        .get_buffer()
-                        .map(|buffer| buffer.set_text(text.as_str()));
+                    if let Some(buffer) = disasm_text.get_buffer() {
+                        buffer.set_text(text.as_str())
+                    }
 
                     update_registers(&mut app, &builder);
                     update_canvas(&builder);

@@ -8,6 +8,7 @@ use memory::MemoryAddress;
 #[path = "./mmu_test.rs"]
 mod mmu_test;
 
+const DEBUG_MMU: bool = true;
 const DEBUG_VEC: bool = false;
 
 #[derive(Clone, Default)]
@@ -29,21 +30,37 @@ impl MMU {
     }
 
     pub fn read_u8(&self, seg: u16, offset: u16) -> u8 {
-        self.memory.borrow().read_u8(MemoryAddress::RealSegmentOffset(seg, offset).value())
+        let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+        let v = self.memory.borrow().read_u8(addr);
+        if DEBUG_MMU {
+            println!("mmu.read_u8 from {:06X} = {:02X}", addr, v);
+        }
+        v
     }
 
     pub fn read_u16(&self, seg: u16, offset: u16) -> u16 {
-        self.memory.borrow().read_u16(MemoryAddress::RealSegmentOffset(seg, offset).value())
+        let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+        let v = self.memory.borrow().read_u16(addr);
+        if DEBUG_MMU {
+            println!("mmu.read_u16 from {:06X} = {:04X}", addr, v);
+        }
+        v
     }
 
     pub fn write_u8(&mut self, seg: u16, offset: u16, data: u8) {
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+        if DEBUG_MMU {
+            println!("mmu.write_u8 to {:06X} = {:02X}", addr, data);
+        }
         self.memory.borrow_mut().write_u8(addr, data);
     }
 
     /// writes and increments offset
     pub fn write_u8_inc(&mut self, addr: &mut MemoryAddress, data: u8) {
         self.memory.borrow_mut().write_u8(addr.value(), data);
+        if DEBUG_MMU {
+            println!("mmu.write_u8_inc to {:06X} = {:02X}", addr.value(), data);
+        }
         addr.inc_u8();
     }
 
@@ -55,26 +72,43 @@ impl MMU {
 
     pub fn write_u16(&mut self, seg: u16, offset: u16, data: u16) {
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+        if DEBUG_MMU {
+            println!("mmu.write_u16 to {:06X} = {:04X}", addr, data);
+        }
         self.memory.borrow_mut().write_u16(addr, data);
     }
 
     pub fn write_u16_inc(&mut self, addr: &mut MemoryAddress, data: u16) {
         self.memory.borrow_mut().write_u16(addr.value(), data);
+        if DEBUG_MMU {
+            println!("mmu.write_u16_inc to {:06X} = {:08X}", addr.value(), data);
+        }
         addr.inc_u16();
     }
 
     pub fn read_u32(&self, seg: u16, offset: u16) -> u32 {
-        self.memory.borrow().read_u32(MemoryAddress::RealSegmentOffset(seg, offset).value())
+        let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+        let v = self.memory.borrow().read_u32(addr);
+        if DEBUG_MMU {
+            println!("mmu.read_u32 from {:06X} = {:04X}", addr, v);
+        }
+        v
     }
 
     pub fn write_u32(&mut self, seg: u16, offset: u16, data: u32) {
         // TODO take MemoryAddress parameter directly
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+        if DEBUG_MMU {
+            println!("mmu.write_u32 to {:06X} = {:08X}", addr, data);
+        }
         self.memory.borrow_mut().write_u32(addr, data);
     }
 
     pub fn write_u32_inc(&mut self, addr: &mut MemoryAddress, data: u32) {
         self.memory.borrow_mut().write_u32(addr.value(), data);
+        if DEBUG_MMU {
+            println!("mmu.write_u32_inc to {:06X} = {:08X}", addr.value(), data);
+        }
         addr.inc_u32();
     }
 
