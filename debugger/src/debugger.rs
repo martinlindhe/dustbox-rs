@@ -323,11 +323,11 @@ impl Debugger {
                 if parts.len() < 2 {
                     match self.last_program.clone() {
                         None       => println!("Filename not provided."),
-                        Some(path) => self.load_binary(&path),
+                        Some(path) => self.load_executable(&path),
                     }
                 } else {
                     let path = parts[1..].join(" ").trim().to_string();
-                    self.load_binary(&path);
+                    self.load_executable(&path);
                     self.last_program = Option::Some(path);
                 }
             }
@@ -411,12 +411,13 @@ impl Debugger {
         }
     }
 
-    pub fn load_binary(&mut self, name: &str) {
-        println!("Reading raw binary from {}", name);
+    // loads a .com or .exe file
+    pub fn load_executable(&mut self, name: &str) {
+        println!("Reading executable from {}", name);
         match tools::read_binary(name) {
             Ok(data) => {
                 self.machine.hard_reset();
-                self.machine.load_com(&data);
+                self.machine.load_executable(&data);
             }
             Err(what) => println!("error {}", what),
         };

@@ -141,7 +141,7 @@ impl GPU {
 
         // 04h = G  40x25  8x8   320x200    4       .   B800 CGA,PCjr,EGA,MCGA,VGA
         let mut buf = vec![0u8; (self.mode.swidth * self.mode.sheight * 3) as usize];
-        println!("cga draw {}x{}", self.mode.swidth, self.mode.sheight);
+        // println!("cga draw {}x{}", self.mode.swidth, self.mode.sheight);
         for y in 0..self.mode.sheight {
             for x in 0..self.mode.swidth {
                 // divide Y by 2

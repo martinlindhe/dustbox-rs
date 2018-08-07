@@ -2,7 +2,7 @@
 
 [![Join the chat at https://gitter.im/martinlindhe/dustbox-rs](https://badges.gitter.im/martinlindhe/dustbox-rs.svg)](https://gitter.im/martinlindhe/dustbox-rs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/martinlindhe/dustbox-rs.svg?branch=master)](https://travis-ci.org/martinlindhe/dustbox-rs)
 
-a x86 16-bit emulator with the goal of running old MS-DOS games.
+A x86 emulator with the goal of running old MS-DOS games.
 
 This is a project I use to learn rust and improve my understanding of low level stuff.
 In the current state, it runs a few simple demos and is not very impressive.

@@ -1,4 +1,5 @@
 use time;
+use std::str;
 
 use hardware::Hardware;
 use cpu::{CPU, R};
@@ -8,6 +9,11 @@ use memory::MemoryAddress;
 // dos related interrupts
 pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
     match cpu.get_r8(&R::AH) {
+        0x00 => {
+            // DOS 1+ - TERMINATE PROGRAM
+            println!("DOS 1+ - TERMINATE PROGRAM");
+            cpu.fatal_error = true; // XXX just to stop debugger.run() function
+        }
         0x02 => {
             // DOS 1+ - WRITE CHARACTER TO STANDARD OUTPUT
             // DL = character to write
@@ -140,6 +146,41 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             let (seg, off) = hw.mmu.read_vec(u16::from(int));
             cpu.set_r16(&R::ES, seg);
             cpu.set_r16(&R::BX, off);
+        }
+        0x3D => {
+            // DOS 2+ - OPEN - OPEN EXISTING FILE
+            let mode = cpu.get_r8(&R::AL); // access and sharing modes (see #01402)
+            let attr = cpu.get_r8(&R::CL); // attribute mask of files to look for (server call only)
+            // DS:DX -> ASCIZ filename
+            let ds = cpu.get_r16(&R::DS);
+            let dx = cpu.get_r16(&R::DX);
+            let data = hw.mmu.readz(ds, dx);
+            let filename = str::from_utf8(&data).unwrap();
+            // Return:
+            // CF clear if successful and AX = file handle
+            // CF set on error and AX = error code (01h,02h,03h,04h,05h,0Ch,56h) (see #01680 at AH=59h)
+            println!("int21 XXX DOS 2+ - OPEN - OPEN EXISTING FILE, name {}, mode {:02X}, attr {:02X}", filename, mode, attr);
+
+            cpu.regs.flags.carry = true; // XXX fake failure
+            cpu.set_r16(&R::AX, 0x0002); // XXX 2 = "file not found"
+        }
+        0x3E => {
+            // DOS 2+ - CLOSE - CLOSE FILE
+            let handle = cpu.get_r16(&R::BX); // file handle
+            // Return:
+            // CF clear if successful and AX destroyed
+            // CF set on error and AX = error code (06h) (see #01680 at AH=59h/BX=0000h)
+            println!("int21 XXX DOS 2+ - CLOSE - CLOSE FILE, handle {:04X}", handle);
+            cpu.regs.flags.carry = false; // XXX fake success
+        }
+        0x3F => {
+            // DOS 2+ - READ - READ FROM FILE OR DEVICE
+            let handle = cpu.get_r16(&R::BX); // file handle
+            let len = cpu.get_r16(&R::CX); // number of bytes to read
+            // DS:DX -> buffer for data
+            let ds = cpu.get_r16(&R::DS);
+            let dx = cpu.get_r16(&R::DX);
+            println!("int21 XXX DOS 2+ - READ - READ FROM FILE OR DEVICE, handle {:04X}, len {}, buffer at {:04X}:{:04X}", handle, len, ds, dx);
         }
         0x40 => {
             // DOS 2+ - WRITE - WRITE TO FILE OR DEVICE

@@ -5,28 +5,23 @@ expensive-demo:
 	RUST_TEST_THREADS=1 cargo test demo --release -- --color always --nocapture --ignored
 
 expensive-256:
-	cargo test demo_256 --release -- --color always --nocapture --ignored
+	RUST_TEST_THREADS=1 cargo test demo_256 --release -- --color always --nocapture --ignored
 
 expensive-512:
-	cargo test demo_512 --release -- --color always --nocapture --ignored
+	RUST_TEST_THREADS=1 cargo test demo_512 --release -- --color always --nocapture --ignored
 
-expensive-256-32bit:
-	cargo test demo_256_32bit --release -- --color always --nocapture --ignored
-
-expensive-512-32bit:
-	cargo test demo_512_32bit --release -- --color always --nocapture --ignored
-
+# includes demo_256_32bit and demo_512_32bit
 expensive-32bit:
 	RUST_TEST_THREADS=1 cargo test 32bit --release -- --color always --nocapture --ignored
 
 expensive-games:
-	cargo test games_com --release -- --color always --nocapture --ignored
+	RUST_TEST_THREADS=1 cargo test games_com --release -- --color always --nocapture --ignored
 
 expensive-fuzz:
-	cargo test fuzz --package dustbox_fuzzer -- --color always --nocapture --ignored
+	RUST_TEST_THREADS=1 cargo test fuzz --package dustbox_fuzzer -- --color always --nocapture --ignored
 
 expensive-encode:
-	cargo test encode -- --color always --nocapture --ignored
+	RUST_TEST_THREADS=1 cargo test encode -- --color always --nocapture --ignored
 
 bench:
 	cargo bench --all

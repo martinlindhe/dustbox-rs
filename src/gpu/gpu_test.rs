@@ -25,7 +25,7 @@ fn can_get_palette_entry() {
         0xB8, 0x15, 0x10,   // mov ax,0x1015
         0xCD, 0x10,         // int 0x10
     ];
-    machine.load_com(&code);
+    machine.load_executable(&code);
 
     machine.execute_instructions(3);
     machine.execute_instruction(); // trigger the interrupt
@@ -49,7 +49,7 @@ fn can_set_palette_entry() {
         0xB8, 0x15, 0x10,   // mov ax,0x1015
         0xCD, 0x10,         // int 0x10
     ];
-    machine.load_com(&code);
+    machine.load_executable(&code);
 
     machine.execute_instructions(6);
     machine.execute_instruction(); // trigger the interrupt
@@ -68,7 +68,7 @@ fn can_get_font_info() {
         0xB7, 0x06,         // mov bh,0x6     ; get ROM 8x16 font (MCGA, VGA)
         0xCD, 0x10,         // int 0x10       ; es:bp = c000:1700 i dosbox
     ];
-    machine.load_com(&code);
+    machine.load_executable(&code);
 
     machine.execute_instructions(3);
     machine.execute_instruction(); // trigger the interrupt
@@ -89,7 +89,7 @@ fn can_int10_put_pixel() {
         0xBA, 0x04, 0x00,   // mov dx,0x4       y
         0xCD, 0x10,         // int 0x10
     ];
-    machine.load_com(&code);
+    machine.load_executable(&code);
 
     machine.execute_instructions(2);
     machine.execute_instruction(); // trigger the interrupt
@@ -123,7 +123,7 @@ let mut machine = Machine::default();
         0xB9, 0x01, 0x00,   // mov cx,0x1       ; count
         0xCD, 0x10,         // int 0x10
     ];
-    machine.load_com(&code);
+    machine.load_executable(&code);
 
     machine.execute_instructions(2);
     machine.execute_instruction(); // trigger the interrupt
@@ -320,7 +320,7 @@ fn games_com() {
         "../dos-software-decoding/games-com/Gnafu (1986)(Anonymous)/gnafu.com",
         "../dos-software-decoding/games-com/Gooku (1987)(Anonymous)/go-moku.com",
         "../dos-software-decoding/games-com/Hard Hat Mack (1984)(Electronic Arts Inc)/hhm.com",
-        "../dos-software-decoding/games-com/Hopper (1984)(Sega Entertainment Inc)/frogger.com",
+        // "../dos-software-decoding/games-com/Hopper (1984)(Sega Entertainment Inc)/frogger.com", // also does not work well in dosbox-x
         "../dos-software-decoding/games-com/Invaders (1995)(Paul Reid)/invaders.com",
         "../dos-software-decoding/games-com/Kenguru (1997)(Pig Games)/keng.com",
         "../dos-software-decoding/games-com/Logical (1991)(Rainbow Arts)/logctrn1.com",
@@ -355,7 +355,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
         let mut machine = Machine::default();
         machine.cpu.deterministic = true;
         match tools::read_binary(bin) {
-            Ok(data) => machine.load_com(&data),
+            Ok(data) => machine.load_executable(&data),
             Err(err) => panic!("failed to read {}: {}", bin, err),
         }
 

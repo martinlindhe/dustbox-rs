@@ -1,7 +1,9 @@
 [package]
 name = "dustbox"
 version = "0.1.0"
-authors = ["Martin Lindhe"]
+authors = [
+    "Martin Lindhe <martin.j.lindhe@gmail.com>"
+]
 
 [lib]
 path = "src/lib.rs"
@@ -12,6 +14,9 @@ rand = "0.5"
 tempdir = "0.3"
 image = "0.19"
 tera = "0.11"
+bincode = "1.0"
+serde = "1.0"
+serde_derive = "1.0"
 quick-error = "1.2"
 simple-error = "0.1"
 

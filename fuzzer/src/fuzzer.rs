@@ -24,7 +24,7 @@ pub enum VmRunner {
 // return false on failure
 fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&str], affected_flag_mask: u16) -> bool {
     let mut machine = Machine::default();
-    machine.load_com(data);
+    machine.load_executable(data);
     machine.execute_instructions(op_count);
 
     // run in vm, compare regs

@@ -216,6 +216,7 @@ impl Op {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum InvalidOp {
+    Byte(u8),
     Reg(u8),
     Op,
 }

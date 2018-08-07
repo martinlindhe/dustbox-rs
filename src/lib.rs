@@ -18,6 +18,10 @@ extern crate simple_error;
 #[cfg(test)] #[macro_use]
 extern crate pretty_assertions;
 
+#[macro_use]
+extern crate serde_derive;
+extern crate bincode;
+
 pub mod machine;
 pub mod hardware;
 pub mod cpu;

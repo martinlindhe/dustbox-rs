@@ -33,6 +33,17 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             let column = cpu.get_r8(&R::DL);
             hw.gpu.set_cursor_pos(&mut hw.mmu, row, column, page);
         }
+        0x03 => {
+            // VIDEO - GET CURSOR POSITION AND SIZE
+            let page = cpu.get_r8(&R::BH);
+            // Return:
+            // AX = 0000h (Phoenix BIOS)
+            // CH = start scan line
+            // CL = end scan line
+            // DH = row (00h is top)
+            // DL = column (00h is left)
+            println!("XXX GET CURSOR POSITION AND SIZE, page {}", page);
+        }
         0x05 => {
             // VIDEO - SELECT ACTIVE DISPLAY PAGE
             // AL = new page number (0 to number of pages - 1)
@@ -66,6 +77,29 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             */
                 hw.gpu.set_active_page(&mut hw.mmu, al);
             //}
+        }
+        0x06 => {
+            // VIDEO - SCROLL UP WINDOW
+            // AL = number of lines by which to scroll up (00h = clear entire window)
+            // BH = attribute used to write blank lines at bottom of window
+            // CH,CL = row,column of window's upper left corner
+            // DH,DL = row,column of window's lower right corner
+            let lines = cpu.get_r8(&R::AL);
+            let attr = cpu.get_r8(&R::BH);
+            let x1 = cpu.get_r8(&R::CL);
+            let y1 = cpu.get_r8(&R::CH);
+            let x2 = cpu.get_r8(&R::DL);
+            let y2 = cpu.get_r8(&R::DH);
+            println!("XXX int10 - SCROLL UP WINDOW, lines {}, attr {}, upper left {},{}, lower right {},{}", lines, attr, x1, y1, x2, y2);
+        }
+        0x08 => {
+            // VIDEO - READ CHARACTER AND ATTRIBUTE AT CURSOR POSITION
+            let page = cpu.get_r8(&R::BH);
+            // Return:
+            // AH = character's attribute (text mode only) (see #00014)
+            // AH = character's color (Tandy 2000 graphics mode only)
+            // AL = character
+            println!("XXX int10 - READ CHARACTER AND ATTRIBUTE AT CURSOR POSITION, page {}", page);
         }
         0x09 => {
             // VIDEO - WRITE CHARACTER AND ATTRIBUTE AT CURSOR POSITION
@@ -128,14 +162,9 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
         }
         0x0F => {
             // VIDEO - GET CURRENT VIDEO MODE
-            //
-            // Return:
-            // AH = number of character columns
-            // AL = display mode (see AH=00h)
-            // BH = active page (see AH=05h)
-            cpu.set_r8(&R::AH, hw.gpu.mode.twidth as u8);
-            cpu.set_r8(&R::AL, hw.gpu.mode.mode as u8);
-            cpu.set_r8(&R::BH, hw.gpu.get_active_page(&mut hw.mmu))
+            cpu.set_r8(&R::AH, hw.gpu.mode.twidth as u8);               // number of character columns
+            cpu.set_r8(&R::AL, hw.gpu.mode.mode as u8);                 // display mode
+            cpu.set_r8(&R::BH, hw.gpu.get_active_page(&mut hw.mmu));    // active page
         }
         0x10 => {
             match cpu.get_r8(&R::AL) {
@@ -299,8 +328,8 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             }
         }
         _ => {
-            println!("int10 error: unknown al={:02X}, ax={:04X}",
-                     cpu.get_r8(&R::AL),
+            println!("int10 error: unknown ah={:02X}, ax={:04X}",
+                     cpu.get_r8(&R::AH),
                      cpu.get_r16(&R::AX));
         }
     }

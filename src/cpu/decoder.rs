@@ -324,7 +324,10 @@ impl Decoder {
                             }
                         }
                     }
-                    _ => panic!("unhandled 0F {:02X}, ip = {:04X}:{:04X}", b, self.current_seg, self.current_offset),
+                    _ => {
+                        println!("XXX unhandled 0F {:02X}, ip = {:04X}:{:04X}", b, self.current_seg, self.current_offset);
+                        op.command = Op::Invalid(InvalidOp::Byte(b));
+                    }
                 }
             }
             0x10 => {
@@ -868,7 +871,10 @@ impl Decoder {
                             0 => op.command = Op::Add32,
                             5 => op.command = Op::Sub32,
                             7 => op.command = Op::Cmp32,
-                            _ => panic!("0x81 32bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset),
+                            _ => {
+                                println!("XXX 0x81 32bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset);
+                                op.command = Op::Invalid(InvalidOp::Reg(x.reg));
+                            }
                         }
                     }
                 }
@@ -899,7 +905,10 @@ impl Decoder {
                         op.params.src = Parameter::ImmS8(self.read_s8(mmu));
                         match x.reg {
                             0 => op.command = Op::Add32,
-                            _ => panic!("unhandled 0x83 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset),
+                            _ => {
+                                println!("XXX unhandled 0x83 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset);
+                                op.command = Op::Invalid(InvalidOp::Reg(x.reg));
+                            }
                         }
                     }
                 }
@@ -1508,8 +1517,10 @@ impl Decoder {
                             4 => op.command = Op::JmpNear,
                             // 5 => jmp far
                             6 => op.command = Op::Push16,
-                            //_ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
-                            _ => panic!("0xFF 16bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset),
+                            _ => {
+                                println!("XXX 0xFF 16bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset);
+                                op.command = Op::Invalid(InvalidOp::Reg(x.reg));
+                            }
                         }
                     }
                     OperandSize::_32bit => {
@@ -1517,7 +1528,10 @@ impl Decoder {
                         match x.reg {
                             0 => op.command = Op::Inc32,
                             1 => op.command = Op::Dec32,
-                            _ => panic!("0xFF 32bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset),
+                            _ => {
+                                println!("XXX 0xFF 32bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset);
+                                op.command = Op::Invalid(InvalidOp::Reg(x.reg));
+                            }
                         }
                     }
                 }

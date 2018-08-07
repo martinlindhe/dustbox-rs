@@ -11,7 +11,7 @@ fn can_execute_pit_set_reload_value() {
         0x88, 0xE0,         // mov al,ah            ; ax = high 8 bits of reload value
         0xE6, 0x40,         // out 0x40,al          ; set high byte of PIT reload value
     ];
-    machine.load_com(&code);
+    machine.load_executable(&code);
     machine.execute_instructions(6);
 
     assert_eq!(0x2244, machine.hw.pit.counter0.reload);

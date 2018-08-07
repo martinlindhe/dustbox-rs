@@ -16,7 +16,6 @@ pub use self::modes::*;
 mod modes;
 
 pub use self::graphic_card::*;
-
 mod graphic_card;
 
 pub use self::crtc::*;

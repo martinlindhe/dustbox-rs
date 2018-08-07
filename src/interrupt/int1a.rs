@@ -22,6 +22,13 @@ pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
                 cpu.set_r8(&R::AL, 0);
             }
         }
+        0x01 => {
+            // TIME - SET SYSTEM TIME
+            // CX:DX = number of clock ticks since midnight
+            let cx = cpu.get_r16(&R::CX);
+            let dx = cpu.get_r16(&R::DX);
+            println!("XXX SET SYSTEM TIME: CX:DX = {:04X}:{:04X}", cx, dx);
+        }
         _ => {
             println!("int1a error: unknown ah={:02X}, ax={:04X}",
                      cpu.get_r8(&R::AH),

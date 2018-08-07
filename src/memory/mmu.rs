@@ -29,6 +29,21 @@ impl MMU {
         Vec::from(self.memory.borrow().read(addr, length))
     }
 
+    // reads a sequence of data until a NULL byte is found
+    pub fn readz(&self, seg: u16, offset: u16) -> Vec<u8> {
+        let mut res = Vec::new();
+        let mut addr = MemoryAddress::RealSegmentOffset(seg, offset);
+        loop {
+            let b = self.memory.borrow().read_u8(addr.value());
+            if b == 0 {
+                break;
+            }
+            res.push(b);
+            addr.inc_u8();
+        }
+        res
+    }
+
     pub fn read_u8(&self, seg: u16, offset: u16) -> u8 {
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
         let v = self.memory.borrow().read_u8(addr);
