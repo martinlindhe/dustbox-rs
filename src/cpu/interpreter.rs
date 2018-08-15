@@ -88,7 +88,7 @@ impl CPU {
 
     pub fn execute(&mut self, mut hw: &mut Hardware, op: &Instruction) {
         let start_ip = self.regs.ip;
-        self.regs.ip = (Wrapping(self.regs.ip) + Wrapping(op.length as u16)).0;
+        self.regs.ip = (Wrapping(self.regs.ip) + Wrapping(u16::from(op.length))).0;
         self.instruction_count += 1;
         self.cycle_count += 1; // XXX temp hack; we pretend each instruction takes 8 cycles due to lack of timing
         match op.command {
@@ -291,12 +291,12 @@ impl CPU {
                 self.regs.ip = temp_ip as u16;
             }
             Op::CallFar => {
+                let old_seg = self.regs.get_r16(R::CS);
+                let old_ip = self.regs.ip;
+                self.push16(&mut hw.mmu, old_seg);
+                self.push16(&mut hw.mmu, old_ip);
                 match op.params.dst {
                     Parameter::Ptr16Imm(seg, offs) => {
-                        let old_seg = self.regs.get_r16(R::CS);
-                        let old_ip = self.regs.ip;
-                        self.push16(&mut hw.mmu, old_seg);
-                        self.push16(&mut hw.mmu, old_ip);
                         self.regs.ip = offs;
                         self.regs.set_r16(R::CS, seg);
                     }
@@ -304,6 +304,11 @@ impl CPU {
                         let seg = self.segment(seg);
                         self.set_r16(R::CS, seg);
                         self.regs.ip = offs;
+                    }
+                    Parameter::Ptr16AmodeS8(seg, ref amode, imm) => {
+                        let seg = self.segment(seg);
+                        self.set_r16(R::CS, seg);
+                        self.regs.ip = (self.amode(amode) as isize + imm as isize) as u16;
                     }
                     _ => panic!("CallFar unhandled type {:?}", op.params.dst),
                 }
@@ -756,6 +761,11 @@ impl CPU {
                         let seg = self.segment(seg);
                         self.set_r16(R::CS, seg);
                         self.regs.ip = self.amode(amode) as u16;
+                    }
+                    Parameter::Ptr16AmodeS8(seg, ref amode, imm) => {
+                        let seg = self.segment(seg);
+                        self.set_r16(R::CS, seg);
+                        self.regs.ip = (self.amode(amode) as isize + imm as isize) as u16;
                     }
                     _ => panic!("jmp far with unexpected type {:?}", op.params.dst),
                 }
@@ -2247,6 +2257,12 @@ impl CPU {
                 let (seg, off) = self.get_amode_addr(amode);
                 (seg, (i32::from(off) + i32::from(imms)) as u16)
             }
+            /*
+            Parameter::Ptr16AmodeS16(_, ref amode, imms) => {
+                let (seg, off) = self.get_amode_addr(amode);
+                (seg, (i32::from(off) + i32::from(imms)) as u16)
+            }
+            */
             _ => panic!("unhandled parameter {:?}", p),
         };
 

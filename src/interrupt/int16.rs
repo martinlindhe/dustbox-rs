@@ -34,6 +34,13 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             println!("XXX impl KEYBOARD - CHECK FOR ENHANCED KEYSTROKE");
             hw.bios.set_flag(&mut hw.mmu, FLAG_ZF, true);
         }
+        0x92 => {
+            // KEYB.COM KEYBOARD CAPABILITIES CHECK (not an actual function!)
+
+            // Return:
+            // AH <= 80h if enhanced keyboard functions (AH=10h-12h) supported
+            cpu.set_r8(R::AH, 0x80); // indicates support
+        }
         _ => {
             println!("int16 error: unknown ah={:02X}, ax={:04X}",
                      cpu.get_r8(R::AH),

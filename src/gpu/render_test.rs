@@ -300,7 +300,6 @@ fn demo_512_32bit() {
     run_and_save_video_frames(test_bins, "demo_512_32bit", "512_32bit");
 }
 
-
 #[test] #[ignore] // expensive test
 fn demo_16k() {
     let test_bins = vec![
