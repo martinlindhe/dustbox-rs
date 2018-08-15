@@ -3,6 +3,8 @@ extern crate dustbox;
 use std::env;
 
 use dustbox::machine::Machine;
+use dustbox::cpu::{Decoder, R};
+use dustbox::memory::MemoryAddress;
 use dustbox::tools;
 
 fn main() {
@@ -21,5 +23,15 @@ fn main() {
         Err(err) => panic!("failed to read {}: {}", filename, err),
     }
 
-    // XXX disasm flat, like in debugger
+    let mut decoder = Decoder::default();
+    let mut ma = MemoryAddress::RealSegmentOffset(machine.cpu.get_r16(R::CS), machine.cpu.regs.ip);
+
+    loop {
+        let op = decoder.get_instruction_info(&mut machine.hw.mmu, ma.segment(), ma.offset());
+        println!("{}", op);
+        ma.inc_n(op.bytes.len() as u16);
+        if ma.value() - machine.cpu.rom_base >= machine.cpu.rom_length {
+            break;
+        }
+    }
 }

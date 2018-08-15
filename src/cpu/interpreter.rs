@@ -35,10 +35,22 @@ enum Exception {
 pub struct CPU {
     pub instruction_count: usize,
     pub cycle_count: usize,
-    pub regs: RegisterSnapshot, // general purpose registers, segment registers, ip
+
+    /// general purpose registers, segment registers, ip
+    pub regs: RegisterSnapshot,
+
+    /// base offset where rom was loaded
     pub rom_base: u32,
-    pub fatal_error: bool, // for debugging: signals to debugger we hit an error
-    pub deterministic: bool, // for testing: toggles non-deterministic behaviour
+
+    /// length of loaded rom in bytes (used by disassembler)
+    pub rom_length: u32,
+
+    /// signals to debugger we hit an error (used by debugger)
+    pub fatal_error: bool,
+
+    /// toggles non-deterministic behaviour (used by tests)
+    pub deterministic: bool,
+
     pub decoder: Decoder,
     pub clock_hz: usize,
 }
@@ -50,6 +62,7 @@ impl CPU {
             cycle_count: 0,
             regs: RegisterSnapshot::default(),
             rom_base: 0,
+            rom_length: 0,
             fatal_error: false,
             deterministic: false,
             decoder: Decoder::default(),

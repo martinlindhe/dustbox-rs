@@ -16,7 +16,7 @@ impl MemoryAddress {
         match *self {
             MemoryAddress::RealSegmentOffset(seg, off) => (u32::from(seg) << 4) + u32::from(off),
             MemoryAddress::LongSegmentOffset(seg, off) => (u32::from(seg) << 16) + u32::from(off),
-            _ => panic!("unhandled type {:?}", self),
+            _ => unreachable!(),
         }
     }
 
@@ -24,7 +24,7 @@ impl MemoryAddress {
         match *self {
             MemoryAddress::RealSegmentOffset(seg, _) |
             MemoryAddress::LongSegmentOffset(seg, _) => seg,
-            _ => panic!("unhandled type {:?}", self),
+            _ => unreachable!(),
         }
     }
 
@@ -32,7 +32,7 @@ impl MemoryAddress {
         match *self {
             MemoryAddress::RealSegmentOffset(_, off) |
             MemoryAddress::LongSegmentOffset(_, off) => off,
-            _ => panic!("unhandled type {:?}", self),
+            _ => unreachable!(),
         }
     }
 
@@ -40,31 +40,43 @@ impl MemoryAddress {
         match *self {
             MemoryAddress::RealSegmentOffset(_, ref mut off) |
             MemoryAddress::LongSegmentOffset(_, ref mut off) => *off = val,
-            _ => panic!("unhandled type {:?}", self),
+            _ => unreachable!(),
         }
     }
 
+    /// increase offset by 1
     pub fn inc_u8(&mut self) {
         match *self {
             MemoryAddress::RealSegmentOffset(_, ref mut off) |
             MemoryAddress::LongSegmentOffset(_, ref mut off) => *off += 1,
-            _ => panic!("unhandled type {:?}", self),
+            _ => unreachable!(),
         }
     }
 
+    /// increase offset by 2
     pub fn inc_u16(&mut self) {
         match *self {
             MemoryAddress::RealSegmentOffset(_, ref mut off) |
             MemoryAddress::LongSegmentOffset(_, ref mut off) => *off += 2,
-            _ => panic!("unhandled type {:?}", self),
+            _ => unreachable!(),
         }
     }
 
+    /// increase offset by 4
     pub fn inc_u32(&mut self) {
         match *self {
             MemoryAddress::RealSegmentOffset(_, ref mut off) |
             MemoryAddress::LongSegmentOffset(_, ref mut off) => *off += 4,
-            _ => panic!("unhandled type {:?}", self),
+            _ => unreachable!(),
+        }
+    }
+
+    /// increase offset by n
+    pub fn inc_n(&mut self, n: u16) {
+        match *self {
+            MemoryAddress::RealSegmentOffset(_, ref mut off) |
+            MemoryAddress::LongSegmentOffset(_, ref mut off) => *off += n,
+            _ => unreachable!(),
         }
     }
 }

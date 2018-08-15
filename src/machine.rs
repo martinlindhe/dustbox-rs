@@ -117,6 +117,7 @@ impl Machine {
         self.cpu.regs.ip = 0x0100;
         let min = self.cpu.get_address();
         self.cpu.rom_base = min;
+        self.cpu.rom_length = data.len() as u32;
 
         let cs = self.cpu.get_r16(R::CS);
         self.hw.mmu.write(cs, self.cpu.regs.ip, data);
