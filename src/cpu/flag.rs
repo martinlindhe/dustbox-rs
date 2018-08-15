@@ -5,7 +5,7 @@
 mod flag_test;
 
 // https://en.wikipedia.org/wiki/FLAGS_register
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Flags {
     // ____ O___ SZ_A _P_C
     pub carry: bool, // 0: carry flag
@@ -77,12 +77,20 @@ impl Flags {
             reserved15: false, // bit 15
         }
     }
-    // sets sign, zero, parity flags according to `b`
+
+    pub fn new_from_u16(val: u16) -> Flags {
+        let mut f = Flags::new();
+        f.set_u16(val);
+        f
+    }
+
+    /// sets sign, zero, parity flags according to `b`
     pub fn set_szp(&mut self, b: bool) {
         self.sign = b;
         self.zero = b;
         self.parity = b;
     }
+
     pub fn set_sign_u8(&mut self, v: usize) {
         // Set equal to the most-significant bit of the result,
         // which is the sign bit of a signed integer.
@@ -152,21 +160,24 @@ impl Flags {
     pub fn set_carry_u32(&mut self, res: usize) {
         self.carry = res & 0x1_0000_0000 != 0;
     }
+
+    /// initializes the flags with a packed u16
     pub fn set_u16(&mut self, val: u16) {
         self.carry       = val & 0x1 != 0;
-        self.reserved1   = val & 0x2 != 0;
+        //self.reserved1   = val & 0x2 != 0;
         self.parity      = val & 0x4 != 0;
         self.adjust      = val & 0x10 != 0;
         self.zero        = val & 0x40 != 0;
         self.sign        = val & 0x80 != 0;
         self.trap        = val & 0x100 != 0;
-        self.interrupt   = val & 0x200 != 0;
+        //self.interrupt   = val & 0x200 != 0;
         self.direction   = val & 0x400 != 0;
         self.overflow    = val & 0x800 != 0;
-        self.iopl12      = val & 0x1000 != 0;
-        self.iopl13      = val & 0x2000 != 0;
-        self.nested_task = val & 0x4000 != 0;
+        //self.iopl12      = val & 0x1000 != 0;
+        //self.iopl13      = val & 0x2000 != 0;
+        //self.nested_task = val & 0x4000 != 0;
     }
+
     pub fn carry_val(&self) -> usize {
         if self.carry {
             1

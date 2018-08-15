@@ -22,6 +22,8 @@ To launch the dustbox_gtk debugger:
 cargo run --package dustbox_gtk
 ```
 
+then interact with the debugger using the input box ('help' to get started).
+
 
 ## Tests
 
@@ -37,13 +39,6 @@ In order to run the expensive tests you need to check out the dos-software-decod
 
     cd .. && git clone https://github.com/martinlindhe/dos-software-decoding && cd -
     cargo test --release -- --ignored
-
-(The `--release` flag is optional, but will speed up the execution time by a huge amount - from 143s to 9.5s on my laptop)
-
-## Rust language use
-
-We try to avoid using unstable features and unsafe code.
-This is not a hard requirement.
 
 
 ## License

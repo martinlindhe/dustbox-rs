@@ -1009,7 +1009,7 @@ impl Decoder {
             }
             0x9B => {
                 // fpu
-                println!("ERROR: unsupported FPU opcode {:02X}", b);
+                println!("ERROR: unemulated FPU opcode {:02X}", b);
                 op.command = Op::Invalid(InvalidOp::Op);
             }
             0x9C => op.command = Op::Pushf,
@@ -1314,7 +1314,7 @@ impl Decoder {
             0xD7 => op.command = Op::Xlatb,
             0xD8...0xDF => {
                 // fpu
-                println!("ERROR: unsupported FPU opcode {:02X}", b);
+                println!("ERROR: unemulated FPU opcode {:02X}", b);
                 op.command = Op::Invalid(InvalidOp::Op);
             }
             0xE0 => {
@@ -1424,7 +1424,7 @@ impl Decoder {
             }
             0xF3 => {
                 // rep (ins, movs, outs, lods, stos), repe (cmps, scas) prefix
-                op.repeat = RepeatMode::Rep; // XXX needs changing to REPE in cmps,scas cases ...
+                op.repeat = RepeatMode::Rep; // XXX decoding is wrong, needs changing to REPE in cmps,scas cases ...
                 self.decode(&mut mmu, &mut op);
                 op.length += 1;
                 return;
@@ -1513,9 +1513,9 @@ impl Decoder {
                             0 => op.command = Op::Inc16,
                             1 => op.command = Op::Dec16,
                             2 => op.command = Op::CallNear,
-                            // 3 => call far
+                            3 => op.command = Op::CallFar,
                             4 => op.command = Op::JmpNear,
-                            // 5 => jmp far
+                            5 => op.command = Op::JmpFar,
                             6 => op.command = Op::Push16,
                             _ => {
                                 println!("XXX 0xFF 16bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset);

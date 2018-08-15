@@ -1,6 +1,7 @@
 use std::num::Wrapping;
 
 use machine::Machine;
+use cpu::flag::Flags;
 use cpu::register::R;
 use cpu::segment::Segment;
 use memory::MMU;
@@ -1193,6 +1194,23 @@ fn can_execute_jmp_far() {
 }
 
 #[test]
+fn can_execute_jmp_far_mem() {
+    let mut machine = Machine::default();
+    let code: Vec<u8> = vec![
+        0x31, 0xC0,       // xor ax,ax
+        0xBE, 0x88, 0x88, // mov si,0x8888
+        0xBB, 0x22, 0x44, // mov bx,0x4422
+        0xC6, 0x00, 0x40, // mov byte [bx+si],0x40
+        0xFF, 0x28,       // jmp far [bx+si]
+    ];
+    machine.load_executable(&code);
+
+    machine.execute_instructions(6);
+    assert_eq!(0xCCAB, machine.cpu.regs.ip);
+    assert_eq!(0x0001, machine.cpu.get_r16(&R::AX));
+}
+
+#[test]
 fn can_execute_setc() {
     let mut machine = Machine::default();
     let code: Vec<u8> = vec![
@@ -1987,6 +2005,23 @@ fn can_execute_shld() {
     assert_eq!(true, machine.cpu.regs.flags.sign);
     // assert_eq!(false, machine.cpu.regs.flags.adjust); // XXX dosbox: C0 Z0 S1 O1 A0 P1
     assert_eq!(true, machine.cpu.regs.flags.parity);
+}
+
+#[test]
+fn can_execute_scasb() {
+    let mut machine = Machine::default();
+    let code: Vec<u8> = vec![
+        0xB8, 0x00, 0x40,       // mov ax,0x4000
+        0x8E, 0xC0,             // mov es,ax
+        0xBF, 0x00, 0x00,       // mov di,0x0
+        0x26, 0xC6, 0x05, 0xFF, // mov byte [es:di],0xff
+        0xB0, 0xFF,             // mov al,0xff
+        0xAE                    // scasb
+    ];
+    machine.load_executable(&code);
+    machine.execute_instructions(6);
+    assert_eq!(0x0001, machine.cpu.get_r16(&R::DI));
+    assert_eq!(Flags::new_from_u16(0x3246), machine.cpu.regs.flags); // winxp result
 }
 
 #[test]

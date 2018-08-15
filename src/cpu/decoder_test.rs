@@ -12,15 +12,17 @@ fn can_disassemble_basic() {
         0xB4, 0x09,       // mov ah,0x9
         0xCD, 0x21,       // l_0x108: int 0x21
         0xE8, 0xFB, 0xFF, // call l_0x108   ; call an earlier offset
+        0xFF, 0x18,       // call far [bx+si]
     ];
     machine.load_executable(&code);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 5);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 6);
     assert_eq!("[085F:0100] E80500           CallNear 0x0108
 [085F:0103] BA0B01           Mov16    dx, 0x010B
 [085F:0106] B409             Mov8     ah, 0x09
 [085F:0108] CD21             Int      0x21
-[085F:010A] E8FBFF           CallNear 0x0108",
+[085F:010A] E8FBFF           CallNear 0x0108
+[085F:010D] FF18             CallFar  word [ds:bx+si]",
                res);
 }
 

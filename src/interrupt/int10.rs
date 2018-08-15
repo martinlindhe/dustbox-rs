@@ -283,6 +283,23 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             let page = cpu.get_r8(&R::BH);
             hw.gpu.write_string(&mut hw.mmu, row, col, flag, attr, str_seg, str_offs, count, page);
         }
+        0x1A => {
+             match cpu.get_r8(&R::AL) {
+                0x00 => {
+                    // VIDEO - GET DISPLAY COMBINATION CODE (PS,VGA/MCGA)
+                    // Return:
+                    // AL = 1Ah if function was supported
+                    // BL = active display code (see #00039)
+                    // BH = alternate display code (see #00039)
+                    cpu.set_r8(&R::AL, 0x1A);
+                    cpu.set_r8(&R::BL, 0x08); // 08 = VGA w/ color analog display
+                    cpu.set_r8(&R::BH, 0x00); // 00 = no display
+                }
+                 _ => {
+                    println!("int10 error: unknown ah=1a, al={:02X}", cpu.get_r8(&R::AL));
+                }
+            }
+        }
         0x4F => {
             // VESA
             match cpu.get_r8(&R::AL) {
@@ -328,9 +345,10 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             }
         }
         _ => {
-            println!("int10 error: unknown ah={:02X}, ax={:04X}",
+            println!("int10 error: unknown ah={:02X}, ax={:04X}, bx={:04X}",
                      cpu.get_r8(&R::AH),
-                     cpu.get_r16(&R::AX));
+                     cpu.get_r16(&R::AX),
+                     cpu.get_r16(&R::BX));
         }
     }
 }

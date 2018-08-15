@@ -304,6 +304,16 @@ fn demo_512_32bit() {
     run_and_save_video_frames(test_bins, "demo_512_32bit", "512_32bit");
 }
 
+
+#[test] #[ignore] // expensive test
+fn demo_16k() {
+    let test_bins = vec![
+        "../dos-software-decoding/demo-16k/dreamers_bbs/dreamer.com",
+        "../dos-software-decoding/demo-16k/microsoft_golf_cracktro/mgc.com",
+    ];
+    run_and_save_video_frames(test_bins, "demo_16k", "16k");
+}
+
 #[test] #[ignore] // expensive test
 fn games_com() {
     let test_bins = vec![

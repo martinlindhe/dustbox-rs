@@ -299,15 +299,21 @@ impl CPU {
                 self.regs.ip = temp_ip as u16;
             }
             Op::CallFar => {
-                if let Parameter::Ptr16Imm(seg, offs) = op.params.dst {
-                    let old_seg = self.regs.get_r16(&R::CS);
-                    let old_ip = self.regs.ip;
-                    self.push16(&mut hw.mmu, old_seg);
-                    self.push16(&mut hw.mmu, old_ip);
-                    self.regs.ip = offs;
-                    self.regs.set_r16(&R::CS, seg);
-                } else {
-                    panic!("unhandled src type {:?}", op.params.dst);
+                match op.params.dst {
+                    Parameter::Ptr16Imm(seg, offs) => {
+                        let old_seg = self.regs.get_r16(&R::CS);
+                        let old_ip = self.regs.ip;
+                        self.push16(&mut hw.mmu, old_seg);
+                        self.push16(&mut hw.mmu, old_ip);
+                        self.regs.ip = offs;
+                        self.regs.set_r16(&R::CS, seg);
+                    }
+                    Parameter::Ptr16(seg, offs) => {
+                        let seg = self.segment(seg);
+                        self.set_r16(&R::CS, seg);
+                        self.regs.ip = offs;
+                    }
+                    _ => panic!("CallFar unhandled type {:?}", op.params.dst),
                 }
             }
             Op::Cbw => {
@@ -770,6 +776,11 @@ impl CPU {
                     Parameter::Ptr16Imm(seg, imm) => {
                         self.set_r16(&R::CS, seg);
                         self.regs.ip = imm;
+                    }
+                    Parameter::Ptr16Amode(seg, ref amode) => {
+                        let seg = self.segment(seg);
+                        self.set_r16(&R::CS, seg);
+                        self.regs.ip = self.amode(amode) as u16;
                     }
                     _ => panic!("jmp far with unexpected type {:?}", op.params.dst),
                 }
