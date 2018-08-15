@@ -1706,6 +1706,19 @@ impl CPU {
                 };
                 self.set_r16(&R::DI, di);
             }
+            Op::Scasw => {
+                // Compare AX with word at ES:(E)DI or RDI then set status flags.
+                // ES cannot be overridden with a segment override prefix.
+                let src = self.get_r16(&R::AX);
+                let dst = hw.mmu.read_u16(self.get_r16(&R::ES), self.get_r16(&R::DI));
+                self.cmp16(dst as usize, src as usize);
+                let di = if !self.regs.flags.direction {
+                    (Wrapping(self.get_r16(&R::DI)) + Wrapping(2)).0
+                } else {
+                    (Wrapping(self.get_r16(&R::DI)) - Wrapping(2)).0
+                };
+                self.set_r16(&R::DI, di);
+            }
             Op::Setc => {
                 // setc: Set byte if carry (CF=1).
                 // setb (alias): Set byte if below (CF=1).

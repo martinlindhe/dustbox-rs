@@ -151,6 +151,14 @@ impl Machine {
         }
     }
 
+    // returns first line of disassembly
+    fn external_disasm_of_bytes(&self, cs: u16, ip: u16) -> String {
+        let bytes = self.hw.mmu.read(cs, ip, 16);
+        let s = ndisasm_bytes(&bytes).unwrap();
+        let ln = s.find("\n").unwrap();
+        s[0..ln].to_owned()
+    }
+
     pub fn execute_instruction(&mut self) {
         let cs = self.cpu.get_r16(&R::CS);
         let ip = self.cpu.regs.ip;
@@ -172,22 +180,16 @@ impl Machine {
                 self.cpu.fatal_error = true;
                 match reason {
                     InvalidOp::Op => {
-                        let mut ops_str = Vec::new();
-                        let mut bytes = Vec::new();
-                        for i in 0..16 {
-                            let b = self.hw.mmu.read_u8(cs, ip + i);
-                            bytes.push(b);
-                            ops_str.push(format!("0x{:02X}", b));
-                        }
-                        println!("Error unhandled OP {} at {:04X}:{:04X}", ops_str.join(", "), cs, ip);
-                        let ndisasm_of_input = ndisasm_bytes(&bytes).unwrap();
-                        println!("ndisasm: {}", ndisasm_of_input);
+                        println!("[{:04X}:{:04X}] Error unhandled OP", cs, ip);
+                        println!("ndisasm: {}", self.external_disasm_of_bytes(cs, ip));
                     }
                     InvalidOp::Reg(reg) => {
-                        println!("Error invalid register {:02X} at {:04X}:{:04X}", reg, cs, ip);
+                        println!("[{:04X}:{:04X}] Error invalid register {:02X}", cs, ip, reg);
+                        println!("ndisasm: {}", self.external_disasm_of_bytes(cs, ip));
                     }
                     InvalidOp::Byte(b) => {
-                        println!("Error invalid byte {:02X} at {:04X}:{:04X}", b, cs, ip);
+                        println!("[{:04X}:{:04X}] Error invalid byte {:02X}", cs, ip, b);
+                        println!("ndisasm: {}", self.external_disasm_of_bytes(cs, ip));
                     }
                 }
                 println!("{} Instructions executed", self.cpu.instruction_count);

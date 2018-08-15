@@ -2025,6 +2025,23 @@ fn can_execute_scasb() {
 }
 
 #[test]
+fn can_execute_scasw() {
+    let mut machine = Machine::default();
+    let code: Vec<u8> = vec![
+        0xB8, 0x00, 0x40,               // mov ax,0x4000
+        0x8E, 0xC0,                     // mov es,ax
+        0xBF, 0x00, 0x00,               // mov di,0x0
+        0x26, 0xC7, 0x05, 0xFF, 0xFF,   // mov word [es:di],0xffff
+        0xB8, 0xFF, 0xFF,               // mov ax,0xffff
+        0xAF                            // scasw
+    ];
+    machine.load_executable(&code);
+    machine.execute_instructions(6);
+    assert_eq!(0x0002, machine.cpu.get_r16(&R::DI));
+    assert_eq!(Flags::new_from_u16(0x3246), machine.cpu.regs.flags); // winxp result
+}
+
+#[test]
 fn can_execute_movsx16() {
     let mut machine = Machine::default();
     let code: Vec<u8> = vec![
