@@ -1,3 +1,5 @@
+use std::num::Wrapping;
+
 use gpu::palette::{ColorSpace, text_palette};
 use gpu::palette::ColorSpace::RGB;
 
@@ -146,7 +148,7 @@ impl DAC {
 
         self.pel_index += 1;
         if self.pel_index > 2 {
-            self.write_index += 1;
+            self.write_index = (Wrapping(self.write_index) + Wrapping(1)).0;
             self.pel_index = 0;
         }
     }

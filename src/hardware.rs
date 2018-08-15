@@ -173,7 +173,7 @@ impl Hardware {
                 // XXX if 16bit, its first INDEX byte, then DATA byte
                 let idx = data >> 8 as u8; // TS index register
                 let val = data as u8; // sequencer register index
-                println!("XXX out_u16 03C4 idx {:02X} = {:02X}", idx, val);
+                // println!("XXX out_u16 03C4 idx {:02X} = {:02X}", idx, val);
             },
 
             // PORT 03C6-03C9 - EGA/VGA/MCGA - DAC REGISTERS

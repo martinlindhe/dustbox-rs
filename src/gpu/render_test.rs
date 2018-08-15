@@ -5,7 +5,7 @@
 use std::path::Path;
 use std::ffi::OsStr;
 use std::ffi::OsString;
-use std::fs::File;
+use std::fs;
 
 use tera::Context;
 use image;
@@ -245,9 +245,6 @@ fn demo_512() {
         "../dos-software-decoding/demo-512/mistake/mistake.com",
         "../dos-software-decoding/demo-512/morales/morales.com",
         "../dos-software-decoding/demo-512/skylight/skylight.com",
-        // "../dos-software-decoding/new/stars.exe/stars.exe", // XXX exe file
-        "../dos-software-decoding/demo-512/sun/sun.com",
-        "../dos-software-decoding/demo-512/superusr/superusr.com",
         "../dos-software-decoding/demo-512/tiled/tiled.com",
         "../dos-software-decoding/demo-512/triopti2/triopti2.com",
         "../dos-software-decoding/demo-512/unknown/unknown.com",
@@ -284,7 +281,6 @@ fn demo_256_32bit() {
 #[test] #[ignore] // expensive test
 fn demo_512_32bit() {
     let test_bins = vec![
-        "../dos-software-decoding/demo-512-32bit/3wabbztro/3wabbztro.com",
         "../dos-software-decoding/demo-512-32bit/200h/200h.com",
         "../dos-software-decoding/demo-512-32bit/blobsf/blobsf.com",
         "../dos-software-decoding/demo-512-32bit/bt7/bt7.com",
@@ -377,8 +373,9 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
         }
         let path = Path::new(bin);
 
+        let _ = fs::create_dir(&format!("docs/render/{}", group));
         let stem = path.file_stem().unwrap_or(OsStr::new(""));
-        let mut filename = OsString::new();
+        let mut filename = OsString::new(); // XXX base on dirname
         filename.push(format!("docs/render/{}/{}_", group, name_prefix));
         filename.push(stem.to_os_string());
         filename.push(".png");

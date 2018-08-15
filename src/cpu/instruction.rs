@@ -1,5 +1,4 @@
 use std::fmt;
-use std::num::Wrapping;
 
 use cpu::Segment;
 use cpu::Op;
