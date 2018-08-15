@@ -341,10 +341,6 @@ fn games_com() {
         "../dos-software-decoding/games-com/Pente (1984)(Michael Leach)/pente.com",
         "../dos-software-decoding/games-com/Pipes (1983)(Creative Software)/pipes.com",
         "../dos-software-decoding/games-com/Pong (1986)(Imagine)/pong21.com",
-        "../dos-software-decoding/games-com/Slow Mo (1990)(David Perrell)/moslo.com",
-        "../dos-software-decoding/games-com/Slow Mo (1990)(David Perrell)/varislow.com",
-        "../dos-software-decoding/games-com/Slow Mo Deluxe (1996)(David Perrell)/moslo.com",
-        "../dos-software-decoding/games-com/Space Commanders II (1985)(Columbia Data Products)/space2.com",
         "../dos-software-decoding/games-com/Triskelion (1987)(Neil Rubenking)/triskel.com",
         "../dos-software-decoding/games-com/Zaxxon (1984)(Sega)/zaxxon.com",
     ];

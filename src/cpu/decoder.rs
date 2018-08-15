@@ -1384,9 +1384,22 @@ impl Decoder {
             }
             0xF3 => {
                 // rep (ins, movs, outs, lods, stos), repe (cmps, scas) prefix
-                op.repeat = RepeatMode::Rep; // XXX decoding is wrong, needs changing to REPE in cmps,scas cases ...
                 self.decode(&mut mmu, &mut op);
                 op.length += 1;
+                match op.command {
+                    Op::Insb | Op::Insw |
+                    Op::Outsb | Op::Outsw |
+                    Op::Movsb | Op::Movsw | Op::Movsd |
+                    Op::Stosb | Op::Stosw | Op::Stosd |
+                    Op::Lodsb | Op::Lodsw | Op::Lodsd => {
+                        op.repeat = RepeatMode::Rep;
+                    }
+                    Op::Cmpsb | Op::Cmpsw |
+                    Op::Scasb | Op::Scasw => {
+                        op.repeat = RepeatMode::Repe;
+                    }
+                    _ => op.command = Op::Invalid(vec!(b), Invalid::Op), // XXX not encoding the instruction bytes after 0xf3 prefix
+                }
                 return;
             }
             0xF4 => op.command = Op::Hlt,

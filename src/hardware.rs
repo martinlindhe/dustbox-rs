@@ -82,6 +82,11 @@ impl Hardware {
             0x03C7 => self.gpu.dac.get_state(),
             0x03C8 => self.gpu.dac.get_pel_write_index(),
             0x03C9 => self.gpu.dac.get_pel_data(),
+            0x03D5 => {
+                // RW  CRT control register value
+                // XXX
+                0
+            },
             0x03DA => self.gpu.read_cga_status_register(),
             _ => {
                 println!("in_u8: unhandled port {:04X}", port);
@@ -129,6 +134,12 @@ impl Hardware {
             0x03B4 => self.gpu.crtc.set_index(data),           // NOTE: mirror of 03D4
             0x03B5 => self.gpu.crtc.write_current(data),
 
+            // PORT 03C2-03CF - EGA/VGA - MISCELLANEOUS REGISTERS
+            0x03C2 => {
+                // -W  miscellaneous output register (see #P0669)
+                // XXX impl
+            },
+
             // PORT 03C6-03C9 - EGA/VGA/MCGA - DAC REGISTERS
             0x03C6 => self.gpu.dac.set_pel_mask(data),
             0x03C7 => self.gpu.dac.set_pel_read_index(data),
@@ -158,6 +169,18 @@ impl Hardware {
                 //  bit 0 = 0 3x8h bit3 indicates if CRT beam is on or off.
                 //            No more info available. Might conflict with EGA/VGA.
             }
+
+            // PORT 03F0-03F7 - FDC 1	(1st Floppy Disk Controller)	second FDC at 0370
+            0x03F2 => {
+                // 03F2  -W  diskette controller DOR (Digital Output Register) (see #P0862)
+
+                // ../dos-software-decoding/games-com/Galaxian (1983)(Atari Inc)/galaxian.com writes 0x0C
+            }
+
+            0xD8E3 => {
+                // XXX HACK REMOVE/HANDLE THIS...
+                // some games write here, maybe for sound driver or something?
+            }
             _ => println!("out_u8: unhandled port {:04X} = {:02X}", port, data),
         }
     }
@@ -171,8 +194,8 @@ impl Hardware {
             // PORT 03C4-03C5 - EGA/VGA - SEQUENCER REGISTERS
             0x03C4 => {
                 // XXX if 16bit, its first INDEX byte, then DATA byte
-                let idx = data >> 8 as u8; // TS index register
-                let val = data as u8; // sequencer register index
+                let _idx = data >> 8 as u8; // TS index register
+                let _val = data as u8; // sequencer register index
                 // println!("XXX out_u16 03C4 idx {:02X} = {:02X}", idx, val);
             },
 
