@@ -301,7 +301,7 @@ fn draw_canvas(c: &cairo::Context, buf: Vec<u8>, mode: &VideoModeBlock) {
     c.set_source_pixbuf(&pixbuf, 0., 0.);
 }
 
-fn u16_as_register_str(app: &debugger::Debugger, r: &R) -> String {
+fn u16_as_register_str(app: &debugger::Debugger, r: R) -> String {
     let v = app.machine.cpu.get_r16(r);
     let prev = app.prev_regs.get_r16(r);
     if v == prev {
@@ -332,38 +332,38 @@ fn update_registers(
     let cx_value: gtk::Label = builder.get_object("cx_value").unwrap();
     let dx_value: gtk::Label = builder.get_object("dx_value").unwrap();
 
-    ax_value.set_markup(&u16_as_register_str(app, &R::AX));
-    bx_value.set_markup(&u16_as_register_str(app, &R::BX));
-    cx_value.set_markup(&u16_as_register_str(app, &R::CX));
-    dx_value.set_markup(&u16_as_register_str(app, &R::DX));
+    ax_value.set_markup(&u16_as_register_str(app, R::AX));
+    bx_value.set_markup(&u16_as_register_str(app, R::BX));
+    cx_value.set_markup(&u16_as_register_str(app, R::CX));
+    dx_value.set_markup(&u16_as_register_str(app, R::DX));
 
     let si_value: gtk::Label = builder.get_object("si_value").unwrap();
     let di_value: gtk::Label = builder.get_object("di_value").unwrap();
     let bp_value: gtk::Label = builder.get_object("bp_value").unwrap();
     let sp_value: gtk::Label = builder.get_object("sp_value").unwrap();
 
-    si_value.set_markup(&u16_as_register_str(app, &R::SI));
-    di_value.set_markup(&u16_as_register_str(app, &R::DI));
-    bp_value.set_markup(&u16_as_register_str(app, &R::BP));
-    sp_value.set_markup(&u16_as_register_str(app, &R::SP));
+    si_value.set_markup(&u16_as_register_str(app, R::SI));
+    di_value.set_markup(&u16_as_register_str(app, R::DI));
+    bp_value.set_markup(&u16_as_register_str(app, R::BP));
+    sp_value.set_markup(&u16_as_register_str(app, R::SP));
 
     let ds_value: gtk::Label = builder.get_object("ds_value").unwrap();
     let cs_value: gtk::Label = builder.get_object("cs_value").unwrap();
     let es_value: gtk::Label = builder.get_object("es_value").unwrap();
     let fs_value: gtk::Label = builder.get_object("fs_value").unwrap();
 
-    ds_value.set_markup(&u16_as_register_str(app, &R::DS));
-    cs_value.set_markup(&u16_as_register_str(app, &R::CS));
-    es_value.set_markup(&u16_as_register_str(app, &R::ES));
-    fs_value.set_markup(&u16_as_register_str(app, &R::FS));
+    ds_value.set_markup(&u16_as_register_str(app, R::DS));
+    cs_value.set_markup(&u16_as_register_str(app, R::CS));
+    es_value.set_markup(&u16_as_register_str(app, R::ES));
+    fs_value.set_markup(&u16_as_register_str(app, R::FS));
 
     let gs_value: gtk::Label = builder.get_object("gs_value").unwrap();
     let ss_value: gtk::Label = builder.get_object("ss_value").unwrap();
     let ip_value: gtk::Label = builder.get_object("ip_value").unwrap();
 
-    gs_value.set_markup(&u16_as_register_str(app, &R::GS));
-    ss_value.set_markup(&u16_as_register_str(app, &R::SS));
-    ip_value.set_markup(&u16_as_register_str(app, &R::IP));
+    gs_value.set_markup(&u16_as_register_str(app, R::GS));
+    ss_value.set_markup(&u16_as_register_str(app, R::SS));
+    ip_value.set_markup(&u16_as_register_str(app, R::IP));
 
     // XXX: color changes for flag changes too
     let c_flag: gtk::CheckButton = builder.get_object("c_flag").unwrap();

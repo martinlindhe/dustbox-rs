@@ -166,7 +166,7 @@ fn compare_regs<'a>(cpu: &CPU, vm_regs: &HashMap<String, u16>, reg_names: &[&'a 
 fn compare_reg(reg_name: &str, cpu: &CPU, vm_val: u16) -> bool {
     let idx = reg_str_to_index(reg_name);
     let reg = r16(idx as u8);
-    let dustbox_val = cpu.get_r16(&reg);
+    let dustbox_val = cpu.get_r16(reg);
     if dustbox_val != vm_val {
         println!("{} differs. dustbox {:04x}, vm {:04x}", reg_name, dustbox_val, vm_val);
         true

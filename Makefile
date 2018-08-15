@@ -36,7 +36,7 @@ run-release:
 	cargo run --release --package dustbox_gtk
 
 lint:
-	rustup run nightly cargo clippy --all
+	cargo +nightly clippy
 
 prober:
 	cd utils/prober && make

@@ -31,8 +31,8 @@ impl Segment {
         }
     }
 
-    pub fn as_register(&self) -> R {
-        match *self {
+    pub fn as_register(self) -> R {
+        match self {
             Segment::Default | Segment::DS => R::DS,
             Segment::CS => R::CS,
             Segment::ES => R::ES,

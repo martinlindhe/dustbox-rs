@@ -1,7 +1,7 @@
 // these modules are re-exported as a single module
 
-pub use self::gpu::*;
-mod gpu;
+pub use self::render::*;
+mod render;
 
 pub use self::palette::*;
 mod palette;

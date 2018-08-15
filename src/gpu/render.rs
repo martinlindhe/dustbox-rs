@@ -19,8 +19,8 @@ use gpu::dac::DAC;
 use gpu::dac;
 
 #[cfg(test)]
-#[path = "./gpu_test.rs"]
-mod gpu_test;
+#[path = "./render_test.rs"]
+mod render_test;
 
 const DEBUG_FONT: bool = false;
 const DEBUG_INTERRUPTS: bool = false;

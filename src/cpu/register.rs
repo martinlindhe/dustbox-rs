@@ -25,12 +25,12 @@ impl GPR {
     }
 
     // gets the low byte of the word register
-    pub fn lo_u8(&self) -> u8 {
+    pub fn lo_u8(self) -> u8 {
         (self.val & 0xFF) as u8
     }
 
     // gets the hi byte of the word register
-    pub fn hi_u8(&self) -> u8 {
+    pub fn hi_u8(self) -> u8 {
         (self.val >> 8) as u8
     }
 
@@ -53,8 +53,8 @@ pub enum R {
 }
 
 impl R {
-    pub fn index(&self) -> usize {
-          match *self {
+    pub fn index(self) -> usize {
+          match self {
             R::AL | R::AX | R::EAX | R::ES => 0,
             R::CL | R::CX | R::ECX | R::CS => 1,
             R::DL | R::DX | R::EDX | R::SS => 2,
@@ -67,8 +67,8 @@ impl R {
         }
     }
 
-    pub fn as_str(&self) -> &'static str {
-        match *self {
+    pub fn as_str(self) -> &'static str {
+        match self {
             R::AL => "al",
             R::CL => "cl",
             R::DL => "dl",
@@ -249,8 +249,8 @@ pub struct RegisterSnapshot {
 }
 
 impl RegisterSnapshot {
-    pub fn get_r8(&self, r: &R) -> u8 {
-        match *r {
+    pub fn get_r8(&self, r: R) -> u8 {
+        match r {
             R::AL => self.gpr[0].lo_u8(),
             R::CL => self.gpr[1].lo_u8(),
             R::DL => self.gpr[2].lo_u8(),
@@ -263,8 +263,8 @@ impl RegisterSnapshot {
         }
     }
 
-    pub fn set_r8(&mut self, r: &R, val: u8) {
-        match *r {
+    pub fn set_r8(&mut self, r: R, val: u8) {
+        match r {
             R::AL => self.gpr[0].set_lo(val),
             R::CL => self.gpr[1].set_lo(val),
             R::DL => self.gpr[2].set_lo(val),
@@ -277,8 +277,8 @@ impl RegisterSnapshot {
         }
     }
 
-    pub fn get_r16(&self, r: &R) -> u16 {
-        match *r {
+    pub fn get_r16(&self, r: R) -> u16 {
+        match r {
             R::AX => self.gpr[0].val as u16,
             R::CX => self.gpr[1].val as u16,
             R::DX => self.gpr[2].val as u16,
@@ -298,8 +298,8 @@ impl RegisterSnapshot {
         }
     }
 
-    pub fn set_r16(&mut self, r: &R, val: u16) {
-        match *r {
+    pub fn set_r16(&mut self, r: R, val: u16) {
+        match r {
             R::AX => self.gpr[0].set16(val),
             R::CX => self.gpr[1].set16(val),
             R::DX => self.gpr[2].set16(val),
@@ -318,8 +318,8 @@ impl RegisterSnapshot {
           }
     }
 
-    pub fn get_r32(&self, r: &R) -> u32 {
-        match *r {
+    pub fn get_r32(&self, r: R) -> u32 {
+        match r {
             R::EAX => self.gpr[0].val,
             R::ECX => self.gpr[1].val,
             R::EDX => self.gpr[2].val,
@@ -332,8 +332,8 @@ impl RegisterSnapshot {
         }
     }
 
-    pub fn set_r32(&mut self, r: &R, val: u32) {
-        match *r {
+    pub fn set_r32(&mut self, r: R, val: u32) {
+        match r {
             R::EAX => self.gpr[0].set32(val),
             R::ECX => self.gpr[1].set32(val),
             R::EDX => self.gpr[2].set32(val),

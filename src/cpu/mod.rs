@@ -1,7 +1,7 @@
 // these modules are re-exported as a single module
 
-pub use self::cpu::*;
-mod cpu;
+pub use self::interpreter::*;
+mod interpreter;
 
 pub use self::decoder::*;
 mod decoder;

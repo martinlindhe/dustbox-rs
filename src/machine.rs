@@ -81,8 +81,8 @@ impl Machine {
         println!("load exe code from {:04X}:{:04X}", code_offset, code_end);
 
         self.load_com(&data[code_offset..code_end]);
-        self.cpu.set_r16(&R::SP, hdr.sp); // confirmed
-        self.cpu.set_r16(&R::SS, hdr.ss); // XXX dosbox = 0923
+        self.cpu.set_r16(R::SP, hdr.sp); // confirmed
+        self.cpu.set_r16(R::SS, hdr.ss); // XXX dosbox = 0923
         
         // at program start in dosbox-x:
         // BP = 091C (dustbox ok)
@@ -97,27 +97,27 @@ impl Machine {
     fn load_com(&mut self, data: &[u8]) {
         // CS,DS,ES,SS = PSP segment
         let psp_segment = 0x085F; // is what dosbox used
-        self.cpu.set_r16(&R::CS, psp_segment);
-        self.cpu.set_r16(&R::DS, psp_segment);
-        self.cpu.set_r16(&R::ES, psp_segment);
-        self.cpu.set_r16(&R::SS, psp_segment);
+        self.cpu.set_r16(R::CS, psp_segment);
+        self.cpu.set_r16(R::DS, psp_segment);
+        self.cpu.set_r16(R::ES, psp_segment);
+        self.cpu.set_r16(R::SS, psp_segment);
 
         // offset of last word available in first 64k segment
-        self.cpu.set_r16(&R::SP, 0xFFFE);
-        self.cpu.set_r16(&R::BP, 0x091C); // is what dosbox used
+        self.cpu.set_r16(R::SP, 0xFFFE);
+        self.cpu.set_r16(R::BP, 0x091C); // is what dosbox used
 
         // This is what dosbox initializes the registers to
         // at program load
-        self.cpu.set_r16(&R::CX, 0x00FF);
-        self.cpu.set_r16(&R::DX, psp_segment);
-        self.cpu.set_r16(&R::SI, 0x0100); // XXX 0 on .exe load
-        self.cpu.set_r16(&R::DI, 0xFFFE); // XXX 0x1000 on .exe
+        self.cpu.set_r16(R::CX, 0x00FF);
+        self.cpu.set_r16(R::DX, psp_segment);
+        self.cpu.set_r16(R::SI, 0x0100); // XXX 0 on .exe load
+        self.cpu.set_r16(R::DI, 0xFFFE); // XXX 0x1000 on .exe
 
         self.cpu.regs.ip = 0x0100;
         let min = self.cpu.get_address();
         self.cpu.rom_base = min;
 
-        let cs = self.cpu.get_r16(&R::CS);
+        let cs = self.cpu.get_r16(R::CS);
         self.hw.mmu.write(cs, self.cpu.regs.ip, data);
     }
 
@@ -155,12 +155,12 @@ impl Machine {
     fn external_disasm_of_bytes(&self, cs: u16, ip: u16) -> String {
         let bytes = self.hw.mmu.read(cs, ip, 16);
         let s = ndisasm_bytes(&bytes).unwrap();
-        let ln = s.find("\n").unwrap();
+        let ln = s.find('\n').unwrap();
         s[0..ln].to_owned()
     }
 
     pub fn execute_instruction(&mut self) {
-        let cs = self.cpu.get_r16(&R::CS);
+        let cs = self.cpu.get_r16(R::CS);
         let ip = self.cpu.regs.ip;
         if cs == 0xF000 {
             // we are in interrupt vector code, execute high-level interrupt.

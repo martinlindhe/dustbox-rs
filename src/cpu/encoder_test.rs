@@ -41,7 +41,7 @@ fn can_encode_random_seq() {
         let encoder = Encoder::new();
 
         // randomizes a byte sequence and tries to decode the first instruction
-        let cs = machine.cpu.get_r16(&R::CS);
+        let cs = machine.cpu.get_r16(R::CS);
         let ops = machine.cpu.decoder.decode_to_block(&mut machine.hw.mmu, cs, 0x100, 1);
         let op = &ops[0];
         if op.instruction.command.is_valid() {
@@ -497,7 +497,7 @@ fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u
     let mut want_op = op.clone();
     let mut machine = Machine::default();
     machine.load_executable(&code);
-    let cs = machine.cpu.get_r16(&R::CS);
+    let cs = machine.cpu.get_r16(R::CS);
     let ops = machine.cpu.decoder.decode_to_block(&mut machine.hw.mmu, cs, 0x100, 1);
     let decoded_op = &ops[0].instruction;
     want_op.length = decoded_op.length; // len is not known by Instruction::new()

@@ -47,7 +47,7 @@ impl Debugger {
         if self.is_ip_at_breakpoint() {
             println!(
                 "Breakpoint reached, ip = {:04X}:{:04X}",
-                self.machine.cpu.get_r16(&R::CS),
+                self.machine.cpu.get_r16(R::CS),
                 self.machine.cpu.regs.ip
             );
             return true;
@@ -84,7 +84,7 @@ impl Debugger {
 
     pub fn step_over(&mut self) {
         let mut decoder = Decoder::default();
-        let op = decoder.get_instruction_info(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip);
+        let op = decoder.get_instruction_info(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(R::CS), self.machine.cpu.regs.ip);
 
         let dst_ip = self.machine.cpu.regs.ip + op.bytes.len() as u16;
         println!("Step-over running to {:04X}", dst_ip);
@@ -110,7 +110,7 @@ impl Debugger {
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
         let mut decoder = Decoder::default();
-        decoder.disassemble_block_to_str(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip, n)
+        decoder.disassemble_block_to_str(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(R::CS), self.machine.cpu.regs.ip, n)
     }
 
     pub fn dump_memory(&self, filename: &str, base: u32, len: u32) -> Result<usize, IoError> {
@@ -315,7 +315,7 @@ impl Debugger {
             }
             "d" | "disasm" => {
                 let mut decoder = Decoder::default();
-                let op = decoder.get_instruction_info(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(&R::CS), self.machine.cpu.regs.ip);
+                let op = decoder.get_instruction_info(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(R::CS), self.machine.cpu.regs.ip);
                 println!("{:?}", op);
                 println!("{}", op);
             }
@@ -428,7 +428,7 @@ impl Debugger {
         let rom_offset = offset - self.machine.cpu.get_rom_base() + 0x100;
         println!(
             "{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
-            self.machine.cpu.get_r16(&R::CS),
+            self.machine.cpu.get_r16(R::CS),
             self.machine.cpu.regs.ip,
             offset,
             rom_offset
@@ -468,20 +468,20 @@ impl Debugger {
             usize::from_str_radix(&x[2..], 16)
         } else {
             match x.as_ref() {
-                "ax" => Ok(self.machine.cpu.get_r16(&R::AX) as usize),
-                "bx" => Ok(self.machine.cpu.get_r16(&R::BX) as usize),
-                "cx" => Ok(self.machine.cpu.get_r16(&R::CX) as usize),
-                "dx" => Ok(self.machine.cpu.get_r16(&R::DX) as usize),
-                "sp" => Ok(self.machine.cpu.get_r16(&R::SP) as usize),
-                "bp" => Ok(self.machine.cpu.get_r16(&R::BP) as usize),
-                "si" => Ok(self.machine.cpu.get_r16(&R::SI) as usize),
-                "di" => Ok(self.machine.cpu.get_r16(&R::DI) as usize),
-                "es" => Ok(self.machine.cpu.get_r16(&R::ES) as usize),
-                "cs" => Ok(self.machine.cpu.get_r16(&R::CS) as usize),
-                "ss" => Ok(self.machine.cpu.get_r16(&R::SS) as usize),
-                "ds" => Ok(self.machine.cpu.get_r16(&R::DS) as usize),
-                "fs" => Ok(self.machine.cpu.get_r16(&R::FS) as usize),
-                "gs" => Ok(self.machine.cpu.get_r16(&R::GS) as usize),
+                "ax" => Ok(self.machine.cpu.get_r16(R::AX) as usize),
+                "bx" => Ok(self.machine.cpu.get_r16(R::BX) as usize),
+                "cx" => Ok(self.machine.cpu.get_r16(R::CX) as usize),
+                "dx" => Ok(self.machine.cpu.get_r16(R::DX) as usize),
+                "sp" => Ok(self.machine.cpu.get_r16(R::SP) as usize),
+                "bp" => Ok(self.machine.cpu.get_r16(R::BP) as usize),
+                "si" => Ok(self.machine.cpu.get_r16(R::SI) as usize),
+                "di" => Ok(self.machine.cpu.get_r16(R::DI) as usize),
+                "es" => Ok(self.machine.cpu.get_r16(R::ES) as usize),
+                "cs" => Ok(self.machine.cpu.get_r16(R::CS) as usize),
+                "ss" => Ok(self.machine.cpu.get_r16(R::SS) as usize),
+                "ds" => Ok(self.machine.cpu.get_r16(R::DS) as usize),
+                "fs" => Ok(self.machine.cpu.get_r16(R::FS) as usize),
+                "gs" => Ok(self.machine.cpu.get_r16(R::GS) as usize),
                 _ => usize::from_str_radix(&x, 16)
             }
         }
@@ -491,29 +491,29 @@ impl Debugger {
         let mut res = String::new();
 
         res += format!("AX:{:04X}  SI:{:04X}  DS:{:04X}  IP:{:04X}  cnt:{}\n",
-                       self.machine.cpu.get_r16(&R::AX),
-                       self.machine.cpu.get_r16(&R::SI),
-                       self.machine.cpu.get_r16(&R::DS),
+                       self.machine.cpu.get_r16(R::AX),
+                       self.machine.cpu.get_r16(R::SI),
+                       self.machine.cpu.get_r16(R::DS),
                        self.machine.cpu.regs.ip,
                        self.machine.cpu.instruction_count)
                 .as_ref();
         res += format!("BX:{:04X}  DI:{:04X}  CS:{:04X}  fl:{:04X}\n",
-                       self.machine.cpu.get_r16(&R::BX),
-                       self.machine.cpu.get_r16(&R::DI),
-                       self.machine.cpu.get_r16(&R::CS),
+                       self.machine.cpu.get_r16(R::BX),
+                       self.machine.cpu.get_r16(R::DI),
+                       self.machine.cpu.get_r16(R::CS),
                        self.machine.cpu.regs.flags.u16())
                 .as_ref();
         res += format!("CX:{:04X}  BP:{:04X}  ES:{:04X}  GS:{:04X}\n",
-                       self.machine.cpu.get_r16(&R::CX),
-                       self.machine.cpu.get_r16(&R::BP),
-                       self.machine.cpu.get_r16(&R::ES),
-                       self.machine.cpu.get_r16(&R::GS))
+                       self.machine.cpu.get_r16(R::CX),
+                       self.machine.cpu.get_r16(R::BP),
+                       self.machine.cpu.get_r16(R::ES),
+                       self.machine.cpu.get_r16(R::GS))
                 .as_ref();
         res += format!("DX:{:04X}  SP:{:04X}  FS:{:04X}  SS:{:04X}\n",
-                       self.machine.cpu.get_r16(&R::DX),
-                       self.machine.cpu.get_r16(&R::SP),
-                       self.machine.cpu.get_r16(&R::FS),
-                       self.machine.cpu.get_r16(&R::SS))
+                       self.machine.cpu.get_r16(R::DX),
+                       self.machine.cpu.get_r16(R::SP),
+                       self.machine.cpu.get_r16(R::FS),
+                       self.machine.cpu.get_r16(R::SS))
                 .as_ref();
         res += format!("C{} Z{} S{} O{} A{} P{} D{} I{}",
                        self.machine.cpu.regs.flags.carry_numeric(),
