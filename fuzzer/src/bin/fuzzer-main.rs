@@ -1,13 +1,17 @@
+extern crate rand;
+
+extern crate dustbox;
+extern crate dustbox_fuzzer;
+
 use std::io::{self, Write};
 
 use rand::prelude::*;
 use rand::prng::{XorShiftRng};
 
 use dustbox::cpu::{Instruction, Op, Parameter, Segment, R, AMode, Encoder, instructions_to_str};
-use fuzzer::{fuzz, VmRunner, AffectedFlags};
+use dustbox_fuzzer::fuzzer::{fuzz, VmRunner, AffectedFlags};
 
-#[test] #[ignore] // expensive test
-fn fuzz_instruction() {
+fn main() {
     let affected_registers = vec!("ax", "dx");
 
     let ops_to_fuzz = vec!(

@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use cpu::flag::Flags;
 use cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
 use cpu::parameter::{Parameter, ParameterSet};
-use cpu::op::{Op, InvalidOp};
+use cpu::op::{Op, Invalid};
 use cpu::register::{R, AMode, RegisterSnapshot};
 use cpu::decoder::Decoder;
 use cpu::segment::Segment;

@@ -11,18 +11,14 @@ use tempdir::TempDir;
 use dustbox::machine::Machine;
 use dustbox::cpu::{CPU, Op, r16};
 
-#[cfg(test)]
-#[path = "./fuzzer_test.rs"]
-mod fuzzer_test;
-
 pub enum VmRunner {
     VmHttp,
     VmxVmrun,
     DosboxX,
 }
 
-// return false on failure
-fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&str], affected_flag_mask: u16) -> bool {
+/// return false on failure
+pub fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&str], affected_flag_mask: u16) -> bool {
     let mut machine = Machine::default();
     machine.load_executable(data);
     machine.execute_instructions(op_count);
@@ -86,7 +82,7 @@ fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&
     true
 }
 
-struct AffectedFlags {
+pub struct AffectedFlags {
     // ____ O___ SZ_A _P_C
     pub c: u8, // 0: carry flag
     pub p: u8, // 2: parity flag
@@ -99,7 +95,7 @@ struct AffectedFlags {
 }
 
 impl AffectedFlags {
-    // returns a flag mask for affected flag registers by op
+    /// returns a flag mask for affected flag registers by op
     pub fn for_op(op: &Op) -> u16 {
         match *op {
             Op::Nop | Op::Salc | Op::Not8 | Op::Div8 | Op::Idiv8 | Op::Cbw | Op::Cwd16 | Op::Lahf |
@@ -162,7 +158,7 @@ fn compare_regs<'a>(cpu: &CPU, vm_regs: &HashMap<String, u16>, reg_names: &[&'a 
     ret
 }
 
-// returns true if registers dont match
+/// returns true if registers dont match
 fn compare_reg(reg_name: &str, cpu: &CPU, vm_val: u16) -> bool {
     let idx = reg_str_to_index(reg_name);
     let reg = r16(idx as u8);
@@ -233,7 +229,7 @@ fn ops_as_db_bytes(ops: &[Instruction]) -> String {
 }
 */
 
-// creates a "db 0x1,0x2..." representation of a &[u8]
+/// creates a "db 0x1,0x2..." representation of a &[u8]
 fn vec_as_db_bytes(data: &[u8]) -> String {
     let mut v = Vec::new();
     for c in data {
@@ -243,7 +239,7 @@ fn vec_as_db_bytes(data: &[u8]) -> String {
     format!("db {}", s)
 }
 
-// parse prober.com output into a map
+/// parse prober.com output into a map
 fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
     let mut map = HashMap::new();
     let lines: Vec<String> = stdout.split('\n').map(|s| s.to_string()).collect();
@@ -260,7 +256,7 @@ fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
     map
 }
 
-// upload data as http post to supersafe http server running in VM
+/// upload data as http post to supersafe http server running in VM
 fn stdout_from_vm_http(prober_com: &str) -> String {
     use curl::easy::{Easy, Form};
     use std::time::Duration;
@@ -304,7 +300,7 @@ fn stdout_from_dosbox(prober_com: &str) -> String {
     read_text_file(&file_path)
 }
 
-// run .com with vmrun (vmware), parse result
+/// run .com with vmrun (vmware), parse result
 fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
     let vmx = "/Users/m/Documents/Virtual Machines.localized/Windows XP Professional.vmwarevm/Windows XP Professional.vmx";
     let vm_user = "vmware";

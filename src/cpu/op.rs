@@ -173,14 +173,14 @@ pub enum Op {
     Xor8,
     Xor16,
     Xor32,
-    Unknown,
-    Invalid(InvalidOp),
+    Uninitialized,
+    Invalid(Vec<u8>, Invalid),
 }
 
 impl Op {
     pub fn is_valid(&self) -> bool {
         match *self {
-            Op::Unknown | Op::Invalid(_) => false,
+            Op::Uninitialized | Op::Invalid(_, _) => false,
             _ => true,
         }
     }
@@ -214,9 +214,15 @@ impl Op {
     }
 }
 
+/// the class of instruction decode error that occured
 #[derive(Clone, Debug, PartialEq)]
-pub enum InvalidOp {
-    Byte(u8),
+pub enum Invalid {
+    /// a reg value was unhandled / invalid
     Reg(u8),
+
+    /// unimplemented / invalid CPU instr
     Op,
+
+    /// unimplemented / invalid FPU instr
+    FPUOp,
 }

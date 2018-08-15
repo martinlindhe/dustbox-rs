@@ -3,7 +3,7 @@ use std::cell::RefCell;
 
 use cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
 use cpu::parameter::{Parameter, ParameterSet};
-use cpu::op::{Op, InvalidOp};
+use cpu::op::{Op, Invalid};
 use cpu::register::{R, r8, r16, r32, sr};
 use cpu::segment::Segment;
 use memory::{MMU, MemoryAddress};
@@ -66,7 +66,7 @@ impl Decoder {
     pub fn get_instruction(&mut self, mut mmu: &mut MMU, segment: u16, offset: u16) -> Instruction {
         self.current_seg = segment;
         self.current_offset = offset;
-        let mut op = Instruction::new(Op::Unknown);
+        let mut op = Instruction::new(Op::Uninitialized);
         self.decode(&mut mmu, &mut op);
         op
     }
@@ -170,14 +170,14 @@ impl Decoder {
                 op.params.dst = Parameter::SReg16(R::CS);
             }
             0x0F => {
-                let b = self.read_u8(mmu);
-                match b {
+                let b2 = self.read_u8(mmu);
+                match b2 {
                     0x00 => {
                         let x = self.read_mod_reg_rm(mmu);
                         op.params.dst = self.rm16(&mut mmu, op, x.rm, x.md);
                         match x.reg {
                             0 => op.command = Op::Sldt, // sldt r/m16
-                            _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
+                            _ => op.command = Op::Invalid(vec!(b, b2), Invalid::Reg(x.reg)),
                         }
                     }
                     0x82 => {
@@ -316,7 +316,7 @@ impl Decoder {
                     }
                     0xBF => {
                         match op.op_size {
-                            OperandSize::_16bit => op.command = Op::Invalid(InvalidOp::Op),
+                            OperandSize::_16bit => op.command = Op::Invalid(vec!(b, b2), Invalid::Op),
                             OperandSize::_32bit => {
                                 // movsx r32, r/m16
                                 op.command = Op::Movsx32;
@@ -324,10 +324,7 @@ impl Decoder {
                             }
                         }
                     }
-                    _ => {
-                        println!("XXX unhandled 0F {:02X}, ip = {:04X}:{:04X}", b, self.current_seg, self.current_offset);
-                        op.command = Op::Invalid(InvalidOp::Byte(b));
-                    }
+                    _ => op.command = Op::Invalid(vec!(b, b2), Invalid::Op),
                 }
             }
             0x10 => {
@@ -871,10 +868,7 @@ impl Decoder {
                             0 => op.command = Op::Add32,
                             5 => op.command = Op::Sub32,
                             7 => op.command = Op::Cmp32,
-                            _ => {
-                                println!("XXX 0x81 32bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset);
-                                op.command = Op::Invalid(InvalidOp::Reg(x.reg));
-                            }
+                            _ => op.command = Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                         }
                     }
                 }
@@ -905,10 +899,7 @@ impl Decoder {
                         op.params.src = Parameter::ImmS8(self.read_s8(mmu));
                         match x.reg {
                             0 => op.command = Op::Add32,
-                            _ => {
-                                println!("XXX unhandled 0x83 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset);
-                                op.command = Op::Invalid(InvalidOp::Reg(x.reg));
-                            }
+                            _ => op.command = Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                         }
                     }
                 }
@@ -973,7 +964,7 @@ impl Decoder {
                 op.params.dst = self.rm16(&mut mmu, op, x.rm, x.md);
                 match x.reg {
                     0 => op.command = Op::Pop16, // pop r/m16
-                    _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
+                    _ => op.command = Op::Invalid(vec!(b), Invalid::FPUOp),
                 }
             }
             0x90 => op.command = Op::Nop,
@@ -1008,9 +999,8 @@ impl Decoder {
                 op.params.dst = Parameter::Ptr16Imm(seg, imm);
             }
             0x9B => {
-                // fpu
-                println!("ERROR: unemulated FPU opcode {:02X}", b);
-                op.command = Op::Invalid(InvalidOp::Op);
+                // TODO fpu instructions
+                op.command = Op::Invalid(vec!(b), Invalid::FPUOp);
             }
             0x9C => op.command = Op::Pushf,
             0x9D => op.command = Op::Popf,
@@ -1130,7 +1120,7 @@ impl Decoder {
                     4 => Op::Shl8,
                     5 => Op::Shr8,
                     7 => Op::Sar8,
-                    _ => Op::Invalid(InvalidOp::Op),
+                    _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                 };
                 op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
@@ -1148,7 +1138,7 @@ impl Decoder {
                             4 => Op::Shl16,
                             5 => Op::Shr16,
                             7 => Op::Sar16,
-                            _ => Op::Invalid(InvalidOp::Op),
+                            _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                         };
                         op.params.dst = self.rm16(&mut mmu, op, x.rm, x.md);
                         op.params.src = Parameter::Imm8(self.read_u8(mmu));
@@ -1189,7 +1179,7 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
                 match x.reg {
                     0 => op.command = Op::Mov8, // mov r/m8, imm8
-                    _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
+                    _ => op.command = Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                 }
             }
             0xC7 => {
@@ -1200,7 +1190,7 @@ impl Decoder {
                         op.params.src = Parameter::Imm16(self.read_u16(mmu));
                         match x.reg {
                             0 => op.command = Op::Mov16, // mov r/m16, imm16
-                            _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
+                            _ => op.command = Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                         }
                     }
                     OperandSize::_32bit => {
@@ -1208,7 +1198,7 @@ impl Decoder {
                         op.params.src = Parameter::Imm32(self.read_u32(mmu));
                         match x.reg {
                             0 => op.command = Op::Mov32, // mov r/m32, imm32
-                            _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
+                            _ => op.command = Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                         }
                     }
                 }
@@ -1248,7 +1238,7 @@ impl Decoder {
                     4 => Op::Shl8,
                     5 => Op::Shr8,
                     7 => Op::Sar8,
-                    _ => Op::Invalid(InvalidOp::Op),
+                    _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                 };
                 op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Imm8(1);
@@ -1264,7 +1254,7 @@ impl Decoder {
                     4 => Op::Shl16,
                     5 => Op::Shr16,
                     7 => Op::Sar16,
-                    _ => Op::Invalid(InvalidOp::Op),
+                    _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                 };
                 op.params.dst = self.rm16(&mut mmu, op, x.rm, x.md);
                 op.params.src = Parameter::Imm16(1);
@@ -1280,7 +1270,7 @@ impl Decoder {
                     4 => Op::Shl8,
                     5 => Op::Shr8,
                     7 => Op::Sar8,
-                    _ => Op::Invalid(InvalidOp::Op),
+                    _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                 };
                 op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Reg8(R::CL);
@@ -1296,7 +1286,7 @@ impl Decoder {
                     4 => Op::Shl16,
                     5 => Op::Shr16,
                     7 => Op::Sar16,
-                    _ => Op::Invalid(InvalidOp::Op),
+                    _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                 };
                 op.params.dst = self.rm16(&mut mmu, op, x.rm, x.md);
                 op.params.src = Parameter::Reg8(R::CL);
@@ -1314,8 +1304,7 @@ impl Decoder {
             0xD7 => op.command = Op::Xlatb,
             0xD8...0xDF => {
                 // fpu
-                println!("ERROR: unemulated FPU opcode {:02X}", b);
-                op.command = Op::Invalid(InvalidOp::Op);
+                op.command = Op::Invalid(vec!(b), Invalid::FPUOp);
             }
             0xE0 => {
                 op.command = Op::Loopne;
@@ -1500,7 +1489,7 @@ impl Decoder {
                     // 00000140  FEC5              inc ch
                     0 | 2 => op.command = Op::Inc8,
                     1 => op.command = Op::Dec8,
-                    _ => op.command = Op::Invalid(InvalidOp::Reg(x.reg)),
+                    _ => op.command = Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                 }
             }
             0xFF => {
@@ -1517,10 +1506,7 @@ impl Decoder {
                             4 => op.command = Op::JmpNear,
                             5 => op.command = Op::JmpFar,
                             6 => op.command = Op::Push16,
-                            _ => {
-                                println!("XXX 0xFF 16bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset);
-                                op.command = Op::Invalid(InvalidOp::Reg(x.reg));
-                            }
+                            _ => op.command = Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                         }
                     }
                     OperandSize::_32bit => {
@@ -1528,15 +1514,12 @@ impl Decoder {
                         match x.reg {
                             0 => op.command = Op::Inc32,
                             1 => op.command = Op::Dec32,
-                            _ => {
-                                println!("XXX 0xFF 32bit unhandled reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset);
-                                op.command = Op::Invalid(InvalidOp::Reg(x.reg));
-                            }
+                            _ => op.command = Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                         }
                     }
                 }
             }
-            _ => op.command = Op::Invalid(InvalidOp::Op),
+            _ => op.command = Op::Invalid(vec!(b), Invalid::Op),
         }
 
         // calculate instruction length

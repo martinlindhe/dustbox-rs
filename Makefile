@@ -17,9 +17,6 @@ expensive-32bit:
 expensive-games:
 	RUST_TEST_THREADS=1 cargo test games_com --release -- --color always --nocapture --ignored
 
-expensive-fuzz:
-	RUST_TEST_THREADS=1 cargo test fuzz --package dustbox_fuzzer -- --color always --nocapture --ignored
-
 expensive-encode:
 	RUST_TEST_THREADS=1 cargo test encode -- --color always --nocapture --ignored
 
@@ -34,6 +31,9 @@ run:
 
 run-release:
 	cargo run --release --package dustbox_gtk
+
+fuzz:
+	cargo run --package dustbox_fuzzer
 
 lint:
 	cargo +nightly clippy

@@ -1,9 +1,10 @@
 use bincode::deserialize;
 
+use cpu::{CPU, Op, Invalid, R, RegisterSnapshot, Segment, OperandSize};
 use gpu::GPU;
-use cpu::{CPU, Op, InvalidOp, R, RegisterSnapshot, Segment, OperandSize};
-use memory::MMU;
 use hardware::Hardware;
+use hex::hex_bytes;
+use memory::MMU;
 use ndisasm::ndisasm_bytes;
 
 #[derive(Deserialize, Debug)]
@@ -171,24 +172,25 @@ impl Machine {
         let op = self.cpu.decoder.get_instruction(&mut self.hw.mmu, cs, ip);
 
         match op.command {
-            Op::Unknown => {
+            Op::Uninitialized => {
                 self.cpu.fatal_error = true;
-                println!("executed unknown op, stopping. {} instructions executed",
-                         self.cpu.instruction_count);
+                println!("[{:04X}:{:04X}] ERROR: uninitialized op. {} instructions executed",
+                         cs, ip, self.cpu.instruction_count);
             }
-            Op::Invalid(reason) => {
+            Op::Invalid(bytes, reason) => {
+                let hex = hex_bytes(&bytes);
                 self.cpu.fatal_error = true;
                 match reason {
-                    InvalidOp::Op => {
-                        println!("[{:04X}:{:04X}] Error unhandled OP", cs, ip);
+                    Invalid::Op => {
+                        println!("[{:04X}:{:04X}] {} ERROR: unhandled opcode", cs, ip, hex);
                         println!("ndisasm: {}", self.external_disasm_of_bytes(cs, ip));
                     }
-                    InvalidOp::Reg(reg) => {
-                        println!("[{:04X}:{:04X}] Error invalid register {:02X}", cs, ip, reg);
+                    Invalid::FPUOp => {
+                        println!("[{:04X}:{:04X}] {} ERROR: unhandled FPU opcode", cs, ip, hex);
                         println!("ndisasm: {}", self.external_disasm_of_bytes(cs, ip));
                     }
-                    InvalidOp::Byte(b) => {
-                        println!("[{:04X}:{:04X}] Error invalid byte {:02X}", cs, ip, b);
+                    Invalid::Reg(reg) => {
+                        println!("[{:04X}:{:04X}] {} ERROR: unhandled reg value {:02X}", cs, ip, hex, reg);
                         println!("ndisasm: {}", self.external_disasm_of_bytes(cs, ip));
                     }
                 }
