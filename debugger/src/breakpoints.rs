@@ -7,7 +7,7 @@ pub struct Breakpoints {
     breakpoints: Vec<u32>,
 }
 
-// a list of addresses for the debugger to break on when CS:IP reach one of them
+/// a list of addresses for the debugger to break on when CS:IP reach one of them
 impl Breakpoints {
     pub fn add(&mut self, bp: u32) -> Option<u32> {
         if self.breakpoints.iter().find(|&&x|x == bp).is_none() {
@@ -29,7 +29,7 @@ impl Breakpoints {
         }
     }
 
-    // returns a Vec with breakpoints sorted ascending
+    /// returns a Vec with breakpoints sorted ascending
     pub fn get(&self) -> Vec<u32> {
         let mut sorted = self.breakpoints.clone();
         sorted.sort();
@@ -40,7 +40,7 @@ impl Breakpoints {
         self.breakpoints.clear();
     }
 
-    // returns true if address is at breakpoint
+    /// returns true if address is at breakpoint
     pub fn hit(&self, address: u32) -> bool {
         self.breakpoints.iter().any(|&x| x == address)
     }

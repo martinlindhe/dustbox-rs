@@ -32,7 +32,7 @@ impl Hardware {
         }
     }
 
-    // read byte from I/O port
+    /// read byte from I/O port
     pub fn in_u8(&mut self, port: u16) -> u8 {
         if DEBUG_IO {
             println!("in_u8: read from {:04X}", port);
@@ -95,7 +95,7 @@ impl Hardware {
         }
     }
 
-    // read word from I/O port
+    /// read word from I/O port
     pub fn in_u16(&mut self, port: u16) -> u16 {
         if DEBUG_IO {
             println!("in_u16: read from {:04X}", port);
@@ -108,7 +108,7 @@ impl Hardware {
         }
     }
 
-    // write byte to I/O port
+    /// write byte to I/O port
     pub fn out_u8(&mut self, port: u16, data: u8) {
         if DEBUG_IO {
             println!("out_u8: write to {:04X} = {:02X}", port, data);
@@ -185,7 +185,7 @@ impl Hardware {
         }
     }
 
-    // write word to I/O port
+    /// write word to I/O port
     pub fn out_u16(&mut self, port: u16, data: u16) {
         if DEBUG_IO {
             println!("out_u16: write to {:04X} = {:04X}", port, data);

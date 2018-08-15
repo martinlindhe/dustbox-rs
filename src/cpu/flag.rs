@@ -238,7 +238,7 @@ impl Flags {
         })
     }
 
-    // returns the FLAGS register
+    /// returns the FLAGS register
     pub fn u16(&self) -> u16 {
         let mut val = 0 as u16;
         if self.carry {

@@ -39,7 +39,7 @@ impl Default for DAC {
 }
 
 impl DAC {
-    // (VGA) DAC state register (0x03C7)
+    /// (VGA) DAC state register (0x03C7)
     pub fn get_state(&mut self) -> u8 {
         self.hidac_counter = 0;
         let res = self.state.register();
@@ -49,16 +49,16 @@ impl DAC {
         res
     }
 
-    // (VGA, MCGA) PEL mask register (0x03C6)
+    /// (VGA, MCGA) PEL mask register (0x03C6)
     pub fn set_pel_mask(&mut self, val: u8) {
         self.pel_mask = val;
     }
 
-    // (VGA,MCGA,CEG-VGA) PEL address register (read mode) (0x03C7)
-    // Sets DAC in read mode and assign start of color register
-    // index (0..255) for following read accesses to 3C9h.
-    // Don't write to 3C9h while in read mode. Next access to
-    // 03C8h will stop pending mode immediatly.
+    /// (VGA,MCGA,CEG-VGA) PEL address register (read mode) (0x03C7)
+    /// Sets DAC in read mode and assign start of color register
+    /// index (0..255) for following read accesses to 3C9h.
+    /// Don't write to 3C9h while in read mode. Next access to
+    /// 03C8h will stop pending mode immediatly.
     pub fn set_pel_read_index(&mut self, val: u8) {
         self.state = State::Read;
         self.read_index = val;
@@ -70,7 +70,7 @@ impl DAC {
         }
     }
 
-    // (VGA,MCGA) PEL address register (0x03C8)
+    /// (VGA,MCGA) PEL address register (0x03C8)
     pub fn get_pel_write_index(&mut self) -> u8 {
         self.hidac_counter = 0;
         if DEBUG_DAL {
@@ -79,10 +79,10 @@ impl DAC {
         self.write_index
     }
 
-    // (VGA,MCGA) PEL address register (write mode) (0x03C8)
-    // Sets DAC in write mode and assign start of color register
-    // index (0..255) for following write accesses to 3C9h.
-    // Next access to 03C8h will stop pending mode immediately.
+    /// (VGA,MCGA) PEL address register (write mode) (0x03C8)
+    /// Sets DAC in write mode and assign start of color register
+    /// index (0..255) for following write accesses to 3C9h.
+    /// Next access to 03C8h will stop pending mode immediately.
     pub fn set_pel_write_index(&mut self, val: u8) {
         self.state = State::Write;
         self.write_index = val;
@@ -93,9 +93,9 @@ impl DAC {
         }
     }
 
-    // (VGA,MCGA) PEL data register (0x03C9)
-    // Three consequtive reads (in read mode) in the order: red, green, blue.
-    // The internal DAC index is incremented each 3rd access.
+    /// (VGA,MCGA) PEL data register (0x03C9)
+    /// Three consequtive reads (in read mode) in the order: red, green, blue.
+    /// The internal DAC index is incremented each 3rd access.
     pub fn get_pel_data(&mut self) -> u8 {
         self.hidac_counter = 0;
         let ret = match self.pal[self.read_index as usize] {
@@ -125,9 +125,9 @@ impl DAC {
         ret
     }
 
-    // (VGA,MCGA) PEL data register (0x03C9)
-    // Three consecutive writes (in write mode) in the order: red, green, blue.
-    // The internal DAC index is incremented on every 3rd access.
+    /// (VGA,MCGA) PEL data register (0x03C9)
+    /// Three consecutive writes (in write mode) in the order: red, green, blue.
+    /// The internal DAC index is incremented on every 3rd access.
     pub fn set_pel_data(&mut self, mut val: u8) {
         val &= 0x3F;
         if DEBUG_DAL {
@@ -160,7 +160,7 @@ pub enum State {
 }
 
 impl State {
-    // encodes state for the DAC state register (0x03C7)
+    /// encodes state for the DAC state register (0x03C7)
     pub fn register(&self) -> u8 {
         match *self {
             State::Read  => 0b11,

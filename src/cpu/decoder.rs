@@ -27,8 +27,9 @@ pub enum AddressSize {
 
 #[derive(Clone, Default)]
 pub struct Decoder {
-    // starting instruction decoding offset
     current_seg: u16,
+
+    /// starting instruction decoding offset
     current_offset: u16,
 }
 
@@ -49,21 +50,21 @@ impl Decoder {
         instruction_info_to_str(&ops)
     }
 
-    // decodes op at iseg:ioffset into a InstructionInfo
-    pub fn get_instruction_info(&mut self, mut mmu: &mut MMU, iseg: u16, ioffset: u16) -> InstructionInfo {
-        let instr = self.get_instruction(&mut mmu, iseg, ioffset);
+    /// decodes op at seg:offset into a InstructionInfo
+    pub fn get_instruction_info(&mut self, mut mmu: &mut MMU, seg: u16, offset: u16) -> InstructionInfo {
+        let instr = self.get_instruction(&mut mmu, seg, offset);
         if DEBUG_DECODER {
-            println!("get_instruction_info at {:06x}: {:?}", MemoryAddress::RealSegmentOffset(iseg, ioffset).value(), instr);
+            println!("get_instruction_info at {:06x}: {:?}", MemoryAddress::RealSegmentOffset(seg, offset).value(), instr);
         }
         InstructionInfo {
-            segment: iseg as usize,
-            offset: ioffset as usize,
-            bytes: mmu.read(iseg, ioffset, instr.length as usize),
+            segment: seg as usize,
+            offset: offset as usize,
+            bytes: mmu.read(seg, offset, instr.length as usize),
             instruction: instr,
         }
     }
 
-    // decodes op at iseg:ioffset into a Instruction
+    /// decodes op at seg:offset into a Instruction
     pub fn get_instruction(&mut self, mut mmu: &mut MMU, segment: u16, offset: u16) -> Instruction {
         self.current_seg = segment;
         self.current_offset = offset;
@@ -72,7 +73,7 @@ impl Decoder {
         op
     }
 
-    // decodes the next instruction
+    /// decodes the next instruction
     fn decode(&mut self, mut mmu: &mut MMU, mut op: &mut Instruction) {
         let start_offset = self.current_offset;
         let b = self.read_u8(mmu);
@@ -1538,7 +1539,7 @@ impl Decoder {
         }
     }
 
-    // decode rm8
+    /// decode rm8
     fn rm8(&mut self, mmu: &mut MMU, seg: Segment, rm: u8, md: u8) -> Parameter {
         let adr_size = AddressSize::_16bit;
         match md {
@@ -1561,7 +1562,7 @@ impl Decoder {
         }
     }
 
-    // decode rm16
+    /// decode rm16
     fn rm16(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
         match md {
             0 => {
@@ -1583,7 +1584,7 @@ impl Decoder {
         }
     }
 
-    // decode rm32
+    /// decode rm32
     fn rm32(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
         match md {
             0 => {
@@ -1605,7 +1606,7 @@ impl Decoder {
         }
     }
 
-    // decode r8, r/m8
+    /// decode r8, r/m8
     fn r8_rm8(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
@@ -1615,7 +1616,7 @@ impl Decoder {
         }
     }
 
-    // decode r/m8, r8
+    /// decode r/m8, r8
     fn rm8_r8(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
@@ -1625,7 +1626,7 @@ impl Decoder {
         }
     }
 
-    // decode Sreg, r/m16
+    /// decode Sreg, r/m16
     fn sreg_rm16(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
@@ -1635,7 +1636,7 @@ impl Decoder {
         }
     }
 
-    // decode r/m16, Sreg
+    /// decode r/m16, Sreg
     fn rm16_sreg(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
@@ -1645,7 +1646,7 @@ impl Decoder {
         }
     }
 
-    // decode r16, r/m8 (movzx)
+    /// decode r16, r/m8 (movzx)
     fn r16_rm8(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
@@ -1655,7 +1656,7 @@ impl Decoder {
         }
     }
 
-    // decode r32, r/m8 (movzx)
+    /// decode r32, r/m8 (movzx)
     fn r32_rm8(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
@@ -1665,7 +1666,7 @@ impl Decoder {
         }
     }
 
-    // decode r32, r/m16 (movsx)
+    /// decode r32, r/m16 (movsx)
     fn r32_rm16(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
@@ -1675,7 +1676,7 @@ impl Decoder {
         }
     }
 
-    // decode r16, r/m16
+    /// decode r16, r/m16
     fn r16_rm16(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
@@ -1685,7 +1686,7 @@ impl Decoder {
         }
     }
 
-    // decode r/m16, r16
+    /// decode r/m16, r16
     fn rm16_r16(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
@@ -1695,7 +1696,7 @@ impl Decoder {
         }
     }
 
-    // decode r16, m16
+    /// decode r16, m16
     fn r16_m16(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         if x.md == 3 {
@@ -1708,7 +1709,7 @@ impl Decoder {
         }
     }
 
-    // decode r32, r/m32
+    /// decode r32, r/m32
     fn r32_rm32(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
@@ -1718,7 +1719,7 @@ impl Decoder {
         }
     }
 
-    // decode r/m32, r32
+    /// decode r/m32, r32
     fn rm32_r32(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
@@ -1778,7 +1779,7 @@ impl Decoder {
         self.read_u16(mmu) as i16
     }
 
-    // returns the flat starting offset of the instruction being decoded
+    /// returns the flat starting offset of the instruction being decoded
     fn current_flat(&self) -> u32 {
         MemoryAddress::RealSegmentOffset(self.current_seg, self.current_offset).value()
     }

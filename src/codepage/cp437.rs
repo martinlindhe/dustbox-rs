@@ -1,5 +1,5 @@
-// converts byte to a symbol in code page 437 ("extended ASCII"), presented as a utf8 char
-// https://en.wikipedia.org/wiki/Code_page_437
+/// converts byte to a symbol in code page 437 ("extended ASCII"), presented as a utf8 char
+/// https://en.wikipedia.org/wiki/Code_page_437
 pub fn u8_as_char(b: u8) -> char {
     match b {
         0x00 => 0 as char, // 0000 - NUL

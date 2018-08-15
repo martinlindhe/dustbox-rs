@@ -2193,7 +2193,7 @@ impl CPU {
         data
     }
 
-    // returns the absoute address of CS:IP
+    /// returns the absoute address of CS:IP
     pub fn get_address(&self) -> u32 {
         MemoryAddress::RealSegmentOffset(self.get_r16(R::CS), self.regs.ip).value()
     }
@@ -2233,7 +2233,7 @@ impl CPU {
         (self.regs.ip as i16 + val) as u16
     }
 
-    // returns "segment, offset" pair
+    /// returns "segment, offset" pair
     fn get_amode_addr(&self, amode: &AMode) -> (u16, u16) {
         match *amode {
             AMode::BX => (self.get_r16(R::DS), self.get_r16(R::BX)),
@@ -2248,7 +2248,7 @@ impl CPU {
         }
     }
 
-    // used by lds, les
+    /// used by lds, les
     fn read_segment_selector(&self, mmu: &MMU, p: &Parameter) -> (u16, u16) {
         let (segment, offset) = match *p {
             Parameter::Ptr16(seg, imm) => (self.segment(seg), imm),
@@ -2271,7 +2271,7 @@ impl CPU {
         (s_val, o_val)
     }
 
-    // returns the address of pointer, used by LEA
+    /// returns the address of pointer, used by LEA
     fn read_parameter_address(&mut self, p: &Parameter) -> usize {
         match *p {
             Parameter::Ptr16Amode(_, ref amode) => self.amode(amode),
@@ -2434,7 +2434,7 @@ impl CPU {
         }
     }
 
-    // returns the value of the given segment register
+    /// returns the value of the given segment register
     fn segment(&self, seg: Segment) -> u16 {
         self.get_r16(seg.as_register())
     }
@@ -2461,7 +2461,7 @@ impl CPU {
         }
     }
 
-    // used by aaa, aas
+    /// used by aaa, aas
     fn adjb(&mut self, param1: i8, param2: i8) {
         if self.regs.flags.adjust || (self.get_r8(R::AL) & 0xf) > 9 {
             let al = (i16::from(self.get_r8(R::AL)) + i16::from(param1)) as u8;
@@ -2478,7 +2478,7 @@ impl CPU {
         self.set_r8(R::AL, al & 0x0F);
     }
 
-    // used by daa, das
+    /// used by daa, das
     fn adj4(&mut self, param1: i16, param2: i16) {
         let mut al = self.get_r8(R::AL);
         if ((al & 0x0F) > 0x09) || self.regs.flags.adjust {

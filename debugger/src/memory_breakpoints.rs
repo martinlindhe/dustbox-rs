@@ -10,7 +10,7 @@ pub struct MemoryBreakpoints {
     map: HashMap<u32, u8>,
 }
 
-// a list of addresses for the debugger to break on when memory content changes
+/// a list of addresses for the debugger to break on when memory content changes
 impl MemoryBreakpoints {
      pub fn default() -> Self {
         MemoryBreakpoints {
@@ -39,7 +39,7 @@ impl MemoryBreakpoints {
         }
     }
 
-    // returns a Vec with breakpoints sorted ascending
+    /// returns a Vec with breakpoints sorted ascending
     pub fn get(&self) -> Vec<u32> {
         let mut sorted = self.breakpoints.clone();
         sorted.sort();
@@ -50,7 +50,7 @@ impl MemoryBreakpoints {
         self.breakpoints.clear();
     }
 
-    // returns true memory value has changed since last check
+    /// returns true if memory value has changed since last check
     pub fn has_changed(&mut self, address: u32, val: u8) -> bool {
         if !self.map.contains_key(&address) {
             self.map.insert(address, val);

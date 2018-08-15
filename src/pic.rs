@@ -32,13 +32,13 @@ impl PIC {
         }
     }
 
-    // io read of port 0021 (pic1) or 00A1 (pic2)
+    /// io read of port 0021 (pic1) or 00A1 (pic2)
     pub fn get_ocw1(&self) -> u8 {
         // read: PIC master interrupt mask register OCW1
         0 // XXX
     }
 
-    // io read of port 0020 (pic1) or 00A0 (pic2)
+    /// io read of port 0020 (pic1) or 00A0 (pic2)
     pub fn get_register(&self) -> u8 {
         /*
         0020  R-  PIC  interrupt request/in-service registers after OCW3
@@ -52,7 +52,7 @@ impl PIC {
         0 // XXX
     }
 
-    // PIC - Command register, port 0x0020
+    /// PIC - Command register, port 0x0020
     pub fn set_command(&mut self, val: u8) {
         self.command = val;
         println!("PIC COMMAND: {:02x} == {:08b}", val, val);
@@ -117,7 +117,7 @@ impl PIC {
         }
     }
 
-    // Master PIC - Data register, port 0x0021
+    /// Master PIC - Data register, port 0x0021
     pub fn set_data(&mut self, val: u8) {
         // XXX: one value if written immediately after value to 0020, another otherwise....
         self.data = val;

@@ -1,3 +1,5 @@
+// list of video modes based on dosbox-x, int10_modes.cpp
+
 use gpu::graphic_card::GraphicCard;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -93,7 +95,6 @@ impl Default for SpecialMode {
     }
 }
 
-// list of video modes based on dosbox-x, int10_modes.cpp
 pub fn ega_mode_block() -> [VideoModeBlock; 12] {[
     VideoModeBlock{mode: 0x000, kind: GFXMode::TEXT, swidth: 320, sheight: 350, twidth: 40, theight: 25, cwidth: 8, cheight: 14, ptotal: 8, pstart: 0xB_8000, plength: 0x0800, htotal: 50,  vtotal: 366, hdispend: 40, vdispend: 350, special: SpecialMode{ega_half_clock: true, ..Default::default()}},
     VideoModeBlock{mode: 0x001, kind: GFXMode::TEXT, swidth: 320, sheight: 350, twidth: 40, theight: 25, cwidth: 8, cheight: 14, ptotal: 8, pstart: 0xB_8000, plength: 0x0800, htotal: 50,  vtotal: 366, hdispend: 40, vdispend: 350, special: SpecialMode{ega_half_clock: true, ..Default::default()}},

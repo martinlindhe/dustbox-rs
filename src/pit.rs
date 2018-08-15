@@ -37,8 +37,8 @@ impl PIT {
         }
     }
 
-    // port 0043: control word register for counters 0-2
-    // called "8253/8254 PIT mode control word" in the interrupt list
+    /// port 0043: control word register for counters 0-2
+    /// called "8253/8254 PIT mode control word" in the interrupt list
     pub fn set_mode_command(&mut self, val: u8) {
         let channel = (val >> 6) & 0b11; // bits 7-6
         let access_mode = (val >> 4) & 0b11; // bits 5-4
@@ -122,7 +122,7 @@ impl Counter {
         }
     }
 
-    // sets the reload value for the counter
+    /// sets the reload value for the counter
     pub fn write_reload_part(&mut self, val: u8) {
         match self.access_mode {
             AccessMode::LatchCountValue => {

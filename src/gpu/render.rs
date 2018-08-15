@@ -291,7 +291,7 @@ impl GPU {
         self.set_cursor_pos(mmu, cur_row, cur_col, page);
     }
 
-    // returns the active display page value
+    /// returns the active display page value
     pub fn get_active_page(&self, mmu: &mut MMU) -> u8 {
         mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_PAGE)
     }
@@ -764,7 +764,7 @@ impl GPU {
         */
     }
 
-    // HACK to have a source of info to toggle CGA status register
+    /// HACK to have a source of info to toggle CGA status register
     pub fn progress_scanline(&mut self) {
         self.scanline += 1;
         if self.scanline > self.mode.swidth {
@@ -772,8 +772,8 @@ impl GPU {
         }
     }
 
-    // CGA status register (0x03DA)
-    // color EGA/VGA: input status 1 register
+    /// CGA status register (0x03DA)
+    /// color EGA/VGA: input status 1 register
     pub fn read_cga_status_register(&self) -> u8 {
         // Bitfields for CGA status register:
         // Bit(s)	Description	(Table P0818)

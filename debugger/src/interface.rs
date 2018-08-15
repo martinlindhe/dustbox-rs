@@ -38,7 +38,7 @@ impl Interface {
         }
     }
 
-    // start the gtk-rs main loop
+    /// start the gtk-rs main loop
     pub fn main(&mut self) {
         let window: gtk::Window = self.builder
             .borrow()
@@ -284,7 +284,7 @@ impl Interface {
     }
 }
 
-// render video frame to canvas `c`
+/// render video frame to canvas `c`
 fn draw_canvas(c: &cairo::Context, buf: Vec<u8>, mode: &VideoModeBlock) {
     if buf.is_empty() {
         // println!("draw_canvas: no buffer to draw!");

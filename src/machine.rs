@@ -49,7 +49,7 @@ impl Machine {
         }
     }
 
-   // reset the CPU and memory
+    /// reset the CPU and memory
     pub fn hard_reset(&mut self) {
         self.cpu = CPU::default();
     }
@@ -94,7 +94,7 @@ impl Machine {
         // SS = 0923
     }
 
-    // load .com program into CS:0100 and set IP to program start
+    /// load .com program into CS:0100 and set IP to program start
     fn load_com(&mut self, data: &[u8]) {
         // CS,DS,ES,SS = PSP segment
         let psp_segment = 0x085F; // is what dosbox used
@@ -122,12 +122,12 @@ impl Machine {
         self.hw.mmu.write(cs, self.cpu.regs.ip, data);
     }
 
-    // returns a copy of register values at a given time
+    /// returns a copy of register values at a given time
     pub fn register_snapshot(&self) -> RegisterSnapshot {
         self.cpu.regs.clone()
     }
 
-    // executes enough instructions that can run for 1 video frame
+    /// executes enough instructions that can run for 1 video frame
     pub fn execute_frame(&mut self) {
         let fps = 60;
         let cycles = self.cpu.clock_hz / fps;
@@ -145,14 +145,14 @@ impl Machine {
         }
     }
 
-    // executes n instructions of the cpu. only used in tests
+    /// executes n instructions of the cpu. only used in tests
     pub fn execute_instructions(&mut self, count: usize) {
         for _ in 0..count {
             self.execute_instruction()
         }
     }
 
-    // returns first line of disassembly
+    /// returns first line of disassembly
     fn external_disasm_of_bytes(&self, cs: u16, ip: u16) -> String {
         let bytes = self.hw.mmu.read(cs, ip, 16);
         let s = ndisasm_bytes(&bytes).unwrap();

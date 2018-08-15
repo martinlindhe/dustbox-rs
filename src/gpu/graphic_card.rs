@@ -1,4 +1,4 @@
-// GraphicCard indicates the gfx card generation to emulate
+/// GraphicCard indicates the gfx card generation to emulate
 #[derive(Clone, Debug, PartialEq)]
 pub enum GraphicCard {
     CGA, EGA, VGA, Tandy, PcJr,

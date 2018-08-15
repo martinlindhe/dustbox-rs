@@ -68,7 +68,7 @@ impl BIOS {
         }
     }
 
-    // manipulates the FLAGS register on stack while in a interrupt
+    /// manipulates the FLAGS register on stack while in a interrupt
     pub fn set_flag(&mut self, mmu: &mut MMU, flag_mask: u16, flag_value: bool) {
         if self.flags_address == MemoryAddress::Unset {
             panic!("bios: set_flag with 0 flags_address");
@@ -102,7 +102,7 @@ impl BIOS {
         mmu.write_u16(_seg, _offset + 2, seg);
     }
 
-    // initializes the Configuration Data Table
+    /// initializes the Configuration Data Table
     fn write_configuration_data_table(&self, mmu: &mut MMU) {
         let mut addr = MemoryAddress::RealSegmentOffset(BIOS::ROM_SEG, 0xE6F5);
         mmu.write_u16_inc(&mut addr, 8);          // table size

@@ -23,13 +23,13 @@ impl MMU {
         }
     }
 
-    // reads a sequence of data from memory
+    /// reads a sequence of data from memory
     pub fn read(&self, seg: u16, offset: u16, length: usize) -> Vec<u8> {
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
         Vec::from(self.memory.borrow().read(addr, length))
     }
 
-    // reads a sequence of data until a NULL byte is found
+    /// reads a sequence of data until a NULL byte is found
     pub fn readz(&self, seg: u16, offset: u16) -> Vec<u8> {
         let mut res = Vec::new();
         let mut addr = MemoryAddress::RealSegmentOffset(seg, offset);
@@ -79,7 +79,7 @@ impl MMU {
         addr.inc_u8();
     }
 
-    // writes a sequence of data to memory
+    /// writes a sequence of data to memory
     pub fn write(&mut self, seg: u16, offset: u16, data: &[u8]) {
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
         self.memory.borrow_mut().write(addr, data);

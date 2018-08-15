@@ -7,7 +7,7 @@ use cpu::decoder::AddressSize;
 #[path = "./register_test.rs"]
 mod register_test;
 
-// 32-bit general purpose register (AL->AX->EAX)
+/// 32-bit general purpose register (AL->AX->EAX)
 #[derive(Copy, Clone, Debug, Default)]
 pub struct GPR {
     val: u32,
@@ -24,12 +24,12 @@ impl GPR {
         self.val = (self.val & 0xFFFF_FF00) + u32::from(val);
     }
 
-    // gets the low byte of the word register
+    /// gets the low byte of the word register
     pub fn lo_u8(self) -> u8 {
         (self.val & 0xFF) as u8
     }
 
-    // gets the hi byte of the word register
+    /// gets the hi byte of the word register
     pub fn hi_u8(self) -> u8 {
         (self.val >> 8) as u8
     }

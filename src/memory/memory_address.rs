@@ -1,5 +1,5 @@
 
-// represents a memory address inside the vm
+/// represents a memory address inside the vm
 #[derive(Clone, Debug, PartialEq)]
 pub enum MemoryAddress {
     /// a real mode segment:offset pair (0_0000 - F_FFFF)

@@ -19,8 +19,12 @@ pub struct Debugger {
     pub machine: Machine,
     pub prev_regs: RegisterSnapshot,
     last_program: Option<String>,
-    ip_breakpoints: Breakpoints, // break when IP reach address
-    memory_breakpoints: MemoryBreakpoints, // break when memory change on this address
+
+    /// break when IP reach these addresses
+    ip_breakpoints: Breakpoints,
+
+    /// break when memory change on these addresses
+    memory_breakpoints: MemoryBreakpoints,
 }
 
 impl Debugger {
@@ -411,7 +415,7 @@ impl Debugger {
         }
     }
 
-    // loads a .com or .exe file
+    /// loads a .com or .exe file
     pub fn load_executable(&mut self, name: &str) {
         println!("Reading executable from {}", name);
         match tools::read_binary(name) {
@@ -435,7 +439,7 @@ impl Debugger {
         );
     }
 
-    // parses segment:offset pair to an integer
+    /// parses segment:offset pair to an integer
     fn parse_segment_offset_pair(&self, s: &str) -> Result<u32, ParseIntError> {
         let x = &s.replace("_", "");
         match x.find(':') {
@@ -460,7 +464,7 @@ impl Debugger {
         }
     }
 
-    // parses hex string or register name to a integer
+    /// parses hex string or register name to a integer
     fn parse_register_hex_string(&self, s: &str) -> Result<usize, ParseIntError> {
         let x = &s.replace("_", "");
         let x = x.to_lowercase();
@@ -530,7 +534,7 @@ impl Debugger {
     }
 }
 
-// parses string to a integer. unprefixed values assume base 10, and "0x" prefix indicates base 16.
+/// parses string to a integer. unprefixed values assume base 10, and "0x" prefix indicates base 16.
 fn parse_number_string(s: &str) -> Result<u32, ParseIntError> {
     let x = &s.replace("_", "");
     if x.len() >= 2 && &x[0..2] == "0x" {

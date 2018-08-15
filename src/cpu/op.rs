@@ -328,7 +328,7 @@ impl Op {
         }
     }
 
-    // used by encoder
+    /// used by encoder
     pub fn f6_index(&self) -> u8 {
         match *self {
             Op::Test8 => 0,
@@ -342,7 +342,7 @@ impl Op {
         }
     }
 
-    // used by encoder
+    /// used by encoder
     pub fn feff_index(&self) -> u8 {
         match *self {
             Op::Inc8 | Op::Inc16 | Op::Inc32 => 0,
