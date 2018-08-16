@@ -3,7 +3,7 @@ use cpu::{CPU, R};
 use cpu::*;
 
 // disk related interrupts
-pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
+pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
     match cpu.get_r8(R::AH) {
         0x00 => {
             // DISK - RESET DISK SYSTEM

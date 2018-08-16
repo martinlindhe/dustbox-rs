@@ -810,8 +810,9 @@ impl Decoder {
                 op.command = Op::Jg;
                 op.params.dst = Parameter::Imm16(self.read_rel8(mmu));
             }
-            0x80 => {
+            0x80 | 0x82 => {
                 // <arithmetic> r/m8, imm8
+                // 0x82 is unrecognized by objdump & ndisasm, but alias to 0x80 on pre Pentium 4:s according to ref.x86asm.net
                 let x = self.read_mod_reg_rm(mmu);
                 op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
