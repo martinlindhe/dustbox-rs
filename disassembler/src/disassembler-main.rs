@@ -1,21 +1,37 @@
 extern crate dustbox;
-
-use std::env;
-
 use dustbox::machine::Machine;
 use dustbox::cpu::{Decoder, R};
 use dustbox::memory::MemoryAddress;
 use dustbox::tools;
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        panic!("filename not supplied");
-    }
-    let filename = &args[1];
+extern crate clap;
+use clap::{Arg, App};
 
+mod tracer;
+
+fn main() {
+    let matches = App::new("disassembler_dustbox")
+            .version("0.1")
+            .arg(Arg::with_name("INPUT")
+                .help("Sets the input file to use")
+                .required(true)
+                .index(1))
+            .arg(Arg::with_name("trace")
+                .long("trace")
+                .help("Trace jump destinations while disassembling"))
+            .get_matches();
+
+    let filename = matches.value_of("INPUT").unwrap();
     println!("Opening {}", filename);
 
+    if matches.is_present("trace") {
+        trace_disassembly(filename);
+    } else {
+        flat_disassembly(filename);
+    }
+}
+
+fn flat_disassembly(filename: &str) {
     let mut machine = Machine::default();
     machine.cpu.deterministic = true;
     match tools::read_binary(filename) {
@@ -34,4 +50,15 @@ fn main() {
             break;
         }
     }
+}
+
+fn trace_disassembly(filename: &str) {
+    let mut machine = Machine::default();
+    machine.cpu.deterministic = true;
+    match tools::read_binary(filename) {
+        Ok(data) => machine.load_executable(&data),
+        Err(err) => panic!("failed to read {}: {}", filename, err),
+    }
+    let mut tracer = tracer::Tracer::new();
+    tracer.trace_execution(&mut machine);
 }

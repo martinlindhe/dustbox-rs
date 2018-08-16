@@ -330,7 +330,6 @@ fn games_com() {
         "../dos-software-decoding/games-com/Kenguru (1997)(Pig Games)/keng.com",
         "../dos-software-decoding/games-com/Logical (1991)(Rainbow Arts)/logctrn1.com",
         "../dos-software-decoding/games-com/Madball (1985)(Microtec)/madball.com",
-        "../dos-software-decoding/games-com/Megapede (1992)(Dom Early)/megapede.com",
         "../dos-software-decoding/games-com/Mind Field (1985)(Everett Kaser)/mine.com",
         "../dos-software-decoding/games-com/Ms Pacman (1983)(Atari Inc)/mspacman.com",
         "../dos-software-decoding/games-com/Mummies (1985)(Iain Brown)/mummies.com",

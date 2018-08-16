@@ -1,6 +1,6 @@
 
 /// represents a memory address inside the vm
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum MemoryAddress {
     /// a real mode segment:offset pair (0_0000 - F_FFFF)
     RealSegmentOffset(u16, u16),

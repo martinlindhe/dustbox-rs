@@ -8,4 +8,5 @@ name = "dustbox-disasm"
 path = "src/disassembler-main.rs"
 
 [dependencies]
+clap = "2.32"
 dustbox = { path = "../" }
