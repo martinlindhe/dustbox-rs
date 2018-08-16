@@ -88,10 +88,10 @@ impl Debugger {
 
     pub fn step_over(&mut self) {
         let mut decoder = Decoder::default();
-        let op = decoder.get_instruction_info(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(R::CS), self.machine.cpu.regs.ip);
-
-        let dst_ip = self.machine.cpu.regs.ip + op.bytes.len() as u16;
-        println!("Step-over running to {:04X}", dst_ip);
+        let cs = self.machine.cpu.get_r16(R::CS);
+        let op = decoder.get_instruction_info(&mut self.machine.hw.mmu, cs, self.machine.cpu.regs.ip);
+        let dst = MemoryAddress::RealSegmentOffset(cs, self.machine.cpu.regs.ip + op.bytes.len() as u16);
+        println!("Step-over running to {:04X}:{:04X}", dst.segment(), dst.offset());
 
         let mut cnt = 0;
         loop {
@@ -100,13 +100,14 @@ impl Debugger {
             if self.should_break() {
                 break;
             }
-            if self.machine.cpu.regs.ip == dst_ip {
+            if self.machine.cpu.get_address() == dst.value() {
                 break;
             }
         }
         println!(
-            "Step-over to {:04X} done, executed {} instructions ({} total)",
-            dst_ip,
+            "Step-over to {:04X}:{:04X} done, executed {} instructions ({} total)",
+            dst.segment(),
+            dst.offset(),
             cnt,
             self.machine.cpu.instruction_count
         );
