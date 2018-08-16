@@ -22,7 +22,8 @@ fn main() {
             .get_matches();
 
     let filename = matches.value_of("INPUT").unwrap();
-    println!("Opening {}", filename);
+    println!("# Input file {}", filename);
+    println!("");
 
     if matches.is_present("trace") {
         trace_disassembly(filename);
@@ -61,4 +62,5 @@ fn trace_disassembly(filename: &str) {
     }
     let mut tracer = tracer::Tracer::new();
     tracer.trace_execution(&mut machine);
+    tracer.present_trace(&mut machine);
 }

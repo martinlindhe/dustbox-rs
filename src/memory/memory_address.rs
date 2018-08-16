@@ -1,6 +1,8 @@
+use std::cmp;
+use std::fmt;
 
 /// represents a memory address inside the vm
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MemoryAddress {
     /// a real mode segment:offset pair (0_0000 - F_FFFF)
     RealSegmentOffset(u16, u16),
@@ -8,6 +10,33 @@ pub enum MemoryAddress {
     LongSegmentOffset(u16, u16),
     /// a unknown value
     Unset,
+}
+
+
+impl fmt::Display for MemoryAddress {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            MemoryAddress::RealSegmentOffset(seg, off) => {
+                write!(f, "{:04X}:{:04X}", seg, off)
+            }
+            MemoryAddress::LongSegmentOffset(seg, off) => {
+                panic!("XXX")
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl PartialOrd for MemoryAddress {
+    fn partial_cmp(&self, other: &MemoryAddress) -> Option<cmp::Ordering> {
+        Some(other.cmp(self))
+    }
+}
+
+impl Ord for MemoryAddress {
+    fn cmp(&self, other: &MemoryAddress) -> cmp::Ordering {
+        other.value().cmp(&self.value())
+    }
 }
 
 impl MemoryAddress {
