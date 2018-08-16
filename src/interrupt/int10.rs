@@ -266,9 +266,29 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
                         _ => panic!("VIDEO - GET FONT INFORMATION (EGA, MCGA, VGA): unhandled bh={:02X}", bh),
                     }
                 }
-                _ => {
-                    println!("int10 error: unknown ah=11, al={:02X}", cpu.get_r8(R::AL));
+                _ => println!("int10 error: unknown ah=11, al={:02X}", cpu.get_r8(R::AL)),
+            }
+        }
+        0x12 => {
+            match cpu.get_r8(R::BL) {
+                0x10 => {
+                    // VIDEO - ALTERNATE FUNCTION SELECT (PS, EGA, VGA, MCGA) - GET EGA INFO
+
+                    // Return:
+                    // BH = video state
+                    //      00h color mode in effect (I/O port 3Dxh)
+                    //      01h mono mode in effect (I/O port 3Bxh)
+                    // BL = installed memory (00h = 64K, 01h = 128K, 02h = 192K, 03h = 256K)
+                    // CH = feature connector bits (see #00022)
+                    // CL = switch settings (see #00023,#00024)
+
+                    // use return values as seen on win xp
+                    cpu.set_r8(R::BH, 0); // color mode in effect (I/O port 3Dxh)
+                    cpu.set_r8(R::BL, 3); // 256k
+                    cpu.set_r8(R::CH, 0);
+                    cpu.set_r8(R::CL, 9);
                 }
+                _ => println!("int10 error: unknown ah=12, bl={:02X}", cpu.get_r8(R::BL)),
             }
         }
         0x13 => {

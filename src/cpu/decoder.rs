@@ -1119,11 +1119,14 @@ impl Decoder {
                     OperandSize::_32bit => {
                         // r32, byte imm8
                         op.command = match x.reg {
+                            0 => Op::Rol32,
+                            1 => Op::Ror32,
+                            2 => Op::Rcl32,
                             3 => Op::Rcr32,
                             4 => Op::Shl32,
                             5 => Op::Shr32,
                             7 => Op::Sar32,
-                            _ => panic!("unhandled 0xc1 32bit reg {}, ip = {:04X}:{:04X}", x.reg, self.current_seg, self.current_offset),
+                            _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                         };
                         op.params.dst = self.rm32(&mut mmu, op, x.rm, x.md);
                         op.params.src = Parameter::Imm8(self.read_u8(mmu));

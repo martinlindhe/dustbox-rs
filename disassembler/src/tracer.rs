@@ -145,7 +145,7 @@ impl Tracer {
         // find a non-visited seen dest
         let ma = self.get_unvisited_destination();
         if let None = ma {
-            println!("XXX no more destinations to visit");
+            println!("ERROR: no destinations to visit");
             return;
         }
         let mut ma = ma.unwrap();
@@ -166,7 +166,9 @@ impl Tracer {
 
         loop {
             let ii = decoder.get_instruction_info(&mut machine.hw.mmu, ma.segment(), ma.offset());
-            // println!("{}", ii);
+            if DEBUG_TRACER {
+                println!("Found {}", ii);
+            }
 
             if self.has_visited_address(ma) {
                 // println!("XXX already been here! breaking");
@@ -176,13 +178,15 @@ impl Tracer {
             self.visited_addresses.push(ma);
 
             match ii.instruction.command {
-                Op::Invalid(_, _) => panic!("invalid/unhandled op {:?}", ii.instruction),
-                Op::JmpFar | Op::CallFar | Op::RetImm16 => panic!("XXX unhandled {:?}", ii.instruction),
+                Op::Invalid(_, _) => println!("ERROR: invalid/unhandled op {}", ii.instruction),
+                Op::JmpFar | Op::CallFar => println!("ERROR: ignoring unhandled {}", ii.instruction),
+                Op::RetImm16 => panic!("XXX unhandled {}", ii.instruction),
                 Op::Retn | Op::Retf => break,
                 Op::JmpNear | Op::JmpShort => {
                     match ii.instruction.params.dst {
                         Parameter::Imm16(imm) => self.learn_destination(ma.segment(), imm, ma),
-                        _ => panic!("unhandled dst type {:?}", ii.instruction.params.dst),
+                        Parameter::Reg16(_) => {}, // ignore "jmp bx"
+                        _ => println!("ERROR1: unhandled dst type {}", ii.instruction),
                     }
                     // if unconditional branch, abort trace this path
                     break;
@@ -194,13 +198,13 @@ impl Tracer {
                     // if conditional branch, record dst offset for later
                     match ii.instruction.params.dst {
                         Parameter::Imm16(imm) => self.learn_destination(ma.segment(), imm, ma),
-                        _ => panic!("unhandled dst type {:?}", ii.instruction.params.dst),
+                        _ => println!("ERROR2: unhandled dst type {}", ii.instruction),
                     }
                 }
                 _ => {},
             }
             ma.inc_n(ii.instruction.length as u16);
-            if ma.value() - machine.cpu.rom_base >= machine.cpu.rom_length {
+            if ma.value() as isize - machine.cpu.rom_base as isize >= machine.cpu.rom_length as isize {
                 println!("XXX breaking because we reached end of file");
                 break;
             }

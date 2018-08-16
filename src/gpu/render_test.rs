@@ -346,8 +346,12 @@ fn games_com() {
         "../dos-software-decoding/games-com/Shamus (1984)(Synapse Software)/shamus.com",
         "../dos-software-decoding/games-com/Rollo And The Brush Brothers (1983)(Windwill Software)/rollo.com",
         "../dos-software-decoding/games-com/Robotron 2084 (1984)(Williams Electronics)/rt2084.com",
+        "../dos-software-decoding/games-com/Turbo Bridge (1985)(Anonymous)/tbridge.com",
         "../dos-software-decoding/games-com/Triskelion (1987)(Neil Rubenking)/triskel.com",
+        "../dos-software-decoding/games-com/Vlak (1993)(Miroslav Nemecek)/vlak.com",
+        "../dos-software-decoding/games-com/Yatzy (1984)(Jan Ivar Gundersen)/yatzy.com",
         "../dos-software-decoding/games-com/Zaxxon (1984)(Sega)/zaxxon.com",
+        "../dos-software-decoding/games-com/Zyll (1984)(Marshal Linder)/zyll.com",
     ];
     run_and_save_video_frames(test_bins, "games_com", "game");
 }

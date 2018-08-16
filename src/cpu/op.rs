@@ -231,16 +231,21 @@ pub enum Op {
 
     Rcl8,
     Rcl16,
+    Rcl32,
     Rcr8,
     Rcr16,
     Rcr32,
+
     Retf,
     Retn,
     RetImm16,
+
     Rol8,
     Rol16,
+    Rol32,
     Ror8,
     Ror16,
+    Ror32,
 
     /// Store AH into Flags
     Sahf,
