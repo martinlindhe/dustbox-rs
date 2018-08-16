@@ -2208,11 +2208,17 @@ impl CPU {
 
     /// returns the absoute address of CS:IP
     pub fn get_address(&self) -> u32 {
-        MemoryAddress::RealSegmentOffset(self.get_r16(R::CS), self.regs.ip).value()
+        self.get_memory_address().value()
     }
 
+    /// returns cs, ip
     pub fn get_address_pair(&self) -> (u16, u16) {
         (self.get_r16(R::CS), self.regs.ip)
+    }
+
+    /// returns the address of CS:IP as a MemoryAddress::RealSegmentOffset
+    pub fn get_memory_address(&self) -> MemoryAddress {
+        MemoryAddress::RealSegmentOffset(self.get_r16(R::CS), self.regs.ip)
     }
 
     fn read_u8(&mut self, mmu: &MMU) -> u8 {

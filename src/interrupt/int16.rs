@@ -11,7 +11,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // AH = BIOS scan code
             // AL = ASCII character
             cpu.set_r16(R::AX, 0); // XXX
-            println!("XXX impl KEYBOARD - GET KEYSTROKE");
+            // println!("XXX impl KEYBOARD - GET KEYSTROKE");
         }
         0x01 => {
             // KEYBOARD - CHECK FOR KEYSTROKE

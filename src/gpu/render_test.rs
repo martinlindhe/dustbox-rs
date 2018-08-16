@@ -340,6 +340,13 @@ fn games_com() {
         "../dos-software-decoding/games-com/Pente (1984)(Michael Leach)/pente.com",
         "../dos-software-decoding/games-com/Pipes (1983)(Creative Software)/pipes.com",
         "../dos-software-decoding/games-com/Pong (1986)(Imagine)/pong21.com",
+        "../dos-software-decoding/games-com/Star Chamber (1987)(Russco)/starcham.com",
+        "../dos-software-decoding/games-com/Snake Game (1992)(Freeware)/snake.com",
+        "../dos-software-decoding/games-com/Sky Runner (1987)(Anonymous)/sky1.com",
+        "../dos-software-decoding/games-com/Sky Runner (1987)(Anonymous)/sky2.com",
+        "../dos-software-decoding/games-com/Shamus (1984)(Synapse Software)/shamus.com",
+        "../dos-software-decoding/games-com/Rollo And The Brush Brothers (1983)(Windwill Software)/rollo.com",
+        "../dos-software-decoding/games-com/Robotron 2084 (1984)(Williams Electronics)/rt2084.com",
         "../dos-software-decoding/games-com/Triskelion (1987)(Neil Rubenking)/triskel.com",
         "../dos-software-decoding/games-com/Zaxxon (1984)(Sega)/zaxxon.com",
     ];
