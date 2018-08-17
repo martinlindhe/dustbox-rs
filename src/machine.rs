@@ -5,7 +5,7 @@ use gpu::GPU;
 use hardware::Hardware;
 use hex::hex_bytes;
 use memory::MMU;
-use ndisasm::ndisasm_bytes;
+use ndisasm::{ndisasm_bytes, ndisasm_first_instr};
 
 #[derive(Deserialize, Debug)]
 struct ExeHeader {
@@ -156,9 +156,7 @@ impl Machine {
     /// returns first line of disassembly
     fn external_disasm_of_bytes(&self, cs: u16, ip: u16) -> String {
         let bytes = self.hw.mmu.read(cs, ip, 16);
-        let s = ndisasm_bytes(&bytes).unwrap();
-        let ln = s.find('\n').unwrap();
-        s[0..ln].to_owned()
+        ndisasm_first_instr(&bytes).unwrap().to_owned()
     }
 
     pub fn execute_instruction(&mut self) {
