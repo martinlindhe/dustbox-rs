@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Op {
     /// ASCII Adjust After Addition
@@ -12,13 +14,9 @@ pub enum Op {
     /// ASCII Adjust AL After Subtraction
     Aas,
 
-    Adc8,
-    Adc16,
-    Add8,
-    Add16,
-    Add32,
-    And8,
-    And16,
+    Adc8, Adc16, Adc32,
+    Add8, Add16, Add32,
+    And8, And16, And32,
 
     /// Adjust RPL Field of Segment Selector
     Arpl,
@@ -33,8 +31,7 @@ pub enum Op {
     Bt,
 
     Bts,
-    CallFar,
-    CallNear,
+    CallNear, CallFar,
 
     /// Convert Byte to Word
     Cbw,
@@ -51,17 +48,11 @@ pub enum Op {
     /// Complement Carry Flag
     Cmc,
 
-    Cmp8,
-    Cmp16,
-    Cmp32,
-    Cmpsb,
-    Cmpsw,
+    Cmp8, Cmp16, Cmp32,
+    Cmpsb, Cmpsw,
 
     /// Convert Word to Doubleword
-    Cwd16,
-
-    /// Convert Word to Doubleword
-    Cwde32,
+    Cwd16, Cwde32,
 
     /// Decimal Adjust AL after Addition
     Daa,
@@ -69,34 +60,22 @@ pub enum Op {
     /// Decimal Adjust AL after Subtraction
     Das,
 
-    Dec8,
-    Dec16,
-    Dec32,
-    Div8,
-    Div16,
-    Div32,
+    Dec8, Dec16, Dec32,
+    Div8, Div16, Div32,
+
     Enter,
     Hlt,
-    Idiv8,
-    Idiv16,
-    Idiv32,
-    Imul8,
-    Imul16,
-    Imul32,
+
+    Idiv8, Idiv16, Idiv32,
+    Imul8, Imul16, Imul32,
 
     /// Input from Port
-    In8,
+    In8, In16,
 
-    /// Input from Port
-    In16,
-
-    Inc8,
-    Inc16,
-    Inc32,
+    Inc8, Inc16, Inc32,
 
     /// Input from Port to String
-    Insb,
-    Insw,
+    Insb, Insw,
 
     Int,
     Into,
@@ -117,9 +96,7 @@ pub enum Op {
     /// Jump if less (SF ≠ OF).    (alias: jnge)
     Jl,
 
-    JmpFar,
-    JmpNear,
-    JmpShort,
+    JmpShort, JmpNear, JmpFar,
 
     /// Jump if not above (CF=1 or ZF=1).    (alias: jbe)
     Jna,
@@ -164,49 +141,32 @@ pub enum Op {
 
     /// Load Effective Address
     Lea16,
+
     Leave,
+
     Les,
-    Lodsb,
-    Lodsw,
-    Lodsd,
-    Loop,
-    Loope,
-    Loopne,
-    Mov8,
-    Mov16,
-    Mov32,
-    Movsb,
-    Movsw,
-    Movsd,
+
+    Lodsb, Lodsw, Lodsd,
+
+    Loop, Loope, Loopne,
+
+    Mov8, Mov16, Mov32,
+    Movsb, Movsw, Movsd,
 
     /// Move with Sign-Extension
-    Movsx16,
-
-    /// Move with Sign-Extension
-    Movsx32,
+    Movsx16, Movsx32,
 
     /// Move with Zero-Extend
-    Movzx16,
+    Movzx16, Movzx32,
 
-    /// Move with Zero-Extend
-    Movzx32,
-    Mul8,
-    Mul16,
-    Mul32,
-    Neg8,
-    Neg16,
-    Neg32,
+    Mul8, Mul16, Mul32,
+    Neg8, Neg16, Neg32,
     Nop,
-    Not8,
-    Not16,
-    Or8,
-    Or16,
-    Out8,
-    Out16,
-    Outsb,
-    Outsw,
-    Pop16,
-    Pop32,
+    Not8, Not16, Not32,
+    Or8, Or16, Or32,
+    Out8, Out16,
+    Outsb, Outsw,
+    Pop16, Pop32,
 
     /// Pop DI, SI, BP, BX, DX, CX, and AX.
     Popa16,
@@ -217,8 +177,7 @@ pub enum Op {
     /// Pop top of stack into lower 16 bits of EFLAGS.
     Popf,
 
-    Push16,
-    Push32,
+    Push16, Push32,
 
     /// Push AX, CX, DX, BX, original SP, BP, SI, and DI.
     Pusha16,
@@ -229,23 +188,13 @@ pub enum Op {
     /// push 16 bit FLAGS register onto stack
     Pushf,
 
-    Rcl8,
-    Rcl16,
-    Rcl32,
-    Rcr8,
-    Rcr16,
-    Rcr32,
+    Rcl8, Rcl16, Rcl32,
+    Rcr8, Rcr16, Rcr32,
 
-    Retf,
-    Retn,
-    RetImm16,
+    Retn, Retf, RetImm16,
 
-    Rol8,
-    Rol16,
-    Rol32,
-    Ror8,
-    Ror16,
-    Ror32,
+    Rol8, Rol16, Rol32,
+    Ror8, Ror16, Ror32,
 
     /// Store AH into Flags
     Sahf,
@@ -256,36 +205,31 @@ pub enum Op {
     /// used by dos-software-decoding/demo-256/luminous/luminous.com
     Salc,
 
-    Sar8,
-    Sar16,
-    Sar32,
+    Sar8, Sar16, Sar32,
 
     /// Integer Subtraction with Borrow
-    Sbb8,
-    /// Integer Subtraction with Borrow
-    Sbb16,
+    Sbb8, Sbb16, Sbb32,
 
-    Scasb,
-    Scasw,
+    Scasb, Scasw,
 
     /// setc: Set byte if carry (CF=1).
-    /// setb (alias): Set byte if below (CF=1).
+    /// alias setb: Set byte if below (CF=1).
     Setc,
 
+    /// setg: Set byte if greater (ZF=0 and SF=OF).
+    /// alias setnle: Set byte if not less or equal (ZF=0 and SF=OF).
+    Setg,
+
     /// setnz: Set byte if not zero (ZF=0).
-    /// setne (alias): Set byte if not equal (ZF=0).
+    /// alias setne: Set byte if not equal (ZF=0).
     Setnz,
 
-    Shl8,
-    Shl16,
-    Shl32,
+    Shl8, Shl16, Shl32,
 
     /// Double Precision Shift Left
     Shld,
 
-    Shr8,
-    Shr16,
-    Shr32,
+    Shr8, Shr16, Shr32,
 
     /// Double Precision Shift Right
     Shrd,
@@ -301,28 +245,34 @@ pub enum Op {
     /// Set Interrupt Flag
     Sti,
 
-    Stosb,
-    Stosw,
-    Stosd,
-    Sub8,
-    Sub16,
-    Sub32,
-    Test8,
-    Test16,
+    Stosb, Stosw, Stosd,
+    Sub8, Sub16, Sub32,
+    Test8, Test16, Test32,
 
     /// Exchange Register/Memory with Register
-    Xchg8,
-    Xchg16,
-    Xchg32,
+    Xchg8, Xchg16, Xchg32,
 
     Xlatb,
 
-    Xor8,
-    Xor16,
-    Xor32,
+    Xor8, Xor16, Xor32,
 
     Uninitialized,
     Invalid(Vec<u8>, Invalid),
+}
+
+impl fmt::Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Op::Invalid(bytes, _) => {
+                let mut x = Vec::new();
+                for b in bytes {
+                    x.push(format!("{:02X}", b));
+                }
+                write!(f, "INVALID {}", x.join(", "))
+            }
+            _ => write!(f, "{:?}", self),
+        }
+    }
 }
 
 impl Op {

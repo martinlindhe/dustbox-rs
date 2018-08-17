@@ -222,6 +222,21 @@ impl Decoder {
                         op.command = Op::Jl;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
+                    0x8D => {
+                        // jnl rel16
+                        op.command = Op::Jnl;
+                        op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
+                    }
+                    0x8E => {
+                        // jng rel16
+                        op.command = Op::Jng;
+                        op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
+                    }
+                    0x8F => {
+                        // jg rel16
+                        op.command = Op::Jg;
+                        op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
+                    }
                     0x92 => {
                         // setc r/m8
                         let x = self.read_mod_reg_rm(mmu);
@@ -229,9 +244,15 @@ impl Decoder {
                         op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
                     }
                     0x95 => {
-                        // setnz r/m8  (alias setne)
+                        // setnz r/m8
                         let x = self.read_mod_reg_rm(mmu);
                         op.command = Op::Setnz;
+                        op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
+                    }
+                    0x9F => {
+                        // setg r/m8
+                        let x = self.read_mod_reg_rm(mmu);
+                        op.command = Op::Setg;
                         op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
                     }
                     0xA0 => {
@@ -853,7 +874,12 @@ impl Decoder {
                         op.params.src = Parameter::Imm32(self.read_u32(mmu));
                         op.command = match x.reg {
                             0 => Op::Add32,
+                            1 => Op::Or32,
+                            2 => Op::Adc32,
+                            3 => Op::Sbb32,
+                            4 => Op::And32,
                             5 => Op::Sub32,
+                            6 => Op::Xor32,
                             7 => Op::Cmp32,
                             _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                         };
@@ -886,6 +912,13 @@ impl Decoder {
                         op.params.src = Parameter::ImmS8(self.read_s8(mmu));
                         op.command = match x.reg {
                             0 => Op::Add32,
+                            1 => Op::Or32,
+                            2 => Op::Adc32,
+                            3 => Op::Sbb32,
+                            4 => Op::And32,
+                            5 => Op::Sub32,
+                            6 => Op::Xor32,
+                            7 => Op::Cmp32,
                             _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                         };
                     }
@@ -1403,7 +1436,7 @@ impl Decoder {
                     Op::Scasb | Op::Scasw => {
                         op.repeat = RepeatMode::Repe;
                     }
-                    _ => op.command = Op::Invalid(vec!(b), Invalid::Op), // XXX not encoding the instruction bytes after 0xf3 prefix
+                    _ => op.command = Op::Invalid(vec!(b), Invalid::Op), // XXX should encode the instruction bytes after 0xf3 prefix
                 }
                 return;
             }
@@ -1452,6 +1485,13 @@ impl Decoder {
                     OperandSize::_32bit => {
                         op.params.dst = self.rm32(&mut mmu, op, x.rm, x.md);
                         op.command = match x.reg {
+                            0 | 1 => {
+                                // test r/m32, imm32
+                                op.command = Op::Test32;
+                                op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                                panic!("XXX 32bit verify params: {}", op);
+                            }
+                            2 => Op::Not32,
                             3 => Op::Neg32,
                             4 => Op::Mul32,
                             5 => Op::Imul32,
@@ -1749,12 +1789,12 @@ impl Decoder {
 
     fn read_rel8(&mut self, mmu: &MMU) -> u16 {
         let val = self.read_s8(mmu);
-        (self.current_offset as i16 + i16::from(val)) as u16
+        (self.current_offset as isize + val as isize) as u16
     }
 
     fn read_rel16(&mut self, mmu: &MMU) -> u16 {
         let val = self.read_s16(mmu);
-        (self.current_offset as i16 + val) as u16
+        (self.current_offset as isize + val as isize) as u16
     }
 
     fn read_u8(&mut self, mmu: &MMU) -> u8 {

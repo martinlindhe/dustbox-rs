@@ -65,23 +65,37 @@ impl Instruction {
     }
 
     fn hide_segment_prefix(&self) -> bool {
-        self.command == Op::Add8 || self.command == Op::Add16 ||
-        self.command == Op::Adc8 || self.command == Op::Adc16 ||
-        self.command == Op::Sub8 || self.command == Op::Sub16 ||
-        self.command == Op::Sbb8 || self.command == Op::Sbb16 ||
+        self.command == Op::Add8 || self.command == Op::Add16 || self.command == Op::Add32 ||
+        self.command == Op::Adc8 || self.command == Op::Adc16 || self.command == Op::Adc32 ||
+        self.command == Op::Sub8 || self.command == Op::Sub16 || self.command == Op::Sub32 ||
+        self.command == Op::Sbb8 || self.command == Op::Sbb16 || self.command == Op::Sbb32 ||
         self.command == Op::Inc8 || self.command == Op::Inc16 || self.command == Op::Inc32 ||
         self.command == Op::Dec8 || self.command == Op::Dec16 || self.command == Op::Dec32 ||
+        self.command == Op::Mul8 || self.command == Op::Mul16 || self.command == Op::Mul32 ||
+        self.command == Op::Div8 || self.command == Op::Div16 || self.command == Op::Div32 ||
+        self.command == Op::Imul8 || self.command == Op::Imul16 || self.command == Op::Imul32 ||
+        self.command == Op::Idiv8 || self.command == Op::Idiv16 || self.command == Op::Idiv32 ||
+        self.command == Op::And8 || self.command == Op::And16 || self.command == Op::And32 ||
+        self.command == Op::Or8 || self.command == Op::Or16 || self.command == Op::Or32 ||
+        self.command == Op::Xor8 || self.command == Op::Xor16 || self.command == Op::Xor32 ||
+        self.command == Op::Cmp8 || self.command == Op::Cmp16 || self.command == Op::Cmp32 ||
+        self.command == Op::Test8 || self.command == Op::Test16 || self.command == Op::Test32 ||
+        self.command == Op::Xchg8 || self.command == Op::Xchg16 || self.command == Op::Xchg32 ||
         self.command == Op::Mov8 || self.command == Op::Mov16 || self.command == Op::Mov32 ||
-        self.command == Op::Movsx16 || self.command == Op::Movsx32
+        self.command == Op::Movsx16 || self.command == Op::Movsx32 || self.command == Op::Movzx16
     }
 
     fn describe_instruction(&self) -> String {
-        let prefix = self.repeat.as_str();
+        let op_space = 9;
+        let mut prefix = self.repeat.as_str().to_owned();
+        if prefix != "" {
+            prefix = right_pad(&prefix, op_space);
+        }
 
         match self.params.dst {
-            Parameter::None => format!("{}{:?}", prefix, self.command),
+            Parameter::None => format!("{}{}", prefix, self.command),
             _ => {
-                let cmd = right_pad(&format!("{}{:?}", prefix, self.command), 9);
+                let cmd = right_pad(&format!("{}{}", prefix, self.command), op_space);
 
                 match self.params.src2 {
                     Parameter::None => match self.params.src {
@@ -134,9 +148,9 @@ impl RepeatMode {
     fn as_str(&self) -> &str {
         match *self {
             RepeatMode::None => "",
-            RepeatMode::Rep => "Rep ",
-            RepeatMode::Repe => "Repe ",
-            RepeatMode::Repne => "Repne ",
+            RepeatMode::Rep => "Rep",
+            RepeatMode::Repe => "Repe",
+            RepeatMode::Repne => "Repne",
         }
     }
 }

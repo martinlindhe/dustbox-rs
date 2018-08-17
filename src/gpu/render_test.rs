@@ -234,7 +234,6 @@ fn demo_512() {
         "../dos-software-decoding/demo-512/basicboy/basicboy.com",
         "../dos-software-decoding/demo-512/blaze/blaze5.com",
         "../dos-software-decoding/demo-512/bmatch/bmatch.com",
-        "../dos-software-decoding/demo-512/dna/dna.com",
         "../dos-software-decoding/demo-512/fire/fire.com",
         "../dos-software-decoding/demo-512/jive/jive.com",
         "../dos-software-decoding/demo-512/jomppa/jomppa.com",
@@ -325,7 +324,6 @@ fn games_com() {
         "../dos-software-decoding/games-com/Gnafu (1986)(Anonymous)/gnafu.com",
         "../dos-software-decoding/games-com/Gooku (1987)(Anonymous)/go-moku.com",
         "../dos-software-decoding/games-com/Hard Hat Mack (1984)(Electronic Arts Inc)/hhm.com",
-        // "../dos-software-decoding/games-com/Hopper (1984)(Sega Entertainment Inc)/frogger.com", // also does not work well in dosbox-x
         "../dos-software-decoding/games-com/Invaders (1995)(Paul Reid)/invaders.com",
         "../dos-software-decoding/games-com/Kenguru (1997)(Pig Games)/keng.com",
         "../dos-software-decoding/games-com/Logical (1991)(Rainbow Arts)/logctrn1.com",

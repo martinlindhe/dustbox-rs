@@ -179,26 +179,33 @@ impl Tracer {
 
             match ii.instruction.command {
                 Op::Invalid(_, _) => println!("ERROR: invalid/unhandled op {}", ii.instruction),
-                Op::JmpFar | Op::CallFar => println!("ERROR: ignoring unhandled {}", ii.instruction),
                 Op::RetImm16 => panic!("XXX unhandled {}", ii.instruction),
                 Op::Retn | Op::Retf => break,
-                Op::JmpNear | Op::JmpShort => {
+                Op::JmpNear | Op::JmpFar | Op::JmpShort => {
                     match ii.instruction.params.dst {
                         Parameter::Imm16(imm) => self.learn_destination(ma.segment(), imm, ma),
                         Parameter::Reg16(_) => {}, // ignore "jmp bx"
-                        _ => println!("ERROR1: unhandled dst type {}", ii.instruction),
+                        Parameter::Ptr16(_, _) => {}, // ignore "jmp [0x4422]"
+                        Parameter::Ptr16Imm(_, _) => {}, // ignore "jmp far 0xFFFF:0x0000"
+                        Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "jmp [di+0x10]
+                        Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "jmp [si+0x662C]"
+                        _ => println!("ERROR1: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
                     }
                     // if unconditional branch, abort trace this path
                     break;
                 }
-                Op::CallNear | Op::Loop | Op::Loope | Op::Loopne |
+                Op::CallNear | Op::CallFar | Op::Loop | Op::Loope | Op::Loopne |
                 Op::Ja | Op::Jc | Op::Jcxz | Op::Jg | Op::Jl |
                 Op::Jna | Op::Jnc | Op::Jng | Op::Jnl | Op::Jno | Op::Jns | Op::Jnz |
                 Op::Jo | Op::Jpe | Op::Jpo | Op::Js | Op::Jz => {
                     // if conditional branch, record dst offset for later
                     match ii.instruction.params.dst {
                         Parameter::Imm16(imm) => self.learn_destination(ma.segment(), imm, ma),
-                        _ => println!("ERROR2: unhandled dst type {}", ii.instruction),
+                        Parameter::Reg16(_) => {}, // ignore "call bp"
+                        Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
+                        Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
+                        Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "call [bx-0x67A0]"
+                        _ => println!("ERROR2: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
                     }
                 }
                 _ => {},
