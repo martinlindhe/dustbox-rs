@@ -133,7 +133,6 @@ impl Tracer {
             self.accounted_bytes.push(ub);
         }
 
-        // XXX sort accounted bytes
         self.accounted_bytes.sort();
     }
 
