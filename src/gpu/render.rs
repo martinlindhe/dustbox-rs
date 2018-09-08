@@ -245,9 +245,9 @@ impl GPU {
 
         // Set some interrupt vectors
         match self.mode.cheight {
-            0...3 | 7 | 8 => mmu.write_vec(0x43, &self.font_8_first),
-            14 => mmu.write_vec(0x43, &self.font_14),
-            16 => mmu.write_vec(0x43, &self.font_16),
+            0...3 | 7 | 8 => mmu.write_vec(0x43, self.font_8_first),
+            14 => mmu.write_vec(0x43, self.font_14),
+            16 => mmu.write_vec(0x43, self.font_16),
             _ => {},
         }
     }
@@ -606,7 +606,7 @@ impl GPU {
         if !self.card.is_vga() {
             return;
         }
-        mmu.write_vec(0x43, &self.font_16);
+        mmu.write_vec(0x43, self.font_16);
         mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_CHAR_HEIGHT, 16);
         let val = match row {
             0x00 => dl - 1, // row 0 = user specified in DL
@@ -859,7 +859,7 @@ impl GPU {
         }
 
         // cga font
-        self.font_8_first = addr.clone();
+        self.font_8_first = addr;
         if DEBUG_FONT {
             println!("font_8_first = {:04X}:{:04X}", self.font_8_first.segment(), self.font_8_first.offset());
         }
@@ -869,7 +869,7 @@ impl GPU {
 
         if self.card.is_ega_vga() {
             // cga second half
-            self.font_8_second = addr.clone();
+            self.font_8_second = addr;
             if DEBUG_FONT {
                 println!("font_8_second = {:04X}:{:04X}", self.font_8_second.segment(), self.font_8_second.offset());
             }
@@ -880,7 +880,7 @@ impl GPU {
 
         if self.card.is_ega_vga() {
             // ega font
-            self.font_14 = addr.clone();
+            self.font_14 = addr;
             if DEBUG_FONT {
                 println!("font_14 = {:04X}:{:04X}", self.font_14.segment(), self.font_14.offset());
             }
@@ -891,7 +891,7 @@ impl GPU {
 
         if self.card.is_vga() {
             // vga font
-            self.font_16 = addr.clone();
+            self.font_16 = addr;
             if DEBUG_FONT {
                 println!("font_16 = {:04X}:{:04X}", self.font_16.segment(), self.font_16.offset());
             }
@@ -899,25 +899,25 @@ impl GPU {
                 mmu.write_u8_inc(&mut addr, font::FONT_16[i]);
             }
 
-            self.static_config = addr.clone();
+            self.static_config = addr;
             for item in STATIC_FUNCTIONALITY.iter().take(0x10) {
                 mmu.write_u8_inc(&mut addr, *item);
             }
         }
 
-        mmu.write_vec(0x1F, &self.font_8_second);
-        self.font_14_alternate = addr.clone();
-        self.font_16_alternate = addr.clone();
+        mmu.write_vec(0x1F, self.font_8_second);
+        self.font_14_alternate = addr;
+        self.font_16_alternate = addr;
 
         mmu.write_u8_inc(&mut addr, 0x00); // end of table (empty)
 
         if self.card.is_ega_vga() {
-            self.video_parameter_table = addr.clone();
+            self.video_parameter_table = addr;
             self.setup_video_parameter_table(&mut mmu, &mut addr);
 
             let mut video_save_pointer_table: u32 = 0;
             if self.card.is_vga() {
-                self.video_dcc_table = addr.clone();
+                self.video_dcc_table = addr;
                 mmu.write_u8_inc(&mut addr, 0x10); // number of entries
                 mmu.write_u8_inc(&mut addr, 1);    // version number
                 mmu.write_u8_inc(&mut addr, 8);    // maximum display code
@@ -966,7 +966,7 @@ impl GPU {
         }
 
         if self.card.is_tandy() {
-            mmu.write_vec(0x44, &self.font_8_first);
+            mmu.write_vec(0x44, self.font_8_first);
         }
     }
 }

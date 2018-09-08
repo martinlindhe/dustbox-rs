@@ -45,24 +45,24 @@ impl MemoryAddress {
     }
 
     /// translates a segment:offset pair to a physical (flat) address
-    pub fn value(&self) -> u32 {
-        match *self {
+    pub fn value(self) -> u32 {
+        match self {
             MemoryAddress::RealSegmentOffset(seg, off) => (u32::from(seg) << 4) + u32::from(off),
             MemoryAddress::LongSegmentOffset(seg, off) => (u32::from(seg) << 16) + u32::from(off),
             _ => unreachable!(),
         }
     }
 
-    pub fn segment(&self) -> u16 {
-        match *self {
+    pub fn segment(self) -> u16 {
+        match self {
             MemoryAddress::RealSegmentOffset(seg, _) |
             MemoryAddress::LongSegmentOffset(seg, _) => seg,
             _ => unreachable!(),
         }
     }
 
-    pub fn offset(&self) -> u16 {
-        match *self {
+    pub fn offset(self) -> u16 {
+        match self {
             MemoryAddress::RealSegmentOffset(_, off) |
             MemoryAddress::LongSegmentOffset(_, off) => off,
             _ => unreachable!(),

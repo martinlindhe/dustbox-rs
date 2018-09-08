@@ -139,7 +139,7 @@ impl MMU {
     }
 
     /// write interrupt vector
-    pub fn write_vec(&mut self, v: u16, data: &MemoryAddress) {
+    pub fn write_vec(&mut self, v: u16, data: MemoryAddress) {
         let v_abs = u32::from(v) << 2;
         self.memory.borrow_mut().write_u16(v_abs, data.segment());
         self.memory.borrow_mut().write_u16(v_abs + 2, data.offset());

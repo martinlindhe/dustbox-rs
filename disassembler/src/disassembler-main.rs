@@ -1,7 +1,6 @@
 extern crate dustbox;
 use dustbox::machine::Machine;
-use dustbox::cpu::{Decoder, R};
-use dustbox::memory::MemoryAddress;
+use dustbox::cpu::Decoder;
 use dustbox::tools;
 
 extern crate clap;
@@ -44,7 +43,7 @@ fn flat_disassembly(filename: &str) {
     }
 
     let mut decoder = Decoder::default();
-    let mut ma = MemoryAddress::RealSegmentOffset(machine.cpu.get_r16(R::CS), machine.cpu.regs.ip);
+    let mut ma = machine.cpu.get_memory_address();
 
     loop {
         let op = decoder.get_instruction_info(&mut machine.hw.mmu, ma.segment(), ma.offset());
