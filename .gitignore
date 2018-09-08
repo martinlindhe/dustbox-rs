@@ -1,3 +1,6 @@
 /target/
 *.rs.bk
 *.glade~
+
+# temporary solution for not comitting misc text files
+*.txt

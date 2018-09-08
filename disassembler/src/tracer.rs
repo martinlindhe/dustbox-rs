@@ -1,6 +1,14 @@
+use std::cmp;
+
 use dustbox::machine::Machine;
 use dustbox::cpu::{Decoder, R, Op, Parameter};
 use dustbox::memory::MemoryAddress;
+use dustbox::string::right_pad;
+use dustbox::hex::hex_bytes;
+
+#[cfg(test)]
+#[path = "./tracer_test.rs"]
+mod tracer_test;
 
 const DEBUG_TRACER: bool = false;
 
@@ -18,6 +26,35 @@ pub struct Tracer {
 
     /// flat addresses of start of each visited opcode
     visited_addresses: Vec<MemoryAddress>,
+
+    /// finalized analysis result
+    accounted_bytes: Vec<GuessedDataAddress>,
+}
+
+#[derive(Clone, Eq, PartialEq)]
+enum GuessedDataType {
+    InstrStart,
+    InstrContinuation,
+    UnknownByte,
+}
+
+#[derive(Eq, PartialEq)]
+struct GuessedDataAddress {
+    kind: GuessedDataType,
+    address: MemoryAddress,
+}
+
+
+impl PartialOrd for GuessedDataAddress {
+    fn partial_cmp(&self, other: &GuessedDataAddress) -> Option<cmp::Ordering> {
+        Some(other.cmp(self))
+    }
+}
+
+impl Ord for GuessedDataAddress {
+    fn cmp(&self, other: &GuessedDataAddress) -> cmp::Ordering {
+        other.address.value().cmp(&self.address.value())
+    }
 }
 
 impl Tracer {
@@ -25,6 +62,7 @@ impl Tracer {
         Tracer {
             seen_destinations: Vec::new(),
             visited_addresses: Vec::new(),
+            accounted_bytes: Vec::new(),
         }
     }
 
@@ -36,57 +74,129 @@ impl Tracer {
         loop {
             self.trace_unvisited_destination(machine);
             if !self.has_any_unvisited_destinations() {
-                // println!("exhausted all destinations, breaking!");
+                if DEBUG_TRACER {
+                    println!("exhausted all destinations, breaking!");
+                }
                 break;
             }
         }
+
+        self.post_process_execution(machine);
+    }
+
+    fn post_process_execution(&mut self, machine: &mut Machine) {
+        // walk each byte of the loaded rom and check w instr lengths
+        // if any bytes are not known to occupy, allows for us to show them as data
+        let mut decoder = Decoder::default();
+
+        for ma in &self.visited_addresses {
+            // translate address into physical offset
+            let abs = (ma.value() - machine.rom_base.offset() as u32) as usize;
+
+            let ii = decoder.get_instruction_info(&mut machine.hw.mmu, ma.segment(), ma.offset());
+
+            let mut adr = ma.clone();
+            self.accounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::InstrStart, address: adr});
+            if  DEBUG_TRACER {
+                println!("add start instr at {}", adr);
+            }
+            for _ in abs + 1..(abs + ii.instruction.length as usize) {
+                adr.inc_u8();
+                self.accounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::InstrContinuation, address: adr.clone()});
+                if  DEBUG_TRACER {
+                    println!("add continuation instr at {}", adr);
+                }
+            }
+        }
+
+        // xxx find all unvisited offsets
+        let mut unaccounted_bytes = vec![];
+        for ofs in (machine.rom_base.offset() as usize)..(machine.rom_base.offset() as usize + machine.rom_length) {
+            let adr = MemoryAddress::RealSegmentOffset(machine.rom_base.segment(), ofs as u16);
+
+            let mut found = false;
+            for ab in &self.accounted_bytes {
+                if ab.address == adr {
+                    found = true;
+                    break;
+                }
+            }
+            if !found {
+                if  DEBUG_TRACER {
+                    println!("address is unaccounted {}", adr);
+                }
+                unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownByte, address: adr});
+            }
+        }
+
+        for ub in unaccounted_bytes {
+            self.accounted_bytes.push(ub);
+        }
+
+        // XXX sort accounted bytes
+        self.accounted_bytes.sort();
     }
 
     /// presents a flatish traced disassembly
-    pub fn present_trace(&mut self, machine: &mut Machine) {
-        // sort offsets
-        self.visited_addresses.sort();
+    pub fn present_trace(&mut self, machine: &mut Machine) -> String {
 
-        let mut prev_end = 0;
+        // Displays decoded instructions at the known instruction offsets
         let mut decoder = Decoder::default();
-        for ma in &self.visited_addresses {
-            // decode op at this address and show it
-            let ii = decoder.get_instruction_info(&mut machine.hw.mmu, ma.segment(), ma.offset());
+        let mut res = String::new();
 
-            if prev_end != 0 {
-                if prev_end != ma.value() {
-                    // prev op was not aligned to this one, so show newline sepatator
-                    println!("");
+        for ab in &self.accounted_bytes {
+            match ab.kind {
+                GuessedDataType::InstrStart => {
+                    let ii = decoder.get_instruction_info(&mut machine.hw.mmu, ab.address.segment(), ab.address.offset());
+                    let xref = self.render_xref(&ab.address);
+                    if xref != "" {
+                        let ins = format!("{}", ii);
+                        res.push_str(&format!("{}{}", right_pad(&ins, 68), xref));
+                    } else {
+                        res.push_str(&format!("{}", ii));
+                    }
+                    res.push('\n');
+                }
+                GuessedDataType::InstrContinuation => {},
+                GuessedDataType::UnknownByte => {
+                    let ii = decoder.get_instruction_info(&mut machine.hw.mmu, ab.address.segment(), ab.address.offset());
+                    res.push_str(&format!("[{}] {}               db       0x{:02x}", ab.address, hex_bytes(&ii.bytes), ii.bytes[0]));
+                    res.push('\n');
                 }
             }
-
-            // show branch cross references
-            if let Some(mut sources) = self.get_sources_for_destination(*ma) {
-                print!("; xref: ");
-                sources.sort();
-                let mut source_offsets = Vec::new();
-                for src in &sources {
-                    source_offsets.push(format!("{:04X}:{:04X}", src.segment(), src.offset()));
-                }
-                println!("{}", source_offsets.join(", "));
-            }
-
-            prev_end = MemoryAddress::RealSegmentOffset(ma.segment(), ma.offset() + ii.instruction.length as u16).value();
-            println!("{}", ii);
         }
+
+        res
+    }
+
+    /// show branch cross references
+    fn render_xref(&self, ma: &MemoryAddress) -> String {
+        let mut s = String::new();
+        if let Some(mut sources) = self.get_sources_for_destination(*ma) {
+            sources.sort();
+            let mut source_offsets = Vec::new();
+            for src in &sources {
+                source_offsets.push(format!("{:04X}:{:04X}", src.segment(), src.offset()));
+            }
+            s = format!("; xref: {}", source_offsets.join(", "));
+        }
+
+        s
     }
 
     fn learn_destination(&mut self, seg: u16, offset: u16, src: MemoryAddress) {
         let ma = MemoryAddress::RealSegmentOffset(seg, offset);
         for seen in &mut self.seen_destinations {
             if seen.address.value() == ma.value() {
-                // println!("address was already learned! [{:04X}:{:04X}] == {:06X}", seg, offset, dst);
+                if DEBUG_TRACER {
+                    println!("learn_destination src [{:04X}:{:04X}]", seg, offset);
+                }
                 seen.sources.push(src);
                 return;
             }
         }
         if DEBUG_TRACER {
-            println!("learn_destination [{:04X}:{:04X}]", seg, offset);
+            println!("learn_destination dst [{:04X}:{:04X}]", seg, offset);
         }
         self.seen_destinations.push(SeenDestination{address: ma, visited: false, sources: vec!(src)});
     }
@@ -124,7 +234,9 @@ impl Tracer {
     fn mark_destination_visited(&mut self, ma: MemoryAddress) {
          for dst in &mut self.seen_destinations {
             if dst.address == ma {
-                // println!("XXX mark_destination_visited {:04X}:{:04X}", ma.segment(), ma.offset());
+                if DEBUG_TRACER {
+                    println!("mark_destination_visited {:04X}:{:04X}", ma.segment(), ma.offset());
+                }
                 dst.visited = true;
                 return;
             }
@@ -153,7 +265,9 @@ impl Tracer {
 
         // if destination has been visited, mark and return
         if self.has_visited_address(ma) {
-            // println!("We've already visited {:04X}:{:04X} == {:06X}, marking destination visited!", ma.segment(), ma.offset(), ma.value());
+            if DEBUG_TRACER {
+                println!("We've already visited {:04X}:{:04X} == {:06X}, marking destination visited!", ma.segment(), ma.offset(), ma.value());
+            }
             self.mark_destination_visited(start_ma);
             return;
         }
@@ -171,9 +285,12 @@ impl Tracer {
             }
 
             if self.has_visited_address(ma) {
-                // println!("XXX already been here! breaking");
+                if DEBUG_TRACER {
+                    println!("already been here! breaking");
+                }
                 break;
             }
+
             // mark visited_address
             self.visited_addresses.push(ma);
 
@@ -211,8 +328,9 @@ impl Tracer {
                 _ => {},
             }
             ma.inc_n(ii.instruction.length as u16);
-            if ma.value() as isize - machine.cpu.rom_base as isize >= machine.cpu.rom_length as isize {
-                println!("XXX breaking because we reached end of file");
+
+            if (ma.offset() - machine.rom_base.offset()) as isize >= machine.rom_length as isize {
+                println!("XXX breaking because we reached end of file at offset {:04X}:{:04X} (indicates incorrect parsing)", ma.segment(), ma.offset());
                 break;
             }
         }

@@ -39,12 +39,6 @@ pub struct CPU {
     /// general purpose registers, segment registers, ip
     pub regs: RegisterSnapshot,
 
-    /// base offset where rom was loaded
-    pub rom_base: u32,
-
-    /// length of loaded rom in bytes (used by disassembler)
-    pub rom_length: u32,
-
     /// signals to debugger we hit an error (used by debugger)
     pub fatal_error: bool,
 
@@ -61,8 +55,6 @@ impl CPU {
             instruction_count: 0,
             cycle_count: 0,
             regs: RegisterSnapshot::default(),
-            rom_base: 0,
-            rom_length: 0,
             fatal_error: false,
             deterministic: false,
             decoder: Decoder::default(),
@@ -92,11 +84,6 @@ impl CPU {
 
     pub fn set_r32(&mut self, r: R, val: u32) {
         self.regs.set_r32(r, val);
-    }
-
-    /// base address the rom was loaded to
-    pub fn get_rom_base(&self) -> u32 {
-        self.rom_base
     }
 
     pub fn execute(&mut self, mut hw: &mut Hardware, op: &Instruction) {

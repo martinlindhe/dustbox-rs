@@ -10,3 +10,6 @@ path = "src/disassembler-main.rs"
 [dependencies]
 clap = "2.32"
 dustbox = { path = "../" }
+
+[dev-dependencies]
+pretty_assertions = "0.5"

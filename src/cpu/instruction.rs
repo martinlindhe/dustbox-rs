@@ -5,6 +5,7 @@ use cpu::Op;
 use cpu::{Parameter, ParameterSet};
 use cpu::{OperandSize, AddressSize};
 use hex::hex_bytes;
+use string::right_pad;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Instruction {
@@ -174,16 +175,4 @@ impl ModRegRm {
         // XXX ModRegRm.rm really should use enum AMode, not like AMode is now. naming there is wrong
         ModRegRm{md: 3, rm, reg}.u8()
     }
-}
-
-fn right_pad(s: &str, len: usize) -> String {
-    let mut res = String::new();
-    res.push_str(s);
-    if s.len() < len {
-        let padding_len = len - s.len();
-        for _ in 0..padding_len {
-            res.push_str(" ");
-        }
-    }
-    res
 }

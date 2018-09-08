@@ -20,7 +20,7 @@ impl fmt::Display for MemoryAddress {
                 write!(f, "{:04X}:{:04X}", seg, off)
             }
             MemoryAddress::LongSegmentOffset(seg, off) => {
-                panic!("XXX")
+                write!(f, "{:08X}:{:08X}", seg, off)
             }
             _ => unreachable!(),
         }
@@ -40,6 +40,10 @@ impl Ord for MemoryAddress {
 }
 
 impl MemoryAddress {
+    pub fn default_real() -> MemoryAddress {
+        MemoryAddress::RealSegmentOffset(0, 0)
+    }
+
     /// translates a segment:offset pair to a physical (flat) address
     pub fn value(&self) -> u32 {
         match *self {

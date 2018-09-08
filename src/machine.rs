@@ -4,7 +4,7 @@ use cpu::{CPU, Op, Invalid, R, RegisterSnapshot, Segment, OperandSize};
 use gpu::GPU;
 use hardware::Hardware;
 use hex::hex_bytes;
-use memory::MMU;
+use memory::{MMU, MemoryAddress};
 use ndisasm::{ndisasm_bytes, ndisasm_first_instr};
 
 #[derive(Deserialize, Debug)]
@@ -39,6 +39,12 @@ struct Exe {
 pub struct Machine {
     pub hw: Hardware,
     pub cpu: CPU,
+
+    /// base offset where rom was loaded
+    pub rom_base: MemoryAddress,
+
+    /// length of loaded rom in bytes (used by disassembler)
+    pub rom_length: usize,
 }
 
 impl Machine {
@@ -46,6 +52,8 @@ impl Machine {
         Machine {
             cpu: CPU::default(),
             hw: Hardware::default(),
+            rom_base: MemoryAddress::default_real(),
+            rom_length: 0,
         }
     }
 
@@ -96,6 +104,7 @@ impl Machine {
 
     /// load .com program into CS:0100 and set IP to program start
     fn load_com(&mut self, data: &[u8]) {
+
         // CS,DS,ES,SS = PSP segment
         let psp_segment = 0x085F; // is what dosbox used
         self.cpu.set_r16(R::CS, psp_segment);
@@ -115,9 +124,8 @@ impl Machine {
         self.cpu.set_r16(R::DI, 0xFFFE); // XXX 0x1000 on .exe
 
         self.cpu.regs.ip = 0x0100;
-        let min = self.cpu.get_address();
-        self.cpu.rom_base = min;
-        self.cpu.rom_length = data.len() as u32;
+        self.rom_base = self.cpu.get_memory_address();
+        self.rom_length = data.len();
 
         let cs = self.cpu.get_r16(R::CS);
         self.hw.mmu.write(cs, self.cpu.regs.ip, data);

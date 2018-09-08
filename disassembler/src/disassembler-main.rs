@@ -9,6 +9,9 @@ use clap::{Arg, App};
 
 mod tracer;
 
+#[cfg(test)] #[macro_use]
+extern crate pretty_assertions;
+
 fn main() {
     let matches = App::new("disassembler_dustbox")
             .version("0.1")
@@ -47,7 +50,7 @@ fn flat_disassembly(filename: &str) {
         let op = decoder.get_instruction_info(&mut machine.hw.mmu, ma.segment(), ma.offset());
         println!("{}", op);
         ma.inc_n(op.bytes.len() as u16);
-        if ma.value() - machine.cpu.rom_base >= machine.cpu.rom_length {
+        if ma.value() - machine.rom_base.offset() as u32 >= machine.rom_length as u32 {
             break;
         }
     }
@@ -62,5 +65,5 @@ fn trace_disassembly(filename: &str) {
     }
     let mut tracer = tracer::Tracer::new();
     tracer.trace_execution(&mut machine);
-    tracer.present_trace(&mut machine);
+    println!("{}", tracer.present_trace(&mut machine));
 }

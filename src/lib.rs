@@ -35,5 +35,6 @@ pub mod codepage;
 pub mod tools;
 pub mod hex;
 pub mod ndisasm;
+pub mod string;
 
 mod interrupt;

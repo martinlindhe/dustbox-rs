@@ -430,7 +430,7 @@ impl Debugger {
 
     fn show_flat_address(&mut self) {
         let offset = self.machine.cpu.get_address();
-        let rom_offset = offset - self.machine.cpu.get_rom_base() + 0x100;
+        let rom_offset = offset - self.machine.rom_base.offset() as u32 + 0x100;
         println!(
             "{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
             self.machine.cpu.get_r16(R::CS),
