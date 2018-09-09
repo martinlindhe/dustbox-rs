@@ -1,16 +1,27 @@
 use std::cmp;
 
-use dustbox::machine::Machine;
-use dustbox::cpu::{Decoder, R, Op, Parameter};
-use dustbox::memory::MemoryAddress;
-use dustbox::string::right_pad;
-use dustbox::hex::hex_bytes;
+use machine::Machine;
+use cpu::{Decoder, R, Op, Parameter};
+use memory::MemoryAddress;
+use string::right_pad;
+use hex::hex_bytes;
 
 #[cfg(test)]
 #[path = "./tracer_test.rs"]
 mod tracer_test;
 
 const DEBUG_TRACER: bool = false;
+
+/// ProgramTracer holds the state of the program being analyzed
+pub struct ProgramTracer {
+    seen_destinations: Vec<SeenDestination>,
+
+    /// flat addresses of start of each visited opcode
+    visited_addresses: Vec<MemoryAddress>,
+
+    /// finalized analysis result
+    accounted_bytes: Vec<GuessedDataAddress>,
+}
 
 struct SeenDestination {
     /// segment:offset converted into real flat addresses
@@ -19,16 +30,6 @@ struct SeenDestination {
     sources: Vec<MemoryAddress>,
 
     visited: bool,
-}
-
-pub struct Tracer {
-    seen_destinations: Vec<SeenDestination>,
-
-    /// flat addresses of start of each visited opcode
-    visited_addresses: Vec<MemoryAddress>,
-
-    /// finalized analysis result
-    accounted_bytes: Vec<GuessedDataAddress>,
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -57,9 +58,9 @@ impl Ord for GuessedDataAddress {
     }
 }
 
-impl Tracer {
+impl ProgramTracer {
     pub fn new() -> Self {
-        Tracer {
+        ProgramTracer {
             seen_destinations: Vec::new(),
             visited_addresses: Vec::new(),
             accounted_bytes: Vec::new(),
@@ -109,7 +110,7 @@ impl Tracer {
             }
         }
 
-        // xxx find all unvisited offsets
+        // find all unvisited offsets
         let mut unaccounted_bytes = vec![];
         for ofs in (machine.rom_base.offset() as usize)..(machine.rom_base.offset() as usize + machine.rom_length) {
             let adr = MemoryAddress::RealSegmentOffset(machine.rom_base.segment(), ofs as u16);

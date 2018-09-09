@@ -1,15 +1,10 @@
 extern crate dustbox;
 use dustbox::machine::Machine;
-use dustbox::cpu::Decoder;
+use dustbox::cpu::{Decoder, ProgramTracer};
 use dustbox::tools;
 
 extern crate clap;
 use clap::{Arg, App};
-
-mod tracer;
-
-#[cfg(test)] #[macro_use]
-extern crate pretty_assertions;
 
 fn main() {
     let matches = App::new("disassembler_dustbox")
@@ -62,7 +57,7 @@ fn trace_disassembly(filename: &str) {
         Ok(data) => machine.load_executable(&data),
         Err(err) => panic!("failed to read {}: {}", filename, err),
     }
-    let mut tracer = tracer::Tracer::new();
+    let mut tracer = ProgramTracer::new();
     tracer.trace_execution(&mut machine);
     println!("{}", tracer.present_trace(&mut machine));
 }

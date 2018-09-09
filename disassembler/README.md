@@ -11,6 +11,4 @@
 ../dos-software-decoding/demo-256/optimize/optimize.com:
     [085F:01EA] CD20             Int      0x20          ; DOS 1+ - TERMINATE PROGRAM
 
-- show all data not identified as code as "db"
-
 - remember data offsets and sizes (bytes, words, strings... ?)

@@ -1,7 +1,5 @@
-use dustbox::machine::Machine;
-
-use tracer;
-
+use machine::Machine;
+use cpu::ProgramTracer;
 
 #[test]
 fn trace_simple() {
@@ -15,7 +13,7 @@ fn trace_simple() {
     ];
     machine.load_executable(&code);
 
-    let mut tracer = tracer::Tracer::new();
+    let mut tracer = ProgramTracer::new();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
     assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004
@@ -39,7 +37,7 @@ fn trace_unreferenced_data() {
     ];
     machine.load_executable(&code);
 
-    let mut tracer = tracer::Tracer::new();
+    let mut tracer = ProgramTracer::new();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
     println!("{}", res);
@@ -60,7 +58,7 @@ fn trace_data_ref() {
     let code: Vec<u8> = vec![
         0xBA, 0x10, 0x01,       // mov dx,0x110
         0xB4, 0x09,             // mov ah,0x9
-        0xCD, 0x21,             // int 0x21
+        0xCD, 0x21,             // int 0x21     ; print $-string at cs:dx XXX ?
         0x8B, 0x0E, 0x1D, 0x01, // mov cx,[0x11d]
         0xE9, 0x09, 0x00,       // jmp place
         0xB8, 0x00, 0x4C,       // mov ax,0x4c00        ; label exit
@@ -78,7 +76,7 @@ fn trace_data_ref() {
     ];
     machine.load_executable(&code);
 
-    let mut tracer = tracer::Tracer::new();
+    let mut tracer = ProgramTracer::new();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
     println!("{}", res);
