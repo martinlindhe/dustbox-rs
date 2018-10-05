@@ -1,5 +1,5 @@
 use machine::Machine;
-use cpu::ProgramTracer;
+use debug::ProgramTracer;
 
 #[test]
 fn trace_simple() {

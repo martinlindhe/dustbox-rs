@@ -3,13 +3,12 @@ use std::num::ParseIntError;
 use std::io::Error as IoError;
 use std::process::exit;
 
-use dustbox::machine::Machine;
-use dustbox::cpu::{R, RegisterSnapshot, Decoder};
-use dustbox::tools;
-use dustbox::memory::MemoryAddress;
-
-use breakpoints::Breakpoints;
-use memory_breakpoints::MemoryBreakpoints;
+use machine::Machine;
+use cpu::{R, RegisterSnapshot, Decoder};
+use tools;
+use memory::MemoryAddress;
+use debug::{Breakpoints, MemoryBreakpoints};
+use string::parse_number_string;
 
 #[cfg(test)]
 #[path = "./debugger_test.rs"]
@@ -532,17 +531,5 @@ impl Debugger {
                 .as_ref();
 
         res
-    }
-}
-
-/// parses string to a integer. unprefixed values assume base 10, and "0x" prefix indicates base 16.
-fn parse_number_string(s: &str) -> Result<u32, ParseIntError> {
-    let x = &s.replace("_", "");
-    if x.len() >= 2 && &x[0..2] == "0x" {
-        // hex
-        u32::from_str_radix(&x[2..], 16)
-    } else {
-        // decimal
-        x.parse::<u32>()
     }
 }

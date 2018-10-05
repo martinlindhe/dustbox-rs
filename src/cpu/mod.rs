@@ -26,6 +26,3 @@ mod op;
 
 pub use self::encoder::*;
 mod encoder;
-
-pub use self::tracer::*;
-mod tracer;

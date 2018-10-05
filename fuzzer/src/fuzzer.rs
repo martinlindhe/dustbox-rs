@@ -192,7 +192,7 @@ fn assemble_prober(data: &[u8], prober_com: &str) {
     tera.autoescape_on(vec![]);
 
     let mut context = Context::new();
-    context.add("snippet", &vec_as_db_bytes(data));
+    context.insert("snippet", &vec_as_db_bytes(data));
     // add stuff to context
     match tera.render("prober.tpl.asm", &context) {
         Ok(res) => {

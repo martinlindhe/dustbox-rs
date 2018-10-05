@@ -1,3 +1,9 @@
+use std::num::ParseIntError;
+
+#[cfg(test)]
+#[path = "./string_test.rs"]
+mod string_test;
+
 pub fn right_pad(s: &str, len: usize) -> String {
     let mut res = String::new();
     res.push_str(s);
@@ -8,4 +14,16 @@ pub fn right_pad(s: &str, len: usize) -> String {
         }
     }
     res
+}
+
+/// parses string to a integer. unprefixed values assume base 10, and "0x" prefix indicates base 16.
+pub fn parse_number_string(s: &str) -> Result<u32, ParseIntError> {
+    let x = &s.replace("_", "");
+    if x.len() >= 2 && &x[0..2] == "0x" {
+        // hex
+        u32::from_str_radix(&x[2..], 16)
+    } else {
+        // decimal
+        x.parse::<u32>()
+    }
 }

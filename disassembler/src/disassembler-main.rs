@@ -1,13 +1,14 @@
 extern crate dustbox;
 use dustbox::machine::Machine;
-use dustbox::cpu::{Decoder, ProgramTracer};
+use dustbox::cpu::{Decoder};
+use dustbox::debug::ProgramTracer;
 use dustbox::tools;
 
 extern crate clap;
 use clap::{Arg, App};
 
 fn main() {
-    let matches = App::new("disassembler_dustbox")
+    let matches = App::new("dustbox-disasm")
             .version("0.1")
             .arg(Arg::with_name("INPUT")
                 .help("Sets the input file to use")

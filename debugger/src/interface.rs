@@ -19,15 +19,15 @@ use cairo;
 use dustbox::cpu::{CPU, R};
 use dustbox::gpu::VideoModeBlock;
 
-use debugger;
+use dustbox::debug::Debugger;
 
 pub struct Interface {
-    app: Rc<RefCell<debugger::Debugger>>,
+    app: Rc<RefCell<Debugger>>,
     builder: Rc<RefCell<gtk::Builder>>,
 }
 
 impl Interface {
-    pub fn default(app: Rc<RefCell<debugger::Debugger>>) -> Self {
+    pub fn default(app: Rc<RefCell<Debugger>>) -> Self {
         gtk::init().unwrap_or_else(|_| panic!("Failed to initialize GTK."));
 
         Self {
@@ -301,7 +301,7 @@ fn draw_canvas(c: &cairo::Context, buf: Vec<u8>, mode: &VideoModeBlock) {
     c.set_source_pixbuf(&pixbuf, 0., 0.);
 }
 
-fn u16_as_register_str(app: &debugger::Debugger, r: R) -> String {
+fn u16_as_register_str(app: &Debugger, r: R) -> String {
     let v = app.machine.cpu.get_r16(r);
     let prev = app.prev_regs.get_r16(r);
     if v == prev {
@@ -323,7 +323,7 @@ fn update_canvas(builder: &Rc<RefCell<gtk::Builder>>) {
 }
 
 fn update_registers(
-    app: &mut debugger::Debugger,
+    app: &mut Debugger,
     builder: &Rc<RefCell<gtk::Builder>>,
 ) {
     let builder = builder.borrow();

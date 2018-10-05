@@ -406,7 +406,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
 
     let mut context = Context::new();
     out_images.sort();
-    context.add("out_images", &out_images);
+    context.insert("out_images", &out_images);
     // add stuff to context
     match tera.render("test_category.tpl.html", &context) {
         Ok(res) => {

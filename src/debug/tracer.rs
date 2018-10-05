@@ -160,7 +160,7 @@ impl ProgramTracer {
                 GuessedDataType::InstrContinuation => {},
                 GuessedDataType::UnknownByte => {
                     let ii = decoder.get_instruction_info(&mut machine.hw.mmu, ab.address.segment(), ab.address.offset());
-                    res.push_str(&format!("[{}] {}               db       0x{:02x}", ab.address, hex_bytes(&ii.bytes), ii.bytes[0]));
+                    res.push_str(&format!("[{}] {:02X}               db       0x{:02X}", ab.address, ii.bytes[0], ii.bytes[0]));
                     res.push('\n');
                 }
             }
@@ -330,9 +330,10 @@ impl ProgramTracer {
             ma.inc_n(ii.instruction.length as u16);
 
             if (ma.offset() - machine.rom_base.offset()) as isize >= machine.rom_length as isize {
-                println!("XXX breaking because we reached end of file at offset {:04X}:{:04X} (indicates incorrect parsing)", ma.segment(), ma.offset());
+                println!("XXX breaking because we reached end of file at offset {:04X}:{:04X} (indicates incorrect parsing or more likely missing symbolic execution eg meaning of 'int 0x20')", ma.segment(), ma.offset());
                 break;
             }
+
         }
         self.mark_destination_visited(start_ma);
     }

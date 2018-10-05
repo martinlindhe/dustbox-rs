@@ -34,6 +34,7 @@ pub mod bios;
 pub mod codepage;
 pub mod tools;
 pub mod hex;
+pub mod debug;
 pub mod ndisasm;
 pub mod string;
 
