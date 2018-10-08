@@ -58,7 +58,7 @@ fn trace_disassembly(filename: &str) {
         Ok(data) => machine.load_executable(&data),
         Err(err) => panic!("failed to read {}: {}", filename, err),
     }
-    let mut tracer = ProgramTracer::new();
+    let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     println!("{}", tracer.present_trace(&mut machine));
 }

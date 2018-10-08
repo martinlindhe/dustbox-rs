@@ -13,7 +13,7 @@ fn trace_simple() {
     ];
     machine.load_executable(&code);
 
-    let mut tracer = ProgramTracer::new();
+    let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
     assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004
@@ -37,7 +37,7 @@ fn trace_unreferenced_data() {
     ];
     machine.load_executable(&code);
 
-    let mut tracer = ProgramTracer::new();
+    let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
     println!("{}", res);

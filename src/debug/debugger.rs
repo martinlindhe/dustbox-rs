@@ -76,7 +76,7 @@ impl Debugger {
             done += 1;
         }
         let elapsed = start.elapsed();
-        let ms = (elapsed.as_secs() * 1_000) + u64::from(elapsed.subsec_nanos() / 1_000_000);
+        let ms = (elapsed.as_secs() * 1_000) + u64::from(elapsed.subsec_millis());
         println!(
             "Executed total {} instructions ({} now) in {} ms",
             self.machine.cpu.instruction_count,
@@ -429,7 +429,7 @@ impl Debugger {
 
     fn show_flat_address(&mut self) {
         let offset = self.machine.cpu.get_address();
-        let rom_offset = offset - self.machine.rom_base.offset() as u32 + 0x100;
+        let rom_offset = offset - u32::from(self.machine.rom_base.offset()) + 0x100;
         println!(
             "{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
             self.machine.cpu.get_r16(R::CS),

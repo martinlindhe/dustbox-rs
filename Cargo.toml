@@ -9,16 +9,16 @@ authors = [
 path = "src/lib.rs"
 
 [dependencies]
-time = "0.1"
-rand = "0.5"
-tempdir = "0.3"
-image = "0.20"
-tera = "0.11"
 bincode = "1.0"
+image = "0.20"
+quick-error = "1.2"
+rand = "0.5"
 serde = "1.0"
 serde_derive = "1.0"
-quick-error = "1.2"
 simple-error = "0.1"
+tempdir = "0.3"
+tera = "0.11"
+time = "0.1"
 
 [dev-dependencies]
 criterion = "0.2"
