@@ -8,11 +8,9 @@ This is a project I use to learn rust and improve my understanding of low level 
 In the current state, it runs a few simple demos and is not very impressive.
 If you are looking for a more complete dos emulator, I suggest you check out [dosbox-x](https://github.com/joncampbell123/dosbox-x).
 
-
 ## Contributing
 
 Any help and contributions are much welcome! 
-
 
 ## Running
 
@@ -23,7 +21,6 @@ cargo run --package dustbox_gtk
 ```
 
 then interact with the debugger using the input box ('help' to get started).
-
 
 ## Tests
 
@@ -39,7 +36,6 @@ In order to run the expensive tests you need to check out the dos-software-decod
 
     cd .. && git clone https://github.com/martinlindhe/dos-software-decoding && cd -
     cargo test --release -- --ignored
-
 
 ## License
 

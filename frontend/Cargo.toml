@@ -1,0 +1,13 @@
+[package]
+name = "dustbox_frontend"
+version = "0.1.0"
+authors = ["Martin Lindhe"]
+
+[[bin]]
+name = "dustbox-frontend"
+path = "src/frontend-main.rs"
+
+[dependencies]
+clap = "2.32"
+sdl2 = { version = "0.31", default-features = false, features = [ "gfx" ] }
+dustbox = { path = "../" }

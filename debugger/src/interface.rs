@@ -285,13 +285,24 @@ impl Interface {
 }
 
 /// render video frame to canvas `c`
-fn draw_canvas(c: &cairo::Context, buf: Vec<u8>, mode: &VideoModeBlock) {
+fn draw_canvas(c: &cairo::Context, buf: Vec<dustbox::gpu::ColorSpace>, mode: &VideoModeBlock) {
     if buf.is_empty() {
         // println!("draw_canvas: no buffer to draw!");
         return;
     }
+
+    let mut bytes_buf: Vec<u8> = Vec::new();
+
+    for col in buf {
+        if let dustbox::gpu::ColorSpace::RGB(r, g, b) = col {
+            bytes_buf.push(r);
+            bytes_buf.push(g);
+            bytes_buf.push(b);
+        }
+    }
+
     let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(
-        buf,
+        bytes_buf,
         gdk_pixbuf::Colorspace::Rgb,
         false,
         8,

@@ -36,7 +36,7 @@ fuzz:
 	cargo run --package dustbox_fuzzer
 
 lint:
-	cargo +nightly clippy
+	cargo +nightly clippy --all --allow cyclomatic_complexity
 
 prober:
 	cd utils/prober && make

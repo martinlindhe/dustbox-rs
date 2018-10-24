@@ -27,8 +27,8 @@ impl Default for GFXMode {
 pub struct VideoModeBlock {
     pub mode: u16,
     pub kind: GFXMode,
-    pub swidth: u32,
-    pub sheight: u32,
+    pub swidth: u32,        // Screen Width
+    pub sheight: u32,       // Screen Height
     pub twidth: usize,
     pub theight: usize,
     pub cwidth: usize,      // Character Width

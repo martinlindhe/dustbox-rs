@@ -16,6 +16,7 @@ use cpu::{CPU, R};
 use machine::Machine;
 use memory::MMU;
 use gpu::VideoModeBlock;
+use gpu::palette::ColorSpace;
 
 #[test]
 fn can_get_palette_entry() {
@@ -420,13 +421,16 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
 }
 
 // converts a video frame to a ImageBuffer, used for saving video frame to disk in gpu_test
-fn draw_image(frame: &[u8], mode: &VideoModeBlock) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+fn draw_image(frame: &[ColorSpace], mode: &VideoModeBlock) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     let img = ImageBuffer::from_fn(mode.swidth, mode.sheight, |x, y| {
-        let offset = 3 * ((y * mode.swidth) + x) as usize;
-        let r = frame[offset];
-        let g = frame[offset + 1];
-        let b = frame[offset + 2];
-        Rgb([r, g, b])
+        let offset = ((y * mode.swidth) + x) as usize;
+
+        if let ColorSpace::RGB(r, g, b) = frame[offset] {
+            Rgb([r, g, b])
+        } else {
+            println!("error unhandled colorspace not RGB");
+            Rgb([0, 0, 0])
+        }
     });
     img
 }

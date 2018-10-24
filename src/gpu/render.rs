@@ -91,7 +91,7 @@ impl GPU {
         }
     }
 
-    pub fn render_frame(&self, mmu: &MMU) -> Vec<u8> {
+    pub fn render_frame(&self, mmu: &MMU) -> Vec<ColorSpace> {
         let memory = mmu.dump_mem();
         match self.mode.mode {
             // 00: 40x25 Black and White text (CGA,EGA,MCGA,VGA)
@@ -131,7 +131,8 @@ impl GPU {
         Vec::new()
     }
 */
-    fn render_mode04_frame(&self, memory: &[u8]) -> Vec<u8> {
+    fn render_mode04_frame(&self, memory: &[u8]) -> Vec<ColorSpace> {
+        let mut buf: Vec<ColorSpace> = Vec::new();
         // XXX palette selection is done by writes to cga registers
         // mappings to the cga palette
         let pal1_map: [usize; 4] = [0, 3, 5, 7];
@@ -140,8 +141,6 @@ impl GPU {
         // let pal0_map: [u8; 4] = [0, 10, 12, 14];
 
         // 04h = G  40x25  8x8   320x200    4       .   B800 CGA,PCjr,EGA,MCGA,VGA
-        let mut buf = vec![0u8; (self.mode.swidth * self.mode.sheight * 3) as usize];
-        // println!("cga draw {}x{}", self.mode.swidth, self.mode.sheight);
         for y in 0..self.mode.sheight {
             for x in 0..self.mode.swidth {
                 // divide Y by 2
@@ -150,13 +149,7 @@ impl GPU {
                 let offset = (0xB_8000 + ((y%2) * 0x2000) + (80 * (y >> 1)) + (x >> 2)) as usize;
                 let bits = (memory[offset] >> ((3 - (x & 3)) * 2)) & 3; // 2 bits: cga palette to use
                 let pal = &self.dac.pal[pal1_map[bits as usize]];
-
-                let dst = (((y * self.mode.swidth) + x) * 3) as usize;
-                if let RGB(r, g, b) = *pal {
-                    buf[dst] = r;
-                    buf[dst+1] = g;
-                    buf[dst+2] = b;
-                }
+                buf.push(pal.clone());
             }
         }
         buf
@@ -183,19 +176,15 @@ impl GPU {
         Vec::new()
     }
 */
-    fn render_mode13_frame(&self, memory: &[u8]) -> Vec<u8> {
-        let mut buf = vec![0u8; (self.mode.swidth * self.mode.sheight * 3) as usize];
+
+    fn render_mode13_frame(&self, memory: &[u8]) -> Vec<ColorSpace> {
+        let mut buf: Vec<ColorSpace> = Vec::new();
         for y in 0..self.mode.sheight {
             for x in 0..self.mode.swidth {
                 let offset = 0xA_0000 + ((y * self.mode.swidth) + x) as usize;
                 let byte = memory[offset];
                 let pal = &self.dac.pal[byte as usize];
-                let i = ((y * self.mode.swidth + x) * 3) as usize;
-                if let RGB(r, g, b) = *pal {
-                    buf[i] = r;
-                    buf[i+1] = g;
-                    buf[i+2] = b;
-                }
+                buf.push(pal.clone());
             }
         }
         buf

@@ -60,7 +60,7 @@ fn main() {
             let snippet = get_mutator_snippet(&op, &mut rng);
             ops.extend(snippet.to_vec());
 
-            io::stdout().flush().ok().expect("Could not flush stdout");
+            io::stdout().flush().expect("Could not flush stdout");
             let encoder = Encoder::new();
             let data = match encoder.encode_vec(&ops) {
                 Ok(data) => data,

@@ -21,7 +21,7 @@ fn main() {
 
     let filename = matches.value_of("INPUT").unwrap();
     println!("# Input file {}", filename);
-    println!("");
+    println!();
 
     if matches.is_present("trace") {
         trace_disassembly(filename);
@@ -45,7 +45,7 @@ fn flat_disassembly(filename: &str) {
         let op = decoder.get_instruction_info(&mut machine.hw.mmu, ma.segment(), ma.offset());
         println!("{}", op);
         ma.inc_n(op.bytes.len() as u16);
-        if ma.value() - machine.rom_base.offset() as u32 >= machine.rom_length as u32 {
+        if ma.value() - u32::from(machine.rom_base.offset()) >= machine.rom_length as u32 {
             break;
         }
     }
