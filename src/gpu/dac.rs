@@ -162,10 +162,12 @@ impl DAC {
 
         self.pel_index += 1;
         if self.pel_index > 2 {
-            self.write_index += 1;
-            if self.write_index as usize >= self.pal.len() {
-                println!("XXX dac write_index wrapped to 0 at {}", self.pal.len());
+            // println!("self.write_index as usize  {}     len  {}", self.write_index as usize,self.pal.len() );
+            if self.write_index as usize >= self.pal.len() - 1 {
+                // println!("XXX dac write_index wrapped to 0 at {}", self.pal.len());
                 self.write_index = 0;
+            } else {
+                self.write_index += 1;
             }
             self.pel_index = 0;
         }

@@ -26,16 +26,10 @@ fuzz:
 	cargo run --package dustbox_fuzzer
 
 lint:
-	cargo +nightly clippy --all --allow cyclomatic_complexity
+	cargo +nightly clippy --all
 
 prober:
 	cd utils/prober && make
 
-typos:
-	speller . > spell
-
 glade:
 	glade debugger/src/interface.glade
-
-bindiff:
-	vbindiff ~/dosbox-x/MEMDUMP.BIN emu_mem.bin

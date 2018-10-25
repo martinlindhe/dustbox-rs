@@ -86,6 +86,7 @@ impl CPU {
         self.regs.set_r32(r, val);
     }
 
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cyclomatic_complexity))]
     pub fn execute(&mut self, mut hw: &mut Hardware, op: &Instruction) {
         let start_ip = self.regs.ip;
         self.regs.ip = (Wrapping(self.regs.ip) + Wrapping(u16::from(op.length))).0;

@@ -74,6 +74,7 @@ impl Decoder {
     }
 
     /// decodes the next instruction
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cyclomatic_complexity))]
     fn decode(&mut self, mut mmu: &mut MMU, mut op: &mut Instruction) {
         let start_offset = self.current_offset;
         let b = self.read_u8(mmu);

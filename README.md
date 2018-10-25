@@ -22,6 +22,12 @@ cargo run --package dustbox_gtk
 
 then interact with the debugger using the input box ('help' to get started).
 
+To launch the front-end:
+
+```
+cargo run --package dustbox_frontend path-to-dos-executable
+```
+
 ## Tests
 
 Run the basic tests with

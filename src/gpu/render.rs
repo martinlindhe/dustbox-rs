@@ -362,7 +362,7 @@ impl GPU {
             self.write_char_internal(&mut mmu, u16::from(cur_col), u16::from(cur_row), page, chr, attr, showattr);
             count -= 1;
             cur_col += 1;
-            if u16::from(cur_col) == ncols {
+            if u16::from(cur_col) >= ncols {
                 cur_col = 0;
                 cur_row += 1;
             }
@@ -840,6 +840,7 @@ impl GPU {
     }
 
     pub fn init(&mut self, mut mmu: &mut MMU) {
+
         let mut addr = MemoryAddress::RealSegmentOffset(0xC000, 3);
         //let seg = 0xC000;
 

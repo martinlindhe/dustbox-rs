@@ -22,6 +22,7 @@ impl Hardware {
         let mut bios = BIOS::default();
         bios.init(&mut mmu);
         gpu.init(&mut mmu);
+        gpu.set_mode(&mut mmu, &mut bios, 0x03); // inits gpu to text mode 80x25
         Hardware {
             mmu,
             gpu,
