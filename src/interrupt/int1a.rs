@@ -30,7 +30,7 @@ pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
             println!("XXX SET SYSTEM TIME: CX:DX = {:04X}:{:04X}", cx, dx);
         }
         _ => {
-            println!("int1a error: unknown ah={:02X}, ax={:04X}",
+            println!("int1a (time) error: unknown ah={:02X}, ax={:04X}",
                      cpu.get_r8(R::AH),
                      cpu.get_r16(R::AX));
         }

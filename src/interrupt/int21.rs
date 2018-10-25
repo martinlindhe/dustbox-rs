@@ -18,6 +18,8 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // DOS 1+ - WRITE CHARACTER TO STANDARD OUTPUT
             // DL = character to write
             let dl = cpu.get_r8(R::DL);
+
+            // XXX set with video functions
             print!("{}", cp437::u8_as_char(dl));
             // Return:
             // AL = last character output (despite the official docs which state
@@ -31,9 +33,17 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // Notes: Does not check ^C/^Break. Writes to standard output,
             // which is always the screen under DOS 1.x, but may be redirected
             // under DOS 2+
+
+            // XXX set with video functions
             let dl = cpu.get_r8(R::DL);
             if dl != 0xFF {
                 print!("{}", cp437::u8_as_char(dl));
+
+                // XXX instead, we should WRITE to a "dos_stdout" stream
+            } else {
+                // see dosbox-x/src/dos/dos.cpp:484
+                // happens in ../dos-software-decoding/games-com-commercial/Blort\ \(1987\)\(Hennsoft\)/blort.com
+                // println!("XXX dl is 0xFF, TODO read input?");
             }
             // Return:
             // AL = character output (despite official docs which
@@ -244,7 +254,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             cpu.fatal_error = true; // XXX just to stop debugger.run() function
         }
         _ => {
-            println!("int21 error: unknown ah={:02X}, ax={:04X}",
+            println!("int21 (dos) error: unknown ah={:02X}, ax={:04X}",
                      cpu.get_r8(R::AH),
                      cpu.get_r16(R::AX));
         }

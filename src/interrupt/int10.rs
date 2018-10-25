@@ -365,7 +365,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             }
         }
         _ => {
-            println!("int10 error: unknown ah={:02X}, ax={:04X}, bx={:04X}",
+            println!("int10 (video) error: unknown ah={:02X}, ax={:04X}, bx={:04X}",
                      cpu.get_r8(R::AH),
                      cpu.get_r16(R::AX),
                      cpu.get_r16(R::BX));

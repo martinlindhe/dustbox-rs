@@ -11,7 +11,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // AH = BIOS scan code
             // AL = ASCII character
             cpu.set_r16(R::AX, 0); // XXX
-            // println!("XXX impl KEYBOARD - GET KEYSTROKE");
+            println!("XXX impl KEYBOARD - GET KEYSTROKE");
         }
         0x01 => {
             // KEYBOARD - CHECK FOR KEYSTROKE
@@ -21,7 +21,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // AH = BIOS scan code
             // AL = ASCII character
 
-            // println!("XXX impl KEYBOARD - CHECK FOR KEYSTROKE");
+            println!("XXX impl KEYBOARD - CHECK FOR KEYSTROKE");
             hw.bios.set_flag(&mut hw.mmu, FLAG_ZF, true);
         }
         0x11 => {
@@ -42,7 +42,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             cpu.set_r8(R::AH, 0x80); // indicates support
         }
         _ => {
-            println!("int16 error: unknown ah={:02X}, ax={:04X}",
+            println!("int16 (keyboard) error: unknown ah={:02X}, ax={:04X}",
                      cpu.get_r8(R::AH),
                      cpu.get_r16(R::AX));
         }

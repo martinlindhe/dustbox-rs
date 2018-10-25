@@ -15,7 +15,7 @@ pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
             // CF set on error
         }
         _ => {
-            println!("int13 error: unknown ah={:02X}, ax={:04X}",
+            println!("int13 (disk) error: unknown ah={:02X}, ax={:04X}",
                      cpu.get_r8(R::AH),
                      cpu.get_r16(R::AX));
         }

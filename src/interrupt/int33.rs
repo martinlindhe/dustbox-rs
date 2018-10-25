@@ -14,7 +14,7 @@ pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
             println!("XXX impl MOUSE - RETURN POSITION AND BUTTON STATUS");
         }
         _ => {
-            println!("int33 error: unknown ax={:04X}, ip={:04X}:{:04X}",
+            println!("int33 (mouse) error: unknown ax={:04X}, ip={:04X}:{:04X}",
                      cpu.get_r16(R::AX),
                      cpu.get_r16(R::CS),
                      cpu.regs.ip);
