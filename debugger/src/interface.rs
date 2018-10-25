@@ -18,6 +18,8 @@ use cairo;
 
 use dustbox::cpu::{CPU, R};
 use dustbox::gpu::VideoModeBlock;
+use dustbox::gpu::ColorSpace;
+use dustbox::gpu::ColorSpace::RGB;
 
 use dustbox::debug::Debugger;
 
@@ -285,7 +287,7 @@ impl Interface {
 }
 
 /// render video frame to canvas `c`
-fn draw_canvas(c: &cairo::Context, buf: Vec<dustbox::gpu::ColorSpace>, mode: &VideoModeBlock) {
+fn draw_canvas(c: &cairo::Context, buf: Vec<ColorSpace>, mode: &VideoModeBlock) {
     if buf.is_empty() {
         // println!("draw_canvas: no buffer to draw!");
         return;
@@ -294,7 +296,7 @@ fn draw_canvas(c: &cairo::Context, buf: Vec<dustbox::gpu::ColorSpace>, mode: &Vi
     let mut bytes_buf: Vec<u8> = Vec::new();
 
     for col in buf {
-        if let dustbox::gpu::ColorSpace::RGB(r, g, b) = col {
+        if let RGB(r, g, b) = col {
             bytes_buf.push(r);
             bytes_buf.push(g);
             bytes_buf.push(b);

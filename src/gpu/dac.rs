@@ -27,7 +27,6 @@ pub struct DAC {
 
     pub combine: [u8; 16],
 
-    /// XXX length = 64 ???
     pub pal: Vec<ColorSpace>,
 
     pub hidac_counter: u8,
