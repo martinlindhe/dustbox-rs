@@ -174,188 +174,172 @@ fn scale(value_in:f64, base_min:f64, base_max:f64, limit_min:f64, limit_max:f64)
 }
 
 #[test] #[ignore] // expensive test
-fn demo_256() {
+fn demo_com_16bit() {
+    let path = "../dos-software-decoding/demo-com-16bit/";
     let test_bins = vec![
-        "../dos-software-decoding/demo-256/4sum/4sum.com",
-        "../dos-software-decoding/demo-256/165plasm/165plasm.com",
-        "../dos-software-decoding/demo-256/244b/244b.com",
-        "../dos-software-decoding/demo-256/alpc/alpc.com",
-        "../dos-software-decoding/demo-256/beziesux/beziesux.com",
-        "../dos-software-decoding/demo-256/blah/blah.com",
-        "../dos-software-decoding/demo-256/bob/bob.com",
-        "../dos-software-decoding/demo-256/chaos/chaos.com",
-        "../dos-software-decoding/demo-256/conf/conf.com",
-        "../dos-software-decoding/demo-256/ectotrax/ectotrax.com",
-        "../dos-software-decoding/demo-256/fire/fire.com",
-        "../dos-software-decoding/demo-256/fire2/fire2.com",
-        "../dos-software-decoding/demo-256/fire17/fire17.com",
-        "../dos-software-decoding/demo-256/flame2/flame2.com",
-        "../dos-software-decoding/demo-256/flood/flood.com",
-        "../dos-software-decoding/demo-256/fridge/fridge.com",
-        "../dos-software-decoding/demo-256/hungecek/hungecek.com",
-        "../dos-software-decoding/demo-256/julia/julia.com",
-        "../dos-software-decoding/demo-256/lameland/lameland.com",
-        "../dos-software-decoding/demo-256/lava/lava.com",
-        "../dos-software-decoding/demo-256/leaf/leaf.com",
-        "../dos-software-decoding/demo-256/luminous/luminous.com",
-        "../dos-software-decoding/demo-256/lumps/lumps.com",
-        "../dos-software-decoding/demo-256/miracle/miracle.com",
-        "../dos-software-decoding/demo-256/nicefire/nicefire.com",
-        "../dos-software-decoding/demo-256/optimize/optimize.com",
-        "../dos-software-decoding/demo-256/pack/pack.com",
-        "../dos-software-decoding/demo-256/phong/phong.com",
-        "../dos-software-decoding/demo-256/pikku/pikku.com",
-        "../dos-software-decoding/demo-256/pixelize/pixelize.com",
-        "../dos-software-decoding/demo-256/plasma/plasma.com",
-        "../dos-software-decoding/demo-256/plasmalr/plasmalr.com",
-        "../dos-software-decoding/demo-256/plasmexp/plasmexp.com",
-        "../dos-software-decoding/demo-256/platinum/platinum.com",
-        "../dos-software-decoding/demo-256/proto256/proto256.com",
-        "../dos-software-decoding/demo-256/riddle/riddle.com",
-        "../dos-software-decoding/demo-256/saverave/saverave.com",
-        "../dos-software-decoding/demo-256/snow/snow.com",
-        "../dos-software-decoding/demo-256/specifi/specifi.com",
-        "../dos-software-decoding/demo-256/spline/spline.com",
-        "../dos-software-decoding/demo-256/sqwerz3/sqwerz3.com",
-        "../dos-software-decoding/demo-256/static/static.com",
-        "../dos-software-decoding/demo-256/water/water.com",
-        "../dos-software-decoding/demo-256/wd95/wd95.com",
-        "../dos-software-decoding/demo-256/wetwet/wetwet.com",
-        "../dos-software-decoding/demo-256/x/x.com",
-        "../dos-software-decoding/demo-256/zork/zork.com",
+        path.to_owned() + "4sum/4sum.com",
+        path.to_owned() + "165plasm/165plasm.com",
+        path.to_owned() + "244b/244b.com",
+        path.to_owned() + "alpc/alpc.com",
+        path.to_owned() + "beziesux/beziesux.com",
+        path.to_owned() + "blah/blah.com",
+        path.to_owned() + "bob/bob.com",
+        path.to_owned() + "chaos/chaos.com",
+        path.to_owned() + "conf/conf.com",
+        path.to_owned() + "ectotrax/ectotrax.com",
+        path.to_owned() + "fire/fire.com",
+        path.to_owned() + "fire2/fire2.com",
+        path.to_owned() + "fire17/fire17.com",
+        path.to_owned() + "flame2/flame2.com",
+        path.to_owned() + "flood/flood.com",
+        path.to_owned() + "fridge/fridge.com",
+        path.to_owned() + "hungecek/hungecek.com",
+        path.to_owned() + "julia/julia.com",
+        path.to_owned() + "lameland/lameland.com",
+        path.to_owned() + "lava/lava.com",
+        path.to_owned() + "leaf/leaf.com",
+        path.to_owned() + "luminous/luminous.com",
+        path.to_owned() + "lumps/lumps.com",
+        path.to_owned() + "miracle/miracle.com",
+        path.to_owned() + "nicefire/nicefire.com",
+        path.to_owned() + "optimize/optimize.com",
+        path.to_owned() + "pack/pack.com",
+        path.to_owned() + "phong/phong.com",
+        path.to_owned() + "pikku/pikku.com",
+        path.to_owned() + "pixelize/pixelize.com",
+        path.to_owned() + "plasma/plasma.com",
+        path.to_owned() + "plasmalr/plasmalr.com",
+        path.to_owned() + "plasmexp/plasmexp.com",
+        path.to_owned() + "platinum/platinum.com",
+        path.to_owned() + "proto256/proto256.com",
+        path.to_owned() + "riddle/riddle.com",
+        path.to_owned() + "saverave/saverave.com",
+        path.to_owned() + "snow/snow.com",
+        path.to_owned() + "specifi/specifi.com",
+        path.to_owned() + "spline/spline.com",
+        path.to_owned() + "sqwerz3/sqwerz3.com",
+        path.to_owned() + "static/static.com",
+        path.to_owned() + "water/water.com",
+        path.to_owned() + "wd95/wd95.com",
+        path.to_owned() + "wetwet/wetwet.com",
+        path.to_owned() + "x/x.com",
+        path.to_owned() + "zork/zork.com",
+
+        path.to_owned() + "1/1.com",
+        path.to_owned() + "bars512/bars512.com",
+        path.to_owned() + "basicboy/basicboy.com",
+        path.to_owned() + "blaze/blaze5.com",
+        path.to_owned() + "bmatch/bmatch.com",
+        path.to_owned() + "fire/fire.com",
+        path.to_owned() + "jive/jive.com",
+        path.to_owned() + "jomppa/jomppa.com",
+        path.to_owned() + "kintsmef/kintsmef.com",
+        path.to_owned() + "legend/legend.com",
+        path.to_owned() + "lkccmini/lkccmini.com",
+        path.to_owned() + "madness/madness.com",
+        path.to_owned() + "mistake/mistake.com",
+        path.to_owned() + "morales/morales.com",
+        path.to_owned() + "skylight/skylight.com",
+        path.to_owned() + "tiled/tiled.com",
+        path.to_owned() + "triopti2/triopti2.com",
+        path.to_owned() + "unknown/unknown.com",
+        path.to_owned() + "wamma/wamma.com",
+        path.to_owned() + "waves/waves.com",
+
+        path.to_owned() + "dreamers_bbs/dreamer.com",
+        path.to_owned() + "microsoft_golf_cracktro/mgc.com",
     ];
-    run_and_save_video_frames(test_bins, "demo_256", "256");
+    run_and_save_video_frames(test_bins, "demo_com_16bit", "");
 }
 
 #[test] #[ignore] // expensive test
-fn demo_512() {
+fn demo_com_32bit() {
+    let path = "../dos-software-decoding/demo-com-32bit/";
     let test_bins = vec![
-        "../dos-software-decoding/demo-512/1/1.com",
-        "../dos-software-decoding/demo-512/bars512/bars512.com",
-        "../dos-software-decoding/demo-512/basicboy/basicboy.com",
-        "../dos-software-decoding/demo-512/blaze/blaze5.com",
-        "../dos-software-decoding/demo-512/bmatch/bmatch.com",
-        "../dos-software-decoding/demo-512/fire/fire.com",
-        "../dos-software-decoding/demo-512/jive/jive.com",
-        "../dos-software-decoding/demo-512/jomppa/jomppa.com",
-        "../dos-software-decoding/demo-512/kintsmef/kintsmef.com",
-        "../dos-software-decoding/demo-512/legend/legend.com",
-        "../dos-software-decoding/demo-512/lkccmini/lkccmini.com",
-        "../dos-software-decoding/demo-512/madness/madness.com",
-        "../dos-software-decoding/demo-512/mistake/mistake.com",
-        "../dos-software-decoding/demo-512/morales/morales.com",
-        "../dos-software-decoding/demo-512/skylight/skylight.com",
-        "../dos-software-decoding/demo-512/tiled/tiled.com",
-        "../dos-software-decoding/demo-512/triopti2/triopti2.com",
-        "../dos-software-decoding/demo-512/unknown/unknown.com",
-        "../dos-software-decoding/demo-512/wamma/wamma.com",
-        "../dos-software-decoding/demo-512/waves/waves.com",
+        path.to_owned() + "anding/anding.com",
+        path.to_owned() + "enchante/enchante.com",
+        path.to_owned() + "fire!/fire!.com",
+        path.to_owned() + "fire3d/fire3d.com",
+        path.to_owned() + "flame/flame.com",
+        path.to_owned() + "fractal/fractal.com",
+        path.to_owned() + "frcmirez/frcmirez.com",
+        path.to_owned() + "juls/juls.com",
+        path.to_owned() + "mbl/mbl.com",
+        path.to_owned() + "noc200/noc200.com",
+        path.to_owned() + "ripped/ripped.com",
+        path.to_owned() + "sierpins/sierpins.com",
+        path.to_owned() + "stars/stars.com",
+        path.to_owned() + "suka/suka.com",
+        path.to_owned() + "textaroo/textaroo.com",
+        path.to_owned() + "wtrfall/wtrfall.com",
+        path.to_owned() + "xwater/xwater.com",
+
+        path.to_owned() + "200h/200h.com",
+        path.to_owned() + "blobsf/blobsf.com",
+        path.to_owned() + "bt7/bt7.com",
+        path.to_owned() + "distant/distant.com",
+        path.to_owned() + "ems/ems.com",
+        path.to_owned() + "entry2/entry2.com",
+        path.to_owned() + "europe/europe.com",
+        path.to_owned() + "fireline/fireline.com",
+        path.to_owned() + "fountain_of_sparks/fountain_of_sparks.com",
+        path.to_owned() + "glasenapy/glasenapy.com",
+        path.to_owned() + "gob4k/gob4k.com",
+        path.to_owned() + "grindkng/grindkng.com",
+        path.to_owned() + "rwater/rwater.com",
+        path.to_owned() + "voronoy/voronoy.com",
     ];
-    run_and_save_video_frames(test_bins, "demo_512", "512");
+    run_and_save_video_frames(test_bins, "demo_com_32bit", "");
 }
 
 #[test] #[ignore] // expensive test
-fn demo_256_32bit() {
+fn games_commercial() {
+    let path = "../dos-software-decoding/games-com-commercial/";
     let test_bins = vec![
-        "../dos-software-decoding/demo-256-32bit/anding/anding.com",
-        "../dos-software-decoding/demo-256-32bit/enchante/enchante.com",
-        "../dos-software-decoding/demo-256-32bit/fire!/fire!.com",
-        "../dos-software-decoding/demo-256-32bit/fire3d/fire3d.com",
-        "../dos-software-decoding/demo-256-32bit/flame/flame.com",
-        "../dos-software-decoding/demo-256-32bit/fractal/fractal.com",
-        "../dos-software-decoding/demo-256-32bit/frcmirez/frcmirez.com",
-        "../dos-software-decoding/demo-256-32bit/juls/juls.com",
-        "../dos-software-decoding/demo-256-32bit/mbl/mbl.com",
-        "../dos-software-decoding/demo-256-32bit/noc200/noc200.com",
-        "../dos-software-decoding/demo-256-32bit/ripped/ripped.com",
-        "../dos-software-decoding/demo-256-32bit/sierpins/sierpins.com",
-        "../dos-software-decoding/demo-256-32bit/stars/stars.com",
-        "../dos-software-decoding/demo-256-32bit/suka/suka.com",
-        "../dos-software-decoding/demo-256-32bit/textaroo/textaroo.com",
-        "../dos-software-decoding/demo-256-32bit/wtrfall/wtrfall.com",
-        "../dos-software-decoding/demo-256-32bit/xwater/xwater.com",
+        path.to_owned() + "8088 Othello (1985)(Bayley)/8088_othello.com",
+        path.to_owned() + "Apple Panic (1982)(Broderbund Software Inc)/panic.com",
+        path.to_owned() + "Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com",
+        path.to_owned() + "Beast (1984)(Dan Baker)/beast.com",
+        path.to_owned() + "Blort (1987)(Hennsoft)/blort.com",
+        path.to_owned() + "Crossfire (1982)(Sierra Online)/cfire.com",
+        path.to_owned() + "Dig Dug (1982)(Namco)/digdug.com",
+        path.to_owned() + "F15 Strike Eagle I (1986)(Microprose Software Inc)/f15.com",
+        path.to_owned() + "Fire Fighter (1999)(Freeware)/firef.com",
+        path.to_owned() + "Galaxian (1983)(Atari Inc)/galaxian.com",
+        path.to_owned() + "Gnafu (1986)(Anonymous)/gnafu.com",
+        path.to_owned() + "Gooku (1987)(Anonymous)/go-moku.com",
+        path.to_owned() + "Hard Hat Mack (1984)(Electronic Arts Inc)/hhm.com",
+        path.to_owned() + "Invaders (1995)(Paul Reid)/invaders.com",
+        path.to_owned() + "Kenguru (1997)(Pig Games)/keng.com",
+        path.to_owned() + "Logical (1991)(Rainbow Arts)/logctrn1.com",
+        path.to_owned() + "Madball (1985)(Microtec)/madball.com",
+        path.to_owned() + "Mind Field (1985)(Everett Kaser)/mine.com",
+        path.to_owned() + "Ms Pacman (1983)(Atari Inc)/mspacman.com",
+        path.to_owned() + "Mummies (1985)(Iain Brown)/mummies.com",
+        path.to_owned() + "Paratrooper (1982)(Orion Software)/ptrooper.com",
+        path.to_owned() + "Pc Man (1982)(Orion Software)/pcmanv1.com",
+        path.to_owned() + "Pc Man (1982)(Orion Software)/pcmanv2.com",
+        path.to_owned() + "Pente (1984)(Michael Leach)/pente.com",
+        path.to_owned() + "Pipes (1983)(Creative Software)/pipes.com",
+        path.to_owned() + "Pong (1986)(Imagine)/pong21.com",
+        path.to_owned() + "Star Chamber (1987)(Russco)/starcham.com",
+        path.to_owned() + "Snake Game (1992)(Freeware)/snake.com",
+        path.to_owned() + "Sky Runner (1987)(Anonymous)/sky1.com",
+        path.to_owned() + "Sky Runner (1987)(Anonymous)/sky2.com",
+        path.to_owned() + "Shamus (1984)(Synapse Software)/shamus.com",
+        path.to_owned() + "Rollo And The Brush Brothers (1983)(Windwill Software)/rollo.com",
+        path.to_owned() + "Robotron 2084 (1984)(Williams Electronics)/rt2084.com",
+        path.to_owned() + "Turbo Bridge (1985)(Anonymous)/tbridge.com",
+        path.to_owned() + "Triskelion (1987)(Neil Rubenking)/triskel.com",
+        path.to_owned() + "Vlak (1993)(Miroslav Nemecek)/vlak.com",
+        path.to_owned() + "Yatzy (1984)(Jan Ivar Gundersen)/yatzy.com",
+        path.to_owned() + "Zaxxon (1984)(Sega)/zaxxon.com",
+        path.to_owned() + "Zyll (1984)(Marshal Linder)/zyll.com",
     ];
-    run_and_save_video_frames(test_bins, "demo_256_32bit", "256_32bit");
+    run_and_save_video_frames(test_bins, "games_com", "");
 }
 
-#[test] #[ignore] // expensive test
-fn demo_512_32bit() {
-    let test_bins = vec![
-        "../dos-software-decoding/demo-512-32bit/200h/200h.com",
-        "../dos-software-decoding/demo-512-32bit/blobsf/blobsf.com",
-        "../dos-software-decoding/demo-512-32bit/bt7/bt7.com",
-        "../dos-software-decoding/demo-512-32bit/distant/distant.com",
-        "../dos-software-decoding/demo-512-32bit/ems/ems.com",
-        "../dos-software-decoding/demo-512-32bit/entry2/entry2.com",
-        "../dos-software-decoding/demo-512-32bit/europe/europe.com",
-        "../dos-software-decoding/demo-512-32bit/fireline/fireline.com",
-        "../dos-software-decoding/demo-512-32bit/fountain_of_sparks/fountain_of_sparks.com",
-        "../dos-software-decoding/demo-512-32bit/fract/fract.com",
-        "../dos-software-decoding/demo-512-32bit/glasenapy/glasenapy.com",
-        "../dos-software-decoding/demo-512-32bit/gob4k/gob4k.com",
-        "../dos-software-decoding/demo-512-32bit/grindkng/grindkng.com",
-        "../dos-software-decoding/demo-512-32bit/rwater/rwater.com",
-        "../dos-software-decoding/demo-512-32bit/voronoy/voronoy.com",
-    ];
-    run_and_save_video_frames(test_bins, "demo_512_32bit", "512_32bit");
-}
-
-#[test] #[ignore] // expensive test
-fn demo_16k() {
-    let test_bins = vec![
-        "../dos-software-decoding/demo-16k/dreamers_bbs/dreamer.com",
-        "../dos-software-decoding/demo-16k/microsoft_golf_cracktro/mgc.com",
-    ];
-    run_and_save_video_frames(test_bins, "demo_16k", "16k");
-}
-
-#[test] #[ignore] // expensive test
-fn games_com() {
-    let test_bins = vec![
-        "../dos-software-decoding/games-com/8088 Othello (1985)(Bayley)/8088_othello.com",
-        "../dos-software-decoding/games-com/Apple Panic (1982)(Broderbund Software Inc)/panic.com",
-        "../dos-software-decoding/games-com/Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com",
-        "../dos-software-decoding/games-com/Beast (1984)(Dan Baker)/beast.com",
-        "../dos-software-decoding/games-com/Blort (1987)(Hennsoft)/blort.com",
-        "../dos-software-decoding/games-com/Crossfire (1982)(Sierra Online)/cfire.com",
-        "../dos-software-decoding/games-com/Dig Dug (1982)(Namco)/digdug.com",
-        "../dos-software-decoding/games-com/F15 Strike Eagle I (1986)(Microprose Software Inc)/f15.com",
-        "../dos-software-decoding/games-com/Fire Fighter (1999)(Freeware)/firef.com",
-        "../dos-software-decoding/games-com/Galaxian (1983)(Atari Inc)/galaxian.com",
-        "../dos-software-decoding/games-com/Gnafu (1986)(Anonymous)/gnafu.com",
-        "../dos-software-decoding/games-com/Gooku (1987)(Anonymous)/go-moku.com",
-        "../dos-software-decoding/games-com/Hard Hat Mack (1984)(Electronic Arts Inc)/hhm.com",
-        "../dos-software-decoding/games-com/Invaders (1995)(Paul Reid)/invaders.com",
-        "../dos-software-decoding/games-com/Kenguru (1997)(Pig Games)/keng.com",
-        "../dos-software-decoding/games-com/Logical (1991)(Rainbow Arts)/logctrn1.com",
-        "../dos-software-decoding/games-com/Madball (1985)(Microtec)/madball.com",
-        "../dos-software-decoding/games-com/Mind Field (1985)(Everett Kaser)/mine.com",
-        "../dos-software-decoding/games-com/Ms Pacman (1983)(Atari Inc)/mspacman.com",
-        "../dos-software-decoding/games-com/Mummies (1985)(Iain Brown)/mummies.com",
-        "../dos-software-decoding/games-com/Paratrooper (1982)(Orion Software)/ptrooper.com",
-        "../dos-software-decoding/games-com/Pc Man (1982)(Orion Software)/pcmanv1.com",
-        "../dos-software-decoding/games-com/Pc Man (1982)(Orion Software)/pcmanv2.com",
-        "../dos-software-decoding/games-com/Pente (1984)(Michael Leach)/pente.com",
-        "../dos-software-decoding/games-com/Pipes (1983)(Creative Software)/pipes.com",
-        "../dos-software-decoding/games-com/Pong (1986)(Imagine)/pong21.com",
-        "../dos-software-decoding/games-com/Star Chamber (1987)(Russco)/starcham.com",
-        "../dos-software-decoding/games-com/Snake Game (1992)(Freeware)/snake.com",
-        "../dos-software-decoding/games-com/Sky Runner (1987)(Anonymous)/sky1.com",
-        "../dos-software-decoding/games-com/Sky Runner (1987)(Anonymous)/sky2.com",
-        "../dos-software-decoding/games-com/Shamus (1984)(Synapse Software)/shamus.com",
-        "../dos-software-decoding/games-com/Rollo And The Brush Brothers (1983)(Windwill Software)/rollo.com",
-        "../dos-software-decoding/games-com/Robotron 2084 (1984)(Williams Electronics)/rt2084.com",
-        "../dos-software-decoding/games-com/Turbo Bridge (1985)(Anonymous)/tbridge.com",
-        "../dos-software-decoding/games-com/Triskelion (1987)(Neil Rubenking)/triskel.com",
-        "../dos-software-decoding/games-com/Vlak (1993)(Miroslav Nemecek)/vlak.com",
-        "../dos-software-decoding/games-com/Yatzy (1984)(Jan Ivar Gundersen)/yatzy.com",
-        "../dos-software-decoding/games-com/Zaxxon (1984)(Sega)/zaxxon.com",
-        "../dos-software-decoding/games-com/Zyll (1984)(Marshal Linder)/zyll.com",
-    ];
-    run_and_save_video_frames(test_bins, "games_com", "game");
-}
-
-fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix: &str) {
+fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefix: &str) {
 
     let mut out_images = vec![];
 
@@ -364,7 +348,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
 
         let mut machine = Machine::default();
         machine.cpu.deterministic = true;
-        match tools::read_binary(bin) {
+        match tools::read_binary(&bin) {
             Ok(data) => machine.load_executable(&data),
             Err(err) => panic!("failed to read {}: {}", bin, err),
         }
@@ -375,18 +359,19 @@ fn run_and_save_video_frames(mut test_bins: Vec<&str>, group: &str, name_prefix:
                 break;
             }
         }
-        let path = Path::new(bin);
+        let path = Path::new(&bin);
 
         let _ = fs::create_dir(&format!("docs/render/{}", group));
         let stem = path.file_stem().unwrap_or(OsStr::new(""));
         let mut filename = OsString::new(); // XXX base on dirname
-        filename.push(format!("docs/render/{}/{}_", group, name_prefix));
+        let outname = &format!("render/{}/{:02x}_{}", group, machine.hw.gpu.mode.mode, name_prefix);
+        filename.push(format!("docs/{}", outname));
         filename.push(stem.to_os_string());
         filename.push(".png");
 
         if write_video_frame_to_disk(&machine, filename.to_str().unwrap()) {
             let mut pub_filename = String::new();
-            pub_filename.push_str(&format!("render/{}/{}_", group, name_prefix));
+            pub_filename.push_str(&outname);
             pub_filename.push_str(stem.to_str().unwrap());
             pub_filename.push_str(".png");
             out_images.push(pub_filename);

@@ -7,16 +7,31 @@ const DEBUG_DAL: bool = false;
 
 #[derive(Clone)]
 pub struct DAC {
-    bits: u8,                   // DAC bits, usually 6 or 8
+    /// DAC bits, usually 6 or 8
+    bits: u8,
+
     pub pel_mask: u8,
-    pub pel_index: u8,          // color component for next out 03c9, 0 = red, 1 = green, 2 = blue
+
+    /// color component for next out 03c9, 0 = red, 1 = green, 2 = blue
+    pub pel_index: u8,
+
     pub state: State,
-    pub read_index: u8,         // set by io write to 03c7
-    pub write_index: u8,        // set by io write to 03c8
+
+    /// set by io write to 03c7
+    pub read_index: u8,
+
+    /// set by io write to 03c8
+    pub write_index: u8,
+
     first_changed: usize,
+
     pub combine: [u8; 16],
+
+    /// XXX length = 64 ???
     pub pal: Vec<ColorSpace>,
+
     pub hidac_counter: u8,
+
     reg02: u8,
 }
 
@@ -148,7 +163,11 @@ impl DAC {
 
         self.pel_index += 1;
         if self.pel_index > 2 {
-            self.write_index = (Wrapping(self.write_index) + Wrapping(1)).0;
+            self.write_index += 1;
+            if self.write_index as usize >= self.pal.len() {
+                println!("XXX dac write_index wrapped to 0 at {}", self.pal.len());
+                self.write_index = 0;
+            }
             self.pel_index = 0;
         }
     }

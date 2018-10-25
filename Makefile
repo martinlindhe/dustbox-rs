@@ -4,16 +4,6 @@ test:
 expensive-demo:
 	RUST_TEST_THREADS=1 cargo test demo --release -- --color always --nocapture --ignored
 
-expensive-256:
-	RUST_TEST_THREADS=1 cargo test demo_256 --release -- --color always --nocapture --ignored
-
-expensive-512:
-	RUST_TEST_THREADS=1 cargo test demo_512 --release -- --color always --nocapture --ignored
-
-# includes demo_256_32bit and demo_512_32bit
-expensive-32bit:
-	RUST_TEST_THREADS=1 cargo test 32bit --release -- --color always --nocapture --ignored
-
 expensive-games:
 	RUST_TEST_THREADS=1 cargo test games_com --release -- --color always --nocapture --ignored
 

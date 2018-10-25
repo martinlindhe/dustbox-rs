@@ -8,7 +8,4 @@ STATUS: draft
 
 ## TODO
 
-- 1 arg, .com file
-- load given .com
-- run in window and output gfx (SDL2??? - minimal hassle for now) (should be enough for many demos)
 - listen for keyboard

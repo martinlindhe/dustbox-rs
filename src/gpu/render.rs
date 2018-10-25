@@ -110,8 +110,8 @@ impl GPU {
             // 0F: 640x350 Monochrome graphics (EGA,VGA)
             // 10: 640x350 16 color graphics (EGA or VGA with 128K)
             //     640x350 4 color graphics (64K EGA)
-            //0x11 => self.render_mode11_frame(memory), // 640x480 B/W graphics (MCGA,VGA)
-            //0x12 => self.render_mode12_frame(memory), // 640x480 16 color graphics (VGA)
+            //0x11 => self.render_mode11_frame(&memory), // 640x480 B/W graphics (MCGA,VGA)
+            //0x12 => self.render_mode12_frame(&memory), // 640x480 16 color graphics (VGA)
             0x13 => self.render_mode13_frame(&memory), // 320x200 256 color graphics (MCGA,VGA)
             _ => {
                 println!("XXX fixme render_frame for mode {:02x}", self.mode.mode);
@@ -159,24 +159,44 @@ impl GPU {
         // 06h = G  80x25  8x8   640x200    2       .   B800 CGA,PCjr,EGA,MCGA,VGA
         //     = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
         // XXX impl
-        Vec::new()
     }
-
     fn render_mode11_frame(&self, memory: &[u8]) -> Vec<u8> {
         // 11h = G  80x30  8x16  640x480  mono      .   A000 VGA,MCGA,ATI EGA,ATI VIP
         // XXX impl
-        Vec::new()
-    }
-
-    fn render_mode12_frame(&self, memory: &[u8]) -> Vec<u8> {
-        // 12h = G  80x30  8x16  640x480   16/256K  .   A000 VGA,ATI VIP
-        //     = G  80x30  8x16  640x480   16/64    .   A000 ATI EGA Wonder
-        //     = G    .     .    640x480   16       .     .  UltraVision+256K EGA
-        // XXX impl, planar mode
-        Vec::new()
     }
 */
 
+/*
+    // planar mode
+    fn render_mode12_frame(&self, memory: &[u8]) -> Vec<ColorSpace> {
+        let mut buf: Vec<ColorSpace> = Vec::new();
+        // 12h = G  80x30  8x16  640x480   16/256K  .   A000 VGA,ATI VIP
+        //     = G  80x30  8x16  640x480   16/64    .   A000 ATI EGA Wonder
+        //     = G    .     .    640x480   16       .     .  UltraVision+256K EGA
+
+        // XXX impl, planar mode
+
+        // https://wiki.osdev.org/VGA_Hardware#Memory_Layout_in_16-color_graphics_modes
+
+        for y in 0..self.mode.sheight {
+            for x in (0..self.mode.swidth).step_by(2) { // XXX inc by 2
+                let offset = 0xA_0000 + ((y * self.mode.swidth) + x) as usize;
+                let byte = memory[offset];
+
+                // XXX how is a byte packed in this mode ???
+                let lo = byte & 0xf;
+                let hi = byte >> 4;
+
+                buf.push(self.dac.pal[lo as usize].clone());
+                buf.push(self.dac.pal[hi as usize].clone());
+            }
+        }
+
+        buf
+    }
+*/
+
+    // linear mode
     fn render_mode13_frame(&self, memory: &[u8]) -> Vec<ColorSpace> {
         let mut buf: Vec<ColorSpace> = Vec::new();
         for y in 0..self.mode.sheight {
