@@ -776,7 +776,7 @@ impl GPU {
     /// HACK to have a source of info to toggle CGA status register
     pub fn progress_scanline(&mut self) {
         self.scanline += 1;
-        if self.scanline > self.mode.swidth {
+        if self.scanline > self.mode.sheight {
             self.scanline = 0;
         }
     }
