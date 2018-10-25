@@ -1,9 +1,11 @@
+#![feature(duration_as_u128)]
+
 extern crate sdl2;
 
 use sdl2::event::Event;
 use sdl2::pixels;
+use sdl2::pixels::PixelFormatEnum;
 use sdl2::keyboard::Keycode;
-use sdl2::gfx::primitives::DrawRenderer;
 
 const SCREEN_WIDTH: u32 = 320;
 const SCREEN_HEIGHT: u32 = 200;
@@ -14,6 +16,9 @@ use dustbox::tools;
 
 extern crate clap;
 use clap::{Arg, App};
+
+use std::time::{Duration, SystemTime};
+use std::thread::sleep;
 
 fn main() {
     let matches = App::new("dustbox-frontend")
@@ -51,10 +56,19 @@ fn main() {
     canvas.clear();
     canvas.present();
 
+    let texture_creator = canvas.texture_creator();
+
     let mut events = sdl_context.event_pump().unwrap();
+
+    let app_start = SystemTime::now();
+    let mut frame_event_sum = Duration::new(0, 0);
+    let mut frame_exec_sum = Duration::new(0, 0);
+    let mut frame_render_sum = Duration::new(0, 0);
+    let mut frame_sleep_sum = Duration::new(0, 0);
 
     let mut frame = 0;
     'main: loop {
+        let event_start = SystemTime::now();
         for event in events.poll_iter() {
             match event {
                 Event::Quit {..} => break 'main,
@@ -68,32 +82,86 @@ fn main() {
                 _ => {}
             }
         }
+        let event_time = event_start.elapsed().unwrap();
+        frame_event_sum += event_time;
 
-        // run a some instructions
-        machine.execute_instructions(4000); // XXX execute N instrs, as needsed for X mhz
+        let frame_start = SystemTime::now();
+
+        // run some instructions and progress scanline until screen is covered
+        for _ in 0..machine.hw.gpu.mode.swidth {
+            machine.execute_instructions(300); // XXX execute N instrs, as needsed for X mhz
+            machine.hw.gpu.progress_scanline();
+        }
+        let exec_time = frame_start.elapsed().unwrap();
 
         frame += 1;
-        if frame > 60 {
-            // XXX how many frames per second?
+        frame_exec_sum += exec_time;
 
-            // render frame
-            let data = machine.hw.gpu.render_frame(&machine.hw.mmu);
-            let w = machine.hw.gpu.mode.swidth;
+        let render_start = SystemTime::now();
 
-            let mut x: i16 = 0;
-            let mut y: i16 = 0;
+        // render frame
+        let data = machine.hw.gpu.render_frame(&machine.hw.mmu);
+        let w = machine.hw.gpu.mode.swidth as usize;
+
+        let mut x: usize = 0;
+        let mut y: usize = 0;
+
+        let mut texture = texture_creator.create_texture_streaming(PixelFormatEnum::RGB24, machine.hw.gpu.mode.swidth, machine.hw.gpu.mode.sheight).unwrap();
+        texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {
             for pix in data {
                 if let dustbox::gpu::ColorSpace::RGB(r, g, b) = pix {
-                    canvas.pixel(x, y, pixels::Color::RGB(r, g, b)).unwrap();
+                    let offset = y*pitch + x*3;
+                    buffer[offset] = r;
+                    buffer[offset + 1] = g;
+                    buffer[offset + 2] = b;
                     x += 1;
-                    if x as u32 >= w {
+                    if x >= w {
                         x = 0;
                         y += 1;
                     }
                 }
             }
-            canvas.present();
-            frame = 0;
+        }).unwrap();
+
+        canvas.copy(&texture, None, None).unwrap();
+        canvas.present();
+        let render_time = render_start.elapsed().unwrap();
+        frame_render_sum += render_time;
+
+        // sleep for 1/30:th of a second, minus time it took to get here
+        let mut sleep_time = Duration::new(0, 1_000_000_000 / 30);
+        if sleep_time > exec_time {
+            sleep_time -= exec_time;
+        } else {
+            println!("WARN: exec time very slow! {:#?}", exec_time);
+            sleep_time = Duration::new(0, 0);
         }
+        if sleep_time > render_time {
+            sleep_time -= render_time;
+        } else {
+            println!("WARN: render time very slow! {:#?}", render_time);
+            sleep_time = Duration::new(0, 0);
+        }
+        if sleep_time > event_time {
+            sleep_time -= event_time;
+        } else {
+            println!("WARN: event time very slow! {:#?}", event_time);
+            sleep_time = Duration::new(0, 0);
+        }
+        // println!("   sleep {:#?}, event {:#?}", sleep_time, event_time);
+
+        sleep(sleep_time);
+        frame_sleep_sum += sleep_time;
+
+        if frame >= 30 {
+            frame = 0;
+            let frame_tot_sum = frame_event_sum + frame_exec_sum + frame_render_sum + frame_sleep_sum;
+            println!("another 30 frames rendered after {:#?}. event {:#?}, exec {:#?}, render {:#?}, sleep {:#?} = {:#?}", app_start.elapsed().unwrap(), frame_event_sum, frame_exec_sum, frame_render_sum, frame_sleep_sum, frame_tot_sum);
+            frame_event_sum = Duration::new(0, 0);
+            frame_exec_sum = Duration::new(0, 0);
+            frame_render_sum = Duration::new(0, 0);
+            frame_sleep_sum = Duration::new(0, 0);
+        }
+
     }
 }
