@@ -5,7 +5,6 @@ extern crate sdl2;
 use sdl2::event::Event;
 use sdl2::pixels;
 use sdl2::pixels::PixelFormatEnum;
-use sdl2::keyboard::Keycode;
 
 const SCREEN_WIDTH: u32 = 320;
 const SCREEN_HEIGHT: u32 = 200;
@@ -79,13 +78,14 @@ fn main() {
             match event {
                 Event::Quit {..} => break 'main,
 
-                Event::KeyDown {keycode: Some(keycode), ..} => {
+                Event::KeyDown {keycode: Some(keycode), keymod: modifier, ..} => {
+                    /*
                     if keycode == Keycode::Escape {
                         break 'main
                     }
+                    */
 
-                    // XXX put keys in a queue array for later consumption
-                    machine.hw.keyboard.add_keycode(keycode);
+                    machine.hw.keyboard.add_keypress(keycode, modifier);
                 }
 
                 _ => {}
@@ -97,6 +97,9 @@ fn main() {
 
         let mut texture = texture_creator.create_texture_streaming(PixelFormatEnum::RGB24, machine.hw.gpu.mode.swidth, machine.hw.gpu.mode.sheight).unwrap();
         let frame_start = SystemTime::now();
+
+
+        let locked_fps = 30;
 
         {
             let window = canvas.window_mut();
@@ -176,10 +179,10 @@ fn main() {
             sleep(sleep_time);
             frame_sleep_sum += sleep_time;
 
-            if frame >= 30 {
+            if frame >= locked_fps {
                 frame = 0;
                 let frame_tot_sum = frame_event_sum + frame_exec_sum + frame_render_sum + frame_sleep_sum;
-                println!("another 30 frames rendered after {:#?}. event {:#?}, exec {:#?}, render {:#?}, sleep {:#?} = {:#?}", app_start.elapsed().unwrap(), frame_event_sum, frame_exec_sum, frame_render_sum, frame_sleep_sum, frame_tot_sum);
+                println!("another {} frames rendered in {:#?} after {:#?}. event {:#?}, exec {:#?}, render {:#?}, sleep {:#?}", locked_fps, frame_tot_sum, app_start.elapsed().unwrap(), frame_event_sum, frame_exec_sum, frame_render_sum, frame_sleep_sum);
                 frame_event_sum = Duration::new(0, 0);
                 frame_exec_sum = Duration::new(0, 0);
                 frame_render_sum = Duration::new(0, 0);

@@ -1,63 +1,83 @@
 // TODO later: dont depend on sdl2 in the core crate (process events with something else?)
-use sdl2::keyboard::Keycode;
+use sdl2::keyboard::{Keycode, Mod};
+use sdl2::keyboard::{LSHIFTMOD, RSHIFTMOD, LCTRLMOD, RCTRLMOD, LALTMOD, RALTMOD};
+
+const DEBUG_KEYBOARD: bool = true;
 
 #[derive(Clone)]
 pub struct Keyboard {
-    /// as returned by sdl2
-    keycodes: Vec<sdl2::keyboard::Keycode>,
+    keypresses: Vec<Keypress>,
 }
 
 impl Keyboard {
     pub fn default() -> Self {
         Keyboard {
-            keycodes: Vec::new(),
+            keypresses: Vec::new(),
         }
     }
 
     pub fn has_queued_presses(&self) -> bool {
-        self.keycodes.len() > 0
+        self.keypresses.len() > 0
     }
 
-    pub fn add_keycode(&mut self, keycode: Keycode) {
-        self.keycodes.push(keycode);
+    pub fn add_keypress(&mut self, keycode: Keycode, modifier: Mod) {
+        if DEBUG_KEYBOARD {
+            println!("keyboard: register code {:#?}, mod {:#?}", keycode, modifier);
+        }
+        self.keypresses.push(Keypress{keycode, modifier});
     }
 
-    fn consume_keycode(&mut self) -> Keycode {
-        self.keycodes.pop().unwrap()
+    fn consume_keypress(&mut self) -> Keypress {
+        self.keypresses.pop().unwrap()
     }
 
-    fn peek_keycode(&self) -> Keycode {
-        self.keycodes[0]
+    fn peek_keypress(&self) -> Option<Keypress> {
+        let len = self.keypresses.len();
+        if len > 0 {
+            let val = self.keypresses[len - 1].clone();
+            Some(val)
+        } else {
+            None
+        }
     }
 
     // used by int 0x16 function 0x00
     pub fn consume_dos_standard_scancode_and_ascii(&mut self) -> (u8, u8) {
-        let (ah, al, keycode) = self.peek_dos_standard_scancode_and_ascii();
-        if ah != 0 {
-            self.keycodes.remove_item(&keycode);
+        let (ah, al, keypress) = self.peek_dos_standard_scancode_and_ascii();
+        if let Some(keypress) = keypress {
+            self.keypresses.remove_item(&keypress);
         }
         (ah, al)
     }
 
     // used by int 0x16 function 0x01
-    pub fn peek_dos_standard_scancode_and_ascii(&self) -> (u8, u8, Keycode) {
-        if !self.has_queued_presses() {
-            return (0, 0, Keycode::Num0); // XXX null keycode
+    pub fn peek_dos_standard_scancode_and_ascii(&self) -> (u8, u8, Option<Keypress>) {
+        if let Some(keypress) = self.peek_keypress() {
+            let (ah, al) = map_sdl_to_dos_standard_codes(&keypress);
+
+            if DEBUG_KEYBOARD {
+                println!("keyboard: peek_dos_standard_scancode_and_ascii returns scancode {:02X}, ascii {:02X}, sdl keypress {:#?}", ah, al, keypress);
+            }
+
+            (ah, al, Some(keypress))
+        } else {
+            (0, 0, None)
         }
-
-        let keycode = self.peek_keycode();
-        let (ah, al) = self.map_sdl_to_standard_scancode_and_ascii(keycode);
-
-        (ah, al, keycode)
     }
+}
 
-    // returns scancode, ascii
-    fn map_sdl_to_standard_scancode_and_ascii(&self, keycode: Keycode) -> (u8, u8) {
+#[derive(Clone, Debug, PartialEq)]
+pub struct Keypress {
+    keycode: Keycode,
+    modifier: Mod,
+}
 
-        // normal results. TODO results with SHIFT down, CTRL, ALT
-
-        // https://sites.google.com/site/pcdosretro/scancodes
-        match keycode {
+/// returns keycodes as specified in https://sites.google.com/site/pcdosretro/scancodes
+/// more info at https://wiki.osdev.org/PS/2_Keyboard
+impl Keypress {
+    /// keycodes with no modifier key
+    pub fn to_std_normal(&self) -> (u8, u8) {
+        match self.keycode {
             Keycode::Escape => (0x01, 0x1B),
             Keycode::Num1 => (0x02, 0x31),
             Keycode::Num2 => (0x03, 0x32),
@@ -145,10 +165,136 @@ impl Keyboard {
             // misc mappings
             Keycode::LGui => (0, 0),
             _ => {
-                println!("XXX unhandled keycode mapping for {:#?}", keycode);
-
+                println!("unhandled NORMAL keycode mapping for {:#?}", self.keycode);
                 (0, 0)
             }
         }
+    }
+
+    pub fn to_std_shift(&self) -> (u8, u8) {
+        match self.keycode {
+            Keycode::Escape => (0x01, 0x1B),
+            Keycode::Num1 => (0x02, 0x21),
+            Keycode::Num2 => (0x03, 0x40),
+            Keycode::Num3 => (0x04, 0x23),
+            Keycode::Num4 => (0x05, 0x24),
+            Keycode::Num5 => (0x06, 0x25),
+            Keycode::Num6 => (0x07, 0x5E),
+            Keycode::Num7 => (0x08, 0x26),
+            Keycode::Num8 => (0x09, 0x2A),
+            Keycode::Num9 => (0x0A, 0x28),
+            Keycode::Num0 => (0x0B, 0x29),
+            Keycode::Minus => (0x0C, 0x5F),
+            Keycode::Equals => (0x0D, 0x2B),
+            Keycode::Backspace => (0x0E, 0x08),
+            Keycode::Tab => (0x0F, 0x00),
+            Keycode::Q => (0x10, 0x51),
+            Keycode::W => (0x11, 0x57),
+            Keycode::E => (0x12, 0x45),
+            Keycode::R => (0x13, 0x52),
+            Keycode::T => (0x14, 0x54),
+            Keycode::Y => (0x15, 0x59),
+            Keycode::U => (0x16, 0x55),
+            Keycode::I => (0x17, 0x49),
+            Keycode::O => (0x18, 0x4F),
+            Keycode::P => (0x19, 0x50),
+            Keycode::LeftBracket => (0x1A, 0x7B),  // XXX [ {
+            Keycode::RightBracket => (0x1B, 0x7D), // XXX ] }
+            Keycode::KpEnter => (0x1C, 0x0D),
+            // 0x1D = CTRL but cant be read as its a modifier
+            Keycode::A => (0x1E, 0x41),
+            Keycode::S => (0x1F, 0x53),
+            Keycode::D => (0x20, 0x44),
+            Keycode::F => (0x21, 0x46),
+            Keycode::G => (0x22, 0x47),
+            Keycode::H => (0x23, 0x48),
+            Keycode::J => (0x24, 0x4A),
+            Keycode::K => (0x25, 0x4B),
+            Keycode::L => (0x26, 0x4C),
+            Keycode::Colon => (0x27, 0x3A), // XXX ; :
+            Keycode::Quote => (0x28, 0x22), // XXX ' "
+            Keycode::Caret => (0x29, 0x7E), // XXX ` ~
+            // 0x2A = Left Shift
+            Keycode::Backslash => (0x2B, 0x7C), // XXX \ |
+            Keycode::Z => (0x2C, 0x5A),
+            Keycode::X => (0x2D, 0x58),
+            Keycode::C => (0x2E, 0x43),
+            Keycode::V => (0x2F, 0x56),
+            Keycode::B => (0x30, 0x42),
+            Keycode::N => (0x31, 0x4E),
+            Keycode::M => (0x32, 0x4D),
+            Keycode::Comma => (0x33, 0x3C), // XXX , <
+            Keycode::Period => (0x34, 0x3E), // XXX . >
+            Keycode::Slash => (0x35, 0x3F),  // XXX / ?
+            // 0x36 = Right Shift
+            Keycode::Asterisk => (0x37, 0x2A),
+            // 0x38 = Alt
+            Keycode::Space => (0x39, 0x20),
+            // 0x3A = Caps Lock
+            Keycode::F1 => (0x54, 0x00),
+            Keycode::F2 => (0x55, 0x00),
+            Keycode::F3 => (0x56, 0x00),
+            Keycode::F4 => (0x57, 0x00),
+            Keycode::F5 => (0x58, 0x00),
+            Keycode::F6 => (0x59, 0x00),
+            Keycode::F7 => (0x5A, 0x00),
+            Keycode::F8 => (0x5B, 0x00),
+            Keycode::F9 => (0x5C, 0x00),
+            Keycode::F10 => (0x5D, 0x00),
+            // 0x45 = Num Lock
+            // 0x46 = Scroll Lock
+            Keycode::Home => (0x47, 0x37),
+            Keycode::Up => (0x48, 0x38),
+            Keycode::PageUp => (0x49, 0x39),
+            Keycode::KpMinus => (0x4A, 0x2D), // XXX numeric keypad minus
+            Keycode::Left => (0x4B, 0x34),
+            Keycode::KpClearEntry => (0x4C, 0x35), // XXX center numeric keyb
+            Keycode::Right => (0x4D, 0x36),
+            Keycode::KpPlus => (0x4E, 0x2B), // XXX numeric keypad plus
+            Keycode::End => (0x4F, 0x31),
+            Keycode::Down => (0x50, 0x32),
+            Keycode::PageDown => (0x51, 0x33),
+            Keycode::Insert => (0x52, 0x30),
+            Keycode::Delete => (0x53, 0x2E),
+
+            // misc mappings
+            Keycode::LGui => (0, 0),
+
+            _ => {
+                println!("unhandled SHIFT keycode mapping for {:#?}", self.keycode);
+                (0, 0)
+            }
+        }
+    }
+
+    pub fn to_std_ctrl(&self) -> (u8, u8) {
+        match self.keycode {
+            _ => {
+                println!("unhandled CTRL keycode mapping for {:#?}", self.keycode);
+                (0, 0)
+            }
+        }
+    }
+
+    pub fn to_std_alt(&self) -> (u8, u8) {
+        match self.keycode {
+            _ => {
+                println!("unhandled ALT keycode mapping for {:#?}", self.keycode);
+                (0, 0)
+            }
+        }
+    }
+}
+
+// returns scancode, ascii
+fn map_sdl_to_dos_standard_codes(keypress: &Keypress) -> (u8, u8) {
+    if keypress.modifier == LSHIFTMOD || keypress.modifier == RSHIFTMOD {
+        keypress.to_std_shift()
+    } else if keypress.modifier == LCTRLMOD || keypress.modifier == RCTRLMOD {
+        keypress.to_std_ctrl()
+    } else if keypress.modifier == LALTMOD || keypress.modifier == RALTMOD {
+        keypress.to_std_alt()
+    } else {
+        keypress.to_std_normal()
     }
 }
