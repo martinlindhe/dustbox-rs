@@ -156,7 +156,7 @@ impl Machine {
         }
     }
 
-    /// executes n instructions of the cpu. only used in tests
+    /// executes n instructions of the cpu
     pub fn execute_instructions(&mut self, count: usize) {
         for _ in 0..count {
             self.execute_instruction();

@@ -9,6 +9,9 @@ pub struct Keyboard {
     keypresses: Vec<Keypress>,
 }
 
+/// Implements a PS/2 keyboard
+///
+/// Usable test program for this is ../dos-software-decoding/demo-com-16bit/4sum/4sum.com
 impl Keyboard {
     pub fn default() -> Self {
         Keyboard {
@@ -21,10 +24,11 @@ impl Keyboard {
     }
 
     pub fn add_keypress(&mut self, keycode: Keycode, modifier: Mod) {
+        let keypress = Keypress{keycode, modifier};
         if DEBUG_KEYBOARD {
-            println!("keyboard: register code {:#?}, mod {:#?}", keycode, modifier);
+            println!("keyboard: add_keypress {:?}", keypress);
         }
-        self.keypresses.push(Keypress{keycode, modifier});
+        self.keypresses.push(keypress);
     }
 
     fn consume_keypress(&mut self) -> Keypress {
@@ -45,6 +49,9 @@ impl Keyboard {
     pub fn consume_dos_standard_scancode_and_ascii(&mut self) -> (u8, u8) {
         let (ah, al, keypress) = self.peek_dos_standard_scancode_and_ascii();
         if let Some(keypress) = keypress {
+            if DEBUG_KEYBOARD {
+                println!("keyboard: consume_dos_standard_scancode_and_ascii consumes {:?}", keypress);
+            }
             self.keypresses.remove_item(&keypress);
         }
         (ah, al)
@@ -56,7 +63,7 @@ impl Keyboard {
             let (ah, al) = map_sdl_to_dos_standard_codes(&keypress);
 
             if DEBUG_KEYBOARD {
-                println!("keyboard: peek_dos_standard_scancode_and_ascii returns scancode {:02X}, ascii {:02X}, sdl keypress {:#?}", ah, al, keypress);
+                println!("keyboard: peek_dos_standard_scancode_and_ascii returns scancode {:02X}, ascii {:02X}, {:?}", ah, al, keypress);
             }
 
             (ah, al, Some(keypress))
@@ -161,9 +168,6 @@ impl Keypress {
             Keycode::PageDown => (0x51, 0x00),
             Keycode::Insert => (0x52, 0x00),
             Keycode::Delete => (0x53, 0x00),
-
-            // misc mappings
-            Keycode::LGui => (0, 0),
             _ => {
                 println!("unhandled NORMAL keycode mapping for {:#?}", self.keycode);
                 (0, 0)
@@ -256,10 +260,6 @@ impl Keypress {
             Keycode::PageDown => (0x51, 0x33),
             Keycode::Insert => (0x52, 0x30),
             Keycode::Delete => (0x53, 0x2E),
-
-            // misc mappings
-            Keycode::LGui => (0, 0),
-
             _ => {
                 println!("unhandled SHIFT keycode mapping for {:#?}", self.keycode);
                 (0, 0)
@@ -288,13 +288,21 @@ impl Keypress {
 
 // returns scancode, ascii
 fn map_sdl_to_dos_standard_codes(keypress: &Keypress) -> (u8, u8) {
-    if keypress.modifier == LSHIFTMOD || keypress.modifier == RSHIFTMOD {
-        keypress.to_std_shift()
-    } else if keypress.modifier == LCTRLMOD || keypress.modifier == RCTRLMOD {
-        keypress.to_std_ctrl()
-    } else if keypress.modifier == LALTMOD || keypress.modifier == RALTMOD {
-        keypress.to_std_alt()
-    } else {
-        keypress.to_std_normal()
+    match keypress.keycode {
+        // misc mappings
+        Keycode::LGui => (0, 0),
+        Keycode::LShift => (0, 0),
+        Keycode::RShift => (0, 0),
+        _ => {
+            if keypress.modifier == LSHIFTMOD || keypress.modifier == RSHIFTMOD {
+                keypress.to_std_shift()
+            } else if keypress.modifier == LCTRLMOD || keypress.modifier == RCTRLMOD {
+                keypress.to_std_ctrl()
+            } else if keypress.modifier == LALTMOD || keypress.modifier == RALTMOD {
+                keypress.to_std_alt()
+            } else {
+                keypress.to_std_normal()
+            }
+        }
     }
 }
