@@ -50,6 +50,27 @@ fn trace_unreferenced_data() {
 ", res);
 }
 
+#[test]
+fn trace_decorates_stosw() {
+    let mut machine = Machine::default();
+    machine.cpu.deterministic = true;
+    let code: Vec<u8> = vec![
+        0xAB,           // stosw
+        0xF3, 0xAB,     // rep stosw
+        0xE4, 0x60,     // in al, 0x60
+    ];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] AB               Stosw                                  ; store ax at es:di
+[085F:0101] F3AB             Rep      Stosw                         ; store ax at es:di for cx times
+[085F:0103] E460             In8      al, 0x60                      ; keyboard or kb controller data output buffer
+", res);
+}
+
+
 /*
 #[test]
 fn trace_data_ref() {

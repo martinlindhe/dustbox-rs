@@ -1,7 +1,7 @@
 use std::cmp;
 
 use machine::Machine;
-use cpu::{Decoder, R, Op, Parameter};
+use cpu::{Decoder, RepeatMode, InstructionInfo, R, Op, Parameter};
 use memory::MemoryAddress;
 use string::right_pad;
 use hex::hex_bytes;
@@ -87,10 +87,10 @@ impl ProgramTracer {
     }
 
     fn post_process_execution(&mut self, machine: &mut Machine) {
-        // walk each byte of the loaded rom and check w instr lengths
-        // if any bytes are not known to occupy, allows for us to show them as data
         let mut decoder = Decoder::default();
 
+        // walk each byte of the loaded rom and check w instr lengths
+        // if any bytes are not known to occupy, allows for us to show them as data
         for ma in &self.visited_addresses {
             // translate address into physical offset
             let abs = (ma.value() - u32::from(machine.rom_base.offset())) as usize;
@@ -138,6 +138,58 @@ impl ProgramTracer {
         self.accounted_bytes.sort();
     }
 
+    /// implementation is in src/hardware.rs in_u8()
+    fn in_u8_port_desc(&self, port: u16) -> String {
+        match port {
+            0x0060 => "keyboard or kb controller data output buffer".to_owned(),
+            _ => {
+                format!("in_u8_port_desc unrecognized port {:04X}", port)
+            },
+        }
+    }
+
+    fn in_u16_port_desc(&self, port: u16) -> String {
+        match port {
+            _ => {
+                format!("in_u16_port_desc unrecognized port {:04X}", port)
+            },
+        }
+    }
+
+    fn decorate_instruction(&self, ii: &InstructionInfo) -> String {
+        match ii.instruction.command {
+            Op::In8 => {
+                // E460              in al,0x60
+                match ii.instruction.params.src {
+                    Parameter::Imm8(port) => self.in_u8_port_desc(port as u16),
+                    _ => "".to_owned(),
+                }
+            }
+            Op::In16 => {
+                // E560              in ax,0x60
+                match ii.instruction.params.src {
+                    Parameter::Imm8(port) => self.in_u16_port_desc(port as u16),
+                    _ => "".to_owned(),
+                }
+            }
+            Op::Stosb => {
+                match ii.instruction.repeat {
+                    RepeatMode::Rep => "store al at es:di for cx times".to_owned(),
+                    RepeatMode::None => "store al at es:di".to_owned(),
+                    _ => "".to_owned(),
+                }
+            }
+            Op::Stosw => {
+                match ii.instruction.repeat {
+                    RepeatMode::Rep => "store ax at es:di for cx times".to_owned(),
+                    RepeatMode::None => "store ax at es:di".to_owned(),
+                    _ => "".to_owned(),
+                }
+            }
+            _ => "".to_owned(),
+        }
+    }
+
     /// presents a flatish traced disassembly
     pub fn present_trace(&mut self, machine: &mut Machine) -> String {
 
@@ -149,13 +201,25 @@ impl ProgramTracer {
             match ab.kind {
                 GuessedDataType::InstrStart => {
                     let ii = decoder.get_instruction_info(&mut machine.hw.mmu, ab.address.segment(), ab.address.offset());
+
+                    let mut tail = String::new();
                     let xref = self.render_xref(ab.address);
                     if xref != "" {
-                        let ins = format!("{}", ii);
-                        res.push_str(&format!("{}{}", right_pad(&ins, 68), xref));
-                    } else {
-                        res.push_str(&format!("{}", ii));
+                        tail.push_str(&xref);
                     }
+
+                    let decor = self.decorate_instruction(&ii);
+                    if decor != "" {
+                        tail.push_str(&format!("; {}", decor));
+                    }
+
+                    if tail != "" {
+                        res.push_str(&format!("{}{}", right_pad(&format!("{}", ii), 68), tail));
+                    } else {
+                        let iis = format!("{}", ii);
+                        res.push_str(&iis);
+                    }
+
                     res.push('\n');
                 }
                 GuessedDataType::InstrContinuation => {},
