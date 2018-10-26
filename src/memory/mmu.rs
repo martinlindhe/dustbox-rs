@@ -48,7 +48,7 @@ impl MMU {
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
         let v = self.memory.borrow().read_u8(addr);
         if DEBUG_MMU {
-            println!("mmu.read_u8 from {:06X} = {:02X}", addr, v);
+            println!("mmu.read_u8 from ({:04X}:{:04X} == {:06X}) = {:02X}", seg, offset, addr, v);
         }
         v
     }
@@ -57,7 +57,7 @@ impl MMU {
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
         let v = self.memory.borrow().read_u16(addr);
         if DEBUG_MMU {
-            println!("mmu.read_u16 from {:06X} = {:04X}", addr, v);
+            println!("mmu.read_u16 from ({:04X}:{:04X} == {:06X}) = {:04X}", seg, offset, addr, v);
         }
         v
     }
@@ -65,12 +65,12 @@ impl MMU {
     pub fn write_u8(&mut self, seg: u16, offset: u16, data: u8) {
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
         if DEBUG_MMU {
-            println!("mmu.write_u8 to {:06X} = {:02X}", addr, data);
+            println!("mmu.write_u8 to ({:04X}:{:04X} == {:06X}) = {:02X}", seg, offset, addr, data);
         }
         self.memory.borrow_mut().write_u8(addr, data);
     }
 
-    /// writes and increments offset
+    /// write data and increase addr
     pub fn write_u8_inc(&mut self, addr: &mut MemoryAddress, data: u8) {
         self.memory.borrow_mut().write_u8(addr.value(), data);
         if DEBUG_MMU {
@@ -88,11 +88,12 @@ impl MMU {
     pub fn write_u16(&mut self, seg: u16, offset: u16, data: u16) {
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
         if DEBUG_MMU {
-            println!("mmu.write_u16 to {:06X} = {:04X}", addr, data);
+            println!("mmu.write_u16 to ({:04X}:{:04X} == {:06X}) = {:02X}", seg, offset, addr, data);
         }
         self.memory.borrow_mut().write_u16(addr, data);
     }
 
+    /// write data and increase addr
     pub fn write_u16_inc(&mut self, addr: &mut MemoryAddress, data: u16) {
         self.memory.borrow_mut().write_u16(addr.value(), data);
         if DEBUG_MMU {
@@ -119,6 +120,7 @@ impl MMU {
         self.memory.borrow_mut().write_u32(addr, data);
     }
 
+    /// write data and increase addr
     pub fn write_u32_inc(&mut self, addr: &mut MemoryAddress, data: u32) {
         self.memory.borrow_mut().write_u32(addr.value(), data);
         if DEBUG_MMU {

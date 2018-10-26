@@ -225,7 +225,8 @@ impl GPU {
             }
         }
         if !found {
-            panic!("video mode not found: {:02X} in graphics compatibility {:?}", mode, self.card);
+            println!("ERROR: set_mode {:02X}: video mode not found for card {:?}", mode, self.card);
+            return;
         }
 
         match self.mode.kind {
@@ -580,7 +581,7 @@ impl GPU {
                 }
             }
             GFXMode::VGA => mmu.write_u8(0xA000, y * 320 + x, color),
-            _ => panic!("put_pixel TODO unimplemented mode {:?}", self.mode.kind),
+            _ => println!("ERROR put_pixel TODO unimplemented for mode {:?}", self.mode.kind),
         }
     }
 

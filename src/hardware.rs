@@ -3,6 +3,7 @@ use memory::MMU;
 use pit::PIT;
 use pic::PIC;
 use bios::BIOS;
+use keyboard::Keyboard;
 
 const DEBUG_IO: bool = false;
 
@@ -13,6 +14,7 @@ pub struct Hardware {
     pub pit: PIT,
     pub pic: PIC,
     pub pic2: PIC, // secondary pic
+    pub keyboard: Keyboard,
 }
 
 impl Hardware {
@@ -30,6 +32,7 @@ impl Hardware {
             pit: PIT::default(),
             pic: PIC::default(),
             pic2: PIC::default(),
+            keyboard: Keyboard::default(),
         }
     }
 

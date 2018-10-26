@@ -1,11 +1,10 @@
-// this is a collection of graphic tests using classic 256 / 512 byte demos
-
-// TODO: copy all demo binaries that tests rely on to this repo
+// this is a collection of graphic tests using classic ms-dos demos
 
 use std::path::Path;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fs;
+use std::panic;
 
 use tera::Context;
 use image;
@@ -249,6 +248,7 @@ fn demo_com_16bit() {
         path.to_owned() + "dreamers_bbs/dreamer.com",
         path.to_owned() + "microsoft_golf_cracktro/mgc.com",
     ];
+
     run_and_save_video_frames(test_bins, "demo_com_16bit", "");
 }
 
@@ -353,12 +353,8 @@ fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefi
             Err(err) => panic!("failed to read {}: {}", bin, err),
         }
 
-        for _ in 0..7_000_000 {
-            machine.execute_instruction();
-            if machine.cpu.fatal_error {
-                break;
-            }
-        }
+        machine.execute_instructions(7_000_000);
+
         let path = Path::new(&bin);
 
         let _ = fs::create_dir(&format!("docs/render/{}", group));

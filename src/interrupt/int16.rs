@@ -2,27 +2,39 @@ use hardware::Hardware;
 use cpu::{CPU, R};
 use cpu::*;
 
+const DEBUG_KEYBOARD: bool = false;
+
 // keyboard related interrupts
 pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
     match cpu.get_r8(R::AH) {
         0x00 => {
             // KEYBOARD - GET KEYSTROKE
-            // Return:
+            let (ah, al) = hw.keyboard.consume_dos_standard_scancode_and_ascii();
+
             // AH = BIOS scan code
             // AL = ASCII character
-            cpu.set_r16(R::AX, 0); // XXX
-            println!("XXX impl KEYBOARD - GET KEYSTROKE");
+            cpu.set_r8(R::AH, ah);
+            cpu.set_r8(R::AL, al);
+
+            if DEBUG_KEYBOARD {
+                println!("KEYBOARD - GET KEYSTROKE, returns ah {:02x}, al {:02x}", ah, al);
+            }
         }
         0x01 => {
             // KEYBOARD - CHECK FOR KEYSTROKE
-            // Return:
-            // ZF set if no keystroke available
-            // ZF clear if keystroke available
+            let (ah, al, _) = hw.keyboard.peek_dos_standard_scancode_and_ascii();
+
             // AH = BIOS scan code
             // AL = ASCII character
+            cpu.set_r8(R::AH, ah);
+            cpu.set_r8(R::AL, al);
 
-            println!("XXX impl KEYBOARD - CHECK FOR KEYSTROKE");
-            hw.bios.set_flag(&mut hw.mmu, FLAG_ZF, true);
+            // ZF set if no keystroke available
+            hw.bios.set_flag(&mut hw.mmu, FLAG_ZF, ah == 0);
+
+            if DEBUG_KEYBOARD {
+                println!("KEYBOARD - CHECK FOR KEYSTROKE, returns ah {:02x}, al {:02x}", ah, al);
+            }
         }
         0x11 => {
             // KEYBOARD - CHECK FOR ENHANCED KEYSTROKE (enh kbd support only)

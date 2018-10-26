@@ -1,6 +1,8 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
+#![feature(vec_remove_item)]
+
 extern crate time;
 extern crate rand;
 extern crate tempdir;
@@ -22,6 +24,8 @@ extern crate pretty_assertions;
 extern crate serde_derive;
 extern crate bincode;
 
+extern crate sdl2;
+
 pub mod machine;
 pub mod hardware;
 pub mod cpu;
@@ -37,5 +41,6 @@ pub mod hex;
 pub mod debug;
 pub mod ndisasm;
 pub mod string;
+pub mod keyboard;
 
 mod interrupt;

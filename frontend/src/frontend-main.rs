@@ -50,7 +50,7 @@ fn main() {
 
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
 
-    println!("Using SDL_Renderer \"{}\"", canvas.info().name);
+    //println!("Using SDL_Renderer \"{}\"", canvas.info().name);
 
     canvas.set_draw_color(pixels::Color::RGB(0, 0, 0));
     canvas.clear();
@@ -69,6 +69,11 @@ fn main() {
 
     let mut frame = 0;
     'main: loop {
+
+        if machine.cpu.fatal_error {
+            println!("cpu fatal error occured. stopping execution");
+            break 'main;
+        }
         let event_start = SystemTime::now();
         for event in events.poll_iter() {
             match event {
@@ -80,6 +85,7 @@ fn main() {
                     }
 
                     // XXX put keys in a queue array for later consumption
+                    machine.hw.keyboard.add_keycode(keycode);
                 }
 
                 _ => {}
@@ -93,20 +99,18 @@ fn main() {
         let frame_start = SystemTime::now();
 
         {
-            // Update the window title.
             let window = canvas.window_mut();
 
             // resize window to current screen mode sizes
             if last_video_mode != machine.hw.gpu.mode.mode {
                 let resize_start = SystemTime::now();
-                window.set_size(machine.hw.gpu.mode.swidth, machine.hw.gpu.mode.sheight);
-                let resize_time = event_start.elapsed().unwrap();
-                println!("XXX resize window for mode {:02x}, time {:#?}", machine.hw.gpu.mode.mode, resize_time);
+                window.set_size(machine.hw.gpu.mode.swidth, machine.hw.gpu.mode.sheight).unwrap();
+                let resize_time = resize_start.elapsed().unwrap();
+                println!("Resized window for mode {:02x} in {:#?}", machine.hw.gpu.mode.mode, resize_time);
                 last_video_mode = machine.hw.gpu.mode.mode;
             }
 
-            // run some instructions and progress scanline until screen is covered
-
+            // run some instructions and progress scanline until screen is drawn
             for _ in 0..machine.hw.gpu.mode.swidth {
                 // XXX calculate the number cycles to execute for (1/30th sec ) / scanlines
                 // XXX measure by instruction cycles

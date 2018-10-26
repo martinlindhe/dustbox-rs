@@ -7,6 +7,8 @@ use hex::hex_bytes;
 use memory::{MMU, MemoryAddress};
 use ndisasm::{ndisasm_bytes, ndisasm_first_instr};
 
+const DEBUG_EXEC: bool = false;
+
 #[derive(Deserialize, Debug)]
 struct ExeHeader {
     signature: u16,             // 0x5A4D == "MZ"
@@ -157,7 +159,10 @@ impl Machine {
     /// executes n instructions of the cpu. only used in tests
     pub fn execute_instructions(&mut self, count: usize) {
         for _ in 0..count {
-            self.execute_instruction()
+            self.execute_instruction();
+            if self.cpu.fatal_error {
+                break;
+            }
         }
     }
 
@@ -168,6 +173,14 @@ impl Machine {
     }
 
     pub fn execute_instruction(&mut self) {
+        // XXX move somewhere else
+        // MEM 0040h:006Ch - TIMER TICKS SINCE MIDNIGHT
+        // Size:	DWORD
+        // Desc:	updated approximately every 55 milliseconds by the BIOS INT 08 handler
+        // used by ../dos-software-decoding/demo-com-16bit/bmatch/bmatch.com
+        let ticks = self.hw.mmu.read_u32(0x0040, 0x006C) + 1;
+        self.hw.mmu.write_u32(0x0040, 0x006C, ticks);
+
         let cs = self.cpu.get_r16(R::CS);
         let ip = self.cpu.regs.ip;
         if cs == 0xF000 {
@@ -203,7 +216,12 @@ impl Machine {
                 }
                 println!("{} Instructions executed", self.cpu.instruction_count);
             }
-            _ => self.cpu.execute(&mut self.hw, &op),
+            _ => {
+                if DEBUG_EXEC {
+                    println!("[{:04X}:{:04X}] {}", cs, ip, op);
+                }
+                self.cpu.execute(&mut self.hw, &op);
+            },
         }
 
         // XXX need instruction timing to do this properly
