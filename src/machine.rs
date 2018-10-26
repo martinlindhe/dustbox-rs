@@ -131,6 +131,8 @@ impl Machine {
 
         let cs = self.cpu.get_r16(R::CS);
         self.hw.mmu.write(cs, self.cpu.regs.ip, data);
+
+        self.cpu.mark_stack(&mut self.hw.mmu);
     }
 
     /// returns a copy of register values at a given time

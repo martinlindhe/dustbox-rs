@@ -10,6 +10,8 @@ pub struct Keyboard {
 }
 
 /// Implements a PS/2 keyboard
+/// https://wiki.osdev.org/PS/2_Keyboard
+/// https://wiki.osdev.org/"8042"_PS/2_Controller
 ///
 /// Usable test program for this is ../dos-software-decoding/demo-com-16bit/4sum/4sum.com
 impl Keyboard {
@@ -80,7 +82,6 @@ pub struct Keypress {
 }
 
 /// returns keycodes as specified in https://sites.google.com/site/pcdosretro/scancodes
-/// more info at https://wiki.osdev.org/PS/2_Keyboard
 impl Keypress {
     /// keycodes with no modifier key
     pub fn to_std_normal(&self) -> (u8, u8) {

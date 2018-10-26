@@ -95,7 +95,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             //
             // Note: If AL is not one of 01h,06h,07h,08h, or 0Ah, the
             // buffer is flushed but no input is attempted
-            // println!("XXX int21, 0x0c - read stdin");
+            println!("XXX int21, 0x0c - read stdin (wait for keypress)");
         }
         0x25 => {
             // DOS 1+ - SET INTERRUPT VECTOR

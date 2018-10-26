@@ -20,11 +20,11 @@ fn can_execute_push_pop() {
     machine.execute_instruction(); // mov
     machine.execute_instruction(); // mov
 
-    assert_eq!(0xFFFE, machine.cpu.get_r16(R::SP));
-    machine.execute_instruction(); // push
     assert_eq!(0xFFFC, machine.cpu.get_r16(R::SP));
+    machine.execute_instruction(); // push
+    assert_eq!(0xFFFA, machine.cpu.get_r16(R::SP));
     machine.execute_instruction(); // pop
-    assert_eq!(0xFFFE, machine.cpu.get_r16(R::SP));
+    assert_eq!(0xFFFC, machine.cpu.get_r16(R::SP));
 
     assert_eq!(0x8888, machine.cpu.get_r16(R::AX));
     assert_eq!(0x8888, machine.cpu.get_r16(R::DS));
@@ -2131,14 +2131,14 @@ fn can_execute_ret_imm() {
     ];
     machine.load_executable(&code);
     assert_eq!(0x0100, machine.cpu.regs.ip);
-    assert_eq!(0xFFFE, machine.cpu.get_r16(R::SP));
+    assert_eq!(0xFFFC, machine.cpu.get_r16(R::SP));
 
     machine.execute_instruction(); // call
     assert_eq!(0x0106, machine.cpu.regs.ip);
-    assert_eq!(0xFFFC, machine.cpu.get_r16(R::SP));
+    assert_eq!(0xFFFA, machine.cpu.get_r16(R::SP));
 
     machine.execute_instruction(); // ret 0x1
-    assert_eq!(0xFFFF, machine.cpu.get_r16(R::SP));  // FFFE + 1
+    assert_eq!(0xFFFD, machine.cpu.get_r16(R::SP));
     assert_eq!(0x0103, machine.cpu.regs.ip);
 }
 

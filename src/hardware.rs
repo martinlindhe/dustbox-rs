@@ -58,7 +58,7 @@ impl Hardware {
             // Note: XT uses ports 60h-63h, AT uses ports 60h-64h
             0x0060 => {
                 // keyboard controller data output buffer
-                0 // XXX
+                0x80 // XXX some code checks that bit 7 is set
             },
             0x0061 => {
                 // keyboard controller port b control register

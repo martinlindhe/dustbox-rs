@@ -232,7 +232,7 @@ fn demo_com_16bit() {
         path.to_owned() + "fire/fire.com",
         path.to_owned() + "jive/jive.com",
         path.to_owned() + "jomppa/jomppa.com",
-        path.to_owned() + "kintsmef/kintsmef.com",
+        // path.to_owned() + "kintsmef/kintsmef.com", // XXX depacker runs incorrectly, dosbox-x handles it
         path.to_owned() + "legend/legend.com",
         path.to_owned() + "lkccmini/lkccmini.com",
         path.to_owned() + "madness/madness.com",

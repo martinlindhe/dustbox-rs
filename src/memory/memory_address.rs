@@ -6,8 +6,10 @@ use std::fmt;
 pub enum MemoryAddress {
     /// a real mode segment:offset pair (0_0000 - F_FFFF)
     RealSegmentOffset(u16, u16),
+
     /// a long segment:offset pair (0000_0000 - FFFF_FFFF)
     LongSegmentOffset(u16, u16),
+
     /// a unknown value
     Unset,
 }
