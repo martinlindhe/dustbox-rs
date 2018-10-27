@@ -58,6 +58,16 @@ impl Instruction {
         }
     }
 
+    // used to decorate tracer
+    pub fn is_ret(&self) -> bool {
+        self.command == Op::Retn || self.command == Op::Retf || self.command == Op::RetImm16
+    }
+
+    // used to decorate tracer
+    pub fn is_unconditional_jmp(&self) -> bool {
+        self.command == Op::JmpShort || self.command == Op::JmpNear || self.command == Op::JmpFar
+    }
+
     fn op_size_from_op(op: &Op) -> OperandSize {
         match *op {
             Op::Mov32 | Op::Inc32 | Op::Dec32 => OperandSize::_32bit,

@@ -7,6 +7,7 @@ use hex::hex_bytes;
 use memory::{MMU, MemoryAddress};
 use ndisasm::{ndisasm_bytes, ndisasm_first_instr};
 
+/// prints each instruction as they are executed
 const DEBUG_EXEC: bool = false;
 
 #[derive(Deserialize, Debug)]

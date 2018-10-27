@@ -3,7 +3,7 @@
 
 #![feature(vec_remove_item)]
 
-extern crate time;
+extern crate chrono;
 extern crate rand;
 extern crate tempdir;
 extern crate image;

@@ -9,6 +9,7 @@ use cpu::register::{R, r8, r16, r32, sr};
 use cpu::segment::Segment;
 use memory::{MMU, MemoryAddress};
 
+/// prints decoded instructions each time they are being decoded
 const DEBUG_DECODER: bool = false;
 
 #[cfg(test)]
@@ -54,7 +55,7 @@ impl Decoder {
     pub fn get_instruction_info(&mut self, mut mmu: &mut MMU, seg: u16, offset: u16) -> InstructionInfo {
         let instr = self.get_instruction(&mut mmu, seg, offset);
         if DEBUG_DECODER {
-            println!("get_instruction_info at {:06x}: {:?}", MemoryAddress::RealSegmentOffset(seg, offset).value(), instr);
+            println!("get_instruction_info at {}: {}", MemoryAddress::RealSegmentOffset(seg, offset), instr);
         }
         InstructionInfo {
             segment: seg as usize,
@@ -79,7 +80,7 @@ impl Decoder {
         let start_offset = self.current_offset;
         let b = self.read_u8(mmu);
         if DEBUG_DECODER {
-            println!("decode op start {:?}", op);
+            // println!("decode op start {}", op);
         }
 
         match b {
@@ -1554,7 +1555,7 @@ impl Decoder {
         // calculate instruction length
         op.length = (Wrapping(u16::from(op.length)) + Wrapping(self.current_offset) - Wrapping(start_offset)).0 as u8;
         if DEBUG_DECODER {
-            println!("decode op end {:?}", op);
+            // println!("decode op end: {}", op);
         }
     }
 
@@ -1783,7 +1784,7 @@ impl Decoder {
             rm: b & 7, // low 3 bits
         };
         if DEBUG_DECODER {
-            println!("read_mod_reg_rm byte {:02X} = mod {}, reg {}, rm {}", b, res.md, res.reg, res.rm);
+            // println!("read_mod_reg_rm byte {:02X} = mod {}, reg {}, rm {}", b, res.md, res.reg, res.rm);
         }
         res
     }

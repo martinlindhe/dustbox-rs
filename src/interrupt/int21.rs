@@ -1,4 +1,4 @@
-use time;
+use chrono::prelude::*;
 use std::str;
 
 use hardware::Hardware;
@@ -110,12 +110,12 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
                 cpu.set_r16(R::CX, 0);
                 cpu.set_r16(R::DX, 0);
             } else {
-                let now = time::now();
-                let centi_sec = now.tm_nsec / 1000_0000; // nanosecond to 1/100 sec
-                cpu.set_r8(R::CH, now.tm_hour as u8); // hour
-                cpu.set_r8(R::CL, now.tm_min as u8);  // minute
-                cpu.set_r8(R::DH, now.tm_sec as u8);  // second
-                cpu.set_r8(R::DL, centi_sec as u8);   // 1/100 second
+                let now = chrono::Local::now();
+                let centi_sec = now.nanosecond() / 1000_0000; // nanosecond to 1/100 sec
+                cpu.set_r8(R::CH, now.hour() as u8);    // hour
+                cpu.set_r8(R::CL, now.minute() as u8);  // minute
+                cpu.set_r8(R::DH, now.second() as u8);  // second
+                cpu.set_r8(R::DL, centi_sec as u8);     // 1/100 second
             }
         }
         0x30 => {

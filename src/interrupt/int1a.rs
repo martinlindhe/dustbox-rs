@@ -1,4 +1,5 @@
-use time;
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 
 use hardware::Hardware;
 use cpu::{CPU, R};
@@ -16,10 +17,22 @@ pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
                 cpu.set_r16(R::DX, 0);
                 cpu.set_r8(R::AL, 0);
             } else {
-                println!("XXX FIXME - INT 1A GET TIME: return number of clock ticks since midnight");
-                cpu.set_r16(R::CX, 1);
-                cpu.set_r16(R::DX, 1);
-                cpu.set_r8(R::AL, 0);
+                let mut now = chrono::Local::now();
+                let midnight = now.date().and_hms(0, 0, 0);
+
+                // seconds since midnight
+                let duration = now.signed_duration_since(midnight).to_std().unwrap();
+                let seconds = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
+
+                // there are approximately 18.2 clock ticks per second, 0x18_00B0 per 24 hrs
+                let ticks = (18.2 * seconds as f64) as u32;
+                let cx = (ticks >> 16) as u16;
+                let dx = (ticks & 0xFFFF) as u16;
+
+                // println!("INT 1A GET TIME: return number of clock ticks since midnight   ticks {:?} = {:04X}:{:04X}",  ticks, cx, dx);
+                cpu.set_r16(R::CX, cx);
+                cpu.set_r16(R::DX, dx);
+                cpu.set_r8(R::AL, 0); // TODO implement
             }
         }
         0x01 => {

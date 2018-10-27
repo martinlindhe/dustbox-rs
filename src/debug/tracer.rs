@@ -1,4 +1,5 @@
 use std::cmp;
+use std::fmt;
 
 use machine::Machine;
 use cpu::{Decoder, RepeatMode, InstructionInfo, R, Op, Parameter};
@@ -28,22 +29,47 @@ struct SeenDestination {
     /// segment:offset converted into real flat addresses
     address: MemoryAddress,
 
-    sources: Vec<MemoryAddress>,
+    sources: Vec<SeenSource>,
 
     visited: bool,
 }
 
 #[derive(Clone, Eq, PartialEq)]
+struct SeenSource {
+    address: MemoryAddress,
+    kind: AddressUsageKind,
+}
+
+impl PartialOrd for SeenSource {
+    fn partial_cmp(&self, other: &SeenSource) -> Option<cmp::Ordering> {
+        Some(other.cmp(self))
+    }
+}
+
+impl Ord for SeenSource {
+    fn cmp(&self, other: &SeenSource) -> cmp::Ordering {
+        other.address.value().cmp(&self.address.value())
+    }
+}
+
+
+#[derive(Clone, Eq, PartialEq)]
 enum GuessedDataType {
     InstrStart,
     InstrContinuation,
-    UnknownByte,
+    UnknownByte(u8),
 }
 
 #[derive(Eq, PartialEq)]
 struct GuessedDataAddress {
     kind: GuessedDataType,
     address: MemoryAddress,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+enum AddressUsageKind {
+    Branch,
+    Call,
 }
 
 
@@ -127,7 +153,8 @@ impl ProgramTracer {
                 if  DEBUG_TRACER {
                     println!("address is unaccounted {}", adr);
                 }
-                unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownByte, address: adr});
+                let val = machine.hw.mmu.read_u8(adr.segment(), adr.offset());
+                unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownByte(val), address: adr});
             }
         }
 
@@ -142,8 +169,9 @@ impl ProgramTracer {
     fn in_u8_port_desc(&self, port: u16) -> String {
         match port {
             0x0060 => "keyboard or kb controller data output buffer".to_owned(),
+            0x0061 => "keyboard controller port B control register".to_owned(),
             _ => {
-                format!("in_u8_port_desc unrecognized port {:04X}", port)
+                format!("XXX in_u8_port_desc unrecognized port {:04X}", port)
             },
         }
     }
@@ -151,7 +179,7 @@ impl ProgramTracer {
     fn in_u16_port_desc(&self, port: u16) -> String {
         match port {
             _ => {
-                format!("in_u16_port_desc unrecognized port {:04X}", port)
+                format!("XXX in_u16_port_desc unrecognized port {:04X}", port)
             },
         }
     }
@@ -219,19 +247,34 @@ impl ProgramTracer {
                         let iis = format!("{}", ii);
                         res.push_str(&iis);
                     }
-
                     res.push('\n');
+
+                    let mut next = ab.address.clone();
+                    next.inc_n(ii.instruction.length as u16);
+
+                    if self.is_call_dst(next) || ii.instruction.is_ret() || ii.instruction.is_unconditional_jmp() {
+                        res.push('\n');
+                    }
                 }
                 GuessedDataType::InstrContinuation => {},
-                GuessedDataType::UnknownByte => {
-                    let ii = decoder.get_instruction_info(&mut machine.hw.mmu, ab.address.segment(), ab.address.offset());
-                    res.push_str(&format!("[{}] {:02X}               db       0x{:02X}", ab.address, ii.bytes[0], ii.bytes[0]));
-                    res.push('\n');
+                GuessedDataType::UnknownByte(val) => {
+                    res.push_str(&format!("[{}] {:02X}               db       0x{:02X}\n", ab.address, val, val));
                 }
             }
         }
 
         res
+    }
+
+    fn is_call_dst(&self, ma: MemoryAddress) -> bool {
+        if let Some(sources) = self.get_sources_for_destination(ma) {
+            for src in &sources {
+                if src.kind == AddressUsageKind::Call {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     /// show branch cross references
@@ -241,7 +284,11 @@ impl ProgramTracer {
             sources.sort();
             let mut source_offsets = Vec::new();
             for src in &sources {
-                source_offsets.push(format!("{:04X}:{:04X}", src.segment(), src.offset()));
+                let label = match src.kind {
+                    AddressUsageKind::Branch => "branch",
+                    AddressUsageKind::Call => "call",
+                };
+                source_offsets.push(format!("{}@{}", label, src.address));
             }
             s = format!("; xref: {}", source_offsets.join(", "));
         }
@@ -249,24 +296,24 @@ impl ProgramTracer {
         s
     }
 
-    fn learn_destination(&mut self, seg: u16, offset: u16, src: MemoryAddress) {
+    fn learn_destination(&mut self, seg: u16, offset: u16, src: MemoryAddress, kind: AddressUsageKind) {
         let ma = MemoryAddress::RealSegmentOffset(seg, offset);
         for seen in &mut self.seen_destinations {
             if seen.address.value() == ma.value() {
                 if DEBUG_TRACER {
                     println!("learn_destination src [{:04X}:{:04X}]", seg, offset);
                 }
-                seen.sources.push(src);
+                seen.sources.push(SeenSource{address: src, kind: kind});
                 return;
             }
         }
         if DEBUG_TRACER {
             println!("learn_destination dst [{:04X}:{:04X}]", seg, offset);
         }
-        self.seen_destinations.push(SeenDestination{address: ma, visited: false, sources: vec!(src)});
+        self.seen_destinations.push(SeenDestination{address: ma, visited: false, sources: vec!(SeenSource{address: src, kind: kind})});
     }
 
-    fn get_sources_for_destination(&self, ma: MemoryAddress) -> Option<Vec<MemoryAddress>> {
+    fn get_sources_for_destination(&self, ma: MemoryAddress) -> Option<Vec<SeenSource>> {
         for dst in &self.seen_destinations {
             if dst.address.value() == ma.value() {
                 if dst.sources.is_empty() {
@@ -362,7 +409,7 @@ impl ProgramTracer {
                 Op::Retn | Op::Retf => break,
                 Op::JmpNear | Op::JmpFar | Op::JmpShort => {
                     match ii.instruction.params.dst {
-                        Parameter::Imm16(imm) => self.learn_destination(ma.segment(), imm, ma),
+                        Parameter::Imm16(imm) => self.learn_destination(ma.segment(), imm, ma, AddressUsageKind::Branch),
                         Parameter::Reg16(_) => {}, // ignore "jmp bx"
                         Parameter::Ptr16(_, _) => {}, // ignore "jmp [0x4422]"
                         Parameter::Ptr16Imm(_, _) => {}, // ignore "jmp far 0xFFFF:0x0000"
@@ -373,18 +420,27 @@ impl ProgramTracer {
                     // if unconditional branch, abort trace this path
                     break;
                 }
-                Op::CallNear | Op::CallFar | Op::Loop | Op::Loope | Op::Loopne |
+                Op::Loop | Op::Loope | Op::Loopne |
                 Op::Ja | Op::Jc | Op::Jcxz | Op::Jg | Op::Jl |
                 Op::Jna | Op::Jnc | Op::Jng | Op::Jnl | Op::Jno | Op::Jns | Op::Jnz |
                 Op::Jo | Op::Jpe | Op::Jpo | Op::Js | Op::Jz => {
-                    // if conditional branch, record dst offset for later
                     match ii.instruction.params.dst {
-                        Parameter::Imm16(imm) => self.learn_destination(ma.segment(), imm, ma),
+                        Parameter::Imm16(imm) => self.learn_destination(ma.segment(), imm, ma, AddressUsageKind::Branch),
                         Parameter::Reg16(_) => {}, // ignore "call bp"
                         Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
                         Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
                         Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "call [bx-0x67A0]"
                         _ => println!("ERROR2: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
+                    }
+                }
+                Op::CallNear | Op::CallFar => {
+                    match ii.instruction.params.dst {
+                        Parameter::Imm16(imm) => self.learn_destination(ma.segment(), imm, ma, AddressUsageKind::Call),
+                        Parameter::Reg16(_) => {}, // ignore "call bp"
+                        Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
+                        Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
+                        Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "call [bx-0x67A0]"
+                        _ => println!("ERROR3: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
                     }
                 }
                 _ => {},

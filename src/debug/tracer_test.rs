@@ -19,7 +19,9 @@ fn trace_simple() {
     assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004
 [085F:0103] 89D1             Mov16    cx, dx
 [085F:0105] EB00             JmpShort 0x0107
-[085F:0107] C3               Retn                                   ; xref: 085F:0105
+
+[085F:0107] C3               Retn                                   ; xref: branch@085F:0105
+
 ", res);
 }
 
@@ -44,8 +46,10 @@ fn trace_unreferenced_data() {
     assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004
 [085F:0103] 89D1             Mov16    cx, dx
 [085F:0105] EB01             JmpShort 0x0108
+
 [085F:0107] 90               db       0x90
-[085F:0108] C3               Retn                                   ; xref: 085F:0105
+[085F:0108] C3               Retn                                   ; xref: branch@085F:0105
+
 [085F:0109] 40               db       0x40
 ", res);
 }
@@ -69,6 +73,38 @@ fn trace_decorates_stosw() {
 [085F:0103] E460             In8      al, 0x60                      ; keyboard or kb controller data output buffer
 ", res);
 }
+
+#[test]
+fn trace_sepatate_call_destination_separators() {
+    // makes sure newlines separate code blocks
+    let mut machine = Machine::default();
+    machine.cpu.deterministic = true;
+    let code: Vec<u8> = vec![
+        0xB8, 0x01, 0x00,   // mov ax,0x1
+        0xE8, 0x05, 0x00,   // call 0x10b
+        0xB8, 0x02, 0x00,   // mov ax,0x2
+        0xEB, 0x04,         // jmp short 0x10f
+        0xB8, 0x03, 0x00,   // mov ax,0x3
+        0xC3,               // ret
+        0xCD, 0x20,         // int 0x20
+    ];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] B80100           Mov16    ax, 0x0001
+[085F:0103] E80500           CallNear 0x010B
+[085F:0106] B80200           Mov16    ax, 0x0002
+[085F:0109] EB04             JmpShort 0x010F
+
+[085F:010B] B80300           Mov16    ax, 0x0003                    ; xref: call@085F:0103
+[085F:010E] C3               Retn
+
+[085F:010F] CD20             Int      0x20                          ; xref: branch@085F:0109
+", res);
+}
+
 
 
 /*

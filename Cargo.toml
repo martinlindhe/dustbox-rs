@@ -10,6 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 bincode = "1.0"
+chrono = "0.4"
 image = "0.20"
 sdl2 = "0.31"
 quick-error = "1.2"
@@ -19,7 +20,6 @@ serde_derive = "1.0"
 simple-error = "0.1"
 tempdir = "0.3"
 tera = "0.11"
-time = "0.1"
 
 [dev-dependencies]
 criterion = "0.2"
