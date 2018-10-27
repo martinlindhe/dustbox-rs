@@ -64,6 +64,11 @@ impl Instruction {
     }
 
     // used to decorate tracer
+    pub fn is_loop(&self) -> bool {
+        self.command == Op::Loop || self.command == Op::Loope || self.command == Op::Loopne
+    }
+
+    // used to decorate tracer
     pub fn is_unconditional_jmp(&self) -> bool {
         self.command == Op::JmpShort || self.command == Op::JmpNear || self.command == Op::JmpFar
     }

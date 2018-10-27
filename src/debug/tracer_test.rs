@@ -169,6 +169,10 @@ fn trace_sepatate_call_destination_separators() {
 [085F:014D] F3AA             Rep      Stosb     ; dst is [cs + 0x1000:0]
 */
 
+/*
+[085F:0147] 33C0             Xor16    ax, ax
+[085F:0149] 8BF0             Mov16    si, ax    ; si = 0
+*/
 
 /*
 #[test]

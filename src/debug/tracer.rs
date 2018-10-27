@@ -264,7 +264,7 @@ impl ProgramTracer {
                     let mut next = ab.address.clone();
                     next.inc_n(ii.instruction.length as u16);
 
-                    if self.is_call_dst(next) || ii.instruction.is_ret() || ii.instruction.is_unconditional_jmp() {
+                    if self.is_call_dst(next) || ii.instruction.is_ret() || ii.instruction.is_unconditional_jmp() || ii.instruction.is_loop() {
                         res.push('\n');
                     }
                 }
