@@ -8,7 +8,7 @@ use memory::{MMU, MemoryAddress};
 use ndisasm::{ndisasm_bytes, ndisasm_first_instr};
 
 /// prints each instruction as they are executed
-const DEBUG_EXEC: bool = true;
+const DEBUG_EXEC: bool = false;
 
 #[derive(Deserialize, Debug)]
 struct ExeHeader {
@@ -176,13 +176,7 @@ impl Machine {
     }
 
     pub fn execute_instruction(&mut self) {
-        // XXX move somewhere else
-        // MEM 0040h:006Ch - TIMER TICKS SINCE MIDNIGHT
-        // Size:	DWORD
-        // Desc:	updated approximately every 55 milliseconds by the BIOS INT 08 handler
-        // used by ../dos-software-decoding/demo-com-16bit/bmatch/bmatch.com
-        let ticks = self.hw.mmu.read_u32(0x0040, 0x006C) + 1;
-        self.hw.mmu.write_u32(0x0040, 0x006C, ticks);
+        self.hw.pit.update(&mut self.hw.mmu);
 
         let cs = self.cpu.get_r16(R::CS);
         let ip = self.cpu.regs.ip;
@@ -230,11 +224,6 @@ impl Machine {
         // XXX need instruction timing to do this properly
         if self.cpu.cycle_count % 100 == 0 {
             self.hw.gpu.progress_scanline();
-        }
-
-        if self.cpu.cycle_count % 100 == 0 {
-            // FIXME: counter should decrement ~18.2 times/sec
-            self.hw.pit.counter0.dec();
         }
     }
 }

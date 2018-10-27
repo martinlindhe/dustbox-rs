@@ -1,10 +1,14 @@
 // Programmable Interval Timer
 // http://wiki.osdev.org/Programmable_Interval_Timer
+// http://www.sat.dundee.ac.uk/psc/dosemu_time_advanced.html#The_BIOS_maintained_counter
 //
 // A 8253/8254 chip that runs at 18.2065 Hz (or an IRQ every 54.9254 ms)
 // with the default divisor of 0x1_0000
 
 use std::num::Wrapping;
+use std::time::{Duration, SystemTime};
+
+use memory::MMU;
 
 #[cfg(test)]
 #[path = "./pit_test.rs"]
@@ -12,27 +16,45 @@ mod pit_test;
 
 #[derive(Clone)]
 pub struct PIT {
-    pub counter0: Counter,
-    pub counter1: Counter,
-    pub counter2: Counter,
+    pub timer0: Timer,
+    pub timer1: Timer,
+    pub timer2: Timer,
+    last_update: SystemTime,
     //divisor: u32, // XXX size?!?!
 }
 
 impl PIT {
     pub fn default() -> Self {
         PIT {
-            counter0: Counter::new(0),
-            counter1: Counter::new(1),
-            counter2: Counter::new(2),
+            timer0: Timer::new(0),
+            timer1: Timer::new(1),
+            timer2: Timer::new(2),
+            last_update: SystemTime::now(),
             //divisor: 0x1_0000, // XXX
         }
     }
 
-    fn counter(&mut self, n: u8) -> &mut Counter {
+    // updates PIT internal state
+    pub fn update(&mut self,  mmu: &mut MMU) {
+        if self.last_update.elapsed().unwrap() > Duration::from_millis(55) {
+            // MEM 0040h:006Ch - TIMER TICKS SINCE MIDNIGHT
+            // Size:	DWORD
+            // Desc:	updated approximately every 55 milliseconds by the BIOS INT 08 handler
+            // used by ../dos-software-decoding/demo-com-16bit/bmatch/bmatch.com
+
+            self.timer0.inc();
+            mmu.write_u32(0x0040, 0x006C, self.timer0.count);
+            self.last_update = SystemTime::now();
+
+            // println!("pic updated {}", self.timer0.count);
+        }
+    }
+
+    fn counter(&mut self, n: u8) -> &mut Timer {
         match n {
-            0 => &mut self.counter0,
-            1 => &mut self.counter1,
-            2 => &mut self.counter2,
+            0 => &mut self.timer0,
+            1 => &mut self.timer1,
+            2 => &mut self.timer2,
             _ => unreachable!(),
         }
     }
@@ -52,10 +74,10 @@ impl PIT {
 }
 
 #[derive(Clone)]
-pub struct Counter {
-    pub count: u16,
+pub struct Timer {
+    pub count: u32,
     pub reload: u16,
-    latch: u16,
+    latch: u32,
     hi: bool,
     channel: u8, // 0-2, for debugging
 
@@ -65,30 +87,34 @@ pub struct Counter {
     bcd_mode: BcdMode,
 }
 
-impl Counter {
+impl Timer {
     pub fn new(channel: u8) -> Self {
-        Counter {
-            count: 0,
-            reload: 0, // 0 = 0x10000
+        let now = chrono::Local::now();
+        let midnight = chrono::Local::now().date().and_hms(0, 0, 0);
+
+        // seconds since midnight
+        let duration = now.signed_duration_since(midnight).to_std().unwrap();
+
+        // there are approximately 18.2 clock ticks per second, 0x18_00B0 per 24 hrs. one tick is generated every 54.9254ms
+        let ticks = (((duration.as_secs() as f64 * 1000.) + (duration.subsec_nanos() as f64 / 1_000_000.)) / 54.9254) as u32;
+
+        Timer {
+            count: ticks,
+            reload: 0,
             latch: 0,
             hi: false,
             channel,
-
             access_mode: AccessMode::LoByteHiByte, // XXX default?
             operating_mode: OperatingMode::Mode0, // XXX default?
             bcd_mode: BcdMode::SixteenBitBinary, // XXX default?
         }
     }
 
-    pub fn dec(&mut self) {
+    pub fn inc(&mut self) {
         // XXX channel 0 is connected to interrupt.
-        self.count = (Wrapping(self.count) - Wrapping(1)).0;
-        if self.count == 0 {
-            if self.reload == 0 {
-                self.count = 0xFFFF; // XXX off-by one, how to handle 0 == 0x1_0000 ?
-            } else {
-                self.count = self.reload;
-            }
+        self.count += 1;
+        if self.count >= 0x1800B0 {
+            self.count = 0;
         }
     }
 

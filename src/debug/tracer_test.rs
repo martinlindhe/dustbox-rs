@@ -115,6 +115,61 @@ fn trace_sepatate_call_destination_separators() {
 [085F:010F] 07               Pop16    es                            ; es = 0x0040
 */
 
+
+/*
+[085F:0118] B100             Mov8     cl, 0x00          ; cl = 0x00
+[085F:011A] BAC803           Mov16    dx, 0x03C8
+[085F:011D] 8AC1             Mov8     al, cl            ; al = 0x00
+[085F:011F] EE               Out8     dx, al            ; OUT 0x03C8, 0x00 ...
+*/
+
+/*
+[085F:01EB] B80300           Mov16    ax, 0x0003
+[085F:01EE] CD10             Int      0x10              ; video - 80x25 text mode (0x00, 0x03)
+[085F:01F0] B44C             Mov8     ah, 0x4C
+[085F:01F2] CD21             Int      0x21              ; DOS 2+ - EXIT - TERMINATE WITH RETURN CODE al   - XXX also stop parsing here, as if hit a RET
+*/
+
+/*
+[085F:0118] B100             Mov8     cl, 0x00
+[085F:011A] BAC803           Mov16    dx, 0x03C8                    ; xref: branch@085F:012D
+[085F:011D] 8AC1             Mov8     al, cl
+[085F:011F] EE               Out8     dx, al        ; set DAC write index to CL with write to 3c8
+[085F:0120] 8AC1             Mov8     al, cl
+[085F:0122] C0E802           Shr8     al, 0x02      ; al = cl >> 2, to scale 0..256 to 0..64
+[085F:0125] 42               Inc16    dx            ; dx = 0x3C9
+[085F:0126] EE               Out8     dx, al        ; set R value for DAC register
+[085F:0127] EE               Out8     dx, al        ; G
+[085F:0128] EE               Out8     dx, al        ; B
+[085F:0129] 41               Inc16    cx
+[085F:012A] 80F900           Cmp8     cl, 0x00
+[085F:012D] 75EB             Jnz      0x011A        ; loop until cl wraps to 0 again (256 steps)
+*/
+
+/*
+[085F:012F] 8CC8             Mov16    ax, cs
+[085F:0131] 80C410           Add8     ah, 0x10
+[085F:0134] 8EE0             Mov16    fs, ax    ; fs = cs + 0x1000
+
+[085F:0136] 80C410           Add8     ah, 0x10
+[085F:0139] 8EE8             Mov16    gs, ax
+[085F:013B] 0FA8             Push16   gs
+[085F:013D] 07               Pop16    es        ; es = cs + 0x2000
+
+[085F:013E] B000             Mov8     al, 0x00
+[085F:0140] B500             Mov8     ch, 0x00
+[085F:0142] 49               Dec16    cx
+[085F:0143] 33FF             Xor16    di, di
+[085F:0145] F3AA             Rep      Stosb     ; dst is [cs + 0x2000:0]
+
+[085F:0147] 0FA0             Push16   fs
+[085F:0149] 07               Pop16    es
+[085F:014A] 49               Dec16    cx
+[085F:014B] 2BFF             Sub16    di, di
+[085F:014D] F3AA             Rep      Stosb     ; dst is [cs + 0x1000:0]
+*/
+
+
 /*
 #[test]
 fn trace_data_ref() {

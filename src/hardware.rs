@@ -50,9 +50,9 @@ impl Hardware {
             }
             0x0020 => self.pic.get_register(),
             0x0021 => self.pic.get_ocw1(),
-            0x0040 => self.pit.counter0.get_next_u8(),
-            0x0041 => self.pit.counter1.get_next_u8(),
-            0x0042 => self.pit.counter2.get_next_u8(),
+            0x0040 => self.pit.timer0.get_next_u8(),
+            0x0041 => self.pit.timer1.get_next_u8(),
+            0x0042 => self.pit.timer2.get_next_u8(),
 
             // PORT 0060-006F - KEYBOARD CONTROLLER 804x (8041, 8042) (or PPI (8255) on PC,XT)
             // Note: XT uses ports 60h-63h, AT uses ports 60h-64h
@@ -120,9 +120,9 @@ impl Hardware {
         match port {
             0x0020 => self.pic.set_command(data),
             0x0021 => self.pic.set_data(data),
-            0x0040 => self.pit.counter0.write_reload_part(data),
-            0x0041 => self.pit.counter1.write_reload_part(data),
-            0x0042 => self.pit.counter2.write_reload_part(data),
+            0x0040 => self.pit.timer0.write_reload_part(data),
+            0x0041 => self.pit.timer1.write_reload_part(data),
+            0x0042 => self.pit.timer2.write_reload_part(data),
             0x0043 => self.pit.set_mode_command(data),
             0x0061 => {
                 // keyboard controller port b OR ppi programmable perihpial interface (XT only) - which mode are we in?

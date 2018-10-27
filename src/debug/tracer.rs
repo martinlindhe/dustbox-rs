@@ -200,18 +200,30 @@ impl ProgramTracer {
                     _ => "".to_owned(),
                 }
             }
+            Op::Lodsb => {
+                match ii.instruction.repeat {
+                    RepeatMode::None => "load byte at address ds:si into al".to_owned(),
+                    _ => "xxx Lodsb".to_owned(),
+                }
+            }
+            Op::Lodsw => {
+                match ii.instruction.repeat {
+                    RepeatMode::None => "load word at address ds:si into ax".to_owned(),
+                    _ => "xxx Lodsw".to_owned(),
+                }
+            }
             Op::Stosb => {
                 match ii.instruction.repeat {
                     RepeatMode::Rep => "store al at es:di for cx times".to_owned(),
                     RepeatMode::None => "store al at es:di".to_owned(),
-                    _ => "".to_owned(),
+                    _ => "xxx Stosb".to_owned(),
                 }
             }
             Op::Stosw => {
                 match ii.instruction.repeat {
                     RepeatMode::Rep => "store ax at es:di for cx times".to_owned(),
                     RepeatMode::None => "store ax at es:di".to_owned(),
-                    _ => "".to_owned(),
+                    _ => "xxx Stosw".to_owned(),
                 }
             }
             _ => "".to_owned(),

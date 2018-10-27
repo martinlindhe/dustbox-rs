@@ -304,7 +304,6 @@ fn games_commercial() {
         path.to_owned() + "Crossfire (1982)(Sierra Online)/cfire.com",
         path.to_owned() + "Dig Dug (1982)(Namco)/digdug.com",
         path.to_owned() + "F15 Strike Eagle I (1986)(Microprose Software Inc)/f15.com",
-        path.to_owned() + "Fire Fighter (1999)(Freeware)/firef.com",
         path.to_owned() + "Galaxian (1983)(Atari Inc)/galaxian.com",
         path.to_owned() + "Gnafu (1986)(Anonymous)/gnafu.com",
         path.to_owned() + "Gooku (1987)(Anonymous)/go-moku.com",
