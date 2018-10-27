@@ -182,7 +182,7 @@ fn main() {
             if frame >= locked_fps {
                 frame = 0;
                 let frame_tot_sum = frame_event_sum + frame_exec_sum + frame_render_sum + frame_sleep_sum;
-                println!("another {} frames rendered in {:#?} after {:#?}. event {:#?}, exec {:#?}, render {:#?}, sleep {:#?}", locked_fps, frame_tot_sum, app_start.elapsed().unwrap(), frame_event_sum, frame_exec_sum, frame_render_sum, frame_sleep_sum);
+                println!("{} frames in {:#?} after {:#?}. event {:#?}, exec {:#?}, render {:#?}, sleep {:#?}", locked_fps, frame_tot_sum, app_start.elapsed().unwrap(), frame_event_sum, frame_exec_sum, frame_render_sum, frame_sleep_sum);
                 frame_event_sum = Duration::new(0, 0);
                 frame_exec_sum = Duration::new(0, 0);
                 frame_render_sum = Duration::new(0, 0);
@@ -192,6 +192,5 @@ fn main() {
 
         canvas.copy(&texture, None, None).unwrap();
         canvas.present();
-
     }
 }

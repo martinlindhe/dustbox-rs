@@ -58,15 +58,22 @@ impl Hardware {
             // Note: XT uses ports 60h-63h, AT uses ports 60h-64h
             0x0060 => {
                 // keyboard controller data output buffer
-                0x80 // XXX some code checks that bit 7 is set
+                let (scancode, _, keypress) = self.keyboard.peek_dos_standard_scancode_and_ascii();
+                if let Some(keypress) = keypress {
+                    self.keyboard.consume(&keypress);
+                }
+                scancode
             },
             0x0061 => {
                 // keyboard controller port b control register
-                0 // XXX
+                let val = 0 as u8; // XXX
+                println!("XXX impl -- keyboard: read keyboard controller port b control register (current {:02X})", val);
+                val
             }
             0x0064 => {
                 // keyboard controller read status
-                0 // XXX
+                let val = self.keyboard.get_status_register_byte();
+                val
             }
             0x00A0 => self.pic2.get_register(),
             0x00A1 => self.pic2.get_ocw1(),
@@ -126,6 +133,7 @@ impl Hardware {
             0x0043 => self.pit.set_mode_command(data),
             0x0061 => {
                 // keyboard controller port b OR ppi programmable perihpial interface (XT only) - which mode are we in?
+                println!("XXX impl -- keyboard: write keyboard controller port b {:02X}", data);
             },
             0x00A0 => self.pic2.set_command(data),
             0x00A1 => self.pic2.set_data(data),

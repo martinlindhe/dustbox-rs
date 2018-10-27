@@ -4,9 +4,91 @@ use sdl2::keyboard::{LSHIFTMOD, RSHIFTMOD, LCTRLMOD, RCTRLMOD, LALTMOD, RALTMOD}
 
 const DEBUG_KEYBOARD: bool = true;
 
+#[cfg(test)]
+#[path = "./keyboard_test.rs"]
+mod keyboard_test;
+
 #[derive(Clone)]
 pub struct Keyboard {
     keypresses: Vec<Keypress>,
+    status_register: StatusRegister,
+}
+
+/// https://wiki.osdev.org/%228042%22_PS/2_Controller#Status_Register
+#[derive(Clone)]
+struct StatusRegister {
+    /// 0 = empty, 1 = full
+    /// must be set before attempting to read data from IO port 0x60
+    output_buffer_status: bool,
+
+    /// 0 = empty, 1 = full
+    /// must be clear before attempting to write data to IO port 0x60 or IO port 0x64
+    input_buffer_status: bool,
+
+    /// Meant to be cleared on reset and set by firmware (via. PS/2 Controller Configuration Byte) if the system passes self tests (POST)
+    system: bool,
+
+    /// Command/data
+    /// 0 = data written to input buffer is data for PS/2 device
+    /// 1 = data written to input buffer is data for PS/2 controller command)
+    mode: bool,
+
+    /// Unknown (chipset specific)
+    /// is set in dosbox-x and WinXP
+    unknown4: bool,
+
+    /// Unknown (chipset specific)
+    unknown5: bool,
+
+    /// 0 = no error, 1 = time-out error
+    timeout_error: bool,
+
+    /// 0 = no error, 1 = parity error
+    parity_error: bool,
+}
+
+impl StatusRegister {
+    pub fn default() -> Self {
+        StatusRegister {
+            output_buffer_status: false,
+            input_buffer_status: false,
+            system: true,
+            mode: false,
+            unknown4: true,
+            unknown5: false,
+            timeout_error: false,
+            parity_error: false,
+        }
+    }
+
+    pub fn as_u8(&self) -> u8 {
+        let mut res = 0;
+        if self.output_buffer_status {
+            res |= 1;
+        }
+        if self.input_buffer_status {
+            res |= 2;
+        }
+        if self.system {
+            res |= 4;
+        }
+        if self.mode {
+            res |= 8;
+        }
+        if self.unknown4 {
+            res |= 16;
+        }
+        if self.unknown5 {
+            res |= 32;
+        }
+        if self.timeout_error {
+            res |= 64;
+        }
+        if self.parity_error {
+            res |= 128;
+        }
+        res
+    }
 }
 
 /// Implements a PS/2 keyboard
@@ -18,6 +100,7 @@ impl Keyboard {
     pub fn default() -> Self {
         Keyboard {
             keypresses: Vec::new(),
+            status_register: StatusRegister::default(),
         }
     }
 
@@ -31,6 +114,9 @@ impl Keyboard {
             println!("keyboard: add_keypress {:?}", keypress);
         }
         self.keypresses.push(keypress);
+
+        // signal there is bytes to be read
+        self.status_register.output_buffer_status = true;
     }
 
     fn consume_keypress(&mut self) -> Keypress {
@@ -47,31 +133,49 @@ impl Keyboard {
         }
     }
 
-    // used by int 0x16 function 0x00
+    pub fn get_status_register_byte(&self) -> u8 {
+        let val = self.status_register.as_u8();
+        if DEBUG_KEYBOARD {
+            println!("keyboard: read keyboard controller read status (current {:02X})", val);
+        }
+        val
+    }
+
+    /// used by int 0x16 function 0x00
+    /// returns scancode, ascii, keypress
     pub fn consume_dos_standard_scancode_and_ascii(&mut self) -> (u8, u8) {
         let (ah, al, keypress) = self.peek_dos_standard_scancode_and_ascii();
         if let Some(keypress) = keypress {
             if DEBUG_KEYBOARD {
                 println!("keyboard: consume_dos_standard_scancode_and_ascii consumes {:?}", keypress);
             }
-            self.keypresses.remove_item(&keypress);
+            self.consume(&keypress);
         }
         (ah, al)
     }
 
-    // used by int 0x16 function 0x01
+    /// used by int 0x16 function 0x01
+    /// returns scancode, ascii, keypress
     pub fn peek_dos_standard_scancode_and_ascii(&self) -> (u8, u8, Option<Keypress>) {
         if let Some(keypress) = self.peek_keypress() {
             let (ah, al) = map_sdl_to_dos_standard_codes(&keypress);
-
             if DEBUG_KEYBOARD {
                 println!("keyboard: peek_dos_standard_scancode_and_ascii returns scancode {:02X}, ascii {:02X}, {:?}", ah, al, keypress);
             }
-
             (ah, al, Some(keypress))
         } else {
+            if DEBUG_KEYBOARD {
+                println!("keyboard: peek_dos_standard_scancode_and_ascii returns nothing");
+            }
             (0, 0, None)
         }
+    }
+
+    pub fn consume(&mut self, keypress: &Keypress) {
+        if DEBUG_KEYBOARD {
+            println!("keyboard: consume {:?}", keypress);
+        }
+        self.keypresses.remove_item(&keypress);
     }
 }
 
@@ -83,7 +187,7 @@ pub struct Keypress {
 
 /// returns keycodes as specified in https://sites.google.com/site/pcdosretro/scancodes
 impl Keypress {
-    /// keycodes with no modifier key
+    /// keycodes with no modifier key, returns scancode, ascii
     pub fn to_std_normal(&self) -> (u8, u8) {
         match self.keycode {
             Keycode::Escape => (0x01, 0x1B),
