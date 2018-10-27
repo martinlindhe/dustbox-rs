@@ -20,6 +20,7 @@ serde_derive = "1.0"
 simple-error = "0.1"
 tempdir = "0.3"
 tera = "0.11"
+toml = "0.4"
 
 [dev-dependencies]
 criterion = "0.2"

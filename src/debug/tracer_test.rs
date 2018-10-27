@@ -105,7 +105,15 @@ fn trace_sepatate_call_destination_separators() {
 ", res);
 }
 
-
+/*
+; a way to manipulate ES from bmatch.com, should be able to figure that 010F is "es = 0x0040"
+[085F:0105] 50               Push16   ax
+[085F:0106] 55               Push16   bp
+[085F:0107] 8BEC             Mov16    bp, sp
+[085F:0109] C746024000       Mov16    word [ds:bp+0x02], 0x0040     ; manipulates the value that will be popped in ES
+[085F:010E] 5D               Pop16    bp
+[085F:010F] 07               Pop16    es                            ; es = 0x0040
+*/
 
 /*
 #[test]

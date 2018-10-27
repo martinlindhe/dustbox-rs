@@ -8,7 +8,7 @@ use memory::{MMU, MemoryAddress};
 use ndisasm::{ndisasm_bytes, ndisasm_first_instr};
 
 /// prints each instruction as they are executed
-const DEBUG_EXEC: bool = false;
+const DEBUG_EXEC: bool = true;
 
 #[derive(Deserialize, Debug)]
 struct ExeHeader {

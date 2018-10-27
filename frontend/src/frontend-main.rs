@@ -44,6 +44,7 @@ fn main() {
     let window = video_subsys.window(&format!("dustbox {}", filename), SCREEN_WIDTH, SCREEN_HEIGHT)
         .position_centered()
         .opengl()
+        .allow_highdpi()
         .build()
         .unwrap();
 
@@ -68,11 +69,6 @@ fn main() {
 
     let mut frame = 0;
     'main: loop {
-
-        if machine.cpu.fatal_error {
-            println!("cpu fatal error occured. stopping execution");
-            break 'main;
-        }
         let event_start = SystemTime::now();
         for event in events.poll_iter() {
             match event {
@@ -119,6 +115,10 @@ fn main() {
                 // XXX measure by instruction cycles
                 let num_instr = 300;
                 machine.execute_instructions(num_instr);
+                if machine.cpu.fatal_error {
+                    println!("cpu fatal error occured. stopping execution");
+                    break 'main;
+                }
                 machine.hw.gpu.progress_scanline();
             }
             let exec_time = frame_start.elapsed().unwrap();

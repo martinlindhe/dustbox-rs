@@ -3,6 +3,8 @@
 
 #![feature(vec_remove_item)]
 
+extern crate toml;
+
 extern crate chrono;
 extern crate rand;
 extern crate tempdir;
@@ -22,6 +24,7 @@ extern crate pretty_assertions;
 
 #[macro_use]
 extern crate serde_derive;
+
 extern crate bincode;
 
 extern crate sdl2;
