@@ -113,7 +113,7 @@ impl Keypress {
             Keycode::P => (0x19, 0x70),
             Keycode::LeftBracket => (0x1A, 0x5B),  // XXX [
             Keycode::RightBracket => (0x1B, 0x5D), // XXX ]
-            Keycode::KpEnter => (0x1C, 0x0D),
+            Keycode::Return => (0x1C, 0x0D),
             // 0x1D = CTRL but cant be read as its a modifier
             Keycode::A => (0x1E, 0x61),
             Keycode::S => (0x1F, 0x73),
@@ -205,7 +205,7 @@ impl Keypress {
             Keycode::P => (0x19, 0x50),
             Keycode::LeftBracket => (0x1A, 0x7B),  // XXX [ {
             Keycode::RightBracket => (0x1B, 0x7D), // XXX ] }
-            Keycode::KpEnter => (0x1C, 0x0D),
+            Keycode::Return => (0x1C, 0x0D),
             // 0x1D = CTRL but cant be read as its a modifier
             Keycode::A => (0x1E, 0x41),
             Keycode::S => (0x1F, 0x53),
