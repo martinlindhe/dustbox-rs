@@ -2,7 +2,7 @@ use std::cmp;
 use std::fmt;
 
 use machine::Machine;
-use cpu::{Decoder, RepeatMode, InstructionInfo, R, Op, Parameter};
+use cpu::{Decoder, RepeatMode, InstructionInfo, R, Op, Parameter, Segment};
 use memory::MemoryAddress;
 use string::right_pad;
 use hex::hex_bytes;
@@ -11,30 +11,78 @@ use hex::hex_bytes;
 #[path = "./tracer_test.rs"]
 mod tracer_test;
 
-const DEBUG_TRACER: bool = false;
+const DEBUG_TRACER: bool = true;
 
 /// ProgramTracer holds the state of the program being analyzed
 #[derive(Default)]
 pub struct ProgramTracer {
-    seen_destinations: Vec<SeenDestination>,
+    seen_addresses: Vec<SeenAddress>,
 
     /// flat addresses of start of each visited opcode
     visited_addresses: Vec<MemoryAddress>,
 
     /// finalized analysis result
     accounted_bytes: Vec<GuessedDataAddress>,
+
+    /// areas known to be mapped only by memory access
+    virtual_memory: Vec<MemoryAddress>,
 }
 
-struct SeenDestination {
+struct SeenAddress {
     /// segment:offset converted into real flat addresses
     address: MemoryAddress,
 
-    sources: Vec<SeenSource>,
+    sources: SeenSources,
 
     visited: bool,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct SeenSources {
+    sources: Vec<SeenSource>,
+}
+
+impl SeenSources {
+    pub fn default() -> Self {
+        SeenSources {
+            sources: Vec::new(),
+        }
+    }
+
+    pub fn from_source(source: SeenSource) -> Self {
+        let mut res = Vec::new();
+        res.push(source);
+        SeenSources {
+            sources: res,
+        }
+    }
+
+    /// returns true if the sources are only of memory access kind
+    pub fn only_memory_access(&self) -> bool {
+        for src in &self.sources {
+            if !src.kind.is_memory_kind() {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn guess_data_type(&self) -> GuessedDataType {
+        let mut word_access = false;
+        for src in &self.sources {
+            if src.kind == AddressUsageKind::MemoryWord {
+                word_access = true;
+            }
+        }
+        if word_access {
+            GuessedDataType::MemoryWordUnset
+        } else {
+            GuessedDataType::MemoryByteUnset
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct SeenSource {
     address: MemoryAddress,
     kind: AddressUsageKind,
@@ -57,6 +105,10 @@ impl Ord for SeenSource {
 enum GuessedDataType {
     InstrStart,
     InstrContinuation,
+    MemoryByteUnset,
+    MemoryWordUnset,
+    //MemoryByte(u8),
+    //MemoryWord(u16),
     UnknownByte(u8),
 }
 
@@ -66,10 +118,21 @@ struct GuessedDataAddress {
     address: MemoryAddress,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum AddressUsageKind {
     Branch,
     Call,
+    MemoryByte,
+    MemoryWord,
+}
+
+impl AddressUsageKind {
+    pub fn is_memory_kind(&self) -> bool {
+        match *self {
+            AddressUsageKind::MemoryByte | AddressUsageKind::MemoryWord => true,
+            _ => false,
+        }
+    }
 }
 
 
@@ -88,20 +151,21 @@ impl Ord for GuessedDataAddress {
 impl ProgramTracer {
     pub fn default() -> Self {
         ProgramTracer {
-            seen_destinations: Vec::new(),
+            seen_addresses: Vec::new(),
             visited_addresses: Vec::new(),
             accounted_bytes: Vec::new(),
+            virtual_memory: Vec::new(),
         }
     }
 
     pub fn trace_execution(&mut self, machine: &mut Machine) {
         // tell tracer to start at CS:IP
         let ma = MemoryAddress::RealSegmentOffset(machine.cpu.get_r16(R::CS), machine.cpu.regs.ip);
-        self.seen_destinations.push(SeenDestination{address: ma, visited: false, sources: Vec::new()});
+        self.seen_addresses.push(SeenAddress{address: ma, visited: false, sources: SeenSources::default()});
 
         loop {
-            self.trace_unvisited_destination(machine);
-            if !self.has_any_unvisited_destinations() {
+            self.trace_unvisited_address(machine);
+            if !self.has_any_unvisited_addresses() {
                 if DEBUG_TRACER {
                     println!("exhausted all destinations, breaking!");
                 }
@@ -126,13 +190,13 @@ impl ProgramTracer {
             let mut adr = *ma;
             self.accounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::InstrStart, address: adr});
             if  DEBUG_TRACER {
-                println!("add start instr at {}", adr);
+                // println!("add start instr at {}", adr);
             }
             for _ in abs + 1..(abs + ii.instruction.length as usize) {
                 adr.inc_u8();
                 self.accounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::InstrContinuation, address: adr});
                 if  DEBUG_TRACER {
-                    println!("add continuation instr at {}", adr);
+                    // println!("add continuation instr at {}", adr);
                 }
             }
         }
@@ -160,6 +224,15 @@ impl ProgramTracer {
 
         for ub in unaccounted_bytes {
             self.accounted_bytes.push(ub);
+        }
+
+        // find all memory addresses past end of rom file size thats mem locations, add them to self.accounted_bytes
+        for adr in &self.virtual_memory {
+            let sources = self.get_sources_for_address(*adr);
+            if let Some(sources) = sources {
+                let kind = sources.guess_data_type();
+                self.accounted_bytes.push(GuessedDataAddress{kind: kind, address: adr.clone()});
+            }
         }
 
         self.accounted_bytes.sort();
@@ -269,18 +342,27 @@ impl ProgramTracer {
                     }
                 }
                 GuessedDataType::InstrContinuation => {},
-                GuessedDataType::UnknownByte(val) => {
-                    res.push_str(&format!("[{}] {:02X}               db       0x{:02X}\n", ab.address, val, val));
+                GuessedDataType::MemoryByteUnset => {
+                    let xref = self.render_xref(ab.address);
+                    res.push_str(&format!("[{}] ??               db       ??                            {}\n", ab.address, xref));
                 }
+                GuessedDataType::MemoryWordUnset => {
+                    let xref = self.render_xref(ab.address);
+                    res.push_str(&format!("[{}] ?? ??            dw       ????                          {}\n", ab.address, xref));
+                }
+                //GuessedDataType::MemoryByte(val) => res.push_str(&format!("[{}] {:02X}        [BYTE] db       0x{:02X}\n", ab.address, val, val)),
+                //GuessedDataType::MemoryWord(val) => res.push_str(&format!("[{}] {:02X} {:02X} [WORD] dw       0x{:04X}\n", ab.address, val >> 8, val & 0xFF, val)), // XXX
+                GuessedDataType::UnknownByte(val) => res.push_str(&format!("[{}] {:02X}               db       0x{:02X}\n", ab.address, val, val)),
             }
         }
 
         res
     }
 
+    /// returns true if anyone called to given MemoryAddress
     fn is_call_dst(&self, ma: MemoryAddress) -> bool {
-        if let Some(sources) = self.get_sources_for_destination(ma) {
-            for src in &sources {
+        if let Some(sources) = self.get_sources_for_address(ma) {
+            for src in &sources.sources {
                 if src.kind == AddressUsageKind::Call {
                     return true;
                 }
@@ -292,13 +374,15 @@ impl ProgramTracer {
     /// show branch cross references
     fn render_xref(&self, ma: MemoryAddress) -> String {
         let mut s = String::new();
-        if let Some(mut sources) = self.get_sources_for_destination(ma) {
-            sources.sort();
+        if let Some(mut sources) = self.get_sources_for_address(ma) {
+            sources.sources.sort();
             let mut source_offsets = Vec::new();
-            for src in &sources {
+            for src in &sources.sources {
                 let label = match src.kind {
                     AddressUsageKind::Branch => "branch",
                     AddressUsageKind::Call => "call",
+                    AddressUsageKind::MemoryByte => "byte",
+                    AddressUsageKind::MemoryWord => "word",
                 };
                 source_offsets.push(format!("{}@{}", label, src.address));
             }
@@ -308,27 +392,28 @@ impl ProgramTracer {
         s
     }
 
-    fn learn_destination(&mut self, seg: u16, offset: u16, src: MemoryAddress, kind: AddressUsageKind) {
+    // learns of a new address to probe later
+    fn learn_address(&mut self, seg: u16, offset: u16, src: MemoryAddress, kind: AddressUsageKind) {
         let ma = MemoryAddress::RealSegmentOffset(seg, offset);
-        for seen in &mut self.seen_destinations {
+        for seen in &mut self.seen_addresses {
             if seen.address.value() == ma.value() {
                 if DEBUG_TRACER {
-                    println!("learn_destination src [{:04X}:{:04X}]", seg, offset);
+                    println!("learn_address append {:?} [{:04X}:{:04X}]", kind, seg, offset);
                 }
-                seen.sources.push(SeenSource{address: src, kind: kind});
+                seen.sources.sources.push(SeenSource{address: src, kind: kind});
                 return;
             }
         }
         if DEBUG_TRACER {
-            println!("learn_destination dst [{:04X}:{:04X}]", seg, offset);
+            println!("learn_address new {:?} [{:04X}:{:04X}]", kind, seg, offset);
         }
-        self.seen_destinations.push(SeenDestination{address: ma, visited: false, sources: vec!(SeenSource{address: src, kind: kind})});
+        self.seen_addresses.push(SeenAddress{address: ma, visited: false, sources: SeenSources::from_source(SeenSource{address: src, kind: kind})});
     }
 
-    fn get_sources_for_destination(&self, ma: MemoryAddress) -> Option<Vec<SeenSource>> {
-        for dst in &self.seen_destinations {
+    fn get_sources_for_address(&self, ma: MemoryAddress) -> Option<SeenSources> {
+        for dst in &self.seen_addresses {
             if dst.address.value() == ma.value() {
-                if dst.sources.is_empty() {
+                if dst.sources.sources.is_empty() {
                     return None;
                 }
                 return Some(dst.sources.clone());
@@ -337,8 +422,8 @@ impl ProgramTracer {
         None
     }
 
-    fn has_any_unvisited_destinations(&self) -> bool {
-        for dst in &self.seen_destinations {
+    fn has_any_unvisited_addresses(&self) -> bool {
+        for dst in &self.seen_addresses {
             if !dst.visited {
                 return true;
             }
@@ -346,17 +431,18 @@ impl ProgramTracer {
         false
     }
 
-    fn get_unvisited_destination(&self) -> Option<MemoryAddress> {
-        for dst in &self.seen_destinations {
+    fn get_unvisited_address(&self) -> (Option<MemoryAddress>, Option<SeenSources>) {
+        for dst in &self.seen_addresses {
             if !dst.visited {
-                return Some(dst.address);
+                return (Some(dst.address), Some(dst.sources.clone()));
             }
         }
-        None
+        (None, None)
     }
 
-    fn mark_destination_visited(&mut self, ma: MemoryAddress) {
-         for dst in &mut self.seen_destinations {
+    /// marks given seen address as visited by the prober
+    fn mark_address_visited(&mut self, ma: MemoryAddress) {
+         for dst in &mut self.seen_addresses {
             if dst.address == ma {
                 if DEBUG_TRACER {
                     println!("mark_destination_visited {:04X}:{:04X}", ma.segment(), ma.offset());
@@ -365,6 +451,12 @@ impl ProgramTracer {
                 return;
             }
         }
+        panic!("never found address to mark as visited! {}", ma);
+    }
+
+    /// marks given address as a virtual memory address (outside of the ROM memory map being traced)
+    fn mark_virtual_memory(&mut self, ma: MemoryAddress) {
+        self.virtual_memory.push(ma);
     }
 
     fn has_visited_address(&self, ma: MemoryAddress) -> bool {
@@ -377,8 +469,8 @@ impl ProgramTracer {
     }
 
     /// traces along one execution path until we have to give up, marking it as visited when complete
-    fn trace_unvisited_destination(&mut self, machine: &mut Machine) {
-        let ma = self.get_unvisited_destination();
+    fn trace_unvisited_address(&mut self, machine: &mut Machine) {
+        let (ma, sources) = self.get_unvisited_address();
         if ma.is_none() {
             println!("ERROR: no destinations to visit");
             return;
@@ -390,12 +482,23 @@ impl ProgramTracer {
             if DEBUG_TRACER {
                 println!("We've already visited {:04X}:{:04X} == {:06X}, marking destination visited!", ma.segment(), ma.offset(), ma.value());
             }
-            self.mark_destination_visited(start_ma);
+            self.mark_address_visited(start_ma);
             return;
         }
 
         if DEBUG_TRACER {
             println!("trace_destination starting at {:04X}:{:04X}", ma.segment(), ma.offset());
+        }
+
+        if let Some(sources) = sources {
+            if sources.sources.len() > 0 && sources.only_memory_access() {
+                if DEBUG_TRACER {
+                    println!("trace_unvisited_address address only accessed by memory, leaving {:?}", sources);
+                }
+                self.mark_address_visited(start_ma);
+                self.mark_virtual_memory(start_ma);
+                return;
+            }
         }
 
         let mut decoder = Decoder::default();
@@ -421,7 +524,7 @@ impl ProgramTracer {
                 Op::Retn | Op::Retf => break,
                 Op::JmpNear | Op::JmpFar | Op::JmpShort => {
                     match ii.instruction.params.dst {
-                        Parameter::Imm16(imm) => self.learn_destination(ma.segment(), imm, ma, AddressUsageKind::Branch),
+                        Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Branch),
                         Parameter::Reg16(_) => {}, // ignore "jmp bx"
                         Parameter::Ptr16(_, _) => {}, // ignore "jmp [0x4422]"
                         Parameter::Ptr16Imm(_, _) => {}, // ignore "jmp far 0xFFFF:0x0000"
@@ -437,7 +540,7 @@ impl ProgramTracer {
                 Op::Jna | Op::Jnc | Op::Jng | Op::Jnl | Op::Jno | Op::Jns | Op::Jnz |
                 Op::Jo | Op::Jpe | Op::Jpo | Op::Js | Op::Jz => {
                     match ii.instruction.params.dst {
-                        Parameter::Imm16(imm) => self.learn_destination(ma.segment(), imm, ma, AddressUsageKind::Branch),
+                        Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Branch),
                         Parameter::Reg16(_) => {}, // ignore "call bp"
                         Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
                         Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
@@ -447,12 +550,47 @@ impl ProgramTracer {
                 }
                 Op::CallNear | Op::CallFar => {
                     match ii.instruction.params.dst {
-                        Parameter::Imm16(imm) => self.learn_destination(ma.segment(), imm, ma, AddressUsageKind::Call),
+                        Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Call),
                         Parameter::Reg16(_) => {}, // ignore "call bp"
                         Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
                         Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
                         Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "call [bx-0x67A0]"
                         _ => println!("ERROR3: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
+                    }
+                }
+
+                // memory accesses
+                Op::Mov8 | Op::Mov16 => {
+                    match ii.instruction.params.dst {
+                        Parameter::Ptr8(seg, offset) => {
+                            // mov   [cs:0x0202], al
+                            if seg == Segment::CS {
+                                self.learn_address(machine.cpu.regs.get_r16(R::CS), offset, ma, AddressUsageKind::MemoryByte);
+                            }
+                        },
+                        Parameter::Ptr16(seg, offset) => {
+                            // mov   [cs:0x0202], ax
+                            if seg == Segment::CS {
+                                self.learn_address(machine.cpu.regs.get_r16(R::CS), offset, ma, AddressUsageKind::MemoryWord);
+                            }
+                        },
+                        _ => {},
+                    }
+
+                    match ii.instruction.params.src {
+                        Parameter::Ptr8(seg, offset) => {
+                            // mov   al, [cs:0x0202]
+                            if seg == Segment::CS {
+                                self.learn_address(machine.cpu.regs.get_r16(R::CS), offset, ma, AddressUsageKind::MemoryByte);
+                            }
+                        },
+                        Parameter::Ptr16(seg, offset) => {
+                            // mov   ax, [cs:0x0202]
+                            if seg == Segment::CS {
+                                self.learn_address(machine.cpu.regs.get_r16(R::CS), offset, ma, AddressUsageKind::MemoryWord);
+                            }
+                        },
+                        _ => {},
                     }
                 }
                 _ => {},
@@ -465,6 +603,6 @@ impl ProgramTracer {
             }
 
         }
-        self.mark_destination_visited(start_ma);
+        self.mark_address_visited(start_ma);
     }
 }

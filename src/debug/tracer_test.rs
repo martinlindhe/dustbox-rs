@@ -105,6 +105,32 @@ fn trace_sepatate_call_destination_separators() {
 ", res);
 }
 
+
+#[test]
+fn trace_virtual_memory() {
+    // makes sure newlines separate code blocks
+    let mut machine = Machine::default();
+    machine.cpu.deterministic = true;
+    let code: Vec<u8> = vec![
+        0x2E, 0xA3, 0x02, 0x02, //  mov [cs:0x202],ax
+        0x2E, 0xA1, 0x02, 0x02, // mov ax,[cs:0x202]
+        0x2E, 0xA2, 0x05, 0x02, // mov [cs:0x205],al
+        0x2E, 0xA0, 0x05, 0x02, // mov al,[cs:0x205]
+    ];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] 2EA30202         Mov16    word [cs:0x0202], ax
+[085F:0104] 2EA10202         Mov16    ax, word [cs:0x0202]
+[085F:0108] 2EA20502         Mov8     byte [cs:0x0205], al
+[085F:010C] 2EA00502         Mov8     al, byte [cs:0x0205]
+[085F:0202] ?? ??            dw       ????                          ; xref: word@085F:0100, word@085F:0104
+[085F:0205] ??               db       ??                            ; xref: byte@085F:0108, byte@085F:010C
+", res);
+}
+
 /*
 ; a way to manipulate ES from bmatch.com, should be able to figure that 010F is "es = 0x0040"
 [085F:0105] 50               Push16   ax
