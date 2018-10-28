@@ -95,7 +95,20 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             //
             // Note: If AL is not one of 01h,06h,07h,08h, or 0Ah, the
             // buffer is flushed but no input is attempted
-            println!("XXX int21, 0x0c - read stdin (wait for keypress)");
+
+            // println!("XXX flush text buffer");
+
+            let al = cpu.get_r8(R::AL);
+            match al {
+                0x01 | 0x06 | 0x07 | 0x08 | 0x0A => {
+                    // execute next function
+                    let old_ah = cpu.get_r8(R::AH);
+                    cpu.set_r8(R::AH, al);
+                    cpu.int(hw, 0x21);
+                    cpu.set_r8(R::AH, old_ah);
+                }
+                _ => {},
+            }
         }
         0x25 => {
             // DOS 1+ - SET INTERRUPT VECTOR

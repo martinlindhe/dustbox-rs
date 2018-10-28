@@ -21,6 +21,9 @@ const DEBUG_PARAMS_TOUCHING_STACK: bool = false;
 /// adds a 16-bit stack marker and ends execution if it is popped
 const DEBUG_MARK_STACK: bool = true;
 
+/// prints diagnostics of stack usage (push / pop)
+const DEBUG_STACK: bool = false;
+
 #[cfg(test)]
 #[path = "./interpreter_test.rs"]
 mod interpreter_test;
@@ -2195,6 +2198,9 @@ impl CPU {
         let sp = (Wrapping(self.get_r16(R::SP)) - Wrapping(2)).0;
         self.set_r16(R::SP, sp);
         let ss = self.get_r16(R::SS);
+        if DEBUG_STACK {
+            println!("[{}] push16 {:04X} to {:04X}:{:04X}", self.get_memory_address(), data, ss, sp);
+        }
         mmu.write_u16(ss, sp, data);
     }
 
@@ -2202,19 +2208,32 @@ impl CPU {
         let sp = (Wrapping(self.get_r16(R::SP)) - Wrapping(4)).0;
         self.set_r16(R::SP, sp);
         let ss = self.get_r16(R::SS);
+        if DEBUG_STACK {
+            println!("[{}] push32 {:04X} to {:04X}:{:04X}", self.get_memory_address(), data, ss, sp);
+        }
         mmu.write_u32(ss, sp, data);
     }
 
     fn pop16(&mut self, mmu: &mut MMU) -> u16 {
-        let data = mmu.read_u16(self.get_r16(R::SS), self.get_r16(R::SP));
-        let sp = (Wrapping(self.get_r16(R::SP)) + Wrapping(2)).0;
+        let ss = self.get_r16(R::SS);
+        let sp = self.get_r16(R::SP);
+        let data = mmu.read_u16(ss, self.get_r16(R::SP));
+        if DEBUG_STACK {
+            println!("[{}] pop16 {:04X} from {:04X}:{:04X}", self.get_memory_address(), data, ss, sp);
+        }
+        let sp = (Wrapping(sp) + Wrapping(2)).0;
         self.set_r16(R::SP, sp);
         data
     }
 
     fn pop32(&mut self, mmu: &mut MMU) -> u32 {
-        let data = mmu.read_u32(self.get_r16(R::SS), self.get_r16(R::SP));
-        let sp = (Wrapping(self.get_r16(R::SP)) + Wrapping(4)).0;
+        let ss = self.get_r16(R::SS);
+        let sp = self.get_r16(R::SP);
+        let data = mmu.read_u32(ss, sp);
+        if DEBUG_STACK {
+            println!("[{}] pop32 {:04X} from {:04X}:{:04X}", self.get_memory_address(), data, ss, sp);
+        }
+        let sp = (Wrapping(sp) + Wrapping(4)).0;
         self.set_r16(R::SP, sp);
         data
     }
@@ -2592,7 +2611,7 @@ impl CPU {
         self.regs.flags.set_parity(al as usize);
     }
 
-    fn int(&mut self, hw: &mut Hardware, int: u8) {
+    pub fn int(&mut self, hw: &mut Hardware, int: u8) {
         let flags = self.regs.flags.u16();
         self.push16(&mut hw.mmu, flags);
         hw.bios.flags_address = MemoryAddress::RealSegmentOffset(self.get_r16(R::SS), self.get_r16(R::SP));

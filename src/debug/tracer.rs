@@ -11,7 +11,7 @@ use hex::hex_bytes;
 #[path = "./tracer_test.rs"]
 mod tracer_test;
 
-const DEBUG_TRACER: bool = true;
+const DEBUG_TRACER: bool = false;
 
 /// ProgramTracer holds the state of the program being analyzed
 #[derive(Default)]
@@ -122,6 +122,7 @@ struct GuessedDataAddress {
 enum AddressUsageKind {
     Branch,
     Call,
+    Jump,
     MemoryByte,
     MemoryWord,
 }
@@ -380,6 +381,7 @@ impl ProgramTracer {
             for src in &sources.sources {
                 let label = match src.kind {
                     AddressUsageKind::Branch => "branch",
+                    AddressUsageKind::Jump => "jump",
                     AddressUsageKind::Call => "call",
                     AddressUsageKind::MemoryByte => "byte",
                     AddressUsageKind::MemoryWord => "word",
@@ -520,11 +522,11 @@ impl ProgramTracer {
 
             match ii.instruction.command {
                 Op::Invalid(_, _) => println!("ERROR: invalid/unhandled op {}", ii.instruction),
-                Op::RetImm16 => panic!("XXX unhandled {}", ii.instruction),
+                Op::RetImm16 => panic!("FIXME handle {}", ii.instruction),
                 Op::Retn | Op::Retf => break,
                 Op::JmpNear | Op::JmpFar | Op::JmpShort => {
                     match ii.instruction.params.dst {
-                        Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Branch),
+                        Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Jump),
                         Parameter::Reg16(_) => {}, // ignore "jmp bx"
                         Parameter::Ptr16(_, _) => {}, // ignore "jmp [0x4422]"
                         Parameter::Ptr16Imm(_, _) => {}, // ignore "jmp far 0xFFFF:0x0000"
