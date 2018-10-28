@@ -19,12 +19,25 @@ pub struct Hardware {
 
 impl Hardware {
     pub fn default() -> Self {
+        let mut res = Self::deterministic();
+
+        let midnight = chrono::Local::now().date().and_hms(0, 0, 0);
+        let duration = chrono::Local::now().signed_duration_since(midnight).to_std().unwrap();
+
+        // there are approximately 18.2 clock ticks per second, 0x18_00B0 per 24 hrs. one tick is generated every 54.9254ms
+        res.pit.timer0.count = (((duration.as_secs() as f64 * 1000.) + (duration.subsec_nanos() as f64 / 1_000_000.)) / 54.9254) as u32;
+
+        res
+    }
+
+    pub fn deterministic() -> Self {
         let mut mmu = MMU::default();
         let mut gpu = GPU::default();
         let mut bios = BIOS::default();
         bios.init(&mut mmu);
         gpu.init(&mut mmu);
         gpu.set_mode(&mut mmu, &mut bios, 0x03); // inits gpu to text mode 80x25
+
         Hardware {
             mmu,
             gpu,
@@ -50,6 +63,8 @@ impl Hardware {
             }
             0x0020 => self.pic.get_register(),
             0x0021 => self.pic.get_ocw1(),
+
+            // PORT 0040-005F - PIT - PROGRAMMABLE INTERVAL TIMER (8253, 8254)
             0x0040 => self.pit.timer0.get_next_u8(),
             0x0041 => self.pit.timer1.get_next_u8(),
             0x0042 => self.pit.timer2.get_next_u8(),

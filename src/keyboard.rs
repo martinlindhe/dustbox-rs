@@ -2,7 +2,7 @@
 use sdl2::keyboard::{Keycode, Mod};
 use sdl2::keyboard::{LSHIFTMOD, RSHIFTMOD, LCTRLMOD, RCTRLMOD, LALTMOD, RALTMOD};
 
-const DEBUG_KEYBOARD: bool = true;
+const DEBUG_KEYBOARD: bool = false;
 
 #[cfg(test)]
 #[path = "./keyboard_test.rs"]

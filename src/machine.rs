@@ -1,3 +1,5 @@
+use std::time::{Duration, SystemTime};
+
 use bincode::deserialize;
 
 use cpu::{CPU, Op, Invalid, R, RegisterSnapshot, Segment, OperandSize};
@@ -48,6 +50,8 @@ pub struct Machine {
 
     /// length of loaded rom in bytes (used by disassembler)
     pub rom_length: usize,
+
+    last_update: SystemTime,
 }
 
 impl Machine {
@@ -57,6 +61,20 @@ impl Machine {
             hw: Hardware::default(),
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,
+            last_update: SystemTime::now(),
+        }
+    }
+
+    pub fn deterministic() -> Self {
+        let mut cpu = CPU::default();
+        cpu.deterministic = true;
+
+        Machine {
+            cpu: cpu,
+            hw: Hardware::deterministic(),
+            rom_base: MemoryAddress::default_real(),
+            rom_length: 0,
+            last_update: SystemTime::now(),
         }
     }
 
@@ -176,7 +194,11 @@ impl Machine {
     }
 
     pub fn execute_instruction(&mut self) {
-        self.hw.pit.update(&mut self.hw.mmu);
+        // XXX this is wrong!!!  time based timer increment is source of random output in morales.com
+        if self.last_update.elapsed().unwrap() > Duration::from_millis(55) {
+            self.last_update = SystemTime::now();
+            self.hw.pit.update(&mut self.hw.mmu);
+        }
 
         let cs = self.cpu.get_r16(R::CS);
         let ip = self.cpu.regs.ip;

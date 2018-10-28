@@ -8,7 +8,7 @@ use criterion::Criterion;
 use dustbox::machine::Machine;
 
 fn exec_simple_loop(c: &mut Criterion) {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB9, 0xFF, 0xFF, // mov cx,0xffff
         0x49,             // dec cx
@@ -21,7 +21,7 @@ fn exec_simple_loop(c: &mut Criterion) {
 }
 
 fn disasm_small_prog(c: &mut Criterion) {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x80, 0x3E, 0x31, 0x10, 0x00,   // cmp byte [0x1031],0x0
         0xB9, 0xFF, 0xFF,               // mov cx,0xffff

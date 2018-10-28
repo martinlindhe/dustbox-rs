@@ -12,7 +12,7 @@ fn test_status_register() {
 
 #[test]
 fn can_read_keys_from_io_ports() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xE4, 0x64, // 00000100: in al,0x64
         0x24, 0x01, // 00000102: and al,0x1

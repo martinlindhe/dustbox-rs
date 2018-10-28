@@ -26,11 +26,18 @@ fn main() {
             .help("Sets the input file to use")
             .required(true)
             .index(1))
+        .arg(Arg::with_name("deterministic")
+            .help("Enables deterministic mode (debugging)")
+            .short("d"))
         .get_matches();
 
     let filename = matches.value_of("INPUT").unwrap();
 
-    let mut machine = Machine::default();
+    let mut machine = if matches.is_present("deterministic") {
+        Machine::deterministic()
+    } else {
+        Machine::default()
+    };
 
     match tools::read_binary(filename) {
         Ok(data) => {

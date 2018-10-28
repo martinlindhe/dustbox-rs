@@ -2,7 +2,7 @@ use machine::Machine;
 
 #[test]
 fn can_execute_pit_set_reload_value() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB0, 0x34,         // mov al,0b0011_0100   ; channel 0, lobyte/hibyte, rate generator
         0xE6, 0x43,         // out 0x43,al

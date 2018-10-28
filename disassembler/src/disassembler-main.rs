@@ -31,8 +31,7 @@ fn main() {
 }
 
 fn flat_disassembly(filename: &str) {
-    let mut machine = Machine::default();
-    machine.cpu.deterministic = true;
+    let mut machine = Machine::deterministic();
     match tools::read_binary(filename) {
         Ok(data) => machine.load_executable(&data),
         Err(err) => panic!("failed to read {}: {}", filename, err),
@@ -52,8 +51,7 @@ fn flat_disassembly(filename: &str) {
 }
 
 fn trace_disassembly(filename: &str) {
-    let mut machine = Machine::default();
-    machine.cpu.deterministic = true;
+    let mut machine = Machine::deterministic();
     match tools::read_binary(filename) {
         Ok(data) => machine.load_executable(&data),
         Err(err) => panic!("failed to read {}: {}", filename, err),

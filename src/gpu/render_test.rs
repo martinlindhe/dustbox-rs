@@ -19,7 +19,7 @@ use gpu::palette::ColorSpace;
 
 #[test]
 fn can_get_palette_entry() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB3, 0x03,         // mov bl,0x3
         0xB8, 0x15, 0x10,   // mov ax,0x1015
@@ -36,7 +36,7 @@ fn can_get_palette_entry() {
 
 #[test]
 fn can_set_palette_entry() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x03, 0x00,   // mov bx,0x3
         0xB5, 0x3F,         // mov ch,0x3f      ; red
@@ -62,7 +62,7 @@ fn can_set_palette_entry() {
 
 #[test]
 fn can_get_font_info() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x30, 0x11,   // mov ax,0x1130  ; 1130 = get font info
         0xB7, 0x06,         // mov bh,0x6     ; get ROM 8x16 font (MCGA, VGA)
@@ -78,7 +78,7 @@ fn can_get_font_info() {
 
 #[test]
 fn can_int10_put_pixel() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x13, 0x00,   // mov ax,0x13
         0xCD, 0x10,         // int 0x10
@@ -112,7 +112,7 @@ fn can_int10_put_pixel() {
 
 #[test]
 fn can_write_vga_text() {
-let mut machine = Machine::default();
+let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x13, 0x00,   // mov ax,0x13
         0xCD, 0x10,         // int 0x10
@@ -345,8 +345,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefi
     while let Some(bin) = test_bins.pop() {
         println!("{}: {}", group, bin);
 
-        let mut machine = Machine::default();
-        machine.cpu.deterministic = true;
+        let mut machine = Machine::deterministic();
         match tools::read_binary(&bin) {
             Ok(data) => machine.load_executable(&data),
             Err(err) => panic!("failed to read {}: {}", bin, err),

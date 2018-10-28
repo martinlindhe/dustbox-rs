@@ -3,8 +3,7 @@ use debug::ProgramTracer;
 
 #[test]
 fn trace_simple() {
-    let mut machine = Machine::default();
-    machine.cpu.deterministic = true;
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBA, 0x04, 0x00,   // mov dx,0x4
         0x89, 0xD1,         // mov cx,dx
@@ -20,15 +19,14 @@ fn trace_simple() {
 [085F:0103] 89D1             Mov16    cx, dx
 [085F:0105] EB00             JmpShort 0x0107
 
-[085F:0107] C3               Retn                                   ; xref: branch@085F:0105
+[085F:0107] C3               Retn                                   ; xref: jump@085F:0105
 
 ", res);
 }
 
 #[test]
 fn trace_unreferenced_data() {
-    let mut machine = Machine::default();
-    machine.cpu.deterministic = true;
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBA, 0x04, 0x00,   // mov dx,0x4
         0x89, 0xD1,         // mov cx,dx
@@ -48,7 +46,7 @@ fn trace_unreferenced_data() {
 [085F:0105] EB01             JmpShort 0x0108
 
 [085F:0107] 90               db       0x90
-[085F:0108] C3               Retn                                   ; xref: branch@085F:0105
+[085F:0108] C3               Retn                                   ; xref: jump@085F:0105
 
 [085F:0109] 40               db       0x40
 ", res);
@@ -56,8 +54,7 @@ fn trace_unreferenced_data() {
 
 #[test]
 fn trace_decorates_stosw() {
-    let mut machine = Machine::default();
-    machine.cpu.deterministic = true;
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xAB,           // stosw
         0xF3, 0xAB,     // rep stosw
@@ -77,8 +74,7 @@ fn trace_decorates_stosw() {
 #[test]
 fn trace_sepatate_call_destination_separators() {
     // makes sure newlines separate code blocks
-    let mut machine = Machine::default();
-    machine.cpu.deterministic = true;
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x01, 0x00,   // mov ax,0x1
         0xE8, 0x05, 0x00,   // call 0x10b
@@ -101,7 +97,7 @@ fn trace_sepatate_call_destination_separators() {
 [085F:010B] B80300           Mov16    ax, 0x0003                    ; xref: call@085F:0103
 [085F:010E] C3               Retn
 
-[085F:010F] CD20             Int      0x20                          ; xref: branch@085F:0109
+[085F:010F] CD20             Int      0x20                          ; xref: jump@085F:0109
 ", res);
 }
 
@@ -109,8 +105,7 @@ fn trace_sepatate_call_destination_separators() {
 #[test]
 fn trace_virtual_memory() {
     // makes sure newlines separate code blocks
-    let mut machine = Machine::default();
-    machine.cpu.deterministic = true;
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x2E, 0xA3, 0x02, 0x02, //  mov [cs:0x202],ax
         0x2E, 0xA1, 0x02, 0x02, // mov ax,[cs:0x202]
@@ -203,8 +198,7 @@ fn trace_virtual_memory() {
 /*
 #[test]
 fn trace_data_ref() {
-    let mut machine = Machine::default();
-    machine.cpu.deterministic = true;
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBA, 0x10, 0x01,       // mov dx,0x110
         0xB4, 0x09,             // mov ah,0x9

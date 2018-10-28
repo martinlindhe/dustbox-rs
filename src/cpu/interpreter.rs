@@ -75,6 +75,12 @@ impl CPU {
         }
     }
 
+    pub fn deterministic() -> Self {
+        let mut res = Self::default();
+        res.deterministic = true;
+        res
+    }
+
     pub fn get_r8(&self, r: R) -> u8 {
         self.regs.get_r8(r)
     }

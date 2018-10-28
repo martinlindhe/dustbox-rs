@@ -242,6 +242,7 @@ impl ProgramTracer {
     /// implementation is in src/hardware.rs in_u8()
     fn in_u8_port_desc(&self, port: u16) -> String {
         match port {
+            0x0040 => "pit counter 0".to_owned(),
             0x0060 => "keyboard or kb controller data output buffer".to_owned(),
             0x0061 => "keyboard controller port B control register".to_owned(),
             _ => {

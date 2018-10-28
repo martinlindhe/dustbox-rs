@@ -19,7 +19,7 @@ pub enum VmRunner {
 
 /// return false on failure
 pub fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&str], affected_flag_mask: u16) -> bool {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     machine.load_executable(data);
     machine.execute_instructions(op_count);
 

@@ -8,7 +8,7 @@ use memory::MMU;
 
 #[test]
 fn can_execute_push_pop() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x88, 0x88, // mov ax,0x8888
         0x8E, 0xD8,       // mov ds,ax
@@ -33,7 +33,7 @@ fn can_execute_push_pop() {
 
 #[test]
 fn can_execute_inc32() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x66, 0xB8, 0xFF, 0xFF, 0x00, 0x80, // mov eax,0x8000ffff
         0x66, 0x40,                         // inc eax
@@ -45,7 +45,7 @@ fn can_execute_inc32() {
 
 #[test]
 fn can_execute_dec32() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x66, 0xB8, 0x00, 0x00, 0x01, 0x80, // mov eax,0x80010000
         0x66, 0x48,                         // dec eax
@@ -58,7 +58,7 @@ fn can_execute_dec32() {
 
 #[test]
 fn can_execute_add8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB4, 0xFF,         // mov ah,0xff
         0x80, 0xC4, 0x01,   // add ah,0x1
@@ -113,7 +113,7 @@ fn can_execute_add8() {
 
 #[test]
 fn can_execute_add16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xFF, 0xFF,   // mov ax,0xffff
         0x83, 0xC0, 0x01,   // add ax,byte +0x1
@@ -168,7 +168,7 @@ fn can_execute_add16() {
 
 #[test]
 fn can_execute_mov_r8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB2, 0x13, // mov dl,0x13
         0x88, 0xD0, // mov al,dl
@@ -184,7 +184,7 @@ fn can_execute_mov_r8() {
 
 #[test]
 fn can_execute_mov_r32() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x66, 0xB8, 0x78, 0x56, 0x34, 0x12, // mov eax,0x12345678
         0x66, 0xB8, 0x23, 0x01, 0xFF, 0x00, // mov eax,0xff0123
@@ -203,7 +203,7 @@ fn can_execute_mov_r32() {
 
 #[test]
 fn can_execute_mov_r8_rm8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x05, 0x01, // mov bx,0x105
         0x8A, 0x27,       // mov ah,[bx]   | r8, r/m8
@@ -223,7 +223,7 @@ fn can_execute_mov_r8_rm8() {
 
 #[test]
 fn can_execute_mv_r16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x23, 0x01, // mov ax,0x123
         0x8B, 0xE0,       // mov sp,ax   | r16, r16
@@ -241,7 +241,7 @@ fn can_execute_mv_r16() {
 
 #[test]
 fn can_execute_mov_r16_rm16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB9, 0x23, 0x01, // mov cx,0x123
         0x8E, 0xC1,       // mov es,cx   | r/m16, r16
@@ -259,7 +259,7 @@ fn can_execute_mov_r16_rm16() {
 
 #[test]
 fn can_execute_mov_rm16_sreg() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x34, 0x12,       // mov bx,0x1234
         0x8E, 0xC3,             // mov es,bx
@@ -283,7 +283,7 @@ fn can_execute_mov_rm16_sreg() {
 
 #[test]
 fn can_execute_mov_data() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xC6, 0x06, 0x31, 0x10, 0x38,       // mov byte [0x1031],0x38
     ];
@@ -297,7 +297,7 @@ fn can_execute_mov_data() {
 
 #[test]
 fn can_execute_mov_es_segment() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x68, 0x40, 0x40,               // push word 0x4040
         0x07,                           // pop es
@@ -342,7 +342,7 @@ fn can_execute_mov_es_segment() {
 
 #[test]
 fn can_execute_mov_fs_segment() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x68, 0x40, 0x40,   // push word 0x4040
         0x0F, 0xA1,         // pop fs
@@ -359,7 +359,7 @@ fn can_execute_mov_fs_segment() {
 
 #[test]
 fn can_execute_imms8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBF, 0x00, 0x01, // mov di,0x100
         0x83, 0xC7, 0x3A, // add di,byte +0x3a
@@ -383,7 +383,7 @@ fn can_execute_imms8() {
 
 #[test]
 fn can_execute_with_flags() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB4, 0xFE,       // mov ah,0xfe
         0x80, 0xC4, 0x02, // add ah,0x2   - OF and ZF should be set
@@ -415,7 +415,7 @@ fn can_execute_with_flags() {
 #[test]
 fn can_execute_cmp() {
     // make sure we dont overflow (0 - 0x2000 = overflow)
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x00,       // mov bx,0x0
         0x89, 0xDF,             // mov di,bx
@@ -445,7 +445,7 @@ fn can_execute_cmp() {
 
 #[test]
 fn can_execute_xchg() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x34, 0x12,   // mov ax,0x1234
         0xB9, 0xFF, 0xFF,   // mov cx,0xffff
@@ -460,7 +460,7 @@ fn can_execute_xchg() {
 
 #[test]
 fn can_execute_rep_movsb() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBE, 0x00, 0x01,   // mov si,0x100
         0xBF, 0x00, 0x02,   // mov di,0x200
@@ -488,7 +488,7 @@ fn can_execute_rep_movsb() {
 
 #[test]
 fn can_execute_rep_outsb() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBE, 0x00, 0x01,   // mov si,0x100
         0xBA, 0xC8, 0x03,   // mov dx,0x3c8
@@ -511,7 +511,7 @@ fn can_execute_rep_outsb() {
 
 #[test]
 fn can_execute_es_outsb() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x68, 0x00, 0x80,       // push word 0x8000
         0x07,                   // pop es
@@ -529,7 +529,7 @@ fn can_execute_es_outsb() {
 
 #[test]
 fn can_execute_lea() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x44, 0x44,           // mov bx,0x4444
         0x8D, 0x3F,                 // lea di,[bx]
@@ -546,7 +546,7 @@ fn can_execute_lea() {
 
 #[test]
 fn can_execute_8bit_16bit_addressing() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x02,             // mov bx,0x200
         0xC6, 0x47, 0x2C, 0xFF,       // mov byte [bx+0x2c],0xff  ; rm8 [amode+s8]
@@ -606,7 +606,7 @@ fn can_execute_8bit_16bit_addressing() {
 
 #[test]
 fn can_execute_32bit_addressing() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x66, 0xBB, 0x00, 0x02, 0x00, 0x00,         // mov ebx,0x200
         0x66, 0x89, 0x1E, 0x50, 0x02,               // mov [0x250],ebx
@@ -643,7 +643,7 @@ fn can_execute_32bit_addressing() {
 
 #[test]
 fn can_execute_math() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xF6, 0x06, 0x2C, 0x12, 0xFF, // test byte [0x122c],0xff
     ];
@@ -659,7 +659,7 @@ fn can_execute_math() {
 
 #[test]
 fn can_execute_and() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB0, 0xF0, // mov al,0xF0
         0xB4, 0x1F, // mov ah,0x1F
@@ -689,7 +689,7 @@ fn can_execute_and() {
 
 #[test]
 fn can_execute_mul8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB0, 0x40, // mov al,0x40
         0xB3, 0x10, // mov bl,0x10
@@ -704,7 +704,7 @@ fn can_execute_mul8() {
 
 #[test]
 fn can_execute_mul16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x00, 0x80, // mov ax,0x8000
         0xBB, 0x04, 0x00, // mov bx,0x4
@@ -720,7 +720,7 @@ fn can_execute_mul16() {
 
 #[test]
 fn can_execute_div8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x40, 0x00, // mov ax,0x40
         0xB3, 0x10,       // mov bl,0x10
@@ -747,7 +747,7 @@ fn can_execute_div8() {
 
 #[test]
 fn can_execute_div16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBA, 0x10, 0x00, // mov dx,0x10
         0xB8, 0x00, 0x40, // mov ax,0x4000
@@ -779,7 +779,7 @@ fn can_execute_div16() {
 
 #[test]
 fn can_execute_idiv8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x00, 0x00,   // mov ax,0x0
         0xB3, 0x02,         // mov bl,0x2
@@ -810,7 +810,7 @@ fn can_execute_idiv8() {
 
 #[test]
 fn can_execute_idiv16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBA, 0xFF, 0xFF,   // mov dx,0xffff
         0xB8, 0x00, 0x00,   // mov ax,0x0
@@ -853,7 +853,7 @@ fn can_execute_idiv16() {
 
 #[test]
 fn can_execute_idiv32() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x66, 0xBA, 0x00, 0x00, 0x00, 0x00, // mov edx,0x0
         0x66, 0xB8, 0x00, 0x00, 0x00, 0x44, // mov eax,0x44000000
@@ -869,7 +869,7 @@ fn can_execute_idiv32() {
 
 #[test]
 fn can_execute_lds() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x60,               // mov bx,0x6000
         0xC7, 0x07, 0x22, 0x11,         // mov word [bx],0x1122
@@ -888,7 +888,7 @@ fn can_execute_lds() {
 
 #[test]
 fn can_execute_lds_2() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x60,               // mov bx,0x6000
         0xC7, 0x47, 0x06, 0x22, 0x11,   // mov word [bx+0x6],0x1122
@@ -907,7 +907,7 @@ fn can_execute_lds_2() {
 
 #[test]
 fn can_execute_les() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xC4, 0x06, 0x00, 0x01, // les ax,[0x100]
     ];
@@ -919,7 +919,7 @@ fn can_execute_les() {
 
 #[test]
 fn can_execute_cwd() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x00, 0xFE, // mov ax,0xfe00
         0x99,             // cwd
@@ -931,7 +931,7 @@ fn can_execute_cwd() {
 
 #[test]
 fn can_execute_aaa() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB0, 0x7E, // mov al,0x7e
         0x37,       // aaa
@@ -944,7 +944,7 @@ fn can_execute_aaa() {
 
 #[test]
 fn can_execute_aam() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x44, 0x44,   // mov ax,0x4444
         0xD4, 0x0A,         // aam
@@ -967,7 +967,7 @@ fn can_execute_aam() {
 
 #[test]
 fn can_execute_aas() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB0, 0x13, // mov al,0x13
         0x3F,       // aas
@@ -980,7 +980,7 @@ fn can_execute_aas() {
 
 #[test]
 fn can_execute_bts() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x0F, 0xBA, 0x2E, 0xAE, 0x01, 0x0F, // bts word [0x1ae],0xf
     ];
@@ -995,7 +995,7 @@ fn can_execute_bts() {
 
 #[test]
 fn can_execute_bsf() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x04, 0x00, // mov ax,0x4
         0x0F, 0xBC, 0xD0, // bsf dx,ax
@@ -1021,7 +1021,7 @@ fn can_execute_bsf() {
 
 #[test]
 fn can_execute_bt() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x02, 0x00, // mov ax,0x2
         0xBA, 0x02, 0x00, // mov dx,0x2
@@ -1040,7 +1040,7 @@ fn can_execute_bt() {
 
 #[test]
 fn can_execute_daa() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB0, 0x79, // mov al,0x79
         0xB3, 0x35, // mov bl,0x35
@@ -1054,7 +1054,7 @@ fn can_execute_daa() {
 
 #[test]
 fn can_execute_das() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB0, 0x35, // mov al,0x35
         0xB3, 0x47, // mov bl,0x47
@@ -1068,7 +1068,7 @@ fn can_execute_das() {
 
 #[test]
 fn can_execute_sahf() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x6A, 0x00, // push byte +0x0
         0x9D,       // popf
@@ -1087,7 +1087,7 @@ fn can_execute_sahf() {
 
 #[test]
 fn can_execute_pusha_popa() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xE8, 0x03,   // mov ax,0x3e8
         0xB9, 0xE9, 0x03,   // mov cx,0x3e9
@@ -1117,7 +1117,7 @@ fn can_execute_pusha_popa() {
 
 #[test]
 fn can_execute_dec() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBD, 0x00, 0x02, // mov bp,0x200
         0x4D,             // dec bp
@@ -1135,7 +1135,7 @@ fn can_execute_dec() {
 
 #[test]
 fn can_execute_neg() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x23, 0x01, // mov bx,0x123
         0xF7, 0xDB,       // neg bx
@@ -1157,7 +1157,7 @@ fn can_execute_neg() {
 
 #[test]
 fn can_execute_sbb16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x48, 0xF0, // mov ax,0xf048
         0x1D, 0x45, 0x44, // sbb ax,0x4445
@@ -1179,7 +1179,7 @@ fn can_execute_sbb16() {
 
 #[test]
 fn can_execute_jmp_far() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xEA, 0x00, 0x06, 0x00, 0x00, // jmp word 0x0:0x600
     ];
@@ -1195,7 +1195,7 @@ fn can_execute_jmp_far() {
 
 #[test]
 fn can_execute_jmp_far_mem() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x31, 0xC0,       // xor ax,ax
         0xBE, 0x88, 0x88, // mov si,0x8888
@@ -1212,7 +1212,7 @@ fn can_execute_jmp_far_mem() {
 
 #[test]
 fn can_execute_setc() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x0F, 0x92, 0xC0, // setc al
     ];
@@ -1230,7 +1230,7 @@ fn can_execute_setc() {
 
 #[test]
 fn can_execute_movzx() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB4, 0xFF,       // mov ah,0xff
         0x0F, 0xB6, 0xDC, // movzx bx,ah
@@ -1252,7 +1252,7 @@ fn can_execute_movzx() {
 
 #[test]
 fn can_execute_rol8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB4, 0xFE,         // mov ah,0xfe
         0xC0, 0xC4, 0x01,   // rol ah,byte 0x1
@@ -1281,7 +1281,7 @@ fn can_execute_rol8() {
 
 #[test]
 fn can_execute_rol16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xFE, 0xFF,   // mov ax,0xfffe
         0xC1, 0xC0, 0x01,   // rol ax,byte 0x1
@@ -1310,7 +1310,7 @@ fn can_execute_rol16() {
 
 #[test]
 fn can_execute_ror8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB4, 0xFE,         // mov ah,0xfe
         0xC0, 0xCC, 0x01,   // ror ah,byte 0x1
@@ -1339,7 +1339,7 @@ fn can_execute_ror8() {
 
 #[test]
 fn can_execute_ror16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xFE, 0xFF,   // mov ax,0xfffe
         0xC1, 0xC8, 0x01,   // ror ax,byte 0x1
@@ -1368,7 +1368,7 @@ fn can_execute_ror16() {
 
 #[test]
 fn can_execute_rcl8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB4, 0xFE,         // mov ah,0xfe
         0xF9,               // stc
@@ -1400,7 +1400,7 @@ fn can_execute_rcl8() {
 
 #[test]
 fn can_execute_rcl16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xFE, 0xFF,   // mov ax,0xfffe
         0xF9,               // stc
@@ -1432,7 +1432,7 @@ fn can_execute_rcl16() {
 
 #[test]
 fn can_execute_rcr8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB4, 0xFE,         // mov ah,0xfe
         0xF9,               // stc
@@ -1483,7 +1483,7 @@ fn can_execute_rcr8() {
 
 #[test]
 fn can_execute_rcr16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xFE, 0xFF,   // mov ax,0xfffe
         0xF9,               // stc
@@ -1535,7 +1535,7 @@ fn can_execute_rcr16() {
 #[test]
 fn can_execute_shl8() {
     // XXX shl8 emulation is incomplete / incorrect
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB4, 0xFF,         // mov ah,0xff
         0xC0, 0xE4, 0x01,   // shl ah,byte 0x1
@@ -1577,7 +1577,7 @@ fn can_execute_shl8() {
 
 #[test]
 fn can_execute_shl16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xFF, 0xFF,   // mov ax,0xffff
         0xC1, 0xE0, 0x01,   // shl ax,byte 0x1
@@ -1615,7 +1615,7 @@ fn can_execute_shl16() {
 
 #[test]
 fn can_execute_shr8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB4, 0xFF,         // mov ah,0xff
         0xC0, 0xEC, 0x01,   // shr ah,byte 0x1
@@ -1653,7 +1653,7 @@ fn can_execute_shr8() {
 
 #[test]
 fn can_execute_shr16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xFF, 0xFF,   // mov ax,0xffff
         0xC1, 0xE8, 0x01,   // shr ax,byte 0x1
@@ -1691,7 +1691,7 @@ fn can_execute_shr16() {
 
 #[test]
 fn can_execute_sar8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB4, 0xFE,         // mov ah,0xfe
         0xC0, 0xFC, 0x01,   // sar ah,byte 0x1
@@ -1729,7 +1729,7 @@ fn can_execute_sar8() {
 
 #[test]
 fn can_execute_sar16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xFE, 0xFF,   // mov ax,0xfffe
         0xC1, 0xF8, 0x01,   // sar ax,byte 0x1
@@ -1767,7 +1767,7 @@ fn can_execute_sar16() {
 
 #[test]
 fn can_execute_imul8() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB0, 0xFF,     // mov al,0xff
         0xB3, 0x02,     // mov bl,0x2
@@ -1791,7 +1791,7 @@ fn can_execute_imul8() {
 
 #[test]
 fn can_execute_imul16_1_args() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xFF, 0xFF,   // mov ax,0xffff
         0xBB, 0x02, 0x00,   // mov bx,0x2
@@ -1825,7 +1825,7 @@ fn can_execute_imul16_1_args() {
 
 #[test]
 fn can_execute_imul16_2_args() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xFF, 0xFF,   // mov ax,0xffff
         0xBB, 0x02, 0x00,   // mov bx,0x2
@@ -1856,7 +1856,7 @@ fn can_execute_imul16_2_args() {
 
 #[test]
 fn can_execute_imul16_3_args() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xFF, 0xFF,       // mov ax,0xffff
         0x6B, 0xC0, 0x02,       // imul ax,ax,byte +0x2
@@ -1884,7 +1884,7 @@ fn can_execute_imul16_3_args() {
 
 #[test]
 fn can_execute_imul32_1_args() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x66, 0xB8, 0xFF, 0xFF, 0x00, 0x00, // mov eax,0xffff
         0x66, 0xBB, 0x02, 0x00, 0x00, 0x00, // mov ebx,0x2
@@ -1913,7 +1913,7 @@ fn can_execute_imul32_1_args() {
 
 #[test]
 fn can_execute_imul32_3_args() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x66, 0xB8, 0xFF, 0xFF, 0xFF, 0xFF,         // mov eax,0xffffffff
         0x66, 0x6B, 0xC0, 0x02,                     // imul eax,eax,byte +0x2
@@ -1937,7 +1937,7 @@ fn can_execute_imul32_3_args() {
 #[test]
 fn can_execute_int_iret() {
     // should hit a default interrupt handler (iret) for int 0x72
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xCD, 0x72, // int 0x72
     ];
@@ -1955,7 +1955,7 @@ fn can_execute_int_iret() {
 
 #[test]
 fn can_execute_xlatb() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x40, 0x02,               // mov bx,0x240
         0xC6, 0x06, 0x40, 0x02, 0x80,   // mov [0x0240], byte 0x80
@@ -1968,7 +1968,7 @@ fn can_execute_xlatb() {
 
 #[test]
 fn can_execute_cmpsw() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBE, 0x30, 0x30,           // mov si,0x3030
         0xC7, 0x04, 0x22, 0x22,     // mov word [si],0x2222
@@ -1990,7 +1990,7 @@ fn can_execute_cmpsw() {
 
 #[test]
 fn can_execute_shld() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x88, 0x44,           // mov bx,0x4488
         0xBF, 0x33, 0x22,           // mov di,0x2233
@@ -2009,7 +2009,7 @@ fn can_execute_shld() {
 
 #[test]
 fn can_execute_scasb() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x00, 0x40,       // mov ax,0x4000
         0x8E, 0xC0,             // mov es,ax
@@ -2026,7 +2026,7 @@ fn can_execute_scasb() {
 
 #[test]
 fn can_execute_scasw() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x00, 0x40,               // mov ax,0x4000
         0x8E, 0xC0,                     // mov es,ax
@@ -2043,7 +2043,7 @@ fn can_execute_scasw() {
 
 #[test]
 fn can_execute_movsx16() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB7, 0xFE,             // mov bh,0xfe
         0x0F, 0xBE, 0xC7,       // movsx ax,bh
@@ -2055,7 +2055,7 @@ fn can_execute_movsx16() {
 
 #[test]
 fn can_execute_movsx32() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB7, 0xFE,             // mov bh,0xfe
         0x66, 0x0F, 0xBE, 0xC7, // movsx eax,bh
@@ -2069,7 +2069,7 @@ fn can_execute_movsx32() {
 fn can_execute_mov_ds_addressing() {
     // NOTE: this test demonstrates a emulation bug described in https://github.com/martinlindhe/dustbox-rs/issues/9#issuecomment-355609424
     // BUG: "mov [bx+si],dx" writes to the CS segment instead of DS
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x68, 0x00, 0x80,   // push word 0x8000
         0x1F,               // pop ds
@@ -2090,7 +2090,7 @@ fn can_execute_mov_ds_addressing() {
 
 #[test]
 fn can_execute_shrd() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0xFF, 0xFF,       // mov ax,0xffff
         0xBA, 0xFF, 0xFF,       // mov dx,0xffff
@@ -2123,7 +2123,7 @@ fn can_execute_shrd() {
 
 #[test]
 fn can_execute_ret_imm() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xE8, 0x03, 0x00,   // 000100: call 0x106
         0xB9, 0x34, 0x12,   // 000103: mov cx,0x1234
@@ -2144,7 +2144,7 @@ fn can_execute_ret_imm() {
 
 #[test]
 fn can_execute_call_far() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x9A, 0xD3, 0x00, 0x00, 0x00,   // call 0x0:0xd3
     ];
@@ -2157,7 +2157,7 @@ fn can_execute_call_far() {
 
 #[test]
 fn can_execute_sldt() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x0F, 0x00, 0x00,   // sldt [bx+si]
     ];
@@ -2172,7 +2172,7 @@ fn can_execute_sldt() {
 
 #[test]
 fn can_execute_operand_prefix() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x67, 0xC7, 0x02, 0x22, 0x44,   // mov word [edx],0x4422
         0x67, 0x8B, 0x02,               // mov ax,[edx]
@@ -2189,7 +2189,7 @@ fn can_execute_operand_prefix() {
 
 #[test]
 fn can_execute_operand_and_address_prefix() {
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x67, 0xC7, 0x02, 0x22, 0x44,                   // mov word [edx],0x4422
         0x66, 0x67, 0x81, 0x02, 0x00, 0x00, 0x33, 0x88, // add dword [edx],0x88330000
@@ -2209,7 +2209,7 @@ fn can_execute_operand_and_address_prefix() {
 fn estimate_mips() {
     use std::time::Instant;
 
-    let mut machine = Machine::default();
+    let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB9, 0xFF, 0xFF, // mov cx,0xffff
         0x49,             // dec cx
