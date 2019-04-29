@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = [
     "Martin Lindhe <martin.j.lindhe@gmail.com>"
 ]
+edition = "2018"
 
 [lib]
 path = "src/lib.rs"

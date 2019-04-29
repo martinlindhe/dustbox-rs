@@ -1,6 +1,6 @@
 // list of video modes based on dosbox-x, int10_modes.cpp
 
-use gpu::graphic_card::GraphicCard;
+use crate::gpu::graphic_card::GraphicCard;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum GFXMode {

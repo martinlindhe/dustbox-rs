@@ -10,12 +10,12 @@ use tera::Context;
 use image;
 use image::{ImageBuffer, Rgb, Pixel, GenericImage};
 
-use tools;
-use cpu::{CPU, R};
-use machine::Machine;
-use memory::MMU;
-use gpu::VideoModeBlock;
-use gpu::palette::ColorSpace;
+use crate::tools;
+use crate::cpu::{CPU, R};
+use crate::machine::Machine;
+use crate::memory::MMU;
+use crate::gpu::VideoModeBlock;
+use crate::gpu::palette::ColorSpace;
 
 #[test]
 fn can_get_palette_entry() {

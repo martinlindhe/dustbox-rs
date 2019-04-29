@@ -1,6 +1,6 @@
-use hardware::Hardware;
-use cpu::{CPU, R};
-use cpu::*;
+use crate::hardware::Hardware;
+use crate::cpu::{CPU, R};
+use crate::cpu::*;
 
 const DEBUG_KEYBOARD: bool = false;
 

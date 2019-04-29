@@ -1,10 +1,10 @@
 use chrono::prelude::*;
 use std::str;
 
-use hardware::Hardware;
-use cpu::{CPU, R};
-use codepage::cp437;
-use memory::MemoryAddress;
+use crate::hardware::Hardware;
+use crate::cpu::{CPU, R};
+use crate::codepage::cp437;
+use crate::memory::MemoryAddress;
 
 // dos related interrupts
 pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {

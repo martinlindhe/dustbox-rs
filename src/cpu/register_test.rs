@@ -1,4 +1,4 @@
-use cpu::register::{R, RegisterSnapshot};
+use crate::cpu::register::{R, RegisterSnapshot};
 
 #[test]
 fn can_access_gpr() {

@@ -12,17 +12,17 @@ use tera::Context;
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
 
-use cpu::CPU;
-use cpu::encoder::{Encoder};
-use cpu::segment::Segment;
-use cpu::parameter::Parameter;
-use cpu::instruction::{Instruction, InstructionInfo, RepeatMode};
-use cpu::op::Op;
-use cpu::register::{R, AMode};
-use machine::Machine;
-use memory::MMU;
-use hex::hex_bytes;
-use ndisasm::ndisasm_first_instr;
+use crate::cpu::CPU;
+use crate::cpu::encoder::{Encoder};
+use crate::cpu::segment::Segment;
+use crate::cpu::parameter::Parameter;
+use crate::cpu::instruction::{Instruction, InstructionInfo, RepeatMode};
+use crate::cpu::op::Op;
+use crate::cpu::register::{R, AMode};
+use crate::machine::Machine;
+use crate::memory::MMU;
+use crate::hex::hex_bytes;
+use crate::ndisasm::ndisasm_first_instr;
 
 #[test] #[ignore] // expensive test
 fn can_encode_random_seq() {
@@ -32,7 +32,7 @@ fn can_encode_random_seq() {
     let mut machine = Machine::deterministic();
 
     for _ in 0..1000 {
-        for mut b in &mut code {
+        for b in &mut code {
             *b = rng.gen();
         }
 

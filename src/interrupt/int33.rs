@@ -1,5 +1,5 @@
-use hardware::Hardware;
-use cpu::{CPU, R};
+use crate::hardware::Hardware;
+use crate::cpu::{CPU, R};
 
 // mouse related interrupts
 pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {

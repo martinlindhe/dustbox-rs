@@ -1,9 +1,9 @@
-use gpu::GPU;
-use memory::MMU;
-use pit::PIT;
-use pic::PIC;
-use bios::BIOS;
-use keyboard::Keyboard;
+use crate::gpu::GPU;
+use crate::memory::MMU;
+use crate::pit::PIT;
+use crate::pic::PIC;
+use crate::bios::BIOS;
+use crate::keyboard::Keyboard;
 
 const DEBUG_IO: bool = false;
 
@@ -87,8 +87,7 @@ impl Hardware {
             }
             0x0064 => {
                 // keyboard controller read status
-                let val = self.keyboard.get_status_register_byte();
-                val
+                self.keyboard.get_status_register_byte()
             }
             0x00A0 => self.pic2.get_register(),
             0x00A1 => self.pic2.get_ocw1(),

@@ -1,4 +1,4 @@
-use hex::hex_bytes_separated;
+use crate::hex::hex_bytes_separated;
 
 #[derive(Clone, Default)]
 pub struct FlatMemory {

@@ -1,4 +1,4 @@
-use debug::breakpoints::Breakpoints;
+use crate::debug::breakpoints::Breakpoints;
 
 #[test]
 fn sorted_breakpoints() {

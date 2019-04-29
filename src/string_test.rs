@@ -1,4 +1,4 @@
-use string::parse_number_string;
+use crate::string::parse_number_string;
 
 #[test]
 fn test_parse_number_string() {

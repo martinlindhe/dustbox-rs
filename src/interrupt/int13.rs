@@ -1,6 +1,6 @@
-use hardware::Hardware;
-use cpu::{CPU, R};
-use cpu::*;
+use crate::hardware::Hardware;
+use crate::cpu::{CPU, R};
+use crate::cpu::*;
 
 // disk related interrupts
 pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {

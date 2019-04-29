@@ -3,12 +3,12 @@ use std::num::ParseIntError;
 use std::io::Error as IoError;
 use std::process::exit;
 
-use machine::Machine;
-use cpu::{R, RegisterSnapshot, Decoder};
-use tools;
-use memory::MemoryAddress;
-use debug::{Breakpoints, MemoryBreakpoints};
-use string::parse_number_string;
+use crate::machine::Machine;
+use crate::cpu::{R, RegisterSnapshot, Decoder};
+use crate::tools;
+use crate::memory::MemoryAddress;
+use crate::debug::{Breakpoints, MemoryBreakpoints};
+use crate::string::parse_number_string;
 
 #[cfg(test)]
 #[path = "./debugger_test.rs"]
@@ -140,9 +140,9 @@ impl Debugger {
     pub fn exec_command(&mut self, cmd: &str) {
         let cmd = cmd.trim();
         println!("> {}", cmd);
-        let parts: Vec<String> = cmd.split(' ').map(|s| s.to_string()).collect();
+        let parts: Vec<&str> = cmd.split(' ').collect();
 
-         match parts[0].as_ref() {
+         match parts[0] {
             "help" => {
                 println!("load <file>                      - load a binary (.com) file");
                 println!("load                             - load previous binary (.com) file");
@@ -167,7 +167,7 @@ impl Debugger {
                 println!("exit                             - exit");
             }
             "step" => {
-                match parts[1].as_ref() {
+                match parts[1] {
                     "into" => {
                         let mut cnt = 1;
                         if parts.len() > 2 {
@@ -208,7 +208,7 @@ impl Debugger {
                 if parts.len() < 2 {
                     println!("breakpoint: not enough arguments");
                 } else {
-                    match parts[1].as_ref() {
+                    match parts[1] {
                         "help" => {
                             println!("Available breakpoint commands:");
                             println!("  bp add <seg:off>     add breakpoint");
@@ -263,7 +263,7 @@ impl Debugger {
                 if parts.len() < 2 {
                     println!("memory breakpoint: not enough arguments");
                 } else {
-                    match parts[1].as_ref() {
+                    match parts[1] {
                         "help" => {
                             println!("Available memory breakpoint commands:");
                             println!("  membp add <seg:off>     add breakpoint");
@@ -343,8 +343,8 @@ impl Debugger {
                 }
 
                 let mem_dump = self.machine.hw.mmu.dump_mem();
-                let mut pos: u32;
-                let mut length: u32;
+                let pos: u32;
+                let length: u32;
 
                 match self.parse_segment_offset_pair(&parts[1]) {
                     Ok(p) => pos = p,
@@ -382,8 +382,8 @@ impl Debugger {
                     return;
                 }
 
-                let mut pos: u32;
-                let mut length: u32;
+                let pos: u32;
+                let length: u32;
 
                 match self.parse_segment_offset_pair(&parts[1]) {
                     Ok(p) => pos = p,

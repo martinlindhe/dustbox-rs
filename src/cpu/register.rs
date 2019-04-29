@@ -1,7 +1,7 @@
 use std::convert::From;
 
-use cpu::flag::Flags;
-use cpu::decoder::AddressSize;
+use crate::cpu::flag::Flags;
+use crate::cpu::decoder::AddressSize;
 
 #[cfg(test)]
 #[path = "./register_test.rs"]

@@ -1,11 +1,11 @@
 use std::fmt;
 
-use cpu::Segment;
-use cpu::Op;
-use cpu::{Parameter, ParameterSet};
-use cpu::{OperandSize, AddressSize};
-use hex::hex_bytes;
-use string::right_pad;
+use crate::cpu::Segment;
+use crate::cpu::Op;
+use crate::cpu::{Parameter, ParameterSet};
+use crate::cpu::{OperandSize, AddressSize};
+use crate::hex::hex_bytes;
+use crate::string::right_pad;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Instruction {

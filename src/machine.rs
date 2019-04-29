@@ -2,12 +2,12 @@ use std::time::{Duration, SystemTime};
 
 use bincode::deserialize;
 
-use cpu::{CPU, Op, Invalid, R, RegisterSnapshot, Segment, OperandSize};
-use gpu::GPU;
-use hardware::Hardware;
-use hex::hex_bytes;
-use memory::{MMU, MemoryAddress};
-use ndisasm::{ndisasm_bytes, ndisasm_first_instr};
+use crate::cpu::{CPU, Op, Invalid, R, RegisterSnapshot, Segment, OperandSize};
+use crate::gpu::GPU;
+use crate::hardware::Hardware;
+use crate::hex::hex_bytes;
+use crate::memory::{MMU, MemoryAddress};
+use crate::ndisasm::{ndisasm_bytes, ndisasm_first_instr};
 
 /// prints each instruction as they are executed
 const DEBUG_EXEC: bool = false;
@@ -70,7 +70,7 @@ impl Machine {
         cpu.deterministic = true;
 
         Machine {
-            cpu: cpu,
+            cpu,
             hw: Hardware::deterministic(),
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,

@@ -2,18 +2,18 @@ use std::{mem, u8};
 use std::num::Wrapping;
 use std::marker::PhantomData;
 
-use cpu::flag::Flags;
-use cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
-use cpu::parameter::{Parameter, ParameterSet};
-use cpu::op::{Op, Invalid};
-use cpu::register::{R, AMode, RegisterSnapshot};
-use cpu::decoder::Decoder;
-use cpu::segment::Segment;
-use memory::{MMU, MemoryAddress};
-use interrupt;
-use gpu::GPU;
-use machine::Machine;
-use hardware::Hardware;
+use crate::cpu::flag::Flags;
+use crate::cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
+use crate::cpu::parameter::{Parameter, ParameterSet};
+use crate::cpu::op::{Op, Invalid};
+use crate::cpu::register::{R, AMode, RegisterSnapshot};
+use crate::cpu::decoder::Decoder;
+use crate::cpu::segment::Segment;
+use crate::memory::{MMU, MemoryAddress};
+use crate::interrupt;
+use crate::gpu::GPU;
+use crate::machine::Machine;
+use crate::hardware::Hardware;
 
 /// prints diagnostics if writes to memory close to SS:SP occurs
 const DEBUG_PARAMS_TOUCHING_STACK: bool = false;
@@ -1372,7 +1372,7 @@ impl CPU {
             Op::Rcl8 => {
                 // Rotate 9 bits (CF, r/m8) left imm8 times.
                 // two arguments
-                let mut count = (self.read_parameter_value(&hw.mmu, &op.params.src) & 0x1F) % 9;
+                let count = (self.read_parameter_value(&hw.mmu, &op.params.src) & 0x1F) % 9;
                 if count > 0 {
                     let cf = self.regs.flags.carry_val() as u16;
                     let op1 = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16;
@@ -1491,7 +1491,7 @@ impl CPU {
             Op::Rol8 => {
                 // Rotate 8 bits of 'dst' left for 'src' times.
                 // two arguments: op1, count
-                let mut op1 = self.read_parameter_value(&hw.mmu, &op.params.dst) as u8;
+                let op1 = self.read_parameter_value(&hw.mmu, &op.params.dst) as u8;
                 let mut count = self.read_parameter_value(&hw.mmu, &op.params.src);
                 if count & 0b0_0111 == 0 {
                     if count & 0b1_1000 != 0 {
@@ -1552,7 +1552,7 @@ impl CPU {
                 // Rotate 16 bits of 'dst' right for 'src' times.
                 // two arguments
                 let mut res = self.read_parameter_value(&hw.mmu, &op.params.dst) as u16;
-                let mut count = self.read_parameter_value(&hw.mmu, &op.params.src) & 0x1F;
+                let count = self.read_parameter_value(&hw.mmu, &op.params.src) & 0x1F;
                 res = res.rotate_right(count as u32);
                 self.write_parameter_u16(&mut hw.mmu, op.segment_prefix, &op.params.dst, res);
                 let bit14 = (res >> 14) & 1;

@@ -104,7 +104,7 @@ impl Keyboard {
     }
 
     pub fn has_queued_presses(&self) -> bool {
-        self.keypresses.len() > 0
+        !self.keypresses.is_empty()
     }
 
     pub fn add_keypress(&mut self, keycode: Keycode, modifier: Mod) {

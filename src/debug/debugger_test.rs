@@ -1,5 +1,5 @@
-use debug::Debugger;
-use cpu::R;
+use crate::debug::Debugger;
+use crate::cpu::R;
 
 #[test]
 fn test_parse_hex_string() {

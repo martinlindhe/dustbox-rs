@@ -1,6 +1,6 @@
 use std::fmt;
 
-use cpu::register::R;
+use crate::cpu::register::R;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Segment {

@@ -1,4 +1,4 @@
-use machine::Machine;
+use crate::machine::Machine;
 
 #[test]
 fn can_execute_pit_set_reload_value() {

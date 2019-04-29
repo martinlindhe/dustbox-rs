@@ -1,9 +1,9 @@
-use hardware::Hardware;
-use cpu::{CPU, R};
-use memory::{MMU, MemoryAddress};
-use gpu::{VideoModeBlock, GFXMode, SpecialMode, ega_mode_block, vga_mode_block};
-use gpu::GFXMode::*;
-use bios::BIOS;
+use crate::hardware::Hardware;
+use crate::cpu::{CPU, R};
+use crate::memory::{MMU, MemoryAddress};
+use crate::gpu::{VideoModeBlock, GFXMode, SpecialMode, ega_mode_block, vga_mode_block};
+use crate::gpu::GFXMode::*;
+use crate::bios::BIOS;
 
 // video related interrupts
 pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {

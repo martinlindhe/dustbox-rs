@@ -1,7 +1,7 @@
 use std::num::Wrapping;
 
-use gpu::palette::{ColorSpace, text_palette};
-use gpu::palette::ColorSpace::RGB;
+use crate::gpu::palette::{ColorSpace, text_palette};
+use crate::gpu::palette::ColorSpace::RGB;
 
 const DEBUG_DAL: bool = false;
 

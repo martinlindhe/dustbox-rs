@@ -1,11 +1,11 @@
 use std::cmp;
 use std::fmt;
 
-use machine::Machine;
-use cpu::{Decoder, RepeatMode, InstructionInfo, R, Op, Parameter, Segment};
-use memory::MemoryAddress;
-use string::right_pad;
-use hex::hex_bytes;
+use crate::machine::Machine;
+use crate::cpu::{Decoder, RepeatMode, InstructionInfo, R, Op, Parameter, Segment};
+use crate::memory::MemoryAddress;
+use crate::string::right_pad;
+use crate::hex::hex_bytes;
 
 #[cfg(test)]
 #[path = "./tracer_test.rs"]
@@ -232,7 +232,7 @@ impl ProgramTracer {
             let sources = self.get_sources_for_address(*adr);
             if let Some(sources) = sources {
                 let kind = sources.guess_data_type();
-                self.accounted_bytes.push(GuessedDataAddress{kind: kind, address: adr.clone()});
+                self.accounted_bytes.push(GuessedDataAddress{kind, address: *adr});
             }
         }
 
@@ -264,14 +264,14 @@ impl ProgramTracer {
             Op::In8 => {
                 // E460              in al,0x60
                 match ii.instruction.params.src {
-                    Parameter::Imm8(port) => self.in_u8_port_desc(port as u16),
+                    Parameter::Imm8(port) => self.in_u8_port_desc(u16::from(port)),
                     _ => "".to_owned(),
                 }
             }
             Op::In16 => {
                 // E560              in ax,0x60
                 match ii.instruction.params.src {
-                    Parameter::Imm8(port) => self.in_u16_port_desc(port as u16),
+                    Parameter::Imm8(port) => self.in_u16_port_desc(u16::from(port)),
                     _ => "".to_owned(),
                 }
             }
@@ -336,8 +336,8 @@ impl ProgramTracer {
                     }
                     res.push('\n');
 
-                    let mut next = ab.address.clone();
-                    next.inc_n(ii.instruction.length as u16);
+                    let mut next = ab.address;
+                    next.inc_n(u16::from(ii.instruction.length));
 
                     if self.is_call_dst(next) || ii.instruction.is_ret() || ii.instruction.is_unconditional_jmp() || ii.instruction.is_loop() {
                         res.push('\n');
@@ -403,14 +403,14 @@ impl ProgramTracer {
                 if DEBUG_TRACER {
                     println!("learn_address append {:?} [{:04X}:{:04X}]", kind, seg, offset);
                 }
-                seen.sources.sources.push(SeenSource{address: src, kind: kind});
+                seen.sources.sources.push(SeenSource{address: src, kind});
                 return;
             }
         }
         if DEBUG_TRACER {
             println!("learn_address new {:?} [{:04X}:{:04X}]", kind, seg, offset);
         }
-        self.seen_addresses.push(SeenAddress{address: ma, visited: false, sources: SeenSources::from_source(SeenSource{address: src, kind: kind})});
+        self.seen_addresses.push(SeenAddress{address: ma, visited: false, sources: SeenSources::from_source(SeenSource{address: src, kind})});
     }
 
     fn get_sources_for_address(&self, ma: MemoryAddress) -> Option<SeenSources> {
@@ -494,7 +494,7 @@ impl ProgramTracer {
         }
 
         if let Some(sources) = sources {
-            if sources.sources.len() > 0 && sources.only_memory_access() {
+            if !sources.sources.is_empty() && sources.only_memory_access() {
                 if DEBUG_TRACER {
                     println!("trace_unvisited_address address only accessed by memory, leaving {:?}", sources);
                 }

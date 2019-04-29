@@ -1,5 +1,5 @@
-use machine::Machine;
-use debug::ProgramTracer;
+use crate::machine::Machine;
+use crate::debug::ProgramTracer;
 
 #[test]
 fn trace_simple() {

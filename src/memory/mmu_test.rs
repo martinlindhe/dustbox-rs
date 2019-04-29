@@ -1,4 +1,4 @@
-use memory::mmu::MemoryAddress;
+use crate::memory::mmu::MemoryAddress;
 
 #[test]
 fn can_handle_real_mode_addressing() {

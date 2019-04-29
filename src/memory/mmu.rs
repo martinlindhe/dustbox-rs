@@ -1,8 +1,8 @@
-use memory::FlatMemory;
+use crate::memory::FlatMemory;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use memory::MemoryAddress;
+use crate::memory::MemoryAddress;
 
 #[cfg(test)]
 #[path = "./mmu_test.rs"]

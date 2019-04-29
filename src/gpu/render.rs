@@ -2,21 +2,21 @@ use std::cell::RefCell;
 use std::num::Wrapping;
 use std::marker::PhantomData;
 
-use cpu::CPU;
-use memory::{MMU, MemoryAddress};
-use gpu::palette;
-use gpu::palette::ColorSpace;
-use gpu::palette::ColorSpace::RGB;
-use gpu::font;
-use gpu::video_parameters;
-use gpu::modes::GFXMode;
-use gpu::modes::VideoModeBlock;
-use gpu::graphic_card::GraphicCard;
-use bios::BIOS;
-use bios;
-use gpu::crtc::CRTC;
-use gpu::dac::DAC;
-use gpu::dac;
+use crate::cpu::CPU;
+use crate::memory::{MMU, MemoryAddress};
+use crate::gpu::palette;
+use crate::gpu::palette::ColorSpace;
+use crate::gpu::palette::ColorSpace::RGB;
+use crate::gpu::font;
+use crate::gpu::video_parameters;
+use crate::gpu::modes::GFXMode;
+use crate::gpu::modes::VideoModeBlock;
+use crate::gpu::graphic_card::GraphicCard;
+use crate::bios::BIOS;
+use crate::bios;
+use crate::gpu::crtc::CRTC;
+use crate::gpu::dac::DAC;
+use crate::gpu::dac;
 
 #[cfg(test)]
 #[path = "./render_test.rs"]

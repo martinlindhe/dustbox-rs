@@ -1,8 +1,8 @@
 use std::fmt;
 use std::num::Wrapping;
 
-use cpu::segment::Segment;
-use cpu::register::{R, AMode};
+use crate::cpu::segment::Segment;
+use crate::cpu::register::{R, AMode};
 
 /// A set of Parameters for an Instruction
 #[derive(Clone, Debug, PartialEq)]

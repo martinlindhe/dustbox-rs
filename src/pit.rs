@@ -7,7 +7,7 @@
 
 use std::num::Wrapping;
 
-use memory::MMU;
+use crate::memory::MMU;
 
 #[cfg(test)]
 #[path = "./pit_test.rs"]
@@ -99,7 +99,7 @@ impl Timer {
         self.count += 1;
         // println!("XXX Timer.inc {} {}", self.channel, self.count);
 
-        if self.count >= 0x1800B0 {
+        if self.count >= 0x0018_00B0 {
             self.count = 0;
         }
     }

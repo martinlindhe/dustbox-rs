@@ -1,8 +1,8 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::time::Instant;
 
-use hardware::Hardware;
-use cpu::{CPU, R};
+use crate::hardware::Hardware;
+use crate::cpu::{CPU, R};
 
 // time related interrupts
 pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
@@ -30,7 +30,7 @@ pub fn handle(cpu: &mut CPU, hw: &mut Hardware) {
             // CX:DX = number of clock ticks since midnight
             let cx = cpu.get_r16(R::CX);
             let dx = cpu.get_r16(R::DX);
-            let ticks = (cx as u32) << 16 | dx as u32;
+            let ticks = (u32::from(cx)) << 16 | u32::from(dx);
 
             hw.pit.timer0.count = ticks;
             // println!("SET SYSTEM TIME to {}", ticks);

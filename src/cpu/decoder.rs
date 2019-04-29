@@ -2,12 +2,12 @@ use std::cell::RefCell;
 use std::num::Wrapping;
 use std::rc::Rc;
 
-use cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
-use cpu::parameter::{Parameter, ParameterSet};
-use cpu::op::{Op, Invalid};
-use cpu::register::{R, r8, r16, r32, sr};
-use cpu::segment::Segment;
-use memory::{MMU, MemoryAddress};
+use crate::cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
+use crate::cpu::parameter::{Parameter, ParameterSet};
+use crate::cpu::op::{Op, Invalid};
+use crate::cpu::register::{R, r8, r16, r32, sr};
+use crate::cpu::segment::Segment;
+use crate::memory::{MMU, MemoryAddress};
 
 /// prints decoded instructions each time they are being decoded
 const DEBUG_DECODER: bool = false;

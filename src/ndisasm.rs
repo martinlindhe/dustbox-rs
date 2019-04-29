@@ -5,7 +5,7 @@ use std::str;
 
 use tempdir::TempDir;
 
-use cpu::{Encoder, Instruction};
+use crate::cpu::{Encoder, Instruction};
 
 pub fn ndisasm_first_instr(bytes: &[u8]) -> Result<String, io::Error> {
     let rows = ndisasm_bytes(bytes).unwrap();

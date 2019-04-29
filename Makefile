@@ -26,7 +26,7 @@ fuzz:
 	cargo run --package dustbox_fuzzer
 
 lint:
-	cargo +nightly clippy --all
+	cargo clippy --all
 
 prober:
 	cd utils/prober && make

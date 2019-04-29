@@ -1,10 +1,10 @@
 use simple_error::SimpleError;
 
-use cpu::instruction::{Instruction, ModRegRm};
-use cpu::parameter::{Parameter, ParameterSet};
-use cpu::segment::Segment;
-use cpu::register::R;
-use cpu::op::{Op};
+use crate::cpu::instruction::{Instruction, ModRegRm};
+use crate::cpu::parameter::{Parameter, ParameterSet};
+use crate::cpu::segment::Segment;
+use crate::cpu::register::R;
+use crate::cpu::op::{Op};
 
 #[cfg(test)]
 #[path = "./encoder_test.rs"]

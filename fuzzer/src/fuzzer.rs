@@ -242,7 +242,7 @@ fn vec_as_db_bytes(data: &[u8]) -> String {
 /// parse prober.com output into a map
 fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
     let mut map = HashMap::new();
-    let lines: Vec<String> = stdout.split('\n').map(|s| s.to_string()).collect();
+    let lines: Vec<&str> = stdout.split('\n').collect();
 
     for line in lines {
         if let Some(pos) = line.find('=') {
