@@ -6,9 +6,8 @@ matrix:
   include:
     - env: TARGET=x86_64-unknown-linux-gnu
       rust: nightly
-    # 2018-10-25: disable testing on stable due to use of #![feature(vec_remove_item)]
-    #- env: TARGET=x86_64-unknown-linux-gnu
-    #  rust: stable
+    - env: TARGET=x86_64-unknown-linux-gnu
+      rust: stable
 
 install:
   - sudo apt-get install -y libgtk-3-dev libsdl2-dev libsdl2-gfx-dev libegl1-mesa-dev libgles2-mesa-dev

@@ -8,6 +8,6 @@ name = "dustbox-frontend"
 path = "src/frontend-main.rs"
 
 [dependencies]
-clap = "2.32"
-sdl2 = { version = "0.31", default-features = false, features = [ "gfx" ] }
+clap = "2.33"
+sdl2 = { version = "0.32", default-features = false, features = [ "gfx" ] }
 dustbox = { path = "../" }

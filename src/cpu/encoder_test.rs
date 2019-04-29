@@ -10,7 +10,7 @@ use std::iter::FromIterator;
 use tempdir::TempDir;
 use tera::Context;
 use rand::prelude::*;
-use rand::prng::{XorShiftRng};
+use rand_xorshift::XorShiftRng;
 
 use cpu::CPU;
 use cpu::encoder::{Encoder};

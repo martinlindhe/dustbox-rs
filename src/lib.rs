@@ -1,12 +1,11 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-#![feature(vec_remove_item)]
-
 extern crate toml;
 
 extern crate chrono;
 extern crate rand;
+extern crate rand_xorshift;
 extern crate tempdir;
 extern crate image;
 

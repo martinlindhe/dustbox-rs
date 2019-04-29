@@ -273,6 +273,5 @@ pub fn u8_as_char(b: u8) -> char {
         0xfd => '²', // 00b2 - SUPERSCRIPT TWO
         0xfe => '■', // 25a0 - BLACK SQUARE
         0xff => ' ', // 00a0 - NO-BREAK SPACE
-        _ => panic!("invalid token {:?}", b),
     }
 }

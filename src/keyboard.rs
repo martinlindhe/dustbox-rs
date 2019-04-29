@@ -1,6 +1,5 @@
 // TODO later: dont depend on sdl2 in the core crate (process events with something else?)
 use sdl2::keyboard::{Keycode, Mod};
-use sdl2::keyboard::{LSHIFTMOD, RSHIFTMOD, LCTRLMOD, RCTRLMOD, LALTMOD, RALTMOD};
 
 const DEBUG_KEYBOARD: bool = false;
 
@@ -171,11 +170,26 @@ impl Keyboard {
         }
     }
 
+    fn find_keypress_index(&self, keypress: &Keypress) -> Option<usize> {
+        for (idx, x) in self.keypresses.iter().enumerate() {
+            println!("{}", x.keycode);
+            if x == keypress {
+                return Some(idx);
+            }
+        }
+        None
+    }
+
     pub fn consume(&mut self, keypress: &Keypress) {
         if DEBUG_KEYBOARD {
             println!("keyboard: consume {:?}", keypress);
         }
-        self.keypresses.remove_item(&keypress);
+
+        if let Some(idx) = self.find_keypress_index(keypress) {
+            self.keypresses.remove(idx);
+        }
+
+        println!("ERROR failed to consume keypress {:?}", keypress);
     }
 }
 
@@ -399,11 +413,11 @@ fn map_sdl_to_dos_standard_codes(keypress: &Keypress) -> (u8, u8) {
         Keycode::LShift => (0, 0),
         Keycode::RShift => (0, 0),
         _ => {
-            if keypress.modifier == LSHIFTMOD || keypress.modifier == RSHIFTMOD {
+            if keypress.modifier == Mod::LSHIFTMOD || keypress.modifier == Mod::RSHIFTMOD {
                 keypress.to_std_shift()
-            } else if keypress.modifier == LCTRLMOD || keypress.modifier == RCTRLMOD {
+            } else if keypress.modifier == Mod::LCTRLMOD || keypress.modifier == Mod::RCTRLMOD {
                 keypress.to_std_ctrl()
-            } else if keypress.modifier == LALTMOD || keypress.modifier == RALTMOD {
+            } else if keypress.modifier == Mod::LALTMOD || keypress.modifier == Mod::RALTMOD {
                 keypress.to_std_alt()
             } else {
                 keypress.to_std_normal()

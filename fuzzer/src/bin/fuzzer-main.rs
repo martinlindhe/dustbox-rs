@@ -1,4 +1,5 @@
 extern crate rand;
+extern crate rand_xorshift;
 
 extern crate dustbox;
 extern crate dustbox_fuzzer;
@@ -6,7 +7,7 @@ extern crate dustbox_fuzzer;
 use std::io::{self, Write};
 
 use rand::prelude::*;
-use rand::prng::{XorShiftRng};
+use rand_xorshift::XorShiftRng;
 
 use dustbox::cpu::{Instruction, Op, Parameter, Segment, R, AMode, Encoder, instructions_to_str};
 use dustbox_fuzzer::fuzzer::{fuzz, VmRunner, AffectedFlags};

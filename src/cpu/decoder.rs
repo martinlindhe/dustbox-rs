@@ -1550,7 +1550,6 @@ impl Decoder {
                     }
                 }
             }
-            _ => op.command = Op::Invalid(vec!(b), Invalid::Op),
         }
         // calculate instruction length
         op.length = (Wrapping(u16::from(op.length)) + Wrapping(self.current_offset) - Wrapping(start_offset)).0 as u8;
