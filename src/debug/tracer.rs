@@ -186,7 +186,7 @@ impl ProgramTracer {
             // translate address into physical offset
             let abs = (ma.value() - u32::from(machine.rom_base.offset())) as usize;
 
-            let ii = decoder.get_instruction_info(&mut machine.hw.mmu, ma.segment(), ma.offset());
+            let ii = decoder.get_instruction_info(&mut machine.mmu, ma.segment(), ma.offset());
 
             let mut adr = *ma;
             self.accounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::InstrStart, address: adr});
@@ -218,7 +218,7 @@ impl ProgramTracer {
                 if  DEBUG_TRACER {
                     println!("address is unaccounted {}", adr);
                 }
-                let val = machine.hw.mmu.read_u8(adr.segment(), adr.offset());
+                let val = machine.mmu.read_u8(adr.segment(), adr.offset());
                 unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownByte(val), address: adr});
             }
         }
@@ -315,7 +315,7 @@ impl ProgramTracer {
         for ab in &self.accounted_bytes {
             match ab.kind {
                 GuessedDataType::InstrStart => {
-                    let ii = decoder.get_instruction_info(&mut machine.hw.mmu, ab.address.segment(), ab.address.offset());
+                    let ii = decoder.get_instruction_info(&mut machine.mmu, ab.address.segment(), ab.address.offset());
 
                     let mut tail = String::new();
                     let xref = self.render_xref(ab.address);
@@ -507,7 +507,7 @@ impl ProgramTracer {
         let mut decoder = Decoder::default();
 
         loop {
-            let ii = decoder.get_instruction_info(&mut machine.hw.mmu, ma.segment(), ma.offset());
+            let ii = decoder.get_instruction_info(&mut machine.mmu, ma.segment(), ma.offset());
             if DEBUG_TRACER {
                 println!("Found {}", ii);
             }

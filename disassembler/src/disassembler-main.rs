@@ -42,7 +42,7 @@ fn flat_disassembly(filename: &str) {
 
     // XXX refactor, debugger has some form of disasm fn already
     loop {
-        let op = decoder.get_instruction_info(&mut machine.hw.mmu, ma.segment(), ma.offset());
+        let op = decoder.get_instruction_info(&mut machine.mmu, ma.segment(), ma.offset());
         println!("{}", op);
         ma.inc_n(op.bytes.len() as u16);
         if ma.value() - u32::from(machine.rom_base.offset()) >= machine.rom_length as u32 {

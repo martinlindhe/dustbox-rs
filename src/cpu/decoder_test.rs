@@ -16,7 +16,7 @@ fn can_disassemble_basic() {
     ];
     machine.load_executable(&code);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 6);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 6);
     assert_eq!("[085F:0100] E80500           CallNear 0x0108
 [085F:0103] BA0B01           Mov16    dx, 0x010B
 [085F:0106] B409             Mov8     ah, 0x09
@@ -34,7 +34,7 @@ fn can_disassemble_lea() {
  ];
     machine.load_executable(&code);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 1);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 1);
     assert_eq!("[085F:0100] 8D4780           Lea16    ax, word [ds:bx-0x80]",
                res);
 }
@@ -48,7 +48,7 @@ fn can_disassemble_segment_prefixed() {
     ];
     machine.load_executable(&code);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 2);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
     assert_eq!("[085F:0100] 268825           Mov8     byte [es:di], ah
 [085F:0103] 268A25           Mov8     ah, byte [es:di]",
                res);
@@ -65,7 +65,7 @@ fn can_disassemble_values() {
     ];
     machine.load_executable(&code);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 4);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
     assert_eq!("[085F:0100] 803E311000       Cmp8     byte [ds:0x1031], 0x00
 [085F:0105] 81C7C000         Add16    di, 0x00C0
 [085F:0109] 83C73A           Add16    di, byte +0x3A
@@ -84,7 +84,7 @@ fn can_disassemble_relative_short_jumps() {
     ];
     machine.load_executable(&code);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 4);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
     assert_eq!("[085F:0100] 7404             Jz       0x0106
 [085F:0102] 74FE             Jz       0x0102
 [085F:0104] 7400             Jz       0x0106

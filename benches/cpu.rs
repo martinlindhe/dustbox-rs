@@ -34,7 +34,7 @@ fn disasm_small_prog(c: &mut Criterion) {
     ];
     machine.load_executable(&code);
 
-    c.bench_function("disasm small prog", move |b| b.iter(|| machine.cpu.decoder.disassemble_block_to_str(&mut machine.hw.mmu, 0x85F, 0x100, 8)));
+    c.bench_function("disasm small prog", move |b| b.iter(|| machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 8)));
 }
 
 criterion_group!(benches, exec_simple_loop, disasm_small_prog);

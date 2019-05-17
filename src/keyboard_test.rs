@@ -28,7 +28,7 @@ fn can_read_keys_from_io_ports() {
     assert_eq!(0x0100, machine.cpu.regs.ip);
 
     // inject key press
-    machine.hw.keyboard.add_keypress(Keycode::Escape, Mod::NOMOD);
+    machine.keyboard.add_keypress(Keycode::Escape, Mod::NOMOD);
 
     // make sure we break the loop
     machine.execute_instruction(); // in al,0x64
@@ -45,22 +45,22 @@ fn can_read_keys_from_io_ports() {
 fn consumes_keypress_queue() {
     let mut machine = Machine::deterministic();
 
-    assert_eq!(false, machine.hw.keyboard.has_queued_presses());
+    assert_eq!(false, machine.keyboard.has_queued_presses());
 
     // inject key press
-    machine.hw.keyboard.add_keypress(Keycode::Escape, Mod::NOMOD);
-    machine.hw.keyboard.add_keypress(Keycode::Escape, Mod::NOMOD);
-    assert_eq!(true, machine.hw.keyboard.has_queued_presses());
+    machine.keyboard.add_keypress(Keycode::Escape, Mod::NOMOD);
+    machine.keyboard.add_keypress(Keycode::Escape, Mod::NOMOD);
+    assert_eq!(true, machine.keyboard.has_queued_presses());
 
     // read it
-    let (_, _, keypress) = machine.hw.keyboard.peek_dos_standard_scancode_and_ascii();
+    let (_, _, keypress) = machine.keyboard.peek_dos_standard_scancode_and_ascii();
     let keypress = keypress.unwrap();
 
     // consume 1st
-    machine.hw.keyboard.consume(&keypress);
-    assert_eq!(true, machine.hw.keyboard.has_queued_presses());
+    machine.keyboard.consume(&keypress);
+    assert_eq!(true, machine.keyboard.has_queued_presses());
 
     // consume 2nd
-    machine.hw.keyboard.consume(&keypress);
-    assert_eq!(false, machine.hw.keyboard.has_queued_presses());
+    machine.keyboard.consume(&keypress);
+    assert_eq!(false, machine.keyboard.has_queued_presses());
 }

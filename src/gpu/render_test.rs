@@ -97,8 +97,8 @@ fn can_int10_put_pixel() {
     machine.execute_instruction(); // trigger the interrupt
     assert_eq!(0x0113, machine.cpu.regs.ip);
 
-    let frame = machine.hw.gpu.render_frame(&machine.hw.mmu);
-    let mut img = draw_image(&frame, &machine.hw.gpu.mode);
+    let frame = machine.gpu.render_frame(&machine.mmu);
+    let mut img = draw_image(&frame, &machine.gpu.mode);
     let img = img.sub_image(0, 0, 6, 6).to_image();
     assert_eq!("\
 ......
@@ -131,8 +131,8 @@ let mut machine = Machine::deterministic();
     machine.execute_instruction(); // trigger the interrupt
     assert_eq!(0x0112, machine.cpu.regs.ip);
 
-    let frame = machine.hw.gpu.render_frame(&machine.hw.mmu);
-    let mut img = draw_image(&frame, &machine.hw.gpu.mode);
+    let frame = machine.gpu.render_frame(&machine.mmu);
+    let mut img = draw_image(&frame, &machine.gpu.mode);
     let img = img.sub_image(0, 0, 8, 8).to_image();
     assert_eq!("\
 .,,,,...
@@ -362,7 +362,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefi
         let _ = fs::create_dir(&format!("docs/render/{}", group));
         let stem = path.file_stem().unwrap_or(OsStr::new(""));
         let mut filename = OsString::new(); // XXX base on dirname
-        let outname = &format!("render/{}/{:02x}_{}", group, machine.hw.gpu.mode.mode, name_prefix);
+        let outname = &format!("render/{}/{:02x}_{}", group, machine.gpu.mode.mode, name_prefix);
         filename.push(format!("docs/{}", outname));
         filename.push(stem.to_os_string());
         filename.push(".png");
@@ -374,7 +374,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefi
             pub_filename.push_str(".png");
             out_images.push(pub_filename);
             /*
-            let frame = machine.hw.gpu.render_frame(&machine.hw.mmu);
+            let frame = machine.hw.gpu.render_frame(&machine.mmu);
             let img = draw_image(&frame, &machine.hw.gpu.mode);
             print!("{}", draw_ascii(&img));
             */
@@ -420,12 +420,12 @@ fn draw_image(frame: &[ColorSpace], mode: &VideoModeBlock) -> ImageBuffer<Rgb<u8
 
 // returns true on success
 fn write_video_frame_to_disk(machine: &Machine, pngfile: &str) -> bool {
-    let frame = machine.hw.gpu.render_frame(&machine.hw.mmu);
+    let frame = machine.gpu.render_frame(&machine.mmu);
     if frame.len() == 0 {
         println!("ERROR: no frame rendered");
         return false;
     }
-    let img = draw_image(&frame, &machine.hw.gpu.mode);
+    let img = draw_image(&frame, &machine.gpu.mode);
     if let Err(why) = img.save(pngfile) {
         println!("save err: {:?}", why);
         return false;

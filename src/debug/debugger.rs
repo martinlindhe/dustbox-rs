@@ -56,7 +56,7 @@ impl Debugger {
             return true;
         }
         for addr in self.memory_breakpoints.get() {
-            let val = self.machine.hw.mmu.memory.borrow().read_u8(addr);
+            let val = self.machine.mmu.memory.borrow().read_u8(addr);
             if self.memory_breakpoints.has_changed(addr, val) {
                 println!("Value at memory breakpoint has changed. {:06X} = {:02X}", addr, val);
                 return true;
@@ -88,7 +88,7 @@ impl Debugger {
     pub fn step_over(&mut self) {
         let mut decoder = Decoder::default();
         let cs = self.machine.cpu.get_r16(R::CS);
-        let op = decoder.get_instruction_info(&mut self.machine.hw.mmu, cs, self.machine.cpu.regs.ip);
+        let op = decoder.get_instruction_info(&mut self.machine.mmu, cs, self.machine.cpu.regs.ip);
         let dst = MemoryAddress::RealSegmentOffset(cs, self.machine.cpu.regs.ip + op.bytes.len() as u16);
         println!("Step-over running to {:04X}:{:04X}", dst.segment(), dst.offset());
 
@@ -114,7 +114,7 @@ impl Debugger {
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
         let mut decoder = Decoder::default();
-        decoder.disassemble_block_to_str(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(R::CS), self.machine.cpu.regs.ip, n)
+        decoder.disassemble_block_to_str(&mut self.machine.mmu, self.machine.cpu.get_r16(R::CS), self.machine.cpu.regs.ip, n)
     }
 
     pub fn dump_memory(&self, filename: &str, base: u32, len: u32) -> Result<usize, IoError> {
@@ -127,7 +127,7 @@ impl Debugger {
             Err(why) => return Err(why),
             Ok(file) => file,
         };
-        let dump = self.machine.hw.mmu.dump_mem();
+        let dump = self.machine.mmu.dump_mem();
 
         let base = base as usize;
         let len = len as usize;
@@ -319,7 +319,7 @@ impl Debugger {
             }
             "d" | "disasm" => {
                 let mut decoder = Decoder::default();
-                let op = decoder.get_instruction_info(&mut self.machine.hw.mmu, self.machine.cpu.get_r16(R::CS), self.machine.cpu.regs.ip);
+                let op = decoder.get_instruction_info(&mut self.machine.mmu, self.machine.cpu.get_r16(R::CS), self.machine.cpu.regs.ip);
                 println!("{:?}", op);
                 println!("{}", op);
             }
@@ -342,7 +342,7 @@ impl Debugger {
                     return;
                 }
 
-                let mem_dump = self.machine.hw.mmu.dump_mem();
+                let mem_dump = self.machine.mmu.dump_mem();
                 let pos: u32;
                 let length: u32;
 

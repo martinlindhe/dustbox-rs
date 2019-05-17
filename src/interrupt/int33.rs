@@ -1,9 +1,9 @@
-use crate::hardware::Hardware;
 use crate::cpu::{CPU, R};
+use crate::machine::Machine;
 
 // mouse related interrupts
-pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
-    match cpu.get_r16(R::AX) {
+pub fn handle(machine: &mut Machine) {
+    match machine.cpu.get_r16(R::AX) {
         0x0003 => {
             // MS MOUSE v1.0+ - RETURN POSITION AND BUTTON STATUS
             // Return:
@@ -15,9 +15,9 @@ pub fn handle(cpu: &mut CPU, _hw: &mut Hardware) {
         }
         _ => {
             println!("int33 (mouse) error: unknown ax={:04X}, ip={:04X}:{:04X}",
-                     cpu.get_r16(R::AX),
-                     cpu.get_r16(R::CS),
-                     cpu.regs.ip);
+                     machine.cpu.get_r16(R::AX),
+                     machine.cpu.get_r16(R::CS),
+                     machine.cpu.regs.ip);
         }
     }
 }

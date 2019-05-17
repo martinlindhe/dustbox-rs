@@ -88,7 +88,7 @@ impl Interface {
             let app = Rc::clone(&self.app);
             canvas.connect_draw(move |_, ctx| {
                 let app = app.borrow();
-                let frame = app.machine.hw.gpu.render_frame(&app.machine.hw.mmu);
+                let frame = app.machine.hw.gpu.render_frame(&app.machine.mmu);
                 draw_canvas(ctx, frame, &app.machine.hw.gpu.mode);
                 ctx.paint();
                 Inhibit(false)

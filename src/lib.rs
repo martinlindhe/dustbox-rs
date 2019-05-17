@@ -29,7 +29,6 @@ extern crate bincode;
 extern crate sdl2;
 
 pub mod machine;
-pub mod hardware;
 pub mod cpu;
 pub mod memory;
 pub mod gpu;

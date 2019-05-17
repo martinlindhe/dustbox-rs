@@ -134,7 +134,7 @@ fn main() {
             let render_start = SystemTime::now();
 
             // render frame
-            let data = machine.hw.gpu.render_frame(&machine.hw.mmu);
+            let data = machine.hw.gpu.render_frame(&machine.mmu);
             let w = machine.hw.gpu.mode.swidth as usize;
 
             let mut x: usize = 0;
