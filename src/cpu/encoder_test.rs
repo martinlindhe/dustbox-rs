@@ -396,7 +396,8 @@ fn can_encode_push() {
 }
 
 #[test]
-fn can_encode_pop() {
+fn nasm_can_decode_correct() {
+    // nasm 2.11 decodes this as "popfw", more recent versions as "popf"
     let op = Instruction::new(Op::Popf);
     assert_encdec(&op, "popf", vec!(0x9D));
 }
