@@ -335,13 +335,13 @@ impl Machine {
             },
         }
 
-        // XXX need instruction timing to do this properly
         if self.cpu.cycle_count % 100 == 0 {
+            // XXX need instruction timing to do this properly
             self.gpu.progress_scanline();
         }
 
-        // XXX this is wrong!!!  time based timer increment is source of random output in morales.com
-        if self.last_update.elapsed().unwrap() > Duration::from_millis(55) {
+        if self.cpu.cycle_count % 100 == 0 {
+            // HACK: pit should be updated regularry, but in a deterministic way
             self.last_update = SystemTime::now();
             self.pit.update(&mut self.mmu);
         }
