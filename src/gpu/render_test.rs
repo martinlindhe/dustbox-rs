@@ -176,7 +176,6 @@ fn scale(value_in:f64, base_min:f64, base_max:f64, limit_min:f64, limit_max:f64)
 fn demo_com_16bit() {
     let path = "../dos-software-decoding/demo-com-16bit/";
     let test_bins = vec![
-        /*
         path.to_owned() + "4sum/4sum.com",
         path.to_owned() + "165plasm/165plasm.com",
         path.to_owned() + "244b/244b.com",
@@ -238,9 +237,7 @@ fn demo_com_16bit() {
         path.to_owned() + "lkccmini/lkccmini.com",
         path.to_owned() + "madness/madness.com",
         path.to_owned() + "mistake/mistake.com",
-        */
-        path.to_owned() + "morales/morales.com", // XXX is not deterministic!!! ?
-        /*
+        path.to_owned() + "morales/morales.com",
         path.to_owned() + "skylight/skylight.com",
         path.to_owned() + "tiled/tiled.com",
         path.to_owned() + "triopti2/triopti2.com",
@@ -250,7 +247,6 @@ fn demo_com_16bit() {
 
         path.to_owned() + "dreamers_bbs/dreamer.com",
         path.to_owned() + "microsoft_golf_cracktro/mgc.com",
-        */
     ];
 
     run_and_save_video_frames(test_bins, "demo_com_16bit", "");

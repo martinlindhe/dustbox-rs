@@ -86,7 +86,7 @@ fn main() {
                     }
                     */
 
-                    machine.hw.keyboard.add_keypress(keycode, modifier);
+                    machine.keyboard.add_keypress(keycode, modifier);
                 }
 
                 _ => {}
@@ -96,7 +96,7 @@ fn main() {
         let event_time = event_start.elapsed().unwrap();
         frame_event_sum += event_time;
 
-        let mut texture = texture_creator.create_texture_streaming(PixelFormatEnum::RGB24, machine.hw.gpu.mode.swidth, machine.hw.gpu.mode.sheight).unwrap();
+        let mut texture = texture_creator.create_texture_streaming(PixelFormatEnum::RGB24, machine.gpu.mode.swidth, machine.gpu.mode.sheight).unwrap();
         let frame_start = SystemTime::now();
 
 
@@ -106,16 +106,16 @@ fn main() {
             let window = canvas.window_mut();
 
             // resize window to current screen mode sizes
-            if last_video_mode != machine.hw.gpu.mode.mode {
+            if last_video_mode != machine.gpu.mode.mode {
                 let resize_start = SystemTime::now();
-                window.set_size(machine.hw.gpu.mode.swidth, machine.hw.gpu.mode.sheight).unwrap();
+                window.set_size(machine.gpu.mode.swidth, machine.gpu.mode.sheight).unwrap();
                 let resize_time = resize_start.elapsed().unwrap();
-                println!("Resized window for mode {:02x} in {:#?}", machine.hw.gpu.mode.mode, resize_time);
-                last_video_mode = machine.hw.gpu.mode.mode;
+                println!("Resized window for mode {:02x} in {:#?}", machine.gpu.mode.mode, resize_time);
+                last_video_mode = machine.gpu.mode.mode;
             }
 
             // run some instructions and progress scanline until screen is drawn
-            for _ in 0..machine.hw.gpu.mode.swidth {
+            for _ in 0..machine.gpu.mode.swidth {
                 // XXX calculate the number cycles to execute for (1/30th sec ) / scanlines
                 // XXX measure by instruction cycles
                 let num_instr = 300;
@@ -124,7 +124,7 @@ fn main() {
                     println!("cpu fatal error occured. stopping execution");
                     break 'main;
                 }
-                machine.hw.gpu.progress_scanline();
+                machine.gpu.progress_scanline();
             }
             let exec_time = frame_start.elapsed().unwrap();
 
@@ -134,8 +134,8 @@ fn main() {
             let render_start = SystemTime::now();
 
             // render frame
-            let data = machine.hw.gpu.render_frame(&machine.mmu);
-            let w = machine.hw.gpu.mode.swidth as usize;
+            let data = machine.gpu.render_frame(&machine.mmu);
+            let w = machine.gpu.mode.swidth as usize;
 
             let mut x: usize = 0;
             let mut y: usize = 0;
