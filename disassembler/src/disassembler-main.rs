@@ -40,11 +40,13 @@ fn flat_disassembly(filename: &str) {
     let mut decoder = Decoder::default();
     let mut ma = machine.cpu.get_memory_address();
 
+    // XXX refactor, debugger has some form of disasm fn already
     loop {
         let op = decoder.get_instruction_info(&mut machine.hw.mmu, ma.segment(), ma.offset());
         println!("{}", op);
         ma.inc_n(op.bytes.len() as u16);
         if ma.value() - u32::from(machine.rom_base.offset()) >= machine.rom_length as u32 {
+            println!("XXX end of file. ma = {:04x}, rom_base = {:x}, rom_length = {:x}", ma.value(), machine.rom_base.offset(), machine.rom_length);
             break;
         }
     }

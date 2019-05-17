@@ -35,6 +35,7 @@ pub struct Decoder {
 }
 
 impl Decoder {
+    /// decodes given seg::offset into Vec with `n` InstructionInfo's
     pub fn decode_to_block(&mut self, mut mmu: &mut MMU, seg: u16, offset: u16, n: usize) -> Vec<InstructionInfo> {
         let mut ops: Vec<InstructionInfo> = Vec::new();
         let mut inst_offset = 0;

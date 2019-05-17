@@ -22,6 +22,9 @@ run:
 run-release:
 	cargo run --release --package dustbox_gtk
 
+disasm:
+	cargo run --release --package dustbox_disassembler
+
 fuzz:
 	cargo run --package dustbox_fuzzer
 

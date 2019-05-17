@@ -55,6 +55,7 @@ pub struct Machine {
 }
 
 impl Machine {
+     // returns a non-deterministic Machine instance
     pub fn default() -> Self {
         Machine {
             cpu: CPU::default(),
@@ -66,11 +67,8 @@ impl Machine {
     }
 
     pub fn deterministic() -> Self {
-        let mut cpu = CPU::default();
-        cpu.deterministic = true;
-
         Machine {
-            cpu,
+            cpu: CPU::deterministic(),
             hw: Hardware::deterministic(),
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,

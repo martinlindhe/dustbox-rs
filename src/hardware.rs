@@ -18,6 +18,8 @@ pub struct Hardware {
 }
 
 impl Hardware {
+
+    // returns a non-deterministic Hardware instance
     pub fn default() -> Self {
         let mut res = Self::deterministic();
 
@@ -65,7 +67,11 @@ impl Hardware {
             0x0021 => self.pic.get_ocw1(),
 
             // PORT 0040-005F - PIT - PROGRAMMABLE INTERVAL TIMER (8253, 8254)
-            0x0040 => self.pit.timer0.get_next_u8(),
+            0x0040 => {
+                let x = self.pit.timer0.get_next_u8();
+                // println!("XXX pit read {:04x}", x);
+                return x;
+            }
             0x0041 => self.pit.timer1.get_next_u8(),
             0x0042 => self.pit.timer2.get_next_u8(),
 
