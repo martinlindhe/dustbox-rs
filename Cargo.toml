@@ -2,7 +2,7 @@
 name = "dustbox"
 version = "0.1.0"
 authors = [
-    "Martin Lindhe <martin.j.lindhe@gmail.com>"
+    "Martin Lindhe <martin@ubique.se>"
 ]
 edition = "2018"
 

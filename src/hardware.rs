@@ -1,4 +1,4 @@
-use crate::gpu::GPU;
+use crate::gpu::{GFXMode, GPU};
 use crate::memory::MMU;
 use crate::pit::PIT;
 use crate::pic::PIC;
@@ -24,7 +24,7 @@ impl Hardware {
         let midnight = chrono::Local::now().date().and_hms(0, 0, 0);
         let duration = chrono::Local::now().signed_duration_since(midnight).to_std().unwrap();
 
-        // there are approximately 18.2 clock ticks per second, 0x18_00B0 per 24 hrs. one tick is generated every 54.9254ms
+        // there is approximately 18.2 clock ticks per second, 0x18_00B0 per 24 hrs. one tick is generated every 54.9254ms
         res.pit.timer0.count = (((duration.as_secs() as f64 * 1000.) + (duration.subsec_nanos() as f64 / 1_000_000.)) / 54.9254) as u32;
 
         res
@@ -36,7 +36,7 @@ impl Hardware {
         let mut bios = BIOS::default();
         bios.init(&mut mmu);
         gpu.init(&mut mmu);
-        gpu.set_mode(&mut mmu, &mut bios, 0x03); // inits gpu to text mode 80x25
+        gpu.set_mode(&mut mmu, &mut bios, GFXMode::MODE_TEXT_80_25 as u8);
 
         Hardware {
             mmu,
