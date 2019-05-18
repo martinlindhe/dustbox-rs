@@ -133,6 +133,7 @@ impl Machine {
         }
     }
 
+    /// loads an exe file (TODO finish impl)
     fn load_exe(&mut self, data: &[u8]) {
         let hdr: ExeHeader = deserialize(data).unwrap();
         println!("load_exe header: {:?}", hdr);
@@ -237,7 +238,7 @@ impl Machine {
         }
     }
 
-    /// returns first line of disassembly
+    /// returns first line of disassembly using nasm
     fn external_disasm_of_bytes(&self, cs: u16, ip: u16) -> String {
         let bytes = self.mmu.read(cs, ip, 16);
         ndisasm_first_instr(&bytes).unwrap().to_owned()
@@ -271,8 +272,7 @@ impl Machine {
         }
     }
 
-    /// execute interrupt
-    pub fn int(&mut self, int: u8) {
+    pub fn execute_interrupt(&mut self, int: u8) {
         let flags = self.cpu.regs.flags.u16();
         self.cpu.push16(&mut self.mmu, flags);
         self.bios.flags_address = MemoryAddress::RealSegmentOffset(self.cpu.get_r16(R::SS), self.cpu.get_r16(R::SP));
@@ -1178,7 +1178,7 @@ impl Machine {
             }
             Op::Int => {
                 let int = self.cpu.read_parameter_imm(&op.params.dst);
-                self.int(int as u8);
+                self.execute_interrupt(int as u8);
             }
             Op::Ja => {
                 if !self.cpu.regs.flags.carry & !self.cpu.regs.flags.zero {

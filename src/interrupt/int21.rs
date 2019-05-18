@@ -104,7 +104,7 @@ pub fn handle(machine: &mut Machine) {
                     // execute next function
                     let old_ah = machine.cpu.get_r8(R::AH);
                     machine.cpu.set_r8(R::AH, al);
-                    machine.int(0x21);
+                    machine.execute_interrupt(0x21);
                     machine.cpu.set_r8(R::AH, old_ah);
                 }
                 _ => {},
