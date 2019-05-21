@@ -59,13 +59,22 @@ struct Exe {
     relocs: Vec<ExeReloc>,
 }
 
+/// Component is a machine component that handles it's internal state (e.g. PIC)
+pub trait Component {
+    // fn register_io(&self);
+
+    /// returns Some<u8> if read was handled
+    fn in_u8(&mut self, port: u16) -> Option<u8>;
+
+    /// returns true if write was handled
+    fn out_u8(&mut self, port: u16, data: u8) -> bool;
+}
+
 pub struct Machine {
     pub gpu: GPU,
     pub mmu: MMU,
     pub bios: BIOS,
     pub pit: PIT,
-    pub pic: PIC,
-    pub pic2: PIC, // secondary pic
     pub keyboard: Keyboard,
     pub cpu: CPU,
 
@@ -79,6 +88,9 @@ pub struct Machine {
 
     /// value used to taint the stack, to notice on errors or small com apps just using "retn" to exit to DOS
     stack_marker: u16,
+
+    /// handlers for i/o ports and interrupts
+    components: Vec<Box<Component>>,
 }
 
 impl Machine {
@@ -103,21 +115,27 @@ impl Machine {
         gpu.init(&mut mmu);
         gpu.set_mode(&mut mmu, &mut bios, GFXMode::MODE_TEXT_80_25 as u8);
 
-
-        Machine {
+        let mut m = Machine {
             cpu: CPU::deterministic(),
             mmu,
             gpu,
             bios,
             pit: PIT::default(),
-            pic: PIC::default(),
-            pic2: PIC::default(),
             keyboard: Keyboard::default(),
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,
             last_update: SystemTime::now(),
             stack_marker: 0xDEAD,
-        }
+            components: Vec::new(),
+        };
+
+        m.register_components();
+        m
+    }
+
+    fn register_components(&mut self) {
+        self.components.push(Box::new(PIC::new(0x0020)));
+        self.components.push(Box::new(PIC::new(0x00A0)));
     }
 
     /// reset the CPU and memory
@@ -352,6 +370,14 @@ impl Machine {
         if DEBUG_IO {
             println!("in_u8: read from {:04X}", port);
         }
+
+        for c in &mut self.components {
+            if let Some(n) = c.in_u8(port) {
+                return n;
+            }
+        }
+
+
         match port {
             // PORT 0000-001F - DMA 1 - FIRST DIRECT MEMORY ACCESS CONTROLLER (8237)
             0x0002 => {
@@ -359,8 +385,6 @@ impl Machine {
                 println!("XXX fixme in_port read DMA channel 1 current address");
                 0
             }
-            0x0020 => self.pic.get_register(),
-            0x0021 => self.pic.get_ocw1(),
 
             // PORT 0040-005F - PIT - PROGRAMMABLE INTERVAL TIMER (8253, 8254)
             0x0040 => {
@@ -391,8 +415,6 @@ impl Machine {
                 // keyboard controller read status
                 self.keyboard.get_status_register_byte()
             }
-            0x00A0 => self.pic2.get_register(),
-            0x00A1 => self.pic2.get_ocw1(),
             0x0201 => {
                 // read joystick position and status
                 // Bit(s)	Description	(Table P0542)
@@ -440,9 +462,12 @@ impl Machine {
         if DEBUG_IO {
             println!("out_u8: write to {:04X} = {:02X}", port, data);
         }
+        for c in &mut self.components {
+            if c.out_u8(port, data) {
+                return;
+            }
+        }
         match port {
-            0x0020 => self.pic.set_command(data),
-            0x0021 => self.pic.set_data(data),
             0x0040 => self.pit.timer0.write_reload_part(data),
             0x0041 => self.pit.timer1.write_reload_part(data),
             0x0042 => self.pit.timer2.write_reload_part(data),
@@ -451,8 +476,6 @@ impl Machine {
                 // keyboard controller port b OR ppi programmable perihpial interface (XT only) - which mode are we in?
                 println!("XXX impl -- keyboard: write keyboard controller port b {:02X}", data);
             },
-            0x00A0 => self.pic2.set_command(data),
-            0x00A1 => self.pic2.set_data(data),
             0x0201 => {
                 // W  fire joystick's four one-shots
             }
