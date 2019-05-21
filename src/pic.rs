@@ -4,6 +4,12 @@
 // The 8259 PIC controls the CPU's interrupt mechanism, by accepting several
 // interrupt requests and feeding them to the processor in order.
 
+use crate::machine::Component;
+
+#[cfg(test)]
+#[path = "./pic_test.rs"]
+mod pic_test;
+
 #[derive(Clone, Debug)]
 enum OperationMode {
     Clear,                              // 0 rotate in auto EOI mode (clear)
@@ -20,26 +26,57 @@ enum OperationMode {
 pub struct PIC {
     command: u8,
     data: u8,
+
+    /// the base offset for I/O
+    io_base: u16,
+
     operation: OperationMode,
 }
 
+impl Component for PIC {
+    fn in_u8(&mut self, port: u16) -> Option<u8> {
+        match port {
+            _ if port < self.io_base => None,
+            _ if port - self.io_base == 0x0000 => Some(self.get_register()),
+            _ if port - self.io_base == 0x0001 => Some(self.get_ocw1()),
+            _ => None
+        }
+    }
+
+    fn out_u8(&mut self, port: u16, data: u8) -> bool {
+        match port {
+            _ if port < self.io_base => false,
+            _ if port - self.io_base == 0x0000 => {
+                self.set_command(data);
+                true
+            },
+            _ if port - self.io_base == 0x0001 => {
+                self.set_data(data);
+                true
+            }
+            _ => false
+        }
+    }
+}
+
 impl PIC {
-    pub fn default() -> Self {
+    pub fn new(io_base: u16) -> Self {
         PIC {
             command: 0,
             data: 0,
+            io_base,
             operation: OperationMode::NoOperation, // XXX default?
         }
     }
 
     /// io read of port 0021 (pic1) or 00A1 (pic2)
-    pub fn get_ocw1(&self) -> u8 {
+    fn get_ocw1(&self) -> u8 {
         // read: PIC master interrupt mask register OCW1
         0 // XXX
     }
 
     /// io read of port 0020 (pic1) or 00A0 (pic2)
-    pub fn get_register(&self) -> u8 {
+    fn get_register(&self) -> u8 {
         /*
         0020  R-  PIC  interrupt request/in-service registers after OCW3
         request register:
@@ -53,7 +90,7 @@ impl PIC {
     }
 
     /// PIC - Command register, port 0x0020
-    pub fn set_command(&mut self, val: u8) {
+    fn set_command(&mut self, val: u8) {
         self.command = val;
         println!("PIC COMMAND: {:02x} == {:08b}", val, val);
         // XXX 0x20 == 0b0010_0000 == EOI - End of interrrupt command code
@@ -118,7 +155,7 @@ impl PIC {
     }
 
     /// Master PIC - Data register, port 0x0021
-    pub fn set_data(&mut self, val: u8) {
+    fn set_data(&mut self, val: u8) {
         // XXX: one value if written immediately after value to 0020, another otherwise....
         self.data = val;
 
