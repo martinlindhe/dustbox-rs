@@ -7,6 +7,8 @@
 
 use std::num::Wrapping;
 
+use crate::cpu::{CPU, R};
+use crate::machine::{Component, Machine};
 use crate::memory::MMU;
 
 #[cfg(test)]
@@ -19,6 +21,68 @@ pub struct PIT {
     pub timer1: Timer,
     pub timer2: Timer,
     //divisor: u32, // XXX size?!?!
+}
+
+impl Component for PIT {
+    fn in_u8(&mut self, port: u16) -> Option<u8> {
+        // PORT 0040-005F - PIT - PROGRAMMABLE INTERVAL TIMER (8253, 8254)
+        match port {
+            0x0040 => Some(self.timer0.get_next_u8()),
+            0x0041 => Some(self.timer1.get_next_u8()),
+            0x0042 => Some(self.timer2.get_next_u8()),
+            _ => None
+        }
+    }
+
+    fn out_u8(&mut self, port: u16, data: u8) -> bool {
+        match port {
+            0x0040 => self.timer0.write_reload_part(data),
+            0x0041 => self.timer1.write_reload_part(data),
+            0x0042 => self.timer2.write_reload_part(data),
+            0x0043 => self.set_mode_command(data),
+            _ => return false
+        }
+        true
+    }
+
+    /// time related interrupts
+    fn int(&mut self, int: u8, cpu: &mut CPU) -> bool {
+        if int != 0x1A {
+            return false;
+        }
+        match cpu.get_r8(R::AH) {
+            0x00 => {
+                // TIME - GET SYSTEM TIME
+                // Return:
+                // CX:DX = number of clock ticks since midnight
+                // AL = midnight flag, nonzero if midnight passed since time last read
+                if cpu.deterministic {
+                    cpu.set_r16(R::CX, 0);
+                    cpu.set_r16(R::DX, 0);
+                    cpu.set_r8(R::AL, 0);
+                } else {
+                    // println!("INT 1A GET TIME: get number of clock ticks since midnight, ticks {}",  hw.pit.timer0.count);
+                    let cx = (self.timer0.count >> 16) as u16;
+                    let dx = (self.timer0.count & 0xFFFF) as u16;
+                    cpu.set_r16(R::CX, cx);
+                    cpu.set_r16(R::DX, dx);
+                    cpu.set_r8(R::AL, 0); // TODO implement midnight flag
+                }
+            }
+            0x01 => {
+                // TIME - SET SYSTEM TIME
+                // CX:DX = number of clock ticks since midnight
+                let cx = cpu.get_r16(R::CX);
+                let dx = cpu.get_r16(R::DX);
+                let ticks = (u32::from(cx)) << 16 | u32::from(dx);
+
+                self.timer0.count = ticks;
+                // println!("SET SYSTEM TIME to {}", ticks);
+            }
+            _ => return false
+        }
+        true
+    }
 }
 
 impl PIT {
