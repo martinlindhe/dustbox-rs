@@ -68,13 +68,15 @@ pub trait Component {
 
     /// returns true if write was handled
     fn out_u8(&mut self, port: u16, data: u8) -> bool;
+
+    /// returns true if interrupt was handled
+    fn int(&mut self, int: u8, cpu: &mut CPU) -> bool;
 }
 
 pub struct Machine {
     pub gpu: GPU,
     pub mmu: MMU,
     pub bios: BIOS,
-    pub pit: PIT,
     pub keyboard: Keyboard,
     pub cpu: CPU,
 
@@ -96,15 +98,15 @@ pub struct Machine {
 impl Machine {
      // returns a non-deterministic Machine instance
     pub fn default() -> Self {
-        let mut res = Self::deterministic();
+        let m = Self::deterministic();
 
-        let midnight = chrono::Local::now().date().and_hms(0, 0, 0);
-        let duration = chrono::Local::now().signed_duration_since(midnight).to_std().unwrap();
-
+        // XXX init pit with a io write call to proper port rather than like this ...
         // there is approximately 18.2 clock ticks per second, 0x18_00B0 per 24 hrs. one tick is generated every 54.9254ms
-        res.pit.timer0.count = (((duration.as_secs() as f64 * 1000.) + (duration.subsec_nanos() as f64 / 1_000_000.)) / 54.9254) as u32;
+        // let midnight = chrono::Local::now().date().and_hms(0, 0, 0);
+        // let duration = chrono::Local::now().signed_duration_since(midnight).to_std().unwrap();
+        // m.pit.timer0.count = (((duration.as_secs() as f64 * 1000.) + (duration.subsec_nanos() as f64 / 1_000_000.)) / 54.9254) as u32;
 
-        res
+        m
     }
 
     pub fn deterministic() -> Self {
@@ -120,7 +122,6 @@ impl Machine {
             mmu,
             gpu,
             bios,
-            pit: PIT::default(),
             keyboard: Keyboard::default(),
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,
@@ -136,6 +137,7 @@ impl Machine {
     fn register_components(&mut self) {
         self.components.push(Box::new(PIC::new(0x0020)));
         self.components.push(Box::new(PIC::new(0x00A0)));
+        self.components.push(Box::new(PIT::default()));
     }
 
     /// reset the CPU and memory
@@ -263,6 +265,13 @@ impl Machine {
     }
 
     fn handle_interrupt(&mut self, int: u8) {
+        // ask subsystems if they can handle the interrupt
+        for c in &mut self.components {
+            if c.int(int, &mut self.cpu) {
+                return;
+            }
+        }
+
         match int {
             0x03 => {
                 // debugger interrupt
@@ -272,7 +281,6 @@ impl Machine {
             }
             0x10 => interrupt::int10::handle(self),
             0x16 => interrupt::int16::handle(self),
-            0x1A => interrupt::int1a::handle(self),
             0x20 => {
                 // DOS 1+ - TERMINATE PROGRAM
                 // NOTE: Windows overloads INT 20
@@ -358,11 +366,13 @@ impl Machine {
             self.gpu.progress_scanline();
         }
 
+/*
         if self.cpu.cycle_count % 100 == 0 {
             // HACK: pit should be updated regularry, but in a deterministic way
             self.last_update = SystemTime::now();
             self.pit.update(&mut self.mmu);
         }
+*/
     }
 
     /// read byte from I/O port
@@ -385,15 +395,6 @@ impl Machine {
                 println!("XXX fixme in_port read DMA channel 1 current address");
                 0
             }
-
-            // PORT 0040-005F - PIT - PROGRAMMABLE INTERVAL TIMER (8253, 8254)
-            0x0040 => {
-                let x = self.pit.timer0.get_next_u8();
-                // println!("XXX pit read {:04x}", x);
-                return x;
-            }
-            0x0041 => self.pit.timer1.get_next_u8(),
-            0x0042 => self.pit.timer2.get_next_u8(),
 
             // PORT 0060-006F - KEYBOARD CONTROLLER 804x (8041, 8042) (or PPI (8255) on PC,XT)
             // Note: XT uses ports 60h-63h, AT uses ports 60h-64h
@@ -468,10 +469,6 @@ impl Machine {
             }
         }
         match port {
-            0x0040 => self.pit.timer0.write_reload_part(data),
-            0x0041 => self.pit.timer1.write_reload_part(data),
-            0x0042 => self.pit.timer2.write_reload_part(data),
-            0x0043 => self.pit.set_mode_command(data),
             0x0061 => {
                 // keyboard controller port b OR ppi programmable perihpial interface (XT only) - which mode are we in?
                 println!("XXX impl -- keyboard: write keyboard controller port b {:02X}", data);

@@ -4,6 +4,7 @@
 // The 8259 PIC controls the CPU's interrupt mechanism, by accepting several
 // interrupt requests and feeding them to the processor in order.
 
+use crate::cpu::CPU;
 use crate::machine::Component;
 
 #[cfg(test)]
@@ -45,17 +46,17 @@ impl Component for PIC {
 
     fn out_u8(&mut self, port: u16, data: u8) -> bool {
         match port {
-            _ if port < self.io_base => false,
-            _ if port - self.io_base == 0x0000 => {
-                self.set_command(data);
-                true
-            },
-            _ if port - self.io_base == 0x0001 => {
-                self.set_data(data);
-                true
-            }
-            _ => false
+            _ if port < self.io_base => return false,
+            _ if port - self.io_base == 0x0000 => self.set_command(data),
+            _ if port - self.io_base == 0x0001 => self.set_data(data),
+            _ => return false
         }
+
+        true
+    }
+
+    fn int(&mut self, _int: u8, _cpu: &mut CPU) -> bool {
+        false
     }
 }
 
