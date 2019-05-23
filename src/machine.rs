@@ -77,7 +77,6 @@ pub struct Machine {
     pub gpu: GPU,
     pub mmu: MMU,
     pub bios: BIOS,
-    pub keyboard: Keyboard,
     pub cpu: CPU,
 
     /// base offset where rom was loaded
@@ -122,7 +121,6 @@ impl Machine {
             mmu,
             gpu,
             bios,
-            keyboard: Keyboard::default(),
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,
             last_update: SystemTime::now(),
@@ -138,6 +136,7 @@ impl Machine {
         self.components.push(Box::new(PIC::new(0x0020)));
         self.components.push(Box::new(PIC::new(0x00A0)));
         self.components.push(Box::new(PIT::default()));
+        self.components.push(Box::new(Keyboard::default()));
     }
 
     /// reset the CPU and memory
@@ -174,7 +173,7 @@ impl Machine {
         println!("load exe code from {:04X}:{:04X}", code_offset, code_end);
 
         self.load_com(&data[code_offset..code_end]);
-        self.cpu.set_r16(R::SP, hdr.sp); // confirmed
+        self.cpu.set_r16(R::SP, hdr.sp);
         self.cpu.set_r16(R::SS, hdr.ss); // XXX dosbox = 0923
         
         // at program start in dosbox-x:
@@ -184,6 +183,8 @@ impl Machine {
         // DS = 0910
         // ES = 0910
         // SS = 0923
+
+        // XXX SI and DI values
     }
 
     /// load .com program into CS:0100 and set IP to program start
@@ -204,8 +205,8 @@ impl Machine {
         // at program load
         self.cpu.set_r16(R::CX, 0x00FF);
         self.cpu.set_r16(R::DX, psp_segment);
-        self.cpu.set_r16(R::SI, 0x0100); // XXX 0 on .exe load
-        self.cpu.set_r16(R::DI, 0xFFFE); // XXX 0x1000 on .exe
+        self.cpu.set_r16(R::SI, 0x0100);
+        self.cpu.set_r16(R::DI, 0xFFFE);
 
         self.cpu.regs.ip = 0x0100;
         self.rom_base = self.cpu.get_memory_address();
@@ -280,7 +281,6 @@ impl Machine {
                 self.cpu.fatal_error = true; // stops execution
             }
             0x10 => interrupt::int10::handle(self),
-            0x16 => interrupt::int16::handle(self),
             0x20 => {
                 // DOS 1+ - TERMINATE PROGRAM
                 // NOTE: Windows overloads INT 20
@@ -301,7 +301,7 @@ impl Machine {
     pub fn execute_interrupt(&mut self, int: u8) {
         let flags = self.cpu.regs.flags.u16();
         self.cpu.push16(&mut self.mmu, flags);
-        self.bios.flags_address = MemoryAddress::RealSegmentOffset(self.cpu.get_r16(R::SS), self.cpu.get_r16(R::SP));
+        // self.bios.flags_address = MemoryAddress::RealSegmentOffset(self.cpu.get_r16(R::SS), self.cpu.get_r16(R::SP));
 
         self.cpu.regs.flags.interrupt = false;
         self.cpu.regs.flags.trap = false;
@@ -396,26 +396,6 @@ impl Machine {
                 0
             }
 
-            // PORT 0060-006F - KEYBOARD CONTROLLER 804x (8041, 8042) (or PPI (8255) on PC,XT)
-            // Note: XT uses ports 60h-63h, AT uses ports 60h-64h
-            0x0060 => {
-                // keyboard controller data output buffer
-                let (scancode, _, keypress) = self.keyboard.peek_dos_standard_scancode_and_ascii();
-                if let Some(keypress) = keypress {
-                    self.keyboard.consume(&keypress);
-                }
-                scancode
-            },
-            0x0061 => {
-                // keyboard controller port b control register
-                let val = 0 as u8; // XXX
-                println!("XXX impl -- keyboard: read keyboard controller port b control register (current {:02X})", val);
-                val
-            }
-            0x0064 => {
-                // keyboard controller read status
-                self.keyboard.get_status_register_byte()
-            }
             0x0201 => {
                 // read joystick position and status
                 // Bit(s)	Description	(Table P0542)
@@ -469,10 +449,6 @@ impl Machine {
             }
         }
         match port {
-            0x0061 => {
-                // keyboard controller port b OR ppi programmable perihpial interface (XT only) - which mode are we in?
-                println!("XXX impl -- keyboard: write keyboard controller port b {:02X}", data);
-            },
             0x0201 => {
                 // W  fire joystick's four one-shots
             }
@@ -524,11 +500,6 @@ impl Machine {
 
                 // ../dos-software-decoding/games-com/Galaxian (1983)(Atari Inc)/galaxian.com writes 0x0C
             }
-
-            0xD8E3 => {
-                // XXX HACK REMOVE/HANDLE THIS...
-                // some games write here, maybe for sound driver or something?
-            }
             _ => println!("out_u8: unhandled port {:04X} = {:02X}", port, data),
         }
     }
@@ -558,7 +529,6 @@ impl Machine {
         }
     }
 
-    // XXX move to own file
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::cyclomatic_complexity))]
     fn execute(&mut self, op: &Instruction) {
         let start_ip = self.cpu.regs.ip;
@@ -1905,7 +1875,7 @@ impl Machine {
                 self.cpu.set_r16(R::CS, cs);
                 let flags = self.cpu.pop16(&mut self.mmu);
                 self.cpu.regs.flags.set_u16(flags);
-                self.bios.flags_address = MemoryAddress::Unset;
+                // self.bios.flags_address = MemoryAddress::Unset;
             }
             Op::Retf => {
                 if op.params.count() == 1 {
