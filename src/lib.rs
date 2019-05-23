@@ -43,5 +43,6 @@ pub mod debug;
 pub mod ndisasm;
 pub mod string;
 pub mod keyboard;
+pub mod mouse;
 
 mod interrupt;

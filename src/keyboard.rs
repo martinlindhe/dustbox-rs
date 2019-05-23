@@ -202,7 +202,7 @@ impl Component for Keyboard {
 /// Usable test program for this is ../dos-software-decoding/demo-com-16bit/4sum/4sum.com
 impl Keyboard {
     pub fn default() -> Self {
-        Keyboard {
+        Self {
             keypresses: Vec::new(),
             status_register: StatusRegister::default(),
         }
