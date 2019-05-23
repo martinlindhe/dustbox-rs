@@ -8,6 +8,7 @@ use crate::bios::BIOS;
 use crate::cpu::{CPU, Op, Invalid, R, RegisterSnapshot, Segment, OperandSize};
 use crate::cpu::{Instruction, InstructionInfo, ModRegRm, RepeatMode, Exception};
 use crate::cpu::{Parameter, ParameterSet};
+use crate::disk::Disk;
 use crate::gpu::{GFXMode, GPU};
 use crate::hex::hex_bytes;
 use crate::interrupt;
@@ -139,6 +140,7 @@ impl Machine {
         self.components.push(Box::new(PIT::default()));
         self.components.push(Box::new(Keyboard::default()));
         self.components.push(Box::new(Mouse::default()));
+        self.components.push(Box::new(Disk::default()));
     }
 
     /// reset the CPU and memory
