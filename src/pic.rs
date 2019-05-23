@@ -51,12 +51,7 @@ impl Component for PIC {
             _ if port - self.io_base == 0x0001 => self.set_data(data),
             _ => return false
         }
-
         true
-    }
-
-    fn int(&mut self, _int: u8, _cpu: &mut CPU) -> bool {
-        false
     }
 }
 

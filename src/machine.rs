@@ -63,16 +63,20 @@ struct Exe {
 
 /// Component is a machine component that handles it's internal state (e.g. PIC)
 pub trait Component {
-    // fn register_io(&self);
-
     /// returns Some<u8> if read was handled
-    fn in_u8(&mut self, port: u16) -> Option<u8>;
+    fn in_u8(&mut self, _port: u16) -> Option<u8> {
+        None
+    }
 
     /// returns true if write was handled
-    fn out_u8(&mut self, port: u16, data: u8) -> bool;
+    fn out_u8(&mut self, _port: u16, _data: u8) -> bool {
+        false
+    }
 
     /// returns true if interrupt was handled
-    fn int(&mut self, int: u8, cpu: &mut CPU) -> bool;
+    fn int(&mut self, _int: u8, _cpu: &mut CPU) -> bool {
+        false
+    }
 }
 
 pub struct Machine {
@@ -390,7 +394,6 @@ impl Machine {
             }
         }
 
-
         match port {
             // PORT 0000-001F - DMA 1 - FIRST DIRECT MEMORY ACCESS CONTROLLER (8237)
             0x0002 => {
@@ -430,15 +433,8 @@ impl Machine {
 
     /// read word from I/O port
     pub fn in_u16(&mut self, port: u16) -> u16 {
-        if DEBUG_IO {
-            println!("in_u16: read from {:04X}", port);
-        }
-        match port {
-            _ => {
-                println!("in_u16: unhandled port {:04X}", port);
-                0
-            }
-        }
+        println!("in_u16: unhandled read from {:04X}", port);
+        0
     }
 
     /// write byte to I/O port
