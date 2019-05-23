@@ -5,11 +5,11 @@ pub struct Mouse {
 }
 
 impl Component for Mouse {
-    fn in_u8(&mut self, port: u16) -> Option<u8> {
+    fn in_u8(&mut self, _port: u16) -> Option<u8> {
         None
     }
 
-    fn out_u8(&mut self, port: u16, data: u8) -> bool {
+    fn out_u8(&mut self, _port: u16, _data: u8) -> bool {
         false
     }
 
