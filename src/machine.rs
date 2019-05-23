@@ -13,6 +13,7 @@ use crate::hex::hex_bytes;
 use crate::interrupt;
 use crate::keyboard::Keyboard;
 use crate::memory::{MMU, MemoryAddress};
+use crate::mouse::Mouse;
 use crate::ndisasm::{ndisasm_bytes, ndisasm_first_instr};
 use crate::pic::PIC;
 use crate::pit::PIT;
@@ -137,6 +138,7 @@ impl Machine {
         self.components.push(Box::new(PIC::new(0x00A0)));
         self.components.push(Box::new(PIT::default()));
         self.components.push(Box::new(Keyboard::default()));
+        self.components.push(Box::new(Mouse::default()));
     }
 
     /// reset the CPU and memory
@@ -288,7 +290,6 @@ impl Machine {
                 self.cpu.fatal_error = true; // stops execution
             }
             0x21 => interrupt::int21::handle(self),
-            0x33 => interrupt::int33::handle(self),
             _ => {
                 println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}",
                         int,
