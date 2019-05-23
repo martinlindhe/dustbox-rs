@@ -5,14 +5,6 @@ pub struct Mouse {
 }
 
 impl Component for Mouse {
-    fn in_u8(&mut self, _port: u16) -> Option<u8> {
-        None
-    }
-
-    fn out_u8(&mut self, _port: u16, _data: u8) -> bool {
-        false
-    }
-
     fn int(&mut self, int: u8, cpu: &mut CPU) -> bool {
         if int != 0x33 {
             return false;
@@ -29,7 +21,6 @@ impl Component for Mouse {
             }
             _ => return false
         }
-
         true
     }
 }

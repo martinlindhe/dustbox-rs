@@ -184,14 +184,9 @@ impl Component for Keyboard {
                 // AH <= 80h if enhanced keyboard functions (AH=10h-12h) supported
                 cpu.set_r8(R::AH, 0x80); // indicates support
             }
-            _ => {
-                println!("int16 (keyboard) error: unknown ah={:02X}, ax={:04X}",
-                        cpu.get_r8(R::AH),
-                        cpu.get_r16(R::AX));
-            }
+            _ => return false
         }
-
-        false
+        true
     }
 }
 
