@@ -7,7 +7,7 @@ use crate::gpu::{GFXMode, VideoModeBlock};
 
 #[derive(Clone)]
 pub struct BIOS {
-    pub flags_address: MemoryAddress, // the FLAGS register offset on stack while in interrupt
+    // pub flags_address: MemoryAddress, // the FLAGS register offset on stack while in interrupt
 }
 
 impl BIOS {
@@ -39,7 +39,7 @@ impl BIOS {
     pub fn default() -> Self {
         // XXX see ROMBIOS_Init in dosbox-x
         BIOS {
-            flags_address: MemoryAddress::Unset,
+            // flags_address: MemoryAddress::Unset,
         }
     }
 
@@ -67,7 +67,7 @@ impl BIOS {
             mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_DCC_INDEX, 0x0B);
         }
     }
-
+/*
     /// manipulates the FLAGS register on stack while in a interrupt
     pub fn set_flag(&mut self, mmu: &mut MMU, flag_mask: u16, flag_value: bool) {
         if self.flags_address == MemoryAddress::Unset {
@@ -81,6 +81,7 @@ impl BIOS {
         }
         mmu.memory.borrow_mut().write_u16(self.flags_address.value(), flags);
     }
+*/
 
     pub fn init(&mut self, mut mmu: &mut MMU) {
         self.init_ivt(&mut mmu);

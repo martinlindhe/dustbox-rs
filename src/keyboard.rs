@@ -1,6 +1,9 @@
 // TODO later: dont depend on sdl2 in the core crate (process events with something else?)
 use sdl2::keyboard::{Keycode, Mod};
 
+use crate::cpu::{CPU, R};
+use crate::machine::Component;
+
 const DEBUG_KEYBOARD: bool = false;
 
 #[cfg(test)]
@@ -87,6 +90,108 @@ impl StatusRegister {
             res |= 128;
         }
         res
+    }
+}
+
+impl Component for Keyboard {
+    fn in_u8(&mut self, port: u16) -> Option<u8> {
+        // PORT 0060-006F - KEYBOARD CONTROLLER 804x (8041, 8042) (or PPI (8255) on PC,XT)
+        // Note: XT uses ports 60h-63h, AT uses ports 60h-64h
+        match port {
+            0x0060 => {
+                // keyboard controller data output buffer
+                let (scancode, _, keypress) = self.peek_dos_standard_scancode_and_ascii();
+                if let Some(keypress) = keypress {
+                    self.consume(&keypress);
+                }
+                Some(scancode)
+            },
+            0x0061 => {
+                // keyboard controller port b control register
+                let val = 0 as u8; // XXX
+                println!("XXX impl -- keyboard: read keyboard controller port b control register (current {:02X})", val);
+                Some(val)
+            }
+            0x0064 => {
+                // keyboard controller read status
+                Some(self.get_status_register_byte())
+            }
+            _ => None
+        }
+    }
+
+    fn out_u8(&mut self, port: u16, data: u8) -> bool {
+        match port {
+            0x0061 => {
+                // keyboard controller port b OR ppi programmable periphial interface (XT only) - which mode are we in?
+                println!("XXX impl -- keyboard: write keyboard controller port b {:02X}", data);
+            }
+            _ => return false
+        }
+        true
+    }
+
+    fn int(&mut self, int: u8, cpu: &mut CPU) -> bool {
+        if int != 0x16 {
+            return false;
+        }
+        match cpu.get_r8(R::AH) {
+            0x00 => {
+                // KEYBOARD - GET KEYSTROKE
+                let (ah, al) = self.consume_dos_standard_scancode_and_ascii();
+
+                // AH = BIOS scan code
+                // AL = ASCII character
+                cpu.set_r8(R::AH, ah);
+                cpu.set_r8(R::AL, al);
+
+                if DEBUG_KEYBOARD {
+                    println!("KEYBOARD - GET KEYSTROKE, returns ah {:02x}, al {:02x}", ah, al);
+                }
+            }
+            0x01 => {
+                // KEYBOARD - CHECK FOR KEYSTROKE
+                let (ah, al, _) = self.peek_dos_standard_scancode_and_ascii();
+
+                // AH = BIOS scan code
+                // AL = ASCII character
+                cpu.set_r8(R::AH, ah);
+                cpu.set_r8(R::AL, al);
+
+                // ZF set if no keystroke available
+                // machine.bios.set_flag(&mut machine.mmu, FLAG_ZF, ah == 0);
+                cpu.regs.flags.zero = ah == 0;
+
+                if DEBUG_KEYBOARD {
+                    println!("KEYBOARD - CHECK FOR KEYSTROKE, returns ah {:02x}, al {:02x}", ah, al);
+                }
+            }
+            0x11 => {
+                // KEYBOARD - CHECK FOR ENHANCED KEYSTROKE (enh kbd support only)
+                // Return:
+                // ZF set if no keystroke available
+                // ZF clear if keystroke available
+                // AH = BIOS scan code
+                // AL = ASCII character
+                println!("XXX impl KEYBOARD - CHECK FOR ENHANCED KEYSTROKE");
+                // machine.bios.set_flag(&mut machine.mmu, FLAG_ZF, true);
+                cpu.regs.flags.zero = true;
+            }
+            0x92 => {
+                // KEYB.COM KEYBOARD CAPABILITIES CHECK (not an actual function!)
+
+                // Return:
+                // AH <= 80h if enhanced keyboard functions (AH=10h-12h) supported
+                cpu.set_r8(R::AH, 0x80); // indicates support
+            }
+            _ => {
+                println!("int16 (keyboard) error: unknown ah={:02X}, ax={:04X}",
+                        cpu.get_r8(R::AH),
+                        cpu.get_r16(R::AX));
+            }
+        }
+
+        false
     }
 }
 
