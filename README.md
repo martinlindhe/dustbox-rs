@@ -33,7 +33,7 @@ Any help and contributions are much welcome!
 
 To launch the dustbox_gtk debugger:
 
-```
+```sh
 cargo run --package dustbox_gtk
 ```
 
@@ -41,7 +41,7 @@ then interact with the debugger using the input box ('help' to get started).
 
 To launch the front-end:
 
-```
+```sh
 cargo run --package dustbox_frontend path-to-dos-executable
 ```
 
@@ -49,7 +49,7 @@ cargo run --package dustbox_frontend path-to-dos-executable
 
 Run the basic tests with
 
-```
+```sh
 cargo test --all
 ```
 
