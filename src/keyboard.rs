@@ -1,4 +1,5 @@
 // TODO later: dont depend on sdl2 in the core crate (process events with something else?)
+
 use sdl2::keyboard::{Keycode, Mod};
 
 use crate::cpu::{CPU, R};
@@ -14,83 +15,6 @@ mod keyboard_test;
 pub struct Keyboard {
     keypresses: Vec<Keypress>,
     status_register: StatusRegister,
-}
-
-/// https://wiki.osdev.org/%228042%22_PS/2_Controller#Status_Register
-#[derive(Clone)]
-struct StatusRegister {
-    /// 0 = empty, 1 = full
-    /// must be set before attempting to read data from IO port 0x60
-    output_buffer_status: bool,
-
-    /// 0 = empty, 1 = full
-    /// must be clear before attempting to write data to IO port 0x60 or IO port 0x64
-    input_buffer_status: bool,
-
-    /// Meant to be cleared on reset and set by firmware (via. PS/2 Controller Configuration Byte) if the system passes self tests (POST)
-    system: bool,
-
-    /// Command/data
-    /// 0 = data written to input buffer is data for PS/2 device
-    /// 1 = data written to input buffer is data for PS/2 controller command)
-    mode: bool,
-
-    /// Unknown (chipset specific)
-    /// is set in dosbox-x and WinXP
-    unknown4: bool,
-
-    /// Unknown (chipset specific)
-    unknown5: bool,
-
-    /// 0 = no error, 1 = time-out error
-    timeout_error: bool,
-
-    /// 0 = no error, 1 = parity error
-    parity_error: bool,
-}
-
-impl StatusRegister {
-    pub fn default() -> Self {
-        StatusRegister {
-            output_buffer_status: false,
-            input_buffer_status: false,
-            system: true,
-            mode: false,
-            unknown4: true,
-            unknown5: false,
-            timeout_error: false,
-            parity_error: false,
-        }
-    }
-
-    pub fn as_u8(&self) -> u8 {
-        let mut res = 0;
-        if self.output_buffer_status {
-            res |= 1;
-        }
-        if self.input_buffer_status {
-            res |= 2;
-        }
-        if self.system {
-            res |= 4;
-        }
-        if self.mode {
-            res |= 8;
-        }
-        if self.unknown4 {
-            res |= 16;
-        }
-        if self.unknown5 {
-            res |= 32;
-        }
-        if self.timeout_error {
-            res |= 64;
-        }
-        if self.parity_error {
-            res |= 128;
-        }
-        res
-    }
 }
 
 impl Component for Keyboard {
@@ -290,6 +214,83 @@ impl Keyboard {
         }
 
         println!("ERROR failed to consume keypress {:?}", keypress);
+    }
+}
+
+/// https://wiki.osdev.org/%228042%22_PS/2_Controller#Status_Register
+#[derive(Clone)]
+struct StatusRegister {
+    /// 0 = empty, 1 = full
+    /// must be set before attempting to read data from IO port 0x60
+    output_buffer_status: bool,
+
+    /// 0 = empty, 1 = full
+    /// must be clear before attempting to write data to IO port 0x60 or IO port 0x64
+    input_buffer_status: bool,
+
+    /// Meant to be cleared on reset and set by firmware (via. PS/2 Controller Configuration Byte) if the system passes self tests (POST)
+    system: bool,
+
+    /// Command/data
+    /// 0 = data written to input buffer is data for PS/2 device
+    /// 1 = data written to input buffer is data for PS/2 controller command)
+    mode: bool,
+
+    /// Unknown (chipset specific)
+    /// is set in dosbox-x and WinXP
+    unknown4: bool,
+
+    /// Unknown (chipset specific)
+    unknown5: bool,
+
+    /// 0 = no error, 1 = time-out error
+    timeout_error: bool,
+
+    /// 0 = no error, 1 = parity error
+    parity_error: bool,
+}
+
+impl StatusRegister {
+    pub fn default() -> Self {
+        StatusRegister {
+            output_buffer_status: false,
+            input_buffer_status: false,
+            system: true,
+            mode: false,
+            unknown4: true,
+            unknown5: false,
+            timeout_error: false,
+            parity_error: false,
+        }
+    }
+
+    pub fn as_u8(&self) -> u8 {
+        let mut res = 0;
+        if self.output_buffer_status {
+            res |= 1;
+        }
+        if self.input_buffer_status {
+            res |= 2;
+        }
+        if self.system {
+            res |= 4;
+        }
+        if self.mode {
+            res |= 8;
+        }
+        if self.unknown4 {
+            res |= 16;
+        }
+        if self.unknown5 {
+            res |= 32;
+        }
+        if self.timeout_error {
+            res |= 64;
+        }
+        if self.parity_error {
+            res |= 128;
+        }
+        res
     }
 }
 
