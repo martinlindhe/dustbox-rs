@@ -1,9 +1,6 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-// enables clippy lints in IDE
-#![warn(clippy::all)]
-
 extern crate toml;
 
 extern crate chrono;
