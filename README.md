@@ -1,16 +1,33 @@
 # About
 
-[![Join the chat at https://gitter.im/martinlindhe/dustbox-rs](https://badges.gitter.im/martinlindhe/dustbox-rs.svg)](https://gitter.im/martinlindhe/dustbox-rs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/martinlindhe/dustbox-rs.svg?branch=master)](https://travis-ci.org/martinlindhe/dustbox-rs)
+[![Build Status](https://travis-ci.org/martinlindhe/dustbox-rs.svg?branch=master)](https://travis-ci.org/martinlindhe/dustbox-rs)
 
-A x86 emulator with the goal of running old MS-DOS games.
+PC x86 emulator with the goal of easily running MS-DOS games on Windows, macOS and Linux.
 
-This is a project I use to learn rust and improve my understanding of low level stuff.
-In the current state, it runs a few simple demos and is not very impressive.
+In the current state, dustbox runs a some demos and is still in it's early stages.
 If you are looking for a more complete dos emulator, I suggest you check out [dosbox-x](https://github.com/joncampbell123/dosbox-x).
+
+## Rough status june 2019
+
+16 bit CPU - 95%, interrupts are incomplete
+32 bit CPU - 10%, some instructions supported
+FPU - not started
+disk - not started
+PIT - 1%
+PIC - 1%
+ms-dos - 5%, simulating MS-DOS behavior (interrupts, command.com env)
+ems/xms - 0%, extended memory manager
+keyboard - 1%
+mouse - 0%
+cd-rom - 0%
+cga - 5%
+ega - 5%
+vga - 5%
+sound - 0%
 
 ## Contributing
 
-Any help and contributions are much welcome! 
+Any help and contributions are much welcome!
 
 ## Running
 
