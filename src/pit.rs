@@ -45,7 +45,6 @@ impl Component for PIT {
         true
     }
 
-    /// time related interrupts
     fn int(&mut self, int: u8, cpu: &mut CPU) -> bool {
         if int != 0x1A {
             return false;

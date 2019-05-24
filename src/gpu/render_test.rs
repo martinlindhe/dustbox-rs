@@ -417,7 +417,7 @@ fn draw_image(frame: &[ColorSpace], mode: &VideoModeBlock) -> ImageBuffer<Rgb<u8
 // returns true on success
 fn write_video_frame_to_disk(machine: &Machine, pngfile: &str) -> bool {
     let frame = machine.gpu.render_frame(&machine.mmu);
-    if frame.len() == 0 {
+    if frame.is_empty() {
         println!("ERROR: no frame rendered");
         return false;
     }
@@ -426,5 +426,5 @@ fn write_video_frame_to_disk(machine: &Machine, pngfile: &str) -> bool {
         println!("save err: {:?}", why);
         return false;
     }
-    return true;
+    true
 }
