@@ -16,10 +16,10 @@ fn test_parse_hex_string() {
 fn test_parse_segment_offset_pair() {
     let mut dbg = Debugger::default();
     dbg.machine.cpu.set_r16(R::CS, 0x085F);
-    assert_eq!(0x008731, dbg.parse_segment_offset_pair("085F:0141").unwrap());
-    assert_eq!(0x008731, dbg.parse_segment_offset_pair("0x085F:0x0141").unwrap());
-    assert_eq!(0x008731, dbg.parse_segment_offset_pair("CS:0141").unwrap());
-    assert_eq!(0x00873F, dbg.parse_segment_offset_pair("873F").unwrap());
+    assert_eq!(0x8731, dbg.parse_segment_offset_pair("085F:0141").unwrap());
+    assert_eq!(0x8731, dbg.parse_segment_offset_pair("0x085F:0x0141").unwrap());
+    assert_eq!(0x8731, dbg.parse_segment_offset_pair("CS:0141").unwrap());
+    assert_eq!(0x873F, dbg.parse_segment_offset_pair("873F").unwrap());
 }
 
 

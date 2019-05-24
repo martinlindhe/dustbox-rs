@@ -47,40 +47,34 @@ fn can_encode_random_seq() {
         if op.instruction.command.is_valid() {
             // - if successful, try to encode. all valid decodings should be mapped for valid
             //   encoding for implemented ops (this should find all missing cases)
-            let try_enc = encoder.encode(&op.instruction);
-            match try_enc {
-                Ok(enc) => {
-                    let in_bytes = Vec::from_iter(code[0..enc.len()].iter().cloned());
-                    if enc != in_bytes {
-                        let ndisasm_of_input = ndisasm_first_instr(&in_bytes).unwrap();
-                        let ndisasm_of_encode = ndisasm_first_instr(&enc).unwrap();
-                        if ndisasm_of_input != ndisasm_of_encode {
-                            panic!("encoding resulted in wrong sequence.\n\ninput  {:?}\noutput {:?}\ninstr {:?}\nndisasm of\ninput '{}'\nencode '{}'",
-                                hex_bytes(&in_bytes),
-                                hex_bytes(&enc),
-                                op.instruction,
-                                ndisasm_of_input,
-                                ndisasm_of_encode);
-                        }
+            if let Ok(enc) = encoder.encode(&op.instruction) {
+                let in_bytes = Vec::from_iter(code[0..enc.len()].iter().cloned());
+                if enc != in_bytes {
+                    let ndisasm_of_input = ndisasm_first_instr(&in_bytes).unwrap();
+                    let ndisasm_of_encode = ndisasm_first_instr(&enc).unwrap();
+                    if ndisasm_of_input != ndisasm_of_encode {
+                        panic!("encoding resulted in wrong sequence.\n\ninput  {:?}\noutput {:?}\ninstr {:?}\nndisasm of\ninput '{}'\nencode '{}'",
+                            hex_bytes(&in_bytes),
+                            hex_bytes(&enc),
+                            op.instruction,
+                            ndisasm_of_input,
+                            ndisasm_of_encode);
                     }
+                }
 
-                    // - if encode was successful, try to decode that seq again and make sure the resulting
-                    //   ops are the same (this should ensure all cases code 2-way to the same values)
-                    machine.load_executable(&enc);
-                    let decoded = machine.cpu.decoder.decode_to_block(&mut machine.mmu, cs, 0x100, 1);
-                    let reencoded_op = &decoded[0];
-                    if op.instruction != reencoded_op.instruction {
-                        panic!("re-encoding failed.\n\nexpected {:?},\noutput   {:?}",
-                        op.instruction, reencoded_op.instruction);
-                    }
+                // - if encode was successful, try to decode that seq again and make sure the resulting
+                //   ops are the same (this should ensure all cases code 2-way to the same values)
+                machine.load_executable(&enc);
+                let decoded = machine.cpu.decoder.decode_to_block(&mut machine.mmu, cs, 0x100, 1);
+                let reencoded_op = &decoded[0];
+                if op.instruction != reencoded_op.instruction {
+                    panic!("re-encoding failed.\n\nexpected {:?},\noutput   {:?}",
+                    op.instruction, reencoded_op.instruction);
                 }
-                _ => {
-                    // NOTE: commented out for now because encoder.rs handles so few instructions
-                    // println!("ERROR: found unsuccessful encode for {:?}: reason {:?}", op, try_enc);
-                }
+            } else {
+                // NOTE: commented out for now because encoder.rs handles so few instructions
+                // println!("ERROR: found unsuccessful encode for {:?}: reason {:?}", op, try_enc);
             }
-        } else {
-            // println!("NOTICE: skipping invalid sequence: {:?}: {}", code, op);
         }
     }
 }
