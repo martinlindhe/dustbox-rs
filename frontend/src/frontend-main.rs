@@ -86,7 +86,7 @@ fn main() {
                     }
                     */
 
-                    machine.keyboard.add_keypress(keycode, modifier);
+                    machine.keyboard_mut().unwrap().add_keypress(keycode, modifier);
                 }
 
                 _ => {}

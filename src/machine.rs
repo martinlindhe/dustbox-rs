@@ -117,7 +117,7 @@ impl Machine {
                 // there is approximately 18.2 clock ticks per second, 0x18_00B0 per 24 hrs. one tick is generated every 54.9254ms
                 let midnight = chrono::Local::now().date().and_hms(0, 0, 0);
                 let duration = chrono::Local::now().signed_duration_since(midnight).to_std().unwrap();
-                pit.timer0.count = (((duration.as_secs() as f64 * 1000.) + (duration.subsec_nanos() as f64 / 1_000_000.)) / 54.9254) as u32;
+                pit.timer0.count = (((duration.as_secs() as f64 * 1000.) + (f64::from(duration.subsec_nanos()) / 1_000_000.)) / 54.9254) as u32;
             }
         }
 
@@ -154,6 +154,16 @@ impl Machine {
         self.components.push(MachineComponent::Keyboard(KeyboardComponent::default()));
         self.components.push(MachineComponent::Mouse(MouseComponent::default()));
         self.components.push(MachineComponent::Disk(DiskComponent::default()));
+    }
+
+    /// returns a mutable reference to the Keyboard component
+    pub fn keyboard_mut(&mut self) -> Option<&mut KeyboardComponent> {
+        for component in &mut self.components {
+            if let MachineComponent::Keyboard(kb) = component {
+                return Some(kb);
+            }
+        }
+        None
     }
 
     /// reset the CPU and memory
