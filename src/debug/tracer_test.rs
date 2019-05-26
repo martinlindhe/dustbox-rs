@@ -65,8 +65,8 @@ fn trace_decorates_stosw() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] AB               Stosw                                  ; store ax at es:di
-[085F:0101] F3AB             Rep      Stosw                         ; store ax at es:di for cx times
+    assert_eq!("[085F:0100] AB               Stosw                                  ; [es:di] = ax
+[085F:0101] F3AB             Rep      Stosw                         ; while cx-- > 0 { [es:di] = ax }
 [085F:0103] E460             In8      al, 0x60                      ; keyboard or kb controller data output buffer
 ", res);
 }
