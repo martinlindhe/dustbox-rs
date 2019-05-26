@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::{mem, u8};
 use std::num::Wrapping;
 use std::time::{Duration, SystemTime};

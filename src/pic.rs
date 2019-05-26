@@ -11,6 +11,8 @@ use crate::machine::Component;
 #[path = "./pic_test.rs"]
 mod pic_test;
 
+const DEBUG_PIC: bool = false;
+
 #[derive(Clone, Debug)]
 enum OperationMode {
     Clear,                              // 0 rotate in auto EOI mode (clear)
@@ -68,11 +70,17 @@ impl PIC {
     /// io read of port 0021 (pic1) or 00A1 (pic2)
     fn get_ocw1(&self) -> u8 {
         // read: PIC master interrupt mask register OCW1
+        if DEBUG_PIC {
+            println!("PIC {:04x} get_ocw1", self.io_base);
+        }
         0 // XXX
     }
 
     /// io read of port 0020 (pic1) or 00A0 (pic2)
     fn get_register(&self) -> u8 {
+        if DEBUG_PIC {
+            println!("PIC {:04x} get_register", self.io_base);
+        }
         /*
         0020  R-  PIC  interrupt request/in-service registers after OCW3
         request register:
@@ -87,9 +95,11 @@ impl PIC {
 
     /// PIC - Command register, port 0x0020
     fn set_command(&mut self, val: u8) {
-        self.command = val;
-        println!("PIC COMMAND: {:02x} == {:08b}", val, val);
+        if DEBUG_PIC {
+            println!("PIC {:04X} COMMAND: {:02x} == {:08b}", self.io_base, val, val);
+        }
         // XXX 0x20 == 0b0010_0000 == EOI - End of interrrupt command code
+        self.command = val;
 
         /*
         0020  -W  PIC initialization command word ICW1 (see #P0010)
@@ -152,6 +162,10 @@ impl PIC {
 
     /// Master PIC - Data register, port 0x0021
     fn set_data(&mut self, val: u8) {
+        if DEBUG_PIC {
+            println!("PIC {:04x} set_data = {:02x}", self.io_base, val);
+        }
+
         // XXX: one value if written immediately after value to 0020, another otherwise....
         self.data = val;
 
@@ -161,5 +175,4 @@ impl PIC {
         //out 0xa1, al
         //out 0x21, al
     }
-
 }
