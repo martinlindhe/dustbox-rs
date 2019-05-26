@@ -1,6 +1,7 @@
-use std::time::{Duration, SystemTime};
-use std::num::Wrapping;
+use std::any::Any;
 use std::{mem, u8};
+use std::num::Wrapping;
+use std::time::{Duration, SystemTime};
 
 use bincode::deserialize;
 
@@ -8,16 +9,17 @@ use crate::bios::BIOS;
 use crate::cpu::{CPU, Op, Invalid, R, RegisterSnapshot, Segment, OperandSize};
 use crate::cpu::{Instruction, InstructionInfo, ModRegRm, RepeatMode, Exception};
 use crate::cpu::{Parameter, ParameterSet};
-use crate::disk::Disk;
 use crate::gpu::{GFXMode, GPU};
 use crate::hex::hex_bytes;
 use crate::interrupt;
-use crate::keyboard::Keyboard;
 use crate::memory::{MMU, MemoryAddress};
-use crate::mouse::Mouse;
 use crate::ndisasm::{ndisasm_bytes, ndisasm_first_instr};
-use crate::pic::PIC;
-use crate::pit::PIT;
+
+use crate::disk::Disk as DiskComponent;
+use crate::keyboard::Keyboard as KeyboardComponent;
+use crate::mouse::Mouse as MouseComponent;
+use crate::pic::PIC as PICComponent;
+use crate::pit::PIT as PITComponent;
 
 #[cfg(test)]
 #[path = "./machine_test.rs"]
@@ -61,7 +63,14 @@ struct Exe {
     relocs: Vec<ExeReloc>,
 }
 
-/// Component is a machine component that handles it's internal state (e.g. PIC)
+pub enum MachineComponent {
+    Disk(DiskComponent),
+    Keyboard(KeyboardComponent),
+    Mouse(MouseComponent),
+    PIC(PICComponent),
+    PIT(PITComponent),
+}
+
 pub trait Component {
     /// returns Some<u8> if read was handled
     fn in_u8(&mut self, _port: u16) -> Option<u8> {
@@ -91,25 +100,28 @@ pub struct Machine {
     /// length of loaded rom in bytes (used by disassembler)
     pub rom_length: usize,
 
-    last_update: SystemTime,
-
     /// value used to taint the stack, to notice on errors or small com apps just using "retn" to exit to DOS
     stack_marker: u16,
 
     /// handlers for i/o ports and interrupts
-    components: Vec<Box<Component>>,
+    components: Vec<MachineComponent>,
 }
 
 impl Machine {
      // returns a non-deterministic Machine instance
     pub fn default() -> Self {
-        // XXX init pit with a io write call to proper port rather than like this ...
-        // there is approximately 18.2 clock ticks per second, 0x18_00B0 per 24 hrs. one tick is generated every 54.9254ms
-        // let midnight = chrono::Local::now().date().and_hms(0, 0, 0);
-        // let duration = chrono::Local::now().signed_duration_since(midnight).to_std().unwrap();
-        // m.pit.timer0.count = (((duration.as_secs() as f64 * 1000.) + (duration.subsec_nanos() as f64 / 1_000_000.)) / 54.9254) as u32;
+        let mut m = Self::deterministic();
 
-        Self::deterministic()
+        for component in &mut m.components {
+            if let MachineComponent::PIT(pit) = component {
+                // there is approximately 18.2 clock ticks per second, 0x18_00B0 per 24 hrs. one tick is generated every 54.9254ms
+                let midnight = chrono::Local::now().date().and_hms(0, 0, 0);
+                let duration = chrono::Local::now().signed_duration_since(midnight).to_std().unwrap();
+                pit.timer0.count = (((duration.as_secs() as f64 * 1000.) + (duration.subsec_nanos() as f64 / 1_000_000.)) / 54.9254) as u32;
+            }
+        }
+
+        m
     }
 
     pub fn deterministic() -> Self {
@@ -127,7 +139,6 @@ impl Machine {
             bios,
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,
-            last_update: SystemTime::now(),
             stack_marker: 0xDEAD,
             components: Vec::new(),
         };
@@ -137,12 +148,12 @@ impl Machine {
     }
 
     fn register_components(&mut self) {
-        self.components.push(Box::new(PIC::new(0x0020)));
-        self.components.push(Box::new(PIC::new(0x00A0)));
-        self.components.push(Box::new(PIT::default()));
-        self.components.push(Box::new(Keyboard::default()));
-        self.components.push(Box::new(Mouse::default()));
-        self.components.push(Box::new(Disk::default()));
+        self.components.push(MachineComponent::PIC(PICComponent::new(0x0020)));
+        self.components.push(MachineComponent::PIC(PICComponent::new(0x00A0)));
+        self.components.push(MachineComponent::PIT(PITComponent::default()));
+        self.components.push(MachineComponent::Keyboard(KeyboardComponent::default()));
+        self.components.push(MachineComponent::Mouse(MouseComponent::default()));
+        self.components.push(MachineComponent::Disk(DiskComponent::default()));
     }
 
     /// reset the CPU and memory
@@ -273,8 +284,15 @@ impl Machine {
 
     fn handle_interrupt(&mut self, int: u8) {
         // ask subsystems if they can handle the interrupt
-        for c in &mut self.components {
-            if c.int(int, &mut self.cpu) {
+        for component in &mut self.components {
+            let handled = match component {
+                MachineComponent::PIC(c) => c.int(int, &mut self.cpu),
+                MachineComponent::PIT(c) => c.int(int, &mut self.cpu),
+                MachineComponent::Keyboard(c) => c.int(int, &mut self.cpu),
+                MachineComponent::Mouse(c) => c.int(int, &mut self.cpu),
+                MachineComponent::Disk(c) => c.int(int, &mut self.cpu),
+            };
+            if handled {
                 return;
             }
         }
@@ -371,13 +389,15 @@ impl Machine {
             self.gpu.progress_scanline();
         }
 
-/*
         if self.cpu.cycle_count % 100 == 0 {
-            // HACK: pit should be updated regularry, but in a deterministic way
-            self.last_update = SystemTime::now();
-            self.pit.update(&mut self.mmu);
+            for component in &mut self.components {
+                if let MachineComponent::PIT(pit) = component {
+                    // HACK: pit should be updated regularry, but in a deterministic way
+                    pit.update(&mut self.mmu);
+                }
+            }
         }
-*/
+
     }
 
     /// read byte from I/O port
@@ -386,9 +406,16 @@ impl Machine {
             println!("in_u8: read from {:04X}", port);
         }
 
-        for c in &mut self.components {
-            if let Some(n) = c.in_u8(port) {
-                return n;
+        for component in &mut self.components {
+            let handled = match component {
+                MachineComponent::PIC(c) => c.in_u8(port),
+                MachineComponent::PIT(c) => c.in_u8(port),
+                MachineComponent::Keyboard(c) => c.in_u8(port),
+                MachineComponent::Mouse(c) => c.in_u8(port),
+                MachineComponent::Disk(c) => c.in_u8(port),
+            };
+            if let Some(v) = handled {
+                return v;
             }
         }
 
@@ -440,11 +467,20 @@ impl Machine {
         if DEBUG_IO {
             println!("out_u8: write to {:04X} = {:02X}", port, data);
         }
-        for c in &mut self.components {
-            if c.out_u8(port, data) {
+
+        for component in &mut self.components {
+            let b = match component {
+                MachineComponent::PIC(c) => c.out_u8(port, data),
+                MachineComponent::PIT(c) => c.out_u8(port, data),
+                MachineComponent::Keyboard(c) => c.out_u8(port, data),
+                MachineComponent::Mouse(c) => c.out_u8(port, data),
+                MachineComponent::Disk(c) => c.out_u8(port, data),
+            };
+            if b {
                 return;
             }
         }
+
         match port {
             0x0201 => {
                 // W  fire joystick's four one-shots
