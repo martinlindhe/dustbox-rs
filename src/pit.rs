@@ -15,6 +15,8 @@ use crate::memory::MMU;
 #[path = "./pit_test.rs"]
 mod pit_test;
 
+const DEBUG_PIT: bool = true;
+
 #[derive(Clone)]
 pub struct PIT {
     pub timer0: Timer,
@@ -96,14 +98,12 @@ impl PIT {
 
     // updates PIT internal state
     pub fn update(&mut self, mmu: &mut MMU) {
+        self.timer0.inc();
+
         // MEM 0040h:006Ch - TIMER TICKS SINCE MIDNIGHT
         // Size:	DWORD
         // Desc:	updated approximately every 55 milliseconds by the BIOS INT 08 handler
-        // used by ../dos-software-decoding/demo-com-16bit/bmatch/bmatch.com
-
-        self.timer0.inc();
         mmu.write_u32(0x0040, 0x006C, self.timer0.count);
-        //println!("pit updated {}", self.timer0.count);
     }
 
     fn counter(&mut self, n: u8) -> &mut Timer {
@@ -120,12 +120,15 @@ impl PIT {
     pub fn set_mode_command(&mut self, val: u8) {
         let channel = (val >> 6) & 0b11; // bits 7-6
         let access_mode = (val >> 4) & 0b11; // bits 5-4
-        let operating_mode = (val >> 1) & 0b11; // bits 3-1
+        let operating_mode = (val >> 1) & 0b111; // bits 3-1
         let bcd_mode = val & 1; // bit 0
         if channel == 3 {
             panic!("TODO channel == 3: Read-back command (8254 only)");
         }
         self.counter(channel).set_mode(access_mode, operating_mode, bcd_mode);
+        if DEBUG_PIT {
+            println!("PIT set_mode_command channel={}, access_mode={}, operating_mode={}, bcd_mode={}", channel, access_mode, operating_mode, bcd_mode);
+        }
     }
 }
 
