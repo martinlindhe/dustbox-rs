@@ -17,6 +17,5 @@ fn can_execute_pit_set_reload_value() {
     // out 0x40,al          ; high byte of PIT reload value = 0x22
     pit.out_u8(0x40, 0x22);
 
-    // XXX need a new mechanism to read component registers
     assert_eq!(0x2244, pit.timer0.reload);
 }

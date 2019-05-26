@@ -15,7 +15,7 @@ use crate::memory::MMU;
 #[path = "./pit_test.rs"]
 mod pit_test;
 
-const DEBUG_PIT: bool = true;
+const DEBUG_PIT: bool = false;
 
 #[derive(Clone)]
 pub struct PIT {
