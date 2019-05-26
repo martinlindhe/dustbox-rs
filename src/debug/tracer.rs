@@ -262,14 +262,12 @@ impl ProgramTracer {
     fn decorate_instruction(&self, ii: &InstructionInfo) -> String {
         match ii.instruction.command {
             Op::In8 => {
-                // E460              in al,0x60
                 match ii.instruction.params.src {
                     Parameter::Imm8(port) => self.in_u8_port_desc(u16::from(port)),
                     _ => "".to_owned(),
                 }
             }
             Op::In16 => {
-                // E560              in ax,0x60
                 match ii.instruction.params.src {
                     Parameter::Imm8(port) => self.in_u16_port_desc(u16::from(port)),
                     _ => "".to_owned(),
@@ -277,27 +275,27 @@ impl ProgramTracer {
             }
             Op::Lodsb => {
                 match ii.instruction.repeat {
-                    RepeatMode::None => "load byte at address ds:si into al".to_owned(),
+                    RepeatMode::None => "al = [ds:si]".to_owned(),
                     _ => "xxx Lodsb".to_owned(),
                 }
             }
             Op::Lodsw => {
                 match ii.instruction.repeat {
-                    RepeatMode::None => "load word at address ds:si into ax".to_owned(),
+                    RepeatMode::None => "ax = [ds:si]".to_owned(),
                     _ => "xxx Lodsw".to_owned(),
                 }
             }
             Op::Stosb => {
                 match ii.instruction.repeat {
-                    RepeatMode::Rep => "store al at es:di for cx times".to_owned(),
-                    RepeatMode::None => "store al at es:di".to_owned(),
+                    RepeatMode::Rep => "while cx-- > 0 { [es:di] = al }".to_owned(),
+                    RepeatMode::None => "[es:di] = al".to_owned(),
                     _ => "xxx Stosb".to_owned(),
                 }
             }
             Op::Stosw => {
                 match ii.instruction.repeat {
-                    RepeatMode::Rep => "store ax at es:di for cx times".to_owned(),
-                    RepeatMode::None => "store ax at es:di".to_owned(),
+                    RepeatMode::Rep => "while cx-- > 0 { [es:di] = ax }".to_owned(),
+                    RepeatMode::None => "[es:di] = ax".to_owned(),
                     _ => "xxx Stosw".to_owned(),
                 }
             }
