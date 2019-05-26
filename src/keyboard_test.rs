@@ -1,8 +1,8 @@
 use sdl2::keyboard::{Keycode, Mod};
 
-use crate::keyboard::{Keyboard, StatusRegister};
-use crate::machine::Machine;
 use crate::cpu::R;
+use crate::keyboard::{Keyboard, StatusRegister};
+use crate::machine::{Component, Machine};
 
 #[test]
 fn test_status_register() {
@@ -10,39 +10,24 @@ fn test_status_register() {
     assert_eq!(0b001_0100, sr.as_u8()); // system 1, unknown4 1
 }
 
-/*
 #[test]
 fn can_read_keys_from_io_ports() {
-    let mut machine = Machine::deterministic();
-    let code: Vec<u8> = vec![
-        0xE4, 0x64, // 00000100: in al,0x64
-        0x24, 0x01, // 00000102: and al,0x1
-        0x74, 0xFA, // 00000104: jz 0x100
-        0xE4, 0x60, // 00000106: in al,0x60
-    ];
-    machine.load_executable(&code);
-    machine.execute_instruction(); // in al,0x64
-    assert_eq!(0x14, machine.cpu.get_r8(R::AL));
+    let mut keyboard = Keyboard::default();
 
-    // make sure still in loop
-    machine.execute_instructions(2);
-    assert_eq!(0x0100, machine.cpu.regs.ip);
-
-    // XXX need a better way to address keyboard component
+    // in al,0x64
+    assert_eq!(Some(0x14), keyboard.in_u8(0x64));
 
     // inject key press
-    machine.keyboard.add_keypress(Keycode::Escape, Mod::NOMOD);
+    keyboard.add_keypress(Keycode::Escape, Mod::NOMOD);
 
-    // make sure we break the loop
-    machine.execute_instruction(); // in al,0x64
-    assert_eq!(0x15, machine.cpu.get_r8(R::AL));
-    machine.execute_instructions(2);
+    // in al,0x64
+    assert_eq!(Some(0x15), keyboard.in_u8(0x64));
 
     // make sure we get the DOS scancode for ESC key
-    machine.execute_instruction(); // in al,0x60
-    assert_eq!(0x01, machine.cpu.get_r8(R::AL));
+
+    // in al,0x60
+    assert_eq!(Some(0x01), keyboard.in_u8(0x60));
 }
-*/
 
 #[test]
 fn consumes_keypress_queue() {
