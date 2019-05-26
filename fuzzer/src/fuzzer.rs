@@ -3,7 +3,7 @@ use std::process::Command;
 use std::str;
 use std::path::{Path, PathBuf};
 use std::fs::File;
-use std::io::{Read};
+use std::io::{Read, Write};
 
 use tera::Context;
 use tempdir::TempDir;
@@ -196,8 +196,6 @@ fn assemble_prober(data: &[u8], prober_com: &str) {
     // add stuff to context
     match tera.render("prober.tpl.asm", &context) {
         Ok(res) => {
-            use std::fs::File;
-            use std::io::Write;
             let mut f = File::create("../utils/prober/prober.asm").expect("Unable to create file");
             f.write_all(res.as_bytes()).expect("Unable to write data");
         }
