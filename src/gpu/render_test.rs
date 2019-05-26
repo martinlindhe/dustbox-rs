@@ -314,7 +314,6 @@ fn games_commercial() {
         path.to_owned() + "Madball (1985)(Microtec)/madball.com",
         path.to_owned() + "Mind Field (1985)(Everett Kaser)/mine.com",
         path.to_owned() + "Ms Pacman (1983)(Atari Inc)/mspacman.com",
-        path.to_owned() + "Mummies (1985)(Iain Brown)/mummies.com",
         path.to_owned() + "Paratrooper (1982)(Orion Software)/ptrooper.com",
         path.to_owned() + "Pc Man (1982)(Orion Software)/pcmanv1.com",
         path.to_owned() + "Pc Man (1982)(Orion Software)/pcmanv2.com",
