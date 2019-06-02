@@ -96,11 +96,18 @@ impl PIT {
         }
     }
 
+    /// initializes the PIT with current time of day
+    pub fn init(&mut self) {
+        // there is approximately 18.2 clock ticks per second, 0x18_00B0 per 24 hrs. one tick is generated every 54.9254ms
+        let midnight = chrono::Local::now().date().and_hms(0, 0, 0);
+        let duration = chrono::Local::now().signed_duration_since(midnight).to_std().unwrap();
+        self.timer0.count = (((duration.as_secs() as f64 * 1000.) + (f64::from(duration.subsec_nanos()) / 1_000_000.)) / 54.9254) as u32;
+    }
+
     // updates PIT internal state
     pub fn update(&mut self, mmu: &mut MMU) {
         self.timer0.inc();
-
-        // MEM 0040h:006Ch - TIMER TICKS SINCE MIDNIGHT
+        // MEM 0040:006C - TIMER TICKS SINCE MIDNIGHT
         // Size:	DWORD
         // Desc:	updated approximately every 55 milliseconds by the BIOS INT 08 handler
         mmu.write_u32(0x0040, 0x006C, self.timer0.count);
@@ -163,8 +170,9 @@ impl Timer {
     pub fn inc(&mut self) {
         // XXX channel 0 is connected to interrupt.
         self.count += 1;
-        // println!("XXX Timer.inc {} {}", self.channel, self.count);
-
+        if DEBUG_PIT {
+            println!("pit timer inc {}: {:08x}", self.channel, self.count);
+        }
         if self.count >= 0x0018_00B0 {
             self.count = 0;
         }

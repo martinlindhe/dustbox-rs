@@ -116,16 +116,7 @@ impl Machine {
      // returns a non-deterministic Machine instance
     pub fn default() -> Self {
         let mut m = Self::deterministic();
-
-        for component in &mut m.components {
-            if let MachineComponent::PIT(pit) = component {
-                // there is approximately 18.2 clock ticks per second, 0x18_00B0 per 24 hrs. one tick is generated every 54.9254ms
-                let midnight = chrono::Local::now().date().and_hms(0, 0, 0);
-                let duration = chrono::Local::now().signed_duration_since(midnight).to_std().unwrap();
-                pit.timer0.count = (((duration.as_secs() as f64 * 1000.) + (f64::from(duration.subsec_nanos()) / 1_000_000.)) / 54.9254) as u32;
-            }
-        }
-
+        m.pit_mut().unwrap().init();
         m
     }
 
@@ -162,11 +153,21 @@ impl Machine {
         self.components.push(MachineComponent::GPU(gpu));
     }
 
+    /// returns a mutable reference to the PIT component
+    pub fn pit_mut(&mut self) -> Option<&mut PITComponent> {
+        for component in &mut self.components {
+            if let MachineComponent::PIT(c) = component {
+                return Some(c);
+            }
+        }
+        None
+    }
+
     /// returns a mutable reference to the Keyboard component
     pub fn keyboard_mut(&mut self) -> Option<&mut KeyboardComponent> {
         for component in &mut self.components {
-            if let MachineComponent::Keyboard(kb) = component {
-                return Some(kb);
+            if let MachineComponent::Keyboard(c) = component {
+                return Some(c);
             }
         }
         None
@@ -175,8 +176,8 @@ impl Machine {
     /// returns a mutable reference to the GPU component
     pub fn gpu_mut(&mut self) -> Option<&mut GPUComponent> {
         for component in &mut self.components {
-            if let MachineComponent::GPU(kb) = component {
-                return Some(kb);
+            if let MachineComponent::GPU(c) = component {
+                return Some(c);
             }
         }
         None
@@ -185,8 +186,8 @@ impl Machine {
     /// returns a reference to the GPU component
     pub fn gpu(&self) -> Option<&GPUComponent> {
         for component in &self.components {
-            if let MachineComponent::GPU(kb) = component {
-                return Some(kb);
+            if let MachineComponent::GPU(c) = component {
+                return Some(c);
             }
         }
         None
@@ -425,10 +426,10 @@ impl Machine {
             self.gpu_mut().unwrap().progress_scanline();
         }
 
+        // HACK: pit should be updated regularry, but in a deterministic way
         if self.cpu.cycle_count % 100 == 0 {
             for component in &mut self.components {
                 if let MachineComponent::PIT(pit) = component {
-                    // HACK: pit should be updated regularry, but in a deterministic way
                     pit.update(&mut self.mmu);
                 }
             }

@@ -28,7 +28,8 @@ mod render_test;
 const DEBUG_FONT: bool = false;
 const DEBUG_INTERRUPTS: bool = false;
 
-const ECHO_TELETYPE: bool = false; // if set, character output from dos programs will be echoed to stdout
+/// if set, character output from DOS programs will be echoed to stdout
+const ECHO_TELETYPE: bool = false;
 
 const CGA_MASKS: [u8; 4]  = [0x3f, 0xcf, 0xf3, 0xfc];
 const CGA_MASKS2: [u8; 8] = [0x7f, 0xbf, 0xdf, 0xef, 0xf7, 0xfb, 0xfd, 0xfe];
@@ -50,7 +51,6 @@ pub static STATIC_FUNCTIONALITY: [u8; 0x10] = [
  /* e */ 0x00,  // Change to add new functions
  /* f */ 0x00,  // reserved
 ];
-
 
 impl Component for GPU {
     fn in_u8(&mut self, port: u16) -> Option<u8> {

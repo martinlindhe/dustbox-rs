@@ -18,3 +18,10 @@ fn can_convert_to_long_pair() {
     assert_eq!(0xC000, ma.segment());
     assert_eq!(0x0000, ma.offset());
 }
+
+#[test]
+fn resolve_real_addressing() {
+    let ma1 = MemoryAddress::RealSegmentOffset(0x0000, 0x046C);
+    let ma2 = MemoryAddress::RealSegmentOffset(0x0040, 0x006C);
+    assert_eq!(ma1.value(), ma2.value());
+}
