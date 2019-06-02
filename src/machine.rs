@@ -8,7 +8,7 @@ use crate::bios::BIOS;
 use crate::cpu::{CPU, Op, Invalid, R, RegisterSnapshot, Segment, OperandSize};
 use crate::cpu::{Instruction, InstructionInfo, ModRegRm, RepeatMode, Exception};
 use crate::cpu::{Parameter, ParameterSet};
-use crate::gpu::{GFXMode, GPU};
+use crate::gpu::GFXMode;
 use crate::hex::hex_bytes;
 use crate::interrupt;
 use crate::memory::{MMU, MemoryAddress};
@@ -19,6 +19,7 @@ use crate::keyboard::Keyboard as KeyboardComponent;
 use crate::mouse::Mouse as MouseComponent;
 use crate::pic::PIC as PICComponent;
 use crate::pit::PIT as PITComponent;
+use crate::gpu::GPU as GPUComponent;
 
 #[cfg(test)]
 #[path = "./machine_test.rs"]
@@ -68,6 +69,7 @@ pub enum MachineComponent {
     Mouse(MouseComponent),
     PIC(PICComponent),
     PIT(PITComponent),
+    GPU(GPUComponent),
 }
 
 pub trait Component {
@@ -81,6 +83,11 @@ pub trait Component {
         false
     }
 
+    /// returns true if write was handled
+    fn out_u16(&mut self, _port: u16, _data: u16) -> bool {
+        false
+    }
+
     /// returns true if interrupt was handled
     fn int(&mut self, _int: u8, _cpu: &mut CPU, _mmu: &mut MMU) -> bool {
         false
@@ -88,7 +95,6 @@ pub trait Component {
 }
 
 pub struct Machine {
-    pub gpu: GPU,
     pub mmu: MMU,
     pub bios: BIOS,
     pub cpu: CPU,
@@ -125,16 +131,12 @@ impl Machine {
 
     pub fn deterministic() -> Self {
         let mut mmu = MMU::default();
-        let mut gpu = GPU::default();
         let mut bios = BIOS::default();
         bios.init(&mut mmu);
-        gpu.init(&mut mmu);
-        gpu.set_mode(&mut mmu, GFXMode::MODE_TEXT_80_25 as u8);
 
         let mut m = Machine {
             cpu: CPU::deterministic(),
             mmu,
-            gpu,
             bios,
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,
@@ -153,12 +155,37 @@ impl Machine {
         self.components.push(MachineComponent::Keyboard(KeyboardComponent::default()));
         self.components.push(MachineComponent::Mouse(MouseComponent::default()));
         self.components.push(MachineComponent::Storage(StorageComponent::default()));
+
+        let mut gpu = GPUComponent::default();
+        gpu.init(&mut self.mmu);
+        gpu.set_mode(&mut self.mmu, GFXMode::MODE_TEXT_80_25 as u8);
+        self.components.push(MachineComponent::GPU(gpu));
     }
 
     /// returns a mutable reference to the Keyboard component
     pub fn keyboard_mut(&mut self) -> Option<&mut KeyboardComponent> {
         for component in &mut self.components {
             if let MachineComponent::Keyboard(kb) = component {
+                return Some(kb);
+            }
+        }
+        None
+    }
+
+    /// returns a mutable reference to the GPU component
+    pub fn gpu_mut(&mut self) -> Option<&mut GPUComponent> {
+        for component in &mut self.components {
+            if let MachineComponent::GPU(kb) = component {
+                return Some(kb);
+            }
+        }
+        None
+    }
+
+    /// returns a reference to the GPU component
+    pub fn gpu(&self) -> Option<&GPUComponent> {
+        for component in &self.components {
+            if let MachineComponent::GPU(kb) = component {
                 return Some(kb);
             }
         }
@@ -300,6 +327,7 @@ impl Machine {
                 MachineComponent::Keyboard(c) => c.int(int, &mut self.cpu, &mut self.mmu),
                 MachineComponent::Mouse(c) => c.int(int, &mut self.cpu, &mut self.mmu),
                 MachineComponent::Storage(c) => c.int(int, &mut self.cpu, &mut self.mmu),
+                MachineComponent::GPU(c) => c.int(int, &mut self.cpu, &mut self.mmu),
             };
             if handled {
                 return;
@@ -313,7 +341,6 @@ impl Machine {
                 println!("INT 3 - debugger interrupt. AX={:04X}", self.cpu.get_r16(R::AX));
                 self.cpu.fatal_error = true; // stops execution
             }
-            0x10 => interrupt::int10::handle(self),
             0x20 => {
                 // DOS 1+ - TERMINATE PROGRAM
                 // NOTE: Windows overloads INT 20
@@ -395,7 +422,7 @@ impl Machine {
 
         if self.cpu.cycle_count % 100 == 0 {
             // XXX need instruction timing to do this properly
-            self.gpu.progress_scanline();
+            self.gpu_mut().unwrap().progress_scanline();
         }
 
         if self.cpu.cycle_count % 100 == 0 {
@@ -422,6 +449,7 @@ impl Machine {
                 MachineComponent::Keyboard(c) => c.in_u8(port),
                 MachineComponent::Mouse(c) => c.in_u8(port),
                 MachineComponent::Storage(c) => c.in_u8(port),
+                MachineComponent::GPU(c) => c.in_u8(port),
             };
             if let Some(v) = handled {
                 return v;
@@ -449,15 +477,6 @@ impl Machine {
                 //  0	A joystick X coordinate	   / A paddle coordinate
                 0 // XXX
             }
-            0x03C7 => self.gpu.dac.get_state(),
-            0x03C8 => self.gpu.dac.get_pel_write_index(),
-            0x03C9 => self.gpu.dac.get_pel_data(),
-            0x03D5 => {
-                // RW  CRT control register value
-                // XXX
-                0
-            },
-            0x03DA => self.gpu.read_cga_status_register(),
             _ => {
                 println!("in_u8: unhandled port {:04X}", port);
                 0
@@ -484,6 +503,7 @@ impl Machine {
                 MachineComponent::Keyboard(c) => c.out_u8(port, data),
                 MachineComponent::Mouse(c) => c.out_u8(port, data),
                 MachineComponent::Storage(c) => c.out_u8(port, data),
+                MachineComponent::GPU(c) => c.out_u8(port, data),
             };
             if b {
                 return;
@@ -494,48 +514,6 @@ impl Machine {
             0x0201 => {
                 // W  fire joystick's four one-shots
             }
-            // 02C6-02C9 - VGA/MCGA - DAC REGISTERS (alternate address)
-            0x02C9 => self.gpu.dac.set_pel_data(data),
-
-            0x03B4 => self.gpu.crtc.set_index(data),           // NOTE: mirror of 03D4
-            0x03B5 => self.gpu.crtc.write_current(data),
-
-            // PORT 03C2-03CF - EGA/VGA - MISCELLANEOUS REGISTERS
-            0x03C2 => {
-                // -W  miscellaneous output register (see #P0669)
-                // XXX impl
-            },
-
-            // PORT 03C6-03C9 - EGA/VGA/MCGA - DAC REGISTERS
-            0x03C6 => self.gpu.dac.set_pel_mask(data),
-            0x03C7 => self.gpu.dac.set_pel_read_index(data),
-            0x03C8 => self.gpu.dac.set_pel_write_index(data),
-            0x03C9 => self.gpu.dac.set_pel_data(data),
-
-            // PORT 03D4-03D5 - COLOR VIDEO - CRT CONTROL REGISTERS
-            0x03D4 => self.gpu.crtc.set_index(data),
-            0x03D5 => self.gpu.crtc.write_current(data),
-
-            0x03D8 => {
-                // RW  CGA mode control register  (except PCjr) (see #P0817)
-	            // cannot be found on native color EGA, color VGA, but on most clones
-            }
-            0x03D9 => {
-                // XXX CGA palette register!!!
-            }
-            0x03DA => {
-                // 03DA  -W  color EGA/color VGA feature control register (see #P0820)
-	            //  (at PORT 03BAh w in mono mode, VGA: 3CAh r)
-                // 03DA  -W  HZ309 (MDA/HGC/CGA clone) card from in Heath/Zenith HZ150 PC
-                //  bit7-1=0: unknown, zero is default and known to function
-                //            properly at least in CGA modes.
-                //  bit 0 = 1 override 3x8h bit3 control register that switches
-                //            CRT beam off if bit3 is cleared. So screens always
-                //            stays on.
-                //  bit 0 = 0 3x8h bit3 indicates if CRT beam is on or off.
-                //            No more info available. Might conflict with EGA/VGA.
-            }
-
             // PORT 03F0-03F7 - FDC 1	(1st Floppy Disk Controller)	second FDC at 0370
             0x03F2 => {
                 // 03F2  -W  diskette controller DOR (Digital Output Register) (see #P0862)
@@ -551,24 +529,20 @@ impl Machine {
         if DEBUG_IO {
             println!("out_u16: write to {:04X} = {:04X}", port, data);
         }
-        match port {
-            // PORT 03C4-03C5 - EGA/VGA - SEQUENCER REGISTERS
-            0x03C4 => {
-                // XXX if 16bit, its first INDEX byte, then DATA byte
-                let _idx = data >> 8 as u8; // TS index register
-                let _val = data as u8; // sequencer register index
-                // println!("XXX out_u16 03C4 idx {:02X} = {:02X}", idx, val);
-            },
-
-            // PORT 03C6-03C9 - EGA/VGA/MCGA - DAC REGISTERS
-            0x03C9 => self.gpu.dac.set_pel_data(data as u8),
-
-            // PORT 03D4-03D5 - COLOR VIDEO - CRT CONTROL REGISTERS
-            0x03D4 => self.gpu.crtc.set_index(data as u8),
-            0x03D5 => self.gpu.crtc.write_current(data as u8),
-
-            _ => println!("out_u16: unhandled port {:04X} = {:04X}", port, data),
+        for component in &mut self.components {
+            let b = match component {
+                MachineComponent::PIC(c) => c.out_u16(port, data),
+                MachineComponent::PIT(c) => c.out_u16(port, data),
+                MachineComponent::Keyboard(c) => c.out_u16(port, data),
+                MachineComponent::Mouse(c) => c.out_u16(port, data),
+                MachineComponent::Storage(c) => c.out_u16(port, data),
+                MachineComponent::GPU(c) => c.out_u16(port, data),
+            };
+            if b {
+                return;
+            }
         }
+        println!("out_u16: unhandled port {:04X} = {:04X}", port, data);
     }
 
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::cyclomatic_complexity))]
