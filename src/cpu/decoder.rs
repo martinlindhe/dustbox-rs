@@ -617,7 +617,7 @@ impl Decoder {
                 return;
             }
             0x3F => op.command = Op::Aas,
-            0x40...0x47 => match op.op_size {
+            0x40..=0x47 => match op.op_size {
                 OperandSize::_16bit => {
                     // inc r16
                     op.command = Op::Inc16;
@@ -629,7 +629,7 @@ impl Decoder {
                     op.params.dst = Parameter::Reg32(r32(b & 7));
                 }
             },
-            0x48...0x4F => match op.op_size {
+            0x48..=0x4F => match op.op_size {
                 OperandSize::_16bit => {
                     // dec r16
                     op.command = Op::Dec16;
@@ -641,7 +641,7 @@ impl Decoder {
                     op.params.dst = Parameter::Reg32(r32(b & 7));
                 }
             },
-            0x50...0x57 => match op.op_size {
+            0x50..=0x57 => match op.op_size {
                 OperandSize::_16bit => {
                     // push r16
                     op.command = Op::Push16;
@@ -653,7 +653,7 @@ impl Decoder {
                     op.params.dst = Parameter::Reg32(r32(b & 7));
                 }
             },
-            0x58...0x5F => match op.op_size {
+            0x58..=0x5F => match op.op_size {
                 OperandSize::_16bit => {
                     // pop r16
                     op.command = Op::Pop16;
@@ -991,7 +991,7 @@ impl Decoder {
                 };
             }
             0x90 => op.command = Op::Nop,
-            0x91...0x97 => match op.op_size {
+            0x91..=0x97 => match op.op_size {
                 OperandSize::_16bit => {
                     // xchg AX, r16 | xchg r16, AX
                     // NOTE: "xchg ax,ax" is an alias of "nop"
@@ -1098,13 +1098,13 @@ impl Decoder {
             },
             0xAE => op.command = Op::Scasb,
             0xAF => op.command = Op::Scasw,
-            0xB0...0xB7 => {
+            0xB0..=0xB7 => {
                 // mov r8, u8
                 op.command = Op::Mov8;
                 op.params.dst = Parameter::Reg8(r8(b & 7));
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
-            0xB8...0xBF => match op.op_size {
+            0xB8..=0xBF => match op.op_size {
                 OperandSize::_16bit => {
                     // mov r16, u16
                     op.command = Op::Mov16;
@@ -1314,7 +1314,7 @@ impl Decoder {
             }
             0xD6 => op.command = Op::Salc,
             0xD7 => op.command = Op::Xlatb,
-            0xD8...0xDF => {
+            0xD8..=0xDF => {
                 // fpu
                 op.command = Op::Invalid(vec!(b), Invalid::FPUOp);
             }

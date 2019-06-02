@@ -549,17 +549,15 @@ pub struct VideoFrame {
 impl VideoFrame {
     /// converts a video frame to a ImageBuffer, used for saving video frame to disk in gpu_test
     pub fn draw_image(&self) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
-        let img = ImageBuffer::from_fn(self.mode.swidth, self.mode.sheight, |x, y| {
+        ImageBuffer::from_fn(self.mode.swidth, self.mode.sheight, |x, y| {
             let offset = ((y * self.mode.swidth) + x) as usize;
-
             if let ColorSpace::RGB(r, g, b) = self.data[offset] {
                 Rgb([r, g, b])
             } else {
                 println!("error unhandled colorspace not RGB");
                 Rgb([0, 0, 0])
             }
-        });
-        img
+        })
     }
 }
 
@@ -779,7 +777,7 @@ impl GPU {
 
         // Set some interrupt vectors
         match self.mode.cheight {
-            0...3 | 7 | 8 => mmu.write_vec(0x43, self.font_8_first),
+            0..=3 | 7 | 8 => mmu.write_vec(0x43, self.font_8_first),
             14 => mmu.write_vec(0x43, self.font_14),
             16 => mmu.write_vec(0x43, self.font_16),
             _ => {},
