@@ -2,10 +2,11 @@ use crate::cpu::{CPU, R};
 use crate::machine::Component;
 use crate::memory::MMU;
 
-pub struct Disk {
+// mass storage (disk, floppy)
+pub struct Storage {
 }
 
-impl Component for Disk {
+impl Component for Storage {
     fn int(&mut self, int: u8, cpu: &mut CPU, _mmu: &mut MMU) -> bool {
         if int != 0x13 {
             return false;
@@ -27,7 +28,7 @@ impl Component for Disk {
     }
 }
 
-impl Disk {
+impl Storage {
     pub fn default() -> Self {
         Self {
         }

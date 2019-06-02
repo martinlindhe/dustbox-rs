@@ -14,7 +14,7 @@ use crate::interrupt;
 use crate::memory::{MMU, MemoryAddress};
 use crate::ndisasm::{ndisasm_bytes, ndisasm_first_instr};
 
-use crate::disk::Disk as DiskComponent;
+use crate::storage::Storage as StorageComponent;
 use crate::keyboard::Keyboard as KeyboardComponent;
 use crate::mouse::Mouse as MouseComponent;
 use crate::pic::PIC as PICComponent;
@@ -63,7 +63,7 @@ struct Exe {
 }
 
 pub enum MachineComponent {
-    Disk(DiskComponent),
+    Storage(StorageComponent),
     Keyboard(KeyboardComponent),
     Mouse(MouseComponent),
     PIC(PICComponent),
@@ -152,7 +152,7 @@ impl Machine {
         self.components.push(MachineComponent::PIT(PITComponent::default()));
         self.components.push(MachineComponent::Keyboard(KeyboardComponent::default()));
         self.components.push(MachineComponent::Mouse(MouseComponent::default()));
-        self.components.push(MachineComponent::Disk(DiskComponent::default()));
+        self.components.push(MachineComponent::Storage(StorageComponent::default()));
     }
 
     /// returns a mutable reference to the Keyboard component
@@ -299,7 +299,7 @@ impl Machine {
                 MachineComponent::PIT(c) => c.int(int, &mut self.cpu, &mut self.mmu),
                 MachineComponent::Keyboard(c) => c.int(int, &mut self.cpu, &mut self.mmu),
                 MachineComponent::Mouse(c) => c.int(int, &mut self.cpu, &mut self.mmu),
-                MachineComponent::Disk(c) => c.int(int, &mut self.cpu, &mut self.mmu),
+                MachineComponent::Storage(c) => c.int(int, &mut self.cpu, &mut self.mmu),
             };
             if handled {
                 return;
@@ -421,7 +421,7 @@ impl Machine {
                 MachineComponent::PIT(c) => c.in_u8(port),
                 MachineComponent::Keyboard(c) => c.in_u8(port),
                 MachineComponent::Mouse(c) => c.in_u8(port),
-                MachineComponent::Disk(c) => c.in_u8(port),
+                MachineComponent::Storage(c) => c.in_u8(port),
             };
             if let Some(v) = handled {
                 return v;
@@ -483,7 +483,7 @@ impl Machine {
                 MachineComponent::PIT(c) => c.out_u8(port, data),
                 MachineComponent::Keyboard(c) => c.out_u8(port, data),
                 MachineComponent::Mouse(c) => c.out_u8(port, data),
-                MachineComponent::Disk(c) => c.out_u8(port, data),
+                MachineComponent::Storage(c) => c.out_u8(port, data),
             };
             if b {
                 return;
