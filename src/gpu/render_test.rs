@@ -97,8 +97,8 @@ fn can_int10_put_pixel() {
     machine.execute_instruction(); // trigger the interrupt
     assert_eq!(0x0113, machine.cpu.regs.ip);
 
-    let frame = machine.gpu.render_frame(&machine.mmu);
-    let mut img = draw_image(&frame, &machine.gpu.mode);
+    let frame = machine.gpu().unwrap().render_frame(&machine.mmu);
+    let mut img = frame.draw_image();
     let img = img.sub_image(0, 0, 6, 6).to_image();
     assert_eq!("\
 ......
@@ -131,8 +131,8 @@ let mut machine = Machine::deterministic();
     machine.execute_instruction(); // trigger the interrupt
     assert_eq!(0x0112, machine.cpu.regs.ip);
 
-    let frame = machine.gpu.render_frame(&machine.mmu);
-    let mut img = draw_image(&frame, &machine.gpu.mode);
+    let frame = machine.gpu().unwrap().render_frame(&machine.mmu);
+    let mut img = frame.draw_image();
     let img = img.sub_image(0, 0, 8, 8).to_image();
     assert_eq!("\
 .,,,,...
@@ -357,12 +357,12 @@ fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefi
         let _ = fs::create_dir(&format!("docs/render/{}", group));
         let stem = path.file_stem().unwrap_or(OsStr::new(""));
         let mut filename = OsString::new(); // XXX base on dirname
-        let outname = &format!("render/{}/{:02x}_{}", group, machine.gpu.mode.mode, name_prefix);
+        let outname = &format!("render/{}/{:02x}_{}", group, machine.gpu_mut().unwrap().mode.mode, name_prefix);
         filename.push(format!("docs/{}", outname));
         filename.push(stem.to_os_string());
         filename.push(".png");
 
-        if write_video_frame_to_disk(&machine, filename.to_str().unwrap()) {
+        if write_video_frame_to_disk(&mut machine, filename.to_str().unwrap()) {
             let mut pub_filename = String::new();
             pub_filename.push_str(&outname);
             pub_filename.push_str(stem.to_str().unwrap());
@@ -398,29 +398,14 @@ fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefi
     }
 }
 
-// converts a video frame to a ImageBuffer, used for saving video frame to disk in gpu_test
-fn draw_image(frame: &[ColorSpace], mode: &VideoModeBlock) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
-    let img = ImageBuffer::from_fn(mode.swidth, mode.sheight, |x, y| {
-        let offset = ((y * mode.swidth) + x) as usize;
-
-        if let ColorSpace::RGB(r, g, b) = frame[offset] {
-            Rgb([r, g, b])
-        } else {
-            println!("error unhandled colorspace not RGB");
-            Rgb([0, 0, 0])
-        }
-    });
-    img
-}
-
 // returns true on success
-fn write_video_frame_to_disk(machine: &Machine, pngfile: &str) -> bool {
-    let frame = machine.gpu.render_frame(&machine.mmu);
-    if frame.is_empty() {
+fn write_video_frame_to_disk(machine: &mut Machine, pngfile: &str) -> bool {
+    let frame = machine.gpu().unwrap().render_frame(&machine.mmu);
+    if frame.data.is_empty() {
         println!("ERROR: no frame rendered");
         return false;
     }
-    let img = draw_image(&frame, &machine.gpu.mode);
+    let img = frame.draw_image();
     if let Err(why) = img.save(pngfile) {
         println!("save err: {:?}", why);
         return false;

@@ -2,7 +2,10 @@ use std::cell::RefCell;
 use std::num::Wrapping;
 use std::marker::PhantomData;
 
-use crate::cpu::CPU;
+use image::{ImageBuffer, Rgb, Pixel, GenericImage};
+
+use crate::cpu::{CPU, R};
+use crate::machine::Component;
 use crate::memory::{MMU, MemoryAddress};
 use crate::gpu::palette;
 use crate::gpu::palette::ColorSpace;
@@ -48,6 +51,477 @@ pub static STATIC_FUNCTIONALITY: [u8; 0x10] = [
  /* f */ 0x00,  // reserved
 ];
 
+
+impl Component for GPU {
+    fn in_u8(&mut self, port: u16) -> Option<u8> {
+        match port {
+            0x03C7 => Some(self.dac.get_state()),
+            0x03C8 => Some(self.dac.get_pel_write_index()),
+            0x03C9 => Some(self.dac.get_pel_data()),
+            0x03D5 => {
+                // RW  CRT control register value
+                // XXX
+                Some(0)
+            },
+            0x03DA => Some(self.read_cga_status_register()),
+            _ => None
+        }
+    }
+
+    fn out_u8(&mut self, port: u16, data: u8) -> bool {
+        match port {
+            // 02C6-02C9 - VGA/MCGA - DAC REGISTERS (alternate address)
+            0x02C9 => self.dac.set_pel_data(data),
+
+            0x03B4 => self.crtc.set_index(data),           // NOTE: mirror of 03D4
+            0x03B5 => self.crtc.write_current(data),
+
+            // PORT 03C2-03CF - EGA/VGA - MISCELLANEOUS REGISTERS
+            0x03C2 => {
+                // -W  miscellaneous output register (see #P0669)
+                // XXX impl
+            },
+
+            // PORT 03C6-03C9 - EGA/VGA/MCGA - DAC REGISTERS
+            0x03C6 => self.dac.set_pel_mask(data),
+            0x03C7 => self.dac.set_pel_read_index(data),
+            0x03C8 => self.dac.set_pel_write_index(data),
+            0x03C9 => self.dac.set_pel_data(data),
+
+            // PORT 03D4-03D5 - COLOR VIDEO - CRT CONTROL REGISTERS
+            0x03D4 => self.crtc.set_index(data),
+            0x03D5 => self.crtc.write_current(data),
+
+            0x03D8 => {
+                // RW  CGA mode control register  (except PCjr) (see #P0817)
+                // cannot be found on native color EGA, color VGA, but on most clones
+            }
+            0x03D9 => {
+                // XXX CGA palette register
+            }
+            0x03DA => {
+                // 03DA  -W  color EGA/color VGA feature control register (see #P0820)
+                //  (at PORT 03BAh w in mono mode, VGA: 3CAh r)
+                // 03DA  -W  HZ309 (MDA/HGC/CGA clone) card from in Heath/Zenith HZ150 PC
+                //  bit7-1=0: unknown, zero is default and known to function
+                //            properly at least in CGA modes.
+                //  bit 0 = 1 override 3x8h bit3 control register that switches
+                //            CRT beam off if bit3 is cleared. So screens always
+                //            stays on.
+                //  bit 0 = 0 3x8h bit3 indicates if CRT beam is on or off.
+                //            No more info available. Might conflict with EGA/VGA.
+            }
+            _ => return false
+        }
+        true
+    }
+
+    fn out_u16(&mut self, port: u16, data: u16) -> bool {
+        match port {
+            // PORT 03C4-03C5 - EGA/VGA - SEQUENCER REGISTERS
+            0x03C4 => {
+                // XXX if 16bit, its first INDEX byte, then DATA byte
+                let _idx = data >> 8 as u8; // TS index register
+                let _val = data as u8; // sequencer register index
+                // println!("XXX out_u16 03C4 idx {:02X} = {:02X}", idx, val);
+            },
+
+            // PORT 03C6-03C9 - EGA/VGA/MCGA - DAC REGISTERS
+            0x03C9 => self.dac.set_pel_data(data as u8),
+
+            // PORT 03D4-03D5 - COLOR VIDEO - CRT CONTROL REGISTERS
+            0x03D4 => self.crtc.set_index(data as u8),
+            0x03D5 => self.crtc.write_current(data as u8),
+            _ => return false
+        }
+        true
+    }
+
+    fn int(&mut self, int: u8, cpu: &mut CPU, mmu: &mut MMU) -> bool {
+        if int != 0x10 {
+            return false;
+        }
+        match cpu.get_r8(R::AH) {
+            0x00 => {
+                // VIDEO - SET VIDEO MODE
+                let al = cpu.get_r8(R::AL);
+                self.set_mode(mmu, al);
+            }
+            0x01 => {
+                // VIDEO - SET TEXT-MODE CURSOR SHAPE
+                //
+                // CH = cursor start and options (see #00013)
+                // CL = bottom scan line containing cursor (bits 0-4)
+
+                // Return:
+                // Nothing
+                println!("XXX set text-mode cursor shape, start_options={:02X}, bottom_line={:02X}",
+                        cpu.get_r8(R::CH),
+                        cpu.get_r8(R::CL));
+            }
+            0x02 => {
+                // VIDEO - SET CURSOR POSITION
+                let page = cpu.get_r8(R::BH);
+                let row = cpu.get_r8(R::DH);
+                let column = cpu.get_r8(R::DL);
+                self.set_cursor_pos(mmu, row, column, page);
+            }
+            0x03 => {
+                // VIDEO - GET CURSOR POSITION AND SIZE
+                let page = cpu.get_r8(R::BH);
+                // Return:
+                // AX = 0000h (Phoenix BIOS)
+                // CH = start scan line
+                // CL = end scan line
+                // DH = row (00h is top)
+                // DL = column (00h is left)
+                println!("XXX GET CURSOR POSITION AND SIZE, page {}", page);
+            }
+            0x05 => {
+                // VIDEO - SELECT ACTIVE DISPLAY PAGE
+                // AL = new page number (0 to number of pages - 1)
+                let al = cpu.get_r8(R::AL);
+                /*
+                if (al & 0x80 != 0) && gpu.card.is_tandy() {
+                    let crtcpu = mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CRTCPU_PAGE);
+                    match al {
+                        0x80 => {
+                            reg_bh = crtcpu & 7;
+                            reg_bl = (crtcpu >> 3) & 0x7;
+                        }
+                        0x81 => {
+                            crtcpu = (crtcpu & 0xc7) | ((reg_bl & 7) << 3);
+                        }
+                        0x82 => {
+                            crtcpu = (crtcpu & 0xf8) | (reg_bh & 7);
+                        }
+                        0x83 => {
+                            crtcpu = (crtcpu & 0xc0) | (reg_bh & 7) | ((reg_bl & 7) << 3);
+                        }
+                    }
+                    if gpu.card.is_pc_jr() {
+                        // always return graphics mapping, even for invalid values of AL
+                        reg_bh = crtcpu & 7;
+                        reg_bl = (crtcpu >> 3) & 0x7;
+                    }
+                    IO_WriteB(0x3DF, crtcpu);
+                    mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CRTCPU_PAGE, crtcpu);
+                } else {
+                */
+                    self.set_active_page(mmu, al);
+                //}
+            }
+            0x06 => {
+                // VIDEO - SCROLL UP WINDOW
+                // AL = number of lines by which to scroll up (00h = clear entire window)
+                // BH = attribute used to write blank lines at bottom of window
+                // CH,CL = row,column of window's upper left corner
+                // DH,DL = row,column of window's lower right corner
+                let lines = cpu.get_r8(R::AL);
+                let attr = cpu.get_r8(R::BH);
+                let x1 = cpu.get_r8(R::CL);
+                let y1 = cpu.get_r8(R::CH);
+                let x2 = cpu.get_r8(R::DL);
+                let y2 = cpu.get_r8(R::DH);
+                println!("XXX int10 - SCROLL UP WINDOW, lines {}, attr {}, upper left {},{}, lower right {},{}", lines, attr, x1, y1, x2, y2);
+            }
+            0x08 => {
+                // VIDEO - READ CHARACTER AND ATTRIBUTE AT CURSOR POSITION
+                let page = cpu.get_r8(R::BH);
+                // Return:
+                // AH = character's attribute (text mode only) (see #00014)
+                // AH = character's color (Tandy 2000 graphics mode only)
+                // AL = character
+                println!("XXX int10 - READ CHARACTER AND ATTRIBUTE AT CURSOR POSITION, page {}", page);
+            }
+            0x09 => {
+                // VIDEO - WRITE CHARACTER AND ATTRIBUTE AT CURSOR POSITION
+                let chr = cpu.get_r8(R::AL);
+                let page = cpu.get_r8(R::BH);
+                let mut attrib = cpu.get_r8(R::BL);
+                let count = cpu.get_r16(R::CX);
+                if mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_MODE) == 0x11 {
+                    attrib = (attrib & 0x80) | 0x3F;
+                }
+                self.write_char(mmu, u16::from(chr), attrib, page, count, true);
+            }
+            0x0A => {
+                // VIDEO - WRITE CHARACTER ONLY AT CURSOR POSITION
+                let chr = cpu.get_r8(R::AL);
+                let page = cpu.get_r8(R::BH);
+                let attrib = cpu.get_r8(R::BL);
+                let count = cpu.get_r16(R::CX);
+                self.write_char(mmu, u16::from(chr), attrib, page, count, false);
+            }
+            0x0B => {
+                match cpu.get_r8(R::BH) {
+                    0x00 => {
+                        // VIDEO - SET BACKGROUND/BORDER COLOR
+                        // BL = background/border color (border only in text modes)
+                        // Return: Nothing
+                        println!("XXX set bg/border color, bl={:02X}", cpu.get_r8(R::BL));
+                    }
+                    0x01 => {
+                        // VIDEO - SET PALETTE
+                        // BL = palette ID
+                        //    00h background, green, red, and brown/yellow
+                        //    01h background, cyan, magenta, and white
+                        // Return: Nothing
+                        //
+                        // Note: This call was only valid in 320x200 graphics on
+                        // the CGA, but newer cards support it in many or all
+                        // graphics modes
+                        println!("XXX TODO set palette id, bl={:02X}", cpu.get_r8(R::BL));
+                    }
+                    _ => {
+                        println!("video error: unknown int 10, ah=0B, bh={:02X}", cpu.get_r8(R::BH));
+                    }
+                }
+            }
+            0x0C => {
+                // VIDEO - WRITE GRAPHICS PIXEL
+                let page = cpu.get_r8(R::BH);
+                let color = cpu.get_r8(R::AL);
+                let col = cpu.get_r16(R::CX);
+                let row = cpu.get_r16(R::DX);
+                self.write_pixel(mmu, col, row, page, color);
+            }
+            0x0E => {
+                // VIDEO - TELETYPE OUTPUT
+                let chr = cpu.get_r8(R::AL);
+                let page = cpu.get_r8(R::BH);
+                let color = cpu.get_r8(R::BL);
+                self.teletype_output(mmu, chr, page, color);
+            }
+            0x0F => {
+                // VIDEO - GET CURRENT VIDEO MODE
+                cpu.set_r8(R::AH, self.mode.twidth as u8);      // number of character columns
+                cpu.set_r8(R::AL, self.mode.mode as u8);        // display mode
+                cpu.set_r8(R::BH, self.get_active_page(mmu));   // active page
+            }
+            0x10 => {
+                match cpu.get_r8(R::AL) {
+                    0x00 => {
+                        // VIDEO - SET SINGLE PALETTE REGISTER (PCjr,Tandy,EGA,MCGA,VGA)
+                        // BL = palette register number (00h-0Fh)
+                        //    = attribute register number (undocumented) (see #00017)
+                        // BH = color or attribute register value
+                        panic!("XXX VIDEO - SET SINGLE PALETTE REGISTER, bl={:02X}, bh={:02X}",
+                                cpu.get_r8(R::BL),
+                                cpu.get_r8(R::BH));
+                    }
+                    0x07 => {
+                        // VIDEO - GET INDIVIDUAL PALETTE REGISTER (VGA,UltraVision v2+)
+                        let reg = cpu.get_r8(R::BL);
+                        cpu.set_r8(R::BH, self.get_individual_palette_register(reg));
+                    }
+                    0x10 => {
+                        // VIDEO - SET INDIVIDUAL DAC REGISTER (VGA/MCGA)
+                        let index = cpu.get_r8(R::BL);
+                        let r = cpu.get_r8(R::DH);
+                        let g = cpu.get_r8(R::CH);
+                        let b = cpu.get_r8(R::CL);
+                        self.set_individual_dac_register(mmu, index, r, g, b);
+                    }
+                    0x12 => {
+                        // VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA)
+                        let start = cpu.get_r16(R::BX);
+                        let count = cpu.get_r16(R::CX);
+                        let seg = cpu.get_r16(R::ES);
+                        let off = cpu.get_r16(R::DX);
+                        self.set_dac_block(mmu, start, count, seg, off);
+                    }
+                    0x15 => {
+                        // VIDEO - READ INDIVIDUAL DAC REGISTER (VGA/MCGA)
+                        let reg = cpu.get_r8(R::BL);
+                        let (r, g, b) = self.get_individual_dac_register(reg);
+                        cpu.set_r8(R::DH, r);
+                        cpu.set_r8(R::CH, g);
+                        cpu.set_r8(R::CL, b);
+                    }
+                    0x17 => {
+                        // VIDEO - READ BLOCK OF DAC REGISTERS (VGA/MCGA)
+                        let index = cpu.get_r16(R::BX);
+                        let count = cpu.get_r16(R::CX);
+                        let seg = cpu.get_r16(R::ES);
+                        let off = cpu.get_r16(R::DX);
+                        self.read_dac_block(mmu, index, count, seg, off);
+                    }
+                    _ => {
+                        println!("int10 error: unknown AH 10, al={:02X}", cpu.get_r8(R::AL));
+                    }
+                }
+            }
+            0x11 => {
+                match cpu.get_r8(R::AL) {
+                    0x24 => {
+                        // VIDEO - GRAPH-MODE CHARGEN - LOAD 8x16 GRAPHICS CHARS (VGA,MCGA)
+                        let bl = cpu.get_r8(R::BL);
+                        let dl = cpu.get_r8(R::DL);
+                        self.load_graphics_chars(mmu, bl, dl);
+                    }
+                    0x30 => {
+                        // VIDEO - GET FONT INFORMATION (EGA, MCGA, VGA)
+                        // return:
+                        // ES:BP = specified pointer
+                        // CX    = bytes/character of on-screen font (not the requested font!)
+                        // DL    = highest character row on screen
+                        let bh = cpu.get_r8(R::BH);
+                        match bh { // BH = pointer specifier
+                            0x00 => { // INT 1Fh pointer
+                                let (seg, off) = mmu.read_vec(0x1F);
+                                cpu.set_r16(R::ES, seg);
+                                cpu.set_r16(R::BP, off);
+                            }
+                            // 01h INT 43h pointer
+                            0x02 => {
+                                // ROM 8x14 character font pointer
+                                if let MemoryAddress::RealSegmentOffset(seg, off) = self.font_14 {
+                                    cpu.set_r16(R::ES, seg);
+                                    cpu.set_r16(R::BP, off);
+                                }
+                            }
+                            // 03h ROM 8x8 double dot font pointer
+                            // 04h ROM 8x8 double dot font (high 128 characters)
+                            // 05h ROM alpha alternate (9 by 14) pointer (EGA,VGA)
+                            0x06 => {
+                                // ROM 8x16 font (MCGA, VGA)
+                                if self.card.is_vga() {
+                                    if let MemoryAddress::RealSegmentOffset(seg, off) = self.font_16 {
+                                        cpu.set_r16(R::ES, seg);
+                                        cpu.set_r16(R::BP, off);
+                                    }
+                                }
+                            }
+                            // 07h ROM alternate 9x16 font (VGA only) (see #00021)
+                            // 11h (UltraVision v2+) 8x20 font (VGA) or 8x19 font (autosync EGA)
+                            // 12h (UltraVision v2+) 8x10 font (VGA) or 8x11 font (autosync EGA)
+                            _ => {
+                                println!("VIDEO - GET FONT INFORMATION (EGA, MCGA, VGA): unhandled bh={:02X}", bh);
+                                return false;
+                            }
+                        }
+                    }
+                    _ => {
+                        println!("int10 error: unknown ah=11, al={:02X}", cpu.get_r8(R::AL));
+                        return false;
+                    }
+                }
+            }
+            0x12 => {
+                match cpu.get_r8(R::BL) {
+                    0x10 => {
+                        // VIDEO - ALTERNATE FUNCTION SELECT (PS, EGA, VGA, MCGA) - GET EGA INFO
+
+                        // Return:
+                        // BH = video state
+                        //      00h color mode in effect (I/O port 3Dxh)
+                        //      01h mono mode in effect (I/O port 3Bxh)
+                        // BL = installed memory (00h = 64K, 01h = 128K, 02h = 192K, 03h = 256K)
+                        // CH = feature connector bits (see #00022)
+                        // CL = switch settings (see #00023,#00024)
+
+                        // use return values as seen on win xp
+                        cpu.set_r8(R::BH, 0); // color mode in effect (I/O port 3Dxh)
+                        cpu.set_r8(R::BL, 3); // 256k
+                        cpu.set_r8(R::CH, 0);
+                        cpu.set_r8(R::CL, 9);
+                    }
+                    _ => {
+                        println!("int10 error: unknown ah=12, bl={:02X}", cpu.get_r8(R::BL));
+                        return false;
+                    }
+                }
+            }
+            0x13 => {
+                // VIDEO - WRITE STRING (AT and later,EGA)
+                let row = cpu.get_r8(R::DH);
+                let col = cpu.get_r8(R::DL);
+                let flag = cpu.get_r8(R::AL);
+                let attr = cpu.get_r8(R::BL);
+                let str_seg = cpu.get_r16(R::ES);
+                let str_offs = cpu.get_r16(R::BP);
+                let count = cpu.get_r16(R::CX);
+                let page = cpu.get_r8(R::BH);
+                self.write_string(mmu, row, col, flag, attr, str_seg, str_offs, count, page);
+            }
+            0x1A => {
+                match cpu.get_r8(R::AL) {
+                    0x00 => {
+                        // VIDEO - GET DISPLAY COMBINATION CODE (PS,VGA/MCGA)
+                        // Return:
+                        // AL = 1Ah if function was supported
+                        // BL = active display code (see #00039)
+                        // BH = alternate display code (see #00039)
+                        cpu.set_r8(R::AL, 0x1A);
+                        cpu.set_r8(R::BL, 0x08); // 08 = VGA w/ color analog display
+                        cpu.set_r8(R::BH, 0x00); // 00 = no display
+                    }
+                    _ => {
+                        println!("int10 error: unknown ah=1a, al={:02X}", cpu.get_r8(R::AL));
+                        return false;
+                    }
+                }
+            }
+            0x4F => {
+                // VESA
+                match cpu.get_r8(R::AL) {
+                    0x01 => {
+                        // VESA SuperVGA BIOS - GET SuperVGA MODE INFORMATION
+                        // CX = SuperVGA video mode (see #04082 for bitfields)
+                        // ES:DI -> 256-byte buffer for mode information (see #00079)
+                        // Return:
+                        // AL = 4Fh if function supported
+                        // AH = status:
+                        //      00h successful, ES:DI buffer filled
+                        //      01h failed
+                        println!("XXX VESA SuperVGA BIOS - GET SuperVGA MODE INFORMATION. cx={:04X}", cpu.get_r16(R::CX));
+                    }
+                    0x02 => {
+                        // VESA SuperVGA BIOS - SET SuperVGA VIDEO MODE
+                        // BX = new video mode (see #04082,#00083,#00084)
+                        // ES:DI -> (VBE 3.0+) CRTC information block, bit mode bit 11 set
+                        // Return:
+                        // AL = 4Fh if function supported
+                        // AH = status
+                        //      00h successful
+                        //      01h failed
+                        println!("XXX VESA SuperVGA BIOS - SET SuperVGA VIDEO MODE. bx={:04X}", cpu.get_r16(R::BX));
+                    }
+                    0x05 => {
+                        // VESA SuperVGA BIOS - CPU VIDEO MEMORY CONTROL
+                        // BH = subfunction
+                        // 00h select video memory window
+                        // DX = window address in video memory (in granularity units)
+                        // 01h get video memory window
+                        // Return:
+                        // DX = window address in video memory (in gran. units).
+                        // BL = window number
+                        //      00h window A
+                        //      01h window B.
+                        // ES = selector for memory-mapped registers (VBE 2.0+, when called from 32-bit protected mode)
+                        println!("XXX VESA SuperVGA BIOS - CPU VIDEO MEMORY CONTROL. bh={:02X}", cpu.get_r8(R::BH));
+                    }
+                    _ => {
+                        println!("int10 error: unknown AH 4F (VESA), al={:02X}", cpu.get_r8(R::AL));
+                        return false;
+                    }
+                }
+            }
+            _ => {
+                println!("int10 (video) error: unknown ah={:02X}, ax={:04X}, bx={:04X}",
+                        cpu.get_r8(R::AH),
+                        cpu.get_r16(R::AX),
+                        cpu.get_r16(R::BX));
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+
 #[derive(Clone)]
 pub struct GPU {
     pub scanline: u32,
@@ -65,6 +539,28 @@ pub struct GPU {
     pub card: GraphicCard,
     pub mode: VideoModeBlock,
     modes: Vec<VideoModeBlock>,
+}
+
+pub struct VideoFrame {
+    pub data: Vec<ColorSpace>,
+    pub mode: VideoModeBlock,
+}
+
+impl VideoFrame {
+    /// converts a video frame to a ImageBuffer, used for saving video frame to disk in gpu_test
+    pub fn draw_image(&self) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+        let img = ImageBuffer::from_fn(self.mode.swidth, self.mode.sheight, |x, y| {
+            let offset = ((y * self.mode.swidth) + x) as usize;
+
+            if let ColorSpace::RGB(r, g, b) = self.data[offset] {
+                Rgb([r, g, b])
+            } else {
+                println!("error unhandled colorspace not RGB");
+                Rgb([0, 0, 0])
+            }
+        });
+        img
+    }
 }
 
 impl GPU {
@@ -91,32 +587,35 @@ impl GPU {
         }
     }
 
-    pub fn render_frame(&self, mmu: &MMU) -> Vec<ColorSpace> {
+    pub fn render_frame(&self, mmu: &MMU) -> VideoFrame {
         let memory = mmu.dump_mem();
-        match self.mode.mode {
-            // 00: 40x25 Black and White text (CGA,EGA,MCGA,VGA)
-            // 01: 40x25 16 color text (CGA,EGA,MCGA,VGA)
-            // 02: 80x25 16 shades of gray text (CGA,EGA,MCGA,VGA)
-            //0x03 => self.render_mode03_frame(memory), // 80x25 16 color text (CGA,EGA,MCGA,VGA)
-            0x04 => self.render_mode04_frame(&memory), // 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
-            // 05: 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
-            //0x06 => self.render_mode06_frame(memory), // 640x200 B/W graphics (CGA,EGA,MCGA,VGA)
-            // 07: 80x25 Monochrome text (MDA,HERC,EGA,VGA)
-            // 08: 160x200 16 color graphics (PCjr)
-            // 09: 320x200 16 color graphics (PCjr)
-            // 0A: 640x200 4 color graphics (PCjr)
-            // 0D: 320x200 16 color graphics (EGA,VGA)
-            // 0E: 640x200 16 color graphics (EGA,VGA)
-            // 0F: 640x350 Monochrome graphics (EGA,VGA)
-            // 10: 640x350 16 color graphics (EGA or VGA with 128K)
-            //     640x350 4 color graphics (64K EGA)
-            //0x11 => self.render_mode11_frame(&memory), // 640x480 B/W graphics (MCGA,VGA)
-            //0x12 => self.render_mode12_frame(&memory), // 640x480 16 color graphics (VGA)
-            0x13 => self.render_mode13_frame(&memory), // 320x200 256 color graphics (MCGA,VGA)
-            _ => {
-                println!("XXX fixme render_frame for mode {:02x}", self.mode.mode);
-                Vec::new()
-            }
+        VideoFrame{
+            data: match self.mode.mode {
+                // 00: 40x25 Black and White text (CGA,EGA,MCGA,VGA)
+                // 01: 40x25 16 color text (CGA,EGA,MCGA,VGA)
+                // 02: 80x25 16 shades of gray text (CGA,EGA,MCGA,VGA)
+                //0x03 => self.render_mode03_frame(memory), // 80x25 16 color text (CGA,EGA,MCGA,VGA)
+                0x04 => self.render_mode04_frame(&memory), // 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
+                // 05: 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
+                //0x06 => self.render_mode06_frame(memory), // 640x200 B/W graphics (CGA,EGA,MCGA,VGA)
+                // 07: 80x25 Monochrome text (MDA,HERC,EGA,VGA)
+                // 08: 160x200 16 color graphics (PCjr)
+                // 09: 320x200 16 color graphics (PCjr)
+                // 0A: 640x200 4 color graphics (PCjr)
+                // 0D: 320x200 16 color graphics (EGA,VGA)
+                // 0E: 640x200 16 color graphics (EGA,VGA)
+                // 0F: 640x350 Monochrome graphics (EGA,VGA)
+                // 10: 640x350 16 color graphics (EGA or VGA with 128K)
+                //     640x350 4 color graphics (64K EGA)
+                //0x11 => self.render_mode11_frame(&memory), // 640x480 B/W graphics (MCGA,VGA)
+                //0x12 => self.render_mode12_frame(&memory), // 640x480 16 color graphics (VGA)
+                0x13 => self.render_mode13_frame(&memory), // 320x200 256 color graphics (MCGA,VGA)
+                _ => {
+                    println!("XXX fixme render_frame for mode {:02x}", self.mode.mode);
+                    Vec::new()
+                }
+            },
+            mode: self.mode.clone(),
         }
     }
 /*
