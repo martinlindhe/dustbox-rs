@@ -167,9 +167,4 @@ impl MMU {
             println!("mmu.write_vec: {:04X} = {:04X}:{:04X}", v, data.segment(), data.offset());
         }
     }
-/*
-    pub fn dump_mem(&self) -> Vec<u8> {
-        self.memory.borrow().memory.clone()
-    }
-*/
 }
