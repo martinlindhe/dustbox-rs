@@ -2,7 +2,8 @@
 
 use sdl2::keyboard::{Keycode, Mod};
 
-use crate::cpu::{CPU, R};
+use crate::cpu::{CPU, R, FLAG_ZF};
+use crate::memory::MMU;
 use crate::machine::Component;
 
 const DEBUG_KEYBOARD: bool = false;
@@ -55,7 +56,7 @@ impl Component for Keyboard {
         true
     }
 
-    fn int(&mut self, int: u8, cpu: &mut CPU) -> bool {
+    fn int(&mut self, int: u8, cpu: &mut CPU, mmu: &mut MMU) -> bool {
         if int != 0x16 {
             return false;
         }
@@ -83,8 +84,8 @@ impl Component for Keyboard {
                 cpu.set_r8(R::AL, al);
 
                 // ZF set if no keystroke available
-                // machine.bios.set_flag(&mut machine.mmu, FLAG_ZF, ah == 0);
-                cpu.regs.flags.zero = ah == 0;
+                mmu.set_flag(FLAG_ZF, ah == 0);
+                //cpu.regs.flags.zero = ah == 0;
 
                 if DEBUG_KEYBOARD {
                     println!("KEYBOARD - CHECK FOR KEYSTROKE, returns ah {:02x}, al {:02x}", ah, al);
@@ -98,8 +99,8 @@ impl Component for Keyboard {
                 // AH = BIOS scan code
                 // AL = ASCII character
                 println!("XXX impl KEYBOARD - CHECK FOR ENHANCED KEYSTROKE");
-                // machine.bios.set_flag(&mut machine.mmu, FLAG_ZF, true);
-                cpu.regs.flags.zero = true;
+                mmu.set_flag(FLAG_ZF, true);
+                //cpu.regs.flags.zero = true;
             }
             0x92 => {
                 // KEYB.COM KEYBOARD CAPABILITIES CHECK (not an actual function!)

@@ -1,11 +1,12 @@
 use crate::cpu::{CPU, R};
 use crate::machine::Component;
+use crate::memory::MMU;
 
 pub struct Disk {
 }
 
 impl Component for Disk {
-    fn int(&mut self, int: u8, cpu: &mut CPU) -> bool {
+    fn int(&mut self, int: u8, cpu: &mut CPU, _mmu: &mut MMU) -> bool {
         if int != 0x13 {
             return false;
         }
