@@ -588,14 +588,13 @@ impl GPU {
     }
 
     pub fn render_frame(&self, mmu: &MMU) -> VideoFrame {
-        let memory = mmu.dump_mem();
         VideoFrame{
             data: match self.mode.mode {
                 // 00: 40x25 Black and White text (CGA,EGA,MCGA,VGA)
                 // 01: 40x25 16 color text (CGA,EGA,MCGA,VGA)
                 // 02: 80x25 16 shades of gray text (CGA,EGA,MCGA,VGA)
                 //0x03 => self.render_mode03_frame(memory), // 80x25 16 color text (CGA,EGA,MCGA,VGA)
-                0x04 => self.render_mode04_frame(&memory), // 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
+                0x04 => self.render_mode04_frame(&mmu.memory.data), // 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
                 // 05: 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
                 //0x06 => self.render_mode06_frame(memory), // 640x200 B/W graphics (CGA,EGA,MCGA,VGA)
                 // 07: 80x25 Monochrome text (MDA,HERC,EGA,VGA)
@@ -609,7 +608,7 @@ impl GPU {
                 //     640x350 4 color graphics (64K EGA)
                 //0x11 => self.render_mode11_frame(&memory), // 640x480 B/W graphics (MCGA,VGA)
                 //0x12 => self.render_mode12_frame(&memory), // 640x480 16 color graphics (VGA)
-                0x13 => self.render_mode13_frame(&memory), // 320x200 256 color graphics (MCGA,VGA)
+                0x13 => self.render_mode13_frame(&mmu.memory.data), // 320x200 256 color graphics (MCGA,VGA)
                 _ => {
                     println!("XXX fixme render_frame for mode {:02x}", self.mode.mode);
                     Vec::new()
@@ -983,9 +982,9 @@ impl GPU {
                 let mut address = u32::from(u16::from(page) * mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_PAGE_SIZE));
                 address += u32::from((row * mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS) + col) * 2);
                 let dst = self.mode.pstart + address;
-                mmu.memory.borrow_mut().write_u8(dst, chr as u8);
+                mmu.memory.write_u8(dst, chr as u8);
                 if use_attr {
-                    mmu.memory.borrow_mut().write_u8(dst + 1, attr);
+                    mmu.memory.write_u8(dst + 1, attr);
                 }
                 (0, 0)
             }

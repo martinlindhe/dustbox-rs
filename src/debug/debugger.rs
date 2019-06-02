@@ -56,7 +56,7 @@ impl Debugger {
             return true;
         }
         for addr in self.memory_breakpoints.get() {
-            let val = self.machine.mmu.memory.borrow().read_u8(addr);
+            let val = self.machine.mmu.memory.read_u8(addr);
             if self.memory_breakpoints.has_changed(addr, val) {
                 println!("Value at memory breakpoint has changed. {:06X} = {:02X}", addr, val);
                 return true;
@@ -127,11 +127,10 @@ impl Debugger {
             Err(why) => return Err(why),
             Ok(file) => file,
         };
-        let dump = self.machine.mmu.dump_mem();
 
         let base = base as usize;
         let len = len as usize;
-        if let Err(why) = file.write(&dump[base..base + len]) {
+        if let Err(why) = file.write(&self.machine.mmu.memory.data[base..base + len]) {
             return Err(why);
         }
         Ok(0)
@@ -342,7 +341,6 @@ impl Debugger {
                     return;
                 }
 
-                let mem_dump = self.machine.mmu.dump_mem();
                 let pos: u32;
                 let length: u32;
 
@@ -366,7 +364,7 @@ impl Debugger {
                     if row_cnt == 0 {
                         print!("[{:06X}] ", i);
                     }
-                    print!("{:02X} ", mem_dump[i as usize]);
+                    print!("{:02X} ", self.machine.mmu.memory.data[i as usize]);
                     row_cnt += 1;
                     if row_cnt == 16 {
                         println!();
