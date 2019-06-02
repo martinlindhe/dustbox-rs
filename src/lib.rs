@@ -44,6 +44,6 @@ pub mod ndisasm;
 pub mod string;
 pub mod keyboard;
 pub mod mouse;
-pub mod disk;
+pub mod storage;
 
 mod interrupt;
