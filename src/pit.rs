@@ -47,7 +47,7 @@ impl Component for PIT {
         true
     }
 
-    fn int(&mut self, int: u8, cpu: &mut CPU) -> bool {
+    fn int(&mut self, int: u8, cpu: &mut CPU, _mmu: &mut MMU) -> bool {
         if int != 0x1A {
             return false;
         }

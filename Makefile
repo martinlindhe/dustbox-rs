@@ -20,7 +20,7 @@ run:
 	cargo run --package dustbox_debugger
 
 run-release:
-	cargo run --release --package dustbox_gtk
+	cargo run --release --package dustbox_debugger
 
 disasm:
 	cargo run --release --package dustbox_disassembler

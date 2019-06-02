@@ -82,7 +82,7 @@ pub trait Component {
     }
 
     /// returns true if interrupt was handled
-    fn int(&mut self, _int: u8, _cpu: &mut CPU) -> bool {
+    fn int(&mut self, _int: u8, _cpu: &mut CPU, _mmu: &mut MMU) -> bool {
         false
     }
 }
@@ -295,11 +295,11 @@ impl Machine {
         // ask subsystems if they can handle the interrupt
         for component in &mut self.components {
             let handled = match component {
-                MachineComponent::PIC(c) => c.int(int, &mut self.cpu),
-                MachineComponent::PIT(c) => c.int(int, &mut self.cpu),
-                MachineComponent::Keyboard(c) => c.int(int, &mut self.cpu),
-                MachineComponent::Mouse(c) => c.int(int, &mut self.cpu),
-                MachineComponent::Disk(c) => c.int(int, &mut self.cpu),
+                MachineComponent::PIC(c) => c.int(int, &mut self.cpu, &mut self.mmu),
+                MachineComponent::PIT(c) => c.int(int, &mut self.cpu, &mut self.mmu),
+                MachineComponent::Keyboard(c) => c.int(int, &mut self.cpu, &mut self.mmu),
+                MachineComponent::Mouse(c) => c.int(int, &mut self.cpu, &mut self.mmu),
+                MachineComponent::Disk(c) => c.int(int, &mut self.cpu, &mut self.mmu),
             };
             if handled {
                 return;
@@ -333,7 +333,7 @@ impl Machine {
     pub fn execute_interrupt(&mut self, int: u8) {
         let flags = self.cpu.regs.flags.u16();
         self.cpu.push16(&mut self.mmu, flags);
-        // self.bios.flags_address = MemoryAddress::RealSegmentOffset(self.cpu.get_r16(R::SS), self.cpu.get_r16(R::SP));
+        self.mmu.flags_address = MemoryAddress::RealSegmentOffset(self.cpu.get_r16(R::SS), self.cpu.get_r16(R::SP));
 
         self.cpu.regs.flags.interrupt = false;
         self.cpu.regs.flags.trap = false;
@@ -1917,7 +1917,7 @@ impl Machine {
                 self.cpu.set_r16(R::CS, cs);
                 let flags = self.cpu.pop16(&mut self.mmu);
                 self.cpu.regs.flags.set_u16(flags);
-                // self.bios.flags_address = MemoryAddress::Unset;
+                self.mmu.flags_address = MemoryAddress::Unset;
             }
             Op::Retf => {
                 if op.params.count() == 1 {

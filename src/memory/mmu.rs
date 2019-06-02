@@ -11,16 +11,34 @@ mod mmu_test;
 const DEBUG_MMU: bool = false;
 const DEBUG_VEC: bool = false;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct MMU {
-    pub memory: Rc<RefCell<FlatMemory>>
+    pub memory: Rc<RefCell<FlatMemory>>,
+
+    /// the FLAGS register offset on stack while in interrupt
+    pub flags_address: MemoryAddress,
 }
 
 impl MMU {
     pub fn default() -> Self{
         MMU {
-            memory: Rc::new(RefCell::new(FlatMemory::new()))
+            memory: Rc::new(RefCell::new(FlatMemory::new())),
+            flags_address: MemoryAddress::Unset,
         }
+    }
+
+    /// manipulates the FLAGS register on stack while in a interrupt
+    pub fn set_flag(&mut self, flag_mask: u16, flag_value: bool) {
+        if self.flags_address == MemoryAddress::Unset {
+            panic!("bios: set_flag with 0 flags_address");
+        }
+        let mut flags = self.memory.borrow().read_u16(self.flags_address.value());
+        if flag_value {
+            flags |= flag_mask;
+        } else {
+            flags &= !flag_mask;
+        }
+        self.memory.borrow_mut().write_u16(self.flags_address.value(), flags);
     }
 
     /// reads a sequence of data from memory
