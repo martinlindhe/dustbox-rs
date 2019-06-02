@@ -9,21 +9,23 @@ If you are looking for a more complete dos emulator, I suggest you check out [do
 
 ## Rough status june 2019
 
-16 bit CPU - 95%, interrupts are incomplete
-32 bit CPU - 10%, some instructions supported
-FPU - not started
-disk - not started
-PIT - 1%
-PIC - 1%
-ms-dos - 5%, simulating MS-DOS behavior (interrupts, command.com env)
-ems/xms - 0%, extended memory manager
-keyboard - 1%
-mouse - 0%
-cd-rom - 0%
-cga - 5%
-ega - 5%
-vga - 5%
-sound - 0%
+| Component  | Status | Notes                                                    |
+| ---------- | ------ | -------------------------------------------------------- |
+| 16 bit CPU | 95%    | interrupts are incomplete                                |
+| 32 bit CPU | 10%    | some instructions supported                              |
+| FPU        | -      | not started                                              |
+| disk       | -      | not started                                              |
+| PIT        | 1%     |                                                          |
+| PIC        | 1%     |                                                          |
+| MS-DOS     | 5%     | simulating MS-DOS behavior (interrupts, command.com env) |
+| EMS/XMS    | -      | extended memory managers                                 |
+| Keyboard   | 1%     |                                                          |
+| Mouse      | 0%     |                                                          |
+| CD-ROM     | -      | not started                                              |
+| CGA        | 5%     |                                                          |
+| EGA        | 5%     |                                                          |
+| VGA        | 5%     |                                                          |s
+| Sound      | -      | not started                                              |
 
 ## Contributing
 
@@ -31,10 +33,10 @@ Any help and contributions are much welcome!
 
 ## Running
 
-To launch the dustbox_gtk debugger:
+To launch the debugger:
 
 ```sh
-cargo run --package dustbox_gtk
+cargo run --package dustbox_debugger
 ```
 
 then interact with the debugger using the input box ('help' to get started).
@@ -57,8 +59,10 @@ There is additional tests that are expensive, they also generate the tests/rende
 
 In order to run the expensive tests you need to check out the dos-software-decoding repo in the parent directory and pass the `--ignored` flag to cargo:
 
-    cd .. && git clone https://github.com/martinlindhe/dos-software-decoding && cd -
-    cargo test --release -- --ignored
+```sh
+cd .. && git clone https://github.com/martinlindhe/dos-software-decoding && cd -
+cargo test --release -- --ignored
+```
 
 ## License
 

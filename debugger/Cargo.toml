@@ -7,12 +7,12 @@ authors = ["Martin Lindhe"]
 path = "src/lib.rs"
 
 [dependencies]
-cairo-rs = "0.5"
+cairo-rs = "0.6"
 dustbox = { path = "../" }
-gdk = "0.9"
-gdk-pixbuf = "0.5"
+gdk = "0.10"
+gdk-pixbuf = "0.6"
 #rusqlite = "0.14"
 
 [dependencies.gtk]
-version = "0.5"
-features = ["v3_10"]
+version = "0.6"
+features = ["v3_16"]

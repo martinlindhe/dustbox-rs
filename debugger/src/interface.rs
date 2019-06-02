@@ -303,7 +303,7 @@ fn draw_canvas(c: &cairo::Context, buf: Vec<ColorSpace>, mode: &VideoModeBlock) 
         }
     }
 
-    let pixbuf = gdk_pixbuf::Pixbuf::new_from_vec(
+    let pixbuf = gdk_pixbuf::Pixbuf::new_from_mut_slice(
         bytes_buf,
         gdk_pixbuf::Colorspace::Rgb,
         false,
