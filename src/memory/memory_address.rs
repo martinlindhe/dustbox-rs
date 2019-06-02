@@ -71,10 +71,20 @@ impl MemoryAddress {
         }
     }
 
-    pub fn set_offset(&mut self, val: u16) {
+    /// set offset to `n`
+    pub fn set_offset(&mut self, n: u16) {
         match *self {
             MemoryAddress::RealSegmentOffset(_, ref mut off) |
-            MemoryAddress::LongSegmentOffset(_, ref mut off) => *off = val,
+            MemoryAddress::LongSegmentOffset(_, ref mut off) => *off = n,
+            _ => unreachable!(),
+        }
+    }
+
+    /// add `n` to offset
+    pub fn add_offset(&mut self, n: u16) {
+        match *self {
+            MemoryAddress::RealSegmentOffset(_, ref mut off) |
+            MemoryAddress::LongSegmentOffset(_, ref mut off) => *off += n,
             _ => unreachable!(),
         }
     }
