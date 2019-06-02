@@ -62,7 +62,7 @@ impl Component for Keyboard {
         }
         match cpu.get_r8(R::AH) {
             0x00 => {
-                // KEYBOARD - GET KEYSTROKE
+                // read keyboard scancode (blocking)
                 let (ah, al) = self.consume_dos_standard_scancode_and_ascii();
 
                 // AH = BIOS scan code
@@ -75,7 +75,7 @@ impl Component for Keyboard {
                 }
             }
             0x01 => {
-                // KEYBOARD - CHECK FOR KEYSTROKE
+                // read keyboard scancode (non-blocking)
                 let (ah, al, _) = self.peek_dos_standard_scancode_and_ascii();
 
                 // AH = BIOS scan code

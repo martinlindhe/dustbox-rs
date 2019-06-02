@@ -129,7 +129,7 @@ impl Machine {
         let mut bios = BIOS::default();
         bios.init(&mut mmu);
         gpu.init(&mut mmu);
-        gpu.set_mode(&mut mmu, &mut bios, GFXMode::MODE_TEXT_80_25 as u8);
+        gpu.set_mode(&mut mmu, GFXMode::MODE_TEXT_80_25 as u8);
 
         let mut m = Machine {
             cpu: CPU::deterministic(),

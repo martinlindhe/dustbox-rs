@@ -36,33 +36,7 @@ impl BIOS {
     const ROM_EQUIPMENT_WORD: u16     = 0x0410;
 
     pub fn default() -> Self {
-        // XXX see ROMBIOS_Init in dosbox-x
         BIOS {
-        }
-    }
-
-    pub fn set_video_mode(&mut self, mmu: &mut MMU, mode: &VideoModeBlock, clear_mem: bool) {
-        if mode.mode < 128 {
-            mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_MODE, mode.mode as u8);
-        } else {
-            mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_MODE, (mode.mode - 0x98) as u8); // Looks like the s3 bios
-        }
-        mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS, mode.twidth as u16);
-        mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_PAGE_SIZE, mode.plength as u16);
-        mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_CRTC_ADDRESS, mode.crtc_address());
-        mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_NB_ROWS, (mode.theight - 1) as u8);
-        mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_CHAR_HEIGHT, mode.cheight as u16);
-        let video_ctl = 0x60 | if clear_mem {
-            0
-        } else {
-            0x80
-        };
-        mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_VIDEO_CTL, video_ctl);
-        mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_SWITCHES, 0x09);
-
-        // this is an index into the dcc table
-        if mode.kind == GFXMode::VGA {
-            mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_DCC_INDEX, 0x0B);
         }
     }
 
@@ -100,14 +74,4 @@ impl BIOS {
         mmu.write_u8_inc(&mut addr, 0b0000_0000); // feature byte 5
         mmu.write_u16(BIOS::ROM_SEG, BIOS::ROM_EQUIPMENT_WORD, 0x0021);
     }
-}
-
-/// get the cursor x position
-pub fn cursor_pos_col(mmu: &MMU, page: u8) -> u8 {
-    mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + u16::from(page) * 2)
-}
-
-/// get the cursor y position
-pub fn cursor_pos_row(mmu: &MMU, page: u8) -> u8 {
-    mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + (u16::from(page) * 2) + 1)
 }

@@ -210,9 +210,35 @@ impl GPU {
         buf
     }
 
+    /// stores video mode data in the BIOS Data Area (BDA)
+    fn store_mode_in_bios(&mut self, mmu: &mut MMU, clear_mem: bool) {
+        if self.mode.mode < 128 {
+            mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_MODE, self.mode.mode as u8);
+        } else {
+            mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_MODE, (self.mode.mode - 0x98) as u8); // Looks like the s3 bios
+        }
+        mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS, self.mode.twidth as u16);
+        mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_PAGE_SIZE, self.mode.plength as u16);
+        mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_CRTC_ADDRESS, self.mode.crtc_address());
+        mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_NB_ROWS, (self.mode.theight - 1) as u8);
+        mmu.write_u16(BIOS::DATA_SEG, BIOS::DATA_CHAR_HEIGHT, self.mode.cheight as u16);
+        let video_ctl = 0x60 | if clear_mem {
+            0
+        } else {
+            0x80
+        };
+        mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_VIDEO_CTL, video_ctl);
+        mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_SWITCHES, 0x09);
+
+        // this is an index into the dcc table
+        if self.mode.kind == GFXMode::VGA {
+            mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_DCC_INDEX, 0x0B);
+        }
+    }
+
     /// int 10h, ah = 00h
     /// SET VIDEO MODE
-    pub fn set_mode(&mut self, mmu: &mut MMU, bios: &mut BIOS, mode: u8) {
+    pub fn set_mode(&mut self, mmu: &mut MMU, mode: u8) {
         if DEBUG_INTERRUPTS {
             println!("int 10h, ah = 00h: set_mode {:02X}", mode);
         }
@@ -239,7 +265,7 @@ impl GPU {
         }
 
         let clear_mem = true;
-        bios.set_video_mode(mmu, &self.mode, clear_mem);
+        self.store_mode_in_bios(mmu, clear_mem);
 
         /*
         // Set cursor shape
@@ -296,8 +322,8 @@ impl GPU {
         // and change the BIOS page
         mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_PAGE, page);
 
-        let cur_row = bios::cursor_pos_row(mmu, page);
-        let cur_col = bios::cursor_pos_col(mmu, page);
+        let cur_row = cursor_pos_row(mmu, page);
+        let cur_col = cursor_pos_col(mmu, page);
         self.set_cursor_pos(mmu, cur_row, cur_col, page);
     }
 
@@ -355,8 +381,8 @@ impl GPU {
             }
         }
 
-        let mut cur_row = bios::cursor_pos_row(mmu, page);
-        let mut cur_col = bios::cursor_pos_col(mmu, page);
+        let mut cur_row = cursor_pos_row(mmu, page);
+        let mut cur_col = cursor_pos_col(mmu, page);
         let ncols = mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS);
 
         while count > 0 {
@@ -389,8 +415,8 @@ impl GPU {
     fn teletype_output_attr(&mut self, mmu: &mut MMU, chr: u8, attr: u8, page: u8, use_attr: bool) {
         let ncols = mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_COLS);
         let nrows = mmu.read_u16(BIOS::DATA_SEG, BIOS::DATA_NB_ROWS) + 1;
-        let mut cur_row = u16::from(bios::cursor_pos_row(mmu, page));
-        let mut cur_col = u16::from(bios::cursor_pos_col(mmu, page));
+        let mut cur_row = u16::from(cursor_pos_row(mmu, page));
+        let mut cur_col = u16::from(cursor_pos_col(mmu, page));
         match chr {
             /*
             7 => {
@@ -633,8 +659,8 @@ impl GPU {
         if DEBUG_INTERRUPTS {
             println!("int 10h, ah = 13h: write_string");
         }
-        let cur_row = bios::cursor_pos_row(mmu, page);
-        let cur_col = bios::cursor_pos_col(mmu, page);
+        let cur_row = cursor_pos_row(mmu, page);
+        let cur_col = cursor_pos_col(mmu, page);
         if row == 0xFF {
             // use current cursor position
             row = cur_row;
@@ -980,4 +1006,14 @@ impl GPU {
             mmu.write_vec(0x44, self.font_8_first);
         }
     }
+}
+
+/// get the cursor x position
+fn cursor_pos_col(mmu: &MMU, page: u8) -> u8 {
+    mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + u16::from(page) * 2)
+}
+
+/// get the cursor y position
+fn cursor_pos_row(mmu: &MMU, page: u8) -> u8 {
+    mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + (u16::from(page) * 2) + 1)
 }

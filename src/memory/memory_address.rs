@@ -4,10 +4,10 @@ use std::fmt;
 /// represents a memory address inside the vm
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MemoryAddress {
-    /// a real mode segment:offset pair (0_0000 - F_FFFF)
+    /// a real mode segment:offset pair (0x0_0000 - 0xF_FFFF)
     RealSegmentOffset(u16, u16),
 
-    /// a long segment:offset pair (0000_0000 - FFFF_FFFF)
+    /// a long segment:offset pair (0x0000_0000 - 0xFFFF_FFFF)
     LongSegmentOffset(u16, u16),
 
     /// a unknown value

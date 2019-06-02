@@ -11,7 +11,7 @@ pub fn handle(machine: &mut Machine) {
         0x00 => {
             // VIDEO - SET VIDEO MODE
             let al = machine.cpu.get_r8(R::AL);
-            machine.gpu.set_mode(&mut machine.mmu, &mut machine.bios, al);
+            machine.gpu.set_mode(&mut machine.mmu, al);
         }
         0x01 => {
             // VIDEO - SET TEXT-MODE CURSOR SHAPE
