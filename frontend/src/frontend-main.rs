@@ -11,6 +11,7 @@ extern crate dustbox;
 use dustbox::machine::Machine;
 use dustbox::tools;
 
+#[macro_use]
 extern crate clap;
 use clap::{Arg, App};
 
@@ -27,9 +28,15 @@ fn main() {
         .arg(Arg::with_name("deterministic")
             .help("Enables deterministic mode (debugging)")
             .short("d"))
+        .arg(Arg::with_name("scale")
+            .help("Scale the window resolution")
+            .takes_value(true)
+            .long("scale"))
         .get_matches();
 
     let filename = matches.value_of("INPUT").unwrap();
+
+    let scale = value_t!(matches, "scale", f32).unwrap_or(1.);
 
     let mut machine = if matches.is_present("deterministic") {
         Machine::deterministic()
@@ -46,7 +53,7 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsys = sdl_context.video().unwrap();
-    let window = video_subsys.window(&format!("dustbox {}", filename), SCREEN_WIDTH, SCREEN_HEIGHT)
+    let window = video_subsys.window(&format!("dustbox {}", filename), ((SCREEN_WIDTH as f32) * scale) as u32, ((SCREEN_HEIGHT as f32) * scale) as u32)
         .position_centered()
         .opengl()
         .allow_highdpi()
@@ -55,7 +62,7 @@ fn main() {
 
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
 
-    //println!("Using SDL_Renderer \"{}\"", canvas.info().name);
+    println!("renderer: sdl2 \"{}\"", canvas.info().name);
 
     canvas.set_draw_color(pixels::Color::RGB(0, 0, 0));
     canvas.clear();
@@ -104,14 +111,13 @@ fn main() {
         let mut texture = texture_creator.create_texture_streaming(PixelFormatEnum::RGB24, frame.mode.swidth, frame.mode.sheight).unwrap();
 
         {
-            let window = canvas.window_mut();
-
             // resize window to current screen mode sizes
-            if last_video_mode != frame.mode.mode {
-                let resize_start = SystemTime::now();
-                window.set_size(frame.mode.swidth, frame.mode.sheight).unwrap();
-                let resize_time = resize_start.elapsed().unwrap();
-                println!("Resized window for mode {:02x} in {:#?}", frame.mode.mode, resize_time);
+            if frame.mode.mode != last_video_mode {
+                let window = canvas.window_mut();
+
+                println!("Resizing window for mode {:02x} to {}x{}, scale {}x", frame.mode.mode, frame.mode.swidth, frame.mode.sheight, scale);
+                window.set_size((frame.mode.swidth as f32 * scale) as u32, (frame.mode.sheight as f32 * scale) as u32).unwrap();
+
                 last_video_mode = frame.mode.mode;
             }
 
