@@ -53,7 +53,7 @@ fn trace_unreferenced_data() {
 }
 
 #[test]
-fn trace_decorates_stosw() {
+fn trace_annotates_stosw() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xAB,           // stosw
@@ -129,11 +129,11 @@ fn trace_virtual_memory() {
 fn trace_annotate_int() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
-        0xB8, 0x03, 0x00,       // mov ax, 0x0013
+        0xB8, 0x03, 0x00,       // mov ax,0x0013
         0xCD, 0x10,             // int 0x10
-        0xB4, 0x4C,             // mov ah, 0x4C
+        0xB4, 0x4C,             // mov ah,0x4C
         0xCD, 0x21,             // int 0x21
-];
+    ];
     machine.load_executable(&code);
 
     let mut tracer = ProgramTracer::default();
@@ -146,6 +146,38 @@ fn trace_annotate_int() {
 ", res);
 }
 
+
+#[test]
+fn trace_annotate_out() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xB8, 0x34, 0x12,   // mov ax,0x1234
+        0xBA, 0xC8, 0x03,   // mov dx,0x03C8
+        0xE6, 0x40,         // out 0x40,al
+        0xE7, 0x40,         // out 0x40,ax
+        0xEE,               // out dx,al
+        0xEF,               // out dx,ax
+    ];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] B83412           Mov16    ax, 0x1234
+[085F:0103] BAC803           Mov16    dx, 0x03C8
+[085F:0106] E640             Out8     0x40, al                      ; pit: counter 0, counter divisor (0x0040) = 34
+[085F:0108] E740             Out16    0x40, ax                      ; pit: counter 0, counter divisor (0x0040) = 1234
+[085F:010A] EE               Out8     dx, al                        ; vga: PEL address write mode (0x03C8) = 34
+[085F:010B] EF               Out16    dx, ax                        ; vga: PEL address write mode (0x03C8) = 1234
+", res);
+}
+
+/*
+[085F:011B] 6800A0           Push16   0xA000
+[085F:011E] 07               Pop16    es            ; es = 0xA000
+*/
+
+
 /*
 ; a way to manipulate ES from bmatch.com, should be able to figure that 010F is "es = 0x0040"
 [085F:0105] 50               Push16   ax
@@ -157,12 +189,6 @@ fn trace_annotate_int() {
 */
 
 
-/*
-[085F:0118] B100             Mov8     cl, 0x00          ; cl = 0x00
-[085F:011A] BAC803           Mov16    dx, 0x03C8
-[085F:011D] 8AC1             Mov8     al, cl            ; al = 0x00
-[085F:011F] EE               Out8     dx, al            ; OUT 0x03C8, 0x00 ...
-*/
 
 /*
 [085F:0118] B100             Mov8     cl, 0x00

@@ -584,8 +584,28 @@ impl ProgramTracer {
                 Op::Int => {
                     // TODO skip if register is dirty
                     if let Parameter::Imm8(v) = ii.instruction.params.dst {
-                        // println!("XXX INT {:0x}: {}", v, self.int_desc(v));
-                        self.annotations.push(TraceAnnotation{ address: ma.clone(), note: self.int_desc(v)});
+                        self.annotations.push(TraceAnnotation{address: ma.clone(), note: self.int_desc(v)});
+                    }
+                }
+                Op::Out8 | Op::Out16 => {
+                    // TODO skip if register is dirty
+                    let dst = match ii.instruction.params.dst {
+                        Parameter::Imm8(dst) => Some(dst as u16),
+                        Parameter::Reg16(dr) => Some(self.regs.get_r16(dr)),
+                        _ => None
+                    };
+                    if let Some(dst) = dst {
+                        match ii.instruction.params.src {
+                            Parameter::Reg8(sr) => self.annotations.push(TraceAnnotation{
+                                address: ma.clone(),
+                                note: format!("{} (0x{:04X}) = {:02X}", self.out_desc(dst as u16), dst, self.regs.get_r8(sr))
+                            }),
+                            Parameter::Reg16(sr) => self.annotations.push(TraceAnnotation{
+                                address: ma.clone(),
+                                note: format!("{} (0x{:04X}) = {:04X}", self.out_desc(dst as u16), dst, self.regs.get_r16(sr))
+                            }),
+                            _ => {}
+                        }
                     }
                 }
                 Op::Mov8 | Op::Mov16 => {
@@ -618,7 +638,7 @@ impl ProgramTracer {
                                 self.learn_address(machine.cpu.regs.get_r16(R::CS), offset, ma, AddressUsageKind::MemoryWord);
                             }
                         },
-                        _ => {},
+                        _ => {}
                     }
 
                     match ii.instruction.params.src {
@@ -634,10 +654,10 @@ impl ProgramTracer {
                                 self.learn_address(machine.cpu.regs.get_r16(R::CS), offset, ma, AddressUsageKind::MemoryWord);
                             }
                         },
-                        _ => {},
+                        _ => {}
                     }
                 }
-                _ => {},
+                _ => {}
             }
             ma.inc_n(u16::from(ii.instruction.length));
 
@@ -655,6 +675,22 @@ impl ProgramTracer {
             0x03 => "80x25 text",
             0x13 => "320x200 VGA",
             _ => "unrecognized"
+        }
+    }
+
+    /// describe out port
+    fn out_desc(&self, port: u16) -> &str {
+        match port {
+            0x0040 => "pit: counter 0, counter divisor",
+            0x0041 => "pit: counter 1, RAM refresh counter",
+            0x0042 => "pit: counter 2, cassette & speaker",
+            0x03C4 => "ega: TS index register / vga: sequencer index register",
+            0x03C6 => "vga: PEL mask register",
+            0x03C7 => "vga: PEL address read mode",
+            0x03C8 => "vga: PEL address write mode",
+            0x03C9 => "vga: PEL data register",
+            0x03D4 => "ega/vga: CRT (6845) index register",
+            _ => "unrecognized",
         }
     }
 
@@ -680,6 +716,7 @@ impl ProgramTracer {
             }
             0x21 => { // DOS. fn in AH
                 match ah {
+                    0x09 => String::from("dos: write $-terminated string at DS:DX to standard output"),
                     0x4C => String::from("dos: terminate with return code in AL"),
                     _ => format!("dos: unrecognized AH = {:02X}", ah)
                 }
