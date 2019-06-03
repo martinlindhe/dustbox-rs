@@ -1,5 +1,6 @@
 use std::cmp;
 use std::fmt;
+use std::num::Wrapping;
 
 use crate::machine::Machine;
 use crate::cpu::{Decoder, RepeatMode, InstructionInfo, RegisterSnapshot, R, Op, Parameter, Segment};
@@ -615,6 +616,26 @@ impl ProgramTracer {
                         }
                         _ => {}
                     }
+                }
+                Op::Dec8 => if let Parameter::Reg8(dr) = ii.instruction.params.dst {
+                    let v =(Wrapping(self.regs.get_r8(dr)) - Wrapping(1)).0;
+                    self.regs.set_r8(dr, v);
+                    self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", dr, v)});
+                }
+                Op::Dec16 => if let Parameter::Reg16(dr) = ii.instruction.params.dst {
+                    let v = (Wrapping(self.regs.get_r16(dr)) - Wrapping(1)).0;
+                    self.regs.set_r16(dr, v);
+                    self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, v)});
+                }
+                Op::Inc8 => if let Parameter::Reg8(dr) = ii.instruction.params.dst {
+                    let v =(Wrapping(self.regs.get_r8(dr)) + Wrapping(1)).0;
+                    self.regs.set_r8(dr, v);
+                    self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", dr, v)});
+                }
+                Op::Inc16 => if let Parameter::Reg16(dr) = ii.instruction.params.dst {
+                    let v = (Wrapping(self.regs.get_r16(dr)) + Wrapping(1)).0;
+                    self.regs.set_r16(dr, v);
+                    self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, v)});
                 }
                 Op::Mov8 | Op::Mov16 => {
                     match ii.instruction.params.dst {
