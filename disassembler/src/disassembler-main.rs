@@ -14,19 +14,19 @@ fn main() {
                 .help("Sets the input file to use")
                 .required(true)
                 .index(1))
-            .arg(Arg::with_name("trace")
-                .long("trace")
-                .help("Trace jump destinations while disassembling"))
+            .arg(Arg::with_name("flat")
+                .long("flat")
+                .help("Show a flat disassembly listing (no tracing)"))
             .get_matches();
 
     let filename = matches.value_of("INPUT").unwrap();
     println!("# Input file {}", filename);
     println!();
 
-    if matches.is_present("trace") {
-        trace_disassembly(filename);
-    } else {
+    if matches.is_present("flat") {
         flat_disassembly(filename);
+    } else {
+        trace_disassembly(filename);
     }
 }
 
