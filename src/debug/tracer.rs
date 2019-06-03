@@ -2,7 +2,7 @@ use std::cmp;
 use std::fmt;
 
 use crate::machine::Machine;
-use crate::cpu::{Decoder, RepeatMode, InstructionInfo, R, Op, Parameter, Segment};
+use crate::cpu::{Decoder, RepeatMode, InstructionInfo, RegisterSnapshot, R, Op, Parameter, Segment};
 use crate::memory::MemoryAddress;
 use crate::string::right_pad;
 use crate::hex::hex_bytes;
@@ -12,6 +12,8 @@ use crate::hex::hex_bytes;
 mod tracer_test;
 
 const DEBUG_TRACER: bool = false;
+
+const DEBUG_TRACE_REGS: bool = false;
 
 /// ProgramTracer holds the state of the program being analyzed
 #[derive(Default)]
@@ -26,14 +28,22 @@ pub struct ProgramTracer {
 
     /// areas known to be mapped only by memory access
     virtual_memory: Vec<MemoryAddress>,
+
+    /// traced register state
+    regs: RegisterSnapshot,
+
+    /// annotations for an address
+    annotations: Vec<TraceAnnotation>,
+}
+
+struct TraceAnnotation {
+    address: MemoryAddress,
+    note: String,
 }
 
 struct SeenAddress {
-    /// segment:offset converted into real flat addresses
     address: MemoryAddress,
-
     sources: SeenSources,
-
     visited: bool,
 }
 
@@ -156,9 +166,12 @@ impl ProgramTracer {
             visited_addresses: Vec::new(),
             accounted_bytes: Vec::new(),
             virtual_memory: Vec::new(),
+            regs: RegisterSnapshot::default(),
+            annotations: Vec::new(),
         }
     }
 
+    /// traces all discovered paths of the program by static analysis
     pub fn trace_execution(&mut self, machine: &mut Machine) {
         // tell tracer to start at CS:IP
         let ma = MemoryAddress::RealSegmentOffset(machine.cpu.get_r16(R::CS), machine.cpu.regs.ip);
@@ -177,6 +190,7 @@ impl ProgramTracer {
         self.post_process_execution(machine);
     }
 
+    /// performs final post-processing of the program trace
     fn post_process_execution(&mut self, machine: &mut Machine) {
         let mut decoder = Decoder::default();
 
@@ -259,7 +273,8 @@ impl ProgramTracer {
         }
     }
 
-    fn decorate_instruction(&self, ii: &InstructionInfo) -> String {
+    /// returns a instruction annotation
+    fn annotate_instruction(&self, ii: &InstructionInfo) -> String {
         match ii.instruction.command {
             Op::In8 => {
                 match ii.instruction.params.src {
@@ -299,7 +314,14 @@ impl ProgramTracer {
                     _ => "xxx Stosw".to_owned(),
                 }
             }
-            _ => "".to_owned(),
+            _ => {
+                for a in &self.annotations {
+                    if a.address == MemoryAddress::RealSegmentOffset(ii.segment as u16, ii.offset as u16) {
+                        return a.note.clone();
+                    }
+                }
+                "".to_owned()
+            }
         }
     }
 
@@ -321,7 +343,7 @@ impl ProgramTracer {
                         tail.push_str(&xref);
                     }
 
-                    let decor = self.decorate_instruction(&ii);
+                    let decor = self.annotate_instruction(&ii);
                     if decor != "" {
                         tail.push_str(&format!("; {}", decor));
                     }
@@ -559,10 +581,31 @@ impl ProgramTracer {
                         _ => println!("ERROR3: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
                     }
                 }
-
-                // memory accesses
+                Op::Int => {
+                    // TODO skip if register is dirty
+                    if let Parameter::Imm8(v) = ii.instruction.params.dst {
+                        // println!("XXX INT {:0x}: {}", v, self.int_desc(v));
+                        self.annotations.push(TraceAnnotation{ address: ma.clone(), note: self.int_desc(v)});
+                    }
+                }
                 Op::Mov8 | Op::Mov16 => {
                     match ii.instruction.params.dst {
+                        Parameter::Reg8(r) => {
+                            if let Parameter::Imm8(v) = ii.instruction.params.src {
+                                if DEBUG_TRACE_REGS {
+                                    println!("trace reg {} = {:02x}", r, v);
+                                }
+                                self.regs.set_r8(r, v);
+                            }
+                        }
+                        Parameter::Reg16(r) => {
+                            if let Parameter::Imm16(v) = ii.instruction.params.src {
+                                if DEBUG_TRACE_REGS {
+                                    println!("trace reg {} = {:04x}", r, v);
+                                }
+                                self.regs.set_r16(r, v);
+                            }
+                        }
                         Parameter::Ptr8(seg, offset) => {
                             // mov   [cs:0x0202], al
                             if seg == Segment::CS {
@@ -605,5 +648,45 @@ impl ProgramTracer {
 
         }
         self.mark_address_visited(start_ma);
+    }
+
+    fn video_mode_desc(&self, mode: u8) -> &str {
+        match mode {
+            0x03 => "80x25 text",
+            0x13 => "320x200 VGA",
+            _ => "unrecognized"
+        }
+    }
+
+    fn int_desc(&self, int: u8) -> String {
+        let al = self.regs.get_r8(R::AL);
+        let ah = self.regs.get_r8(R::AH);
+        match int {
+            0x10 => { // video. fn in AH
+                match ah {
+                    0x00 => format!("video: set {} mode (0x{:02X})", self.video_mode_desc(al), al),
+                    _ => format!("video: unrecognized AH = {:02X}", ah)
+                }
+            }
+            0x16 => { // keyboard. fn in AH
+                match ah {
+                    0x00 => String::from("keyboard: read scancode (blocking)"),
+                    0x01 => String::from("keyboard: read scancode (non-blocking)"),
+                    _ => format!("keyboard: unrecognized AH = {:02X}", ah)
+                }
+            }
+            0x20 => {
+                String::from("exit to DOS")
+            }
+            0x21 => { // DOS. fn in AH
+                match ah {
+                    0x4C => String::from("dos: terminate with return code in AL"),
+                    _ => format!("dos: unrecognized AH = {:02X}", ah)
+                }
+            }
+            _ => {
+                format!("XXX int_desc unrecognized {:02X}", int)
+            },
+        }
     }
 }
