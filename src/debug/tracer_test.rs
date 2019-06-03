@@ -186,7 +186,12 @@ fn trace_annotate_regset() {
         0x80, 0xC3, 0x05,       // add bl,0x5
         0x01, 0xC3,             // add bx,ax
         0x81, 0xC3, 0xF0, 0xFF, // add bx,0xFFF0
-        0x83, 0xC3, 0x04,       // add bx,byte +0x4     xxx
+        0x83, 0xC3, 0x04,       // add bx,byte +0x4
+        0x28, 0xD3,             // sub bl,dl
+        0x80, 0xEB, 0x05,       // sub bl,0x5
+        0x29, 0xC3,             // sub bx,ax
+        0x81, 0xEB, 0x00, 0x60, // sub bx,0x6000
+        0x83, 0xEB, 0x04,       // sub bx,byte +0x4
         0x31, 0xC0,             // xor ax,ax
         0x30, 0xDB,             // xor bl,bl
     ];
@@ -207,8 +212,13 @@ fn trace_annotate_regset() {
 [085F:0112] 01C3             Add16    bx, ax                        ; bx = 0x0040
 [085F:0114] 81C3F0FF         Add16    bx, 0xFFF0                    ; bx = 0x0030
 [085F:0118] 83C304           Add16    bx, byte +0x04                ; bx = 0x0034
-[085F:011B] 31C0             Xor16    ax, ax                        ; ax = 0x0000
-[085F:011D] 30DB             Xor8     bl, bl                        ; bl = 0x00
+[085F:011B] 28D3             Sub8     bl, dl                        ; bl = 0x1F
+[085F:011D] 80EB05           Sub8     bl, 0x05                      ; bl = 0x1A
+[085F:0120] 29C3             Sub16    bx, ax                        ; bx = 0x0007
+[085F:0122] 81EB0060         Sub16    bx, 0x6000                    ; bx = 0xA007
+[085F:0126] 83EB04           Sub16    bx, byte +0x04                ; bx = 0xA003
+[085F:0129] 31C0             Xor16    ax, ax                        ; ax = 0x0000
+[085F:012B] 30DB             Xor8     bl, bl                        ; bl = 0x00
 ", res);
 }
 

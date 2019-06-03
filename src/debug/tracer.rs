@@ -664,6 +664,33 @@ impl ProgramTracer {
                         self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, v)});
                     }
                 }
+                Op::Sub8 => if let Parameter::Reg8(dr) = ii.instruction.params.dst {
+                    // TODO skip if register is dirty
+                    let v = match ii.instruction.params.src {
+                        Parameter::Imm8(v) => Some(v),
+                        Parameter::Reg8(sr) => Some(self.regs.get_r8(sr)),
+                        _ => None
+                    };
+                    if let Some(v) = v {
+                        let v = (Wrapping(self.regs.get_r8(dr)) - Wrapping(v)).0;
+                        self.regs.set_r8(dr, v);
+                        self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", dr, v)});
+                    }
+                }
+                Op::Sub16 => if let Parameter::Reg16(dr) = ii.instruction.params.dst {
+                    // TODO skip if register is dirty
+                    let v = match ii.instruction.params.src {
+                        Parameter::ImmS8(v) => Some(v as u16), // XXX should be treated as signed
+                        Parameter::Imm16(v) => Some(v),
+                        Parameter::Reg16(sr) => Some(self.regs.get_r16(sr)),
+                        _ => None
+                    };
+                    if let Some(v) = v {
+                        let v = (Wrapping(self.regs.get_r16(dr)) - Wrapping(v)).0;
+                        self.regs.set_r16(dr, v);
+                        self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, v)});
+                    }
+                }
                 Op::Mov8 | Op::Mov16 => {
                     match ii.instruction.params.dst {
                         Parameter::Reg8(r) => {
