@@ -53,7 +53,6 @@ pub enum R {
     EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, //
 }
 
-
 impl fmt::Display for R {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
@@ -175,22 +174,9 @@ pub enum AMode {
     EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI,
 }
 
-impl AMode {
-   pub fn index(&self) -> usize {
-        match *self {
-            AMode::BXSI | AMode::EAX => 0,
-            AMode::BXDI | AMode::ECX => 1,
-            AMode::BPSI | AMode::EDX => 2,
-            AMode::BPDI | AMode::EBX => 3,
-            AMode::SI | AMode::ESP => 4,
-            AMode::DI | AMode::EBP => 5,
-            AMode::BP | AMode::ESI => 6,
-            AMode::BX | AMode::EDI => 7,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match *self {
+impl fmt::Display for AMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self {
             AMode::BXSI => "bx+si",
             AMode::BXDI => "bx+di",
             AMode::BPSI => "bp+si",
@@ -208,6 +194,23 @@ impl AMode {
             AMode::EBP => "ebp",
             AMode::ESI => "esi",
             AMode::EDI => "edi",
+        };
+
+        write!(f, "{}", s)
+    }
+}
+
+impl AMode {
+   pub fn index(&self) -> usize {
+        match *self {
+            AMode::BXSI | AMode::EAX => 0,
+            AMode::BXDI | AMode::ECX => 1,
+            AMode::BPSI | AMode::EDX => 2,
+            AMode::BPDI | AMode::EBX => 3,
+            AMode::SI | AMode::ESP => 4,
+            AMode::DI | AMode::EBP => 5,
+            AMode::BP | AMode::ESI => 6,
+            AMode::BX | AMode::EDI => 7,
         }
     }
 }
