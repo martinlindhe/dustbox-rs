@@ -177,7 +177,11 @@ fn trace_annotate_regset() {
     let code: Vec<u8> = vec![
         0xB8, 0x13, 0x00,   // mov ax,0x13
         0x89, 0xC2,         // mov dx,ax
+        0x42,               // inc dx
+        0xFE, 0xC2,         // inc dl
         0x88, 0xD3,         // mov bl,dl
+        0x4B,               // dec bx
+        0xFE, 0xCB,         // dec bl
         0x31, 0xC0,         // xor ax,ax
         0x30, 0xDB,         // xor bl,bl
     ];
@@ -188,18 +192,15 @@ fn trace_annotate_regset() {
     let res = tracer.present_trace(&mut machine);
     assert_eq!("[085F:0100] B81300           Mov16    ax, 0x0013                    ; ax = 0x0013
 [085F:0103] 89C2             Mov16    dx, ax                        ; dx = 0x0013
-[085F:0105] 88D3             Mov8     bl, dl                        ; bl = 0x13
-[085F:0107] 31C0             Xor16    ax, ax                        ; ax = 0x0000
-[085F:0109] 30DB             Xor8     bl, bl                        ; bl = 0x00
+[085F:0105] 42               Inc16    dx                            ; dx = 0x0014
+[085F:0106] FEC2             Inc8     dl                            ; dl = 0x15
+[085F:0108] 88D3             Mov8     bl, dl                        ; bl = 0x15
+[085F:010A] 4B               Dec16    bx                            ; bx = 0x0014
+[085F:010B] FECB             Dec8     bl                            ; bl = 0x13
+[085F:010D] 31C0             Xor16    ax, ax                        ; ax = 0x0000
+[085F:010F] 30DB             Xor8     bl, bl                        ; bl = 0x00
 ", res);
 }
-
-
-/*
-[085F:011B] 6800A0           Push16   0xA000
-[085F:011E] 07               Pop16    es            ; es = 0xA000
-*/
-
 
 /*
 ; a way to manipulate ES from bmatch.com, should be able to figure that 010F is "es = 0x0040"
