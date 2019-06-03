@@ -16,7 +16,7 @@ fn trace_simple() {
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
     assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004                    ; dx = 0x0004
-[085F:0103] 89D1             Mov16    cx, dx
+[085F:0103] 89D1             Mov16    cx, dx                        ; cx = 0x0004
 [085F:0105] EB00             JmpShort 0x0107
 
 [085F:0107] C3               Retn                                   ; xref: jump@085F:0105
@@ -42,7 +42,7 @@ fn trace_unreferenced_data() {
     let res = tracer.present_trace(&mut machine);
     println!("{}", res);
     assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004                    ; dx = 0x0004
-[085F:0103] 89D1             Mov16    cx, dx
+[085F:0103] 89D1             Mov16    cx, dx                        ; cx = 0x0004
 [085F:0105] EB01             JmpShort 0x0108
 
 [085F:0107] 90               db       0x90
@@ -97,7 +97,7 @@ fn trace_sepatate_call_destination_separators() {
 [085F:010B] B80300           Mov16    ax, 0x0003                    ; xref: call@085F:0103; ax = 0x0003
 [085F:010E] C3               Retn
 
-[085F:010F] CD20             Int      0x20                          ; xref: jump@085F:0109; exit to DOS
+[085F:010F] CD20             Int      0x20                          ; xref: jump@085F:0109; dos: terminate program with return code 0
 ", res);
 }
 
@@ -141,7 +141,7 @@ fn trace_annotate_int() {
     assert_eq!("[085F:0100] B80300           Mov16    ax, 0x0003                    ; ax = 0x0003
 [085F:0103] CD10             Int      0x10                          ; video: set 80x25 text mode (0x03)
 [085F:0105] B44C             Mov8     ah, 0x4C                      ; ah = 0x4C
-[085F:0107] CD21             Int      0x21                          ; dos: terminate with return code in AL
+[085F:0107] CD21             Int      0x21                          ; dos: terminate program with return code in AL
 ", res);
 }
 
@@ -172,10 +172,12 @@ fn trace_annotate_out() {
 
 #[test]
 fn trace_annotate_regset() {
-    // this test makes sure that register initializations are set
+    // this test makes sure that register initializations are annotated
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x13, 0x00,   // mov ax,0x13
+        0x89, 0xC2,         // mov dx,ax
+        0x88, 0xD3,         // mov bl,dl
         0x31, 0xC0,         // xor ax,ax
         0x30, 0xDB,         // xor bl,bl
     ];
@@ -185,8 +187,10 @@ fn trace_annotate_regset() {
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
     assert_eq!("[085F:0100] B81300           Mov16    ax, 0x0013                    ; ax = 0x0013
-[085F:0103] 31C0             Xor16    ax, ax                        ; ax = 0x0000
-[085F:0105] 30DB             Xor8     bl, bl                        ; bl = 0x00
+[085F:0103] 89C2             Mov16    dx, ax                        ; dx = 0x0013
+[085F:0105] 88D3             Mov8     bl, dl                        ; bl = 0x13
+[085F:0107] 31C0             Xor16    ax, ax                        ; ax = 0x0000
+[085F:0109] 30DB             Xor8     bl, bl                        ; bl = 0x00
 ", res);
 }
 
