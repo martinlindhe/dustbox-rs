@@ -37,12 +37,12 @@ pub struct ProgramTracer {
 }
 
 struct TraceAnnotation {
-    address: MemoryAddress,
+    ma: MemoryAddress,
     note: String,
 }
 
 struct SeenAddress {
-    address: MemoryAddress,
+    ma: MemoryAddress,
     sources: SeenSources,
     visited: bool,
 }
@@ -175,7 +175,7 @@ impl ProgramTracer {
     pub fn trace_execution(&mut self, machine: &mut Machine) {
         // tell tracer to start at CS:IP
         let ma = MemoryAddress::RealSegmentOffset(machine.cpu.get_r16(R::CS), machine.cpu.regs.ip);
-        self.seen_addresses.push(SeenAddress{address: ma, visited: false, sources: SeenSources::default()});
+        self.seen_addresses.push(SeenAddress{ma, visited: false, sources: SeenSources::default()});
 
         loop {
             self.trace_unvisited_address(machine);
@@ -316,7 +316,7 @@ impl ProgramTracer {
             }
             _ => {
                 for a in &self.annotations {
-                    if a.address == MemoryAddress::RealSegmentOffset(ii.segment as u16, ii.offset as u16) {
+                    if a.ma == MemoryAddress::RealSegmentOffset(ii.segment as u16, ii.offset as u16) {
                         return a.note.clone();
                     }
                 }
@@ -419,7 +419,7 @@ impl ProgramTracer {
     fn learn_address(&mut self, seg: u16, offset: u16, src: MemoryAddress, kind: AddressUsageKind) {
         let ma = MemoryAddress::RealSegmentOffset(seg, offset);
         for seen in &mut self.seen_addresses {
-            if seen.address.value() == ma.value() {
+            if seen.ma.value() == ma.value() {
                 if DEBUG_TRACER {
                     println!("learn_address append {:?} [{:04X}:{:04X}]", kind, seg, offset);
                 }
@@ -430,12 +430,12 @@ impl ProgramTracer {
         if DEBUG_TRACER {
             println!("learn_address new {:?} [{:04X}:{:04X}]", kind, seg, offset);
         }
-        self.seen_addresses.push(SeenAddress{address: ma, visited: false, sources: SeenSources::from_source(SeenSource{address: src, kind})});
+        self.seen_addresses.push(SeenAddress{ma, visited: false, sources: SeenSources::from_source(SeenSource{address: src, kind})});
     }
 
     fn get_sources_for_address(&self, ma: MemoryAddress) -> Option<SeenSources> {
         for dst in &self.seen_addresses {
-            if dst.address.value() == ma.value() {
+            if dst.ma.value() == ma.value() {
                 if dst.sources.sources.is_empty() {
                     return None;
                 }
@@ -457,7 +457,7 @@ impl ProgramTracer {
     fn get_unvisited_address(&self) -> (Option<MemoryAddress>, Option<SeenSources>) {
         for dst in &self.seen_addresses {
             if !dst.visited {
-                return (Some(dst.address), Some(dst.sources.clone()));
+                return (Some(dst.ma), Some(dst.sources.clone()));
             }
         }
         (None, None)
@@ -466,7 +466,7 @@ impl ProgramTracer {
     /// marks given seen address as visited by the prober
     fn mark_address_visited(&mut self, ma: MemoryAddress) {
          for dst in &mut self.seen_addresses {
-            if dst.address == ma {
+            if dst.ma == ma {
                 if DEBUG_TRACER {
                     println!("mark_destination_visited {:04X}:{:04X}", ma.segment(), ma.offset());
                 }
@@ -579,7 +579,7 @@ impl ProgramTracer {
                 }
                 Op::Int => if let Parameter::Imm8(v) = ii.instruction.params.dst {
                     // TODO skip if register is dirty
-                    self.annotations.push(TraceAnnotation{address: ma, note: self.int_desc(v)});
+                    self.annotations.push(TraceAnnotation{ma, note: self.int_desc(v)});
                 }
                 Op::Out8 | Op::Out16 => {
                     // TODO skip if register is dirty
@@ -591,13 +591,9 @@ impl ProgramTracer {
                     if let Some(dst) = dst {
                         match ii.instruction.params.src {
                             Parameter::Reg8(sr) => self.annotations.push(TraceAnnotation{
-                                address: ma,
-                                note: format!("{} (0x{:04X}) = {:02X}", self.out_desc(dst as u16), dst, self.regs.get_r8(sr))
-                            }),
+                                ma, note: format!("{} (0x{:04X}) = {:02X}", self.out_desc(dst as u16), dst, self.regs.get_r8(sr))}),
                             Parameter::Reg16(sr) => self.annotations.push(TraceAnnotation{
-                                address: ma,
-                                note: format!("{} (0x{:04X}) = {:04X}", self.out_desc(dst as u16), dst, self.regs.get_r16(sr))
-                            }),
+                                ma, note: format!("{} (0x{:04X}) = {:04X}", self.out_desc(dst as u16), dst, self.regs.get_r16(sr))}),
                             _ => {}
                         }
                     }
@@ -606,10 +602,7 @@ impl ProgramTracer {
                     match ii.instruction.params.src {
                         Parameter::Reg8(sr) => if dr == sr {
                             self.regs.set_r8(dr, 0);
-                            self.annotations.push(TraceAnnotation{
-                                address: ma,
-                                note: format!("{} = 0x{:02X}", dr, 0)
-                            });
+                            self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", dr, 0)});
                         }
                         _ => {}
                     }
@@ -618,10 +611,7 @@ impl ProgramTracer {
                     match ii.instruction.params.src {
                         Parameter::Reg16(sr) => if dr == sr {
                             self.regs.set_r16(dr, 0);
-                            self.annotations.push(TraceAnnotation{
-                                address: ma,
-                                note: format!("{} = 0x{:04X}", dr, 0)
-                            });
+                            self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, 0)});
                         }
                         _ => {}
                     }
@@ -629,27 +619,31 @@ impl ProgramTracer {
                 Op::Mov8 | Op::Mov16 => {
                     match ii.instruction.params.dst {
                         Parameter::Reg8(r) => {
-                            if let Parameter::Imm8(v) = ii.instruction.params.src {
+                            let v = match ii.instruction.params.src {
+                                Parameter::Reg8(sr) => Some(self.regs.get_r8(sr)),
+                                Parameter::Imm8(v) => Some(v),
+                                _ => None
+                            };
+                            if let Some(v) = v {
                                 if DEBUG_TRACE_REGS {
                                     println!("trace reg {} = {:02x}", r, v);
                                 }
                                 self.regs.set_r8(r, v);
-                                self.annotations.push(TraceAnnotation{
-                                    address: ma,
-                                    note: format!("{} = 0x{:02X}", r, v)
-                                });
+                                self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", r, v)});
                             }
                         }
-                        Parameter::Reg16(r) => {
-                            if let Parameter::Imm16(v) = ii.instruction.params.src {
+                        Parameter::Reg16(dr) => {
+                            let v = match ii.instruction.params.src {
+                                Parameter::Reg16(sr) => Some(self.regs.get_r16(sr)),
+                                Parameter::Imm16(v) => Some(v),
+                                _ => None
+                            };
+                            if let Some(v) = v {
                                 if DEBUG_TRACE_REGS {
-                                    println!("trace reg {} = {:04x}", r, v);
+                                    println!("trace reg {} = {:04x}", dr, v);
                                 }
-                                self.regs.set_r16(r, v);
-                                self.annotations.push(TraceAnnotation{
-                                    address: ma,
-                                    note: format!("{} = 0x{:04X}", r, v)
-                                });
+                                self.regs.set_r16(dr, v);
+                                self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, v)});
                             }
                         }
                         Parameter::Ptr8(seg, offset) => {
@@ -738,12 +732,12 @@ impl ProgramTracer {
                 }
             }
             0x20 => {
-                String::from("exit to DOS")
+                String::from("dos: terminate program with return code 0")
             }
             0x21 => { // DOS. fn in AH
                 match ah {
                     0x09 => String::from("dos: write $-terminated string at DS:DX to standard output"),
-                    0x4C => String::from("dos: terminate with return code in AL"),
+                    0x4C => String::from("dos: terminate program with return code in AL"),
                     _ => format!("dos: unrecognized AH = {:02X}", ah)
                 }
             }
