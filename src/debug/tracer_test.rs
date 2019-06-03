@@ -175,15 +175,20 @@ fn trace_annotate_regset() {
     // this test makes sure that register initializations are annotated
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
-        0xB8, 0x13, 0x00,   // mov ax,0x13
-        0x89, 0xC2,         // mov dx,ax
-        0x42,               // inc dx
-        0xFE, 0xC2,         // inc dl
-        0x88, 0xD3,         // mov bl,dl
-        0x4B,               // dec bx
-        0xFE, 0xCB,         // dec bl
-        0x31, 0xC0,         // xor ax,ax
-        0x30, 0xDB,         // xor bl,bl
+        0xB8, 0x13, 0x00,       // mov ax,0x13
+        0x89, 0xC2,             // mov dx,ax
+        0x42,                   // inc dx
+        0xFE, 0xC2,             // inc dl
+        0x88, 0xD3,             // mov bl,dl
+        0x4B,                   // dec bx
+        0xFE, 0xCB,             // dec bl
+        0x00, 0xD3,             // add bl,dl
+        0x80, 0xC3, 0x05,       // add bl,0x5
+        0x01, 0xC3,             // add bx,ax
+        0x81, 0xC3, 0xF0, 0xFF, // add bx,0xFFF0
+        0x83, 0xC3, 0x04,       // add bx,byte +0x4     xxx
+        0x31, 0xC0,             // xor ax,ax
+        0x30, 0xDB,             // xor bl,bl
     ];
     machine.load_executable(&code);
 
@@ -197,8 +202,13 @@ fn trace_annotate_regset() {
 [085F:0108] 88D3             Mov8     bl, dl                        ; bl = 0x15
 [085F:010A] 4B               Dec16    bx                            ; bx = 0x0014
 [085F:010B] FECB             Dec8     bl                            ; bl = 0x13
-[085F:010D] 31C0             Xor16    ax, ax                        ; ax = 0x0000
-[085F:010F] 30DB             Xor8     bl, bl                        ; bl = 0x00
+[085F:010D] 00D3             Add8     bl, dl                        ; bl = 0x28
+[085F:010F] 80C305           Add8     bl, 0x05                      ; bl = 0x2D
+[085F:0112] 01C3             Add16    bx, ax                        ; bx = 0x0040
+[085F:0114] 81C3F0FF         Add16    bx, 0xFFF0                    ; bx = 0x0030
+[085F:0118] 83C304           Add16    bx, byte +0x04                ; bx = 0x0034
+[085F:011B] 31C0             Xor16    ax, ax                        ; ax = 0x0000
+[085F:011D] 30DB             Xor8     bl, bl                        ; bl = 0x00
 ", res);
 }
 
