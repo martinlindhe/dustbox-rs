@@ -561,31 +561,25 @@ impl ProgramTracer {
                 Op::Loop | Op::Loope | Op::Loopne |
                 Op::Ja | Op::Jc | Op::Jcxz | Op::Jg | Op::Jl |
                 Op::Jna | Op::Jnc | Op::Jng | Op::Jnl | Op::Jno | Op::Jns | Op::Jnz |
-                Op::Jo | Op::Jpe | Op::Jpo | Op::Js | Op::Jz => {
-                    match ii.instruction.params.dst {
-                        Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Branch),
-                        Parameter::Reg16(_) => {}, // ignore "call bp"
-                        Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
-                        Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
-                        Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "call [bx-0x67A0]"
-                        _ => println!("ERROR2: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
-                    }
+                Op::Jo | Op::Jpe | Op::Jpo | Op::Js | Op::Jz => match ii.instruction.params.dst {
+                    Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Branch),
+                    Parameter::Reg16(_) => {}, // ignore "call bp"
+                    Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
+                    Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
+                    Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "call [bx-0x67A0]"
+                    _ => println!("ERROR2: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
                 }
-                Op::CallNear | Op::CallFar => {
-                    match ii.instruction.params.dst {
-                        Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Call),
-                        Parameter::Reg16(_) => {}, // ignore "call bp"
-                        Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
-                        Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
-                        Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "call [bx-0x67A0]"
-                        _ => println!("ERROR3: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
-                    }
+                Op::CallNear | Op::CallFar => match ii.instruction.params.dst {
+                    Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Call),
+                    Parameter::Reg16(_) => {}, // ignore "call bp"
+                    Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
+                    Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
+                    Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "call [bx-0x67A0]"
+                    _ => println!("ERROR3: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
                 }
-                Op::Int => {
+                Op::Int => if let Parameter::Imm8(v) = ii.instruction.params.dst {
                     // TODO skip if register is dirty
-                    if let Parameter::Imm8(v) = ii.instruction.params.dst {
-                        self.annotations.push(TraceAnnotation{address: ma.clone(), note: self.int_desc(v)});
-                    }
+                    self.annotations.push(TraceAnnotation{address: ma, note: self.int_desc(v)});
                 }
                 Op::Out8 | Op::Out16 => {
                     // TODO skip if register is dirty
@@ -597,15 +591,39 @@ impl ProgramTracer {
                     if let Some(dst) = dst {
                         match ii.instruction.params.src {
                             Parameter::Reg8(sr) => self.annotations.push(TraceAnnotation{
-                                address: ma.clone(),
+                                address: ma,
                                 note: format!("{} (0x{:04X}) = {:02X}", self.out_desc(dst as u16), dst, self.regs.get_r8(sr))
                             }),
                             Parameter::Reg16(sr) => self.annotations.push(TraceAnnotation{
-                                address: ma.clone(),
+                                address: ma,
                                 note: format!("{} (0x{:04X}) = {:04X}", self.out_desc(dst as u16), dst, self.regs.get_r16(sr))
                             }),
                             _ => {}
                         }
+                    }
+                }
+                Op::Xor8 => if let Parameter::Reg8(dr) = ii.instruction.params.dst {
+                    match ii.instruction.params.src {
+                        Parameter::Reg8(sr) => if dr == sr {
+                            self.regs.set_r8(dr, 0);
+                            self.annotations.push(TraceAnnotation{
+                                address: ma,
+                                note: format!("{} = 0x{:02X}", dr, 0)
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+                Op::Xor16 => if let Parameter::Reg16(dr) = ii.instruction.params.dst {
+                    match ii.instruction.params.src {
+                        Parameter::Reg16(sr) => if dr == sr {
+                            self.regs.set_r16(dr, 0);
+                            self.annotations.push(TraceAnnotation{
+                                address: ma,
+                                note: format!("{} = 0x{:04X}", dr, 0)
+                            });
+                        }
+                        _ => {}
                     }
                 }
                 Op::Mov8 | Op::Mov16 => {
@@ -616,6 +634,10 @@ impl ProgramTracer {
                                     println!("trace reg {} = {:02x}", r, v);
                                 }
                                 self.regs.set_r8(r, v);
+                                self.annotations.push(TraceAnnotation{
+                                    address: ma,
+                                    note: format!("{} = 0x{:02X}", r, v)
+                                });
                             }
                         }
                         Parameter::Reg16(r) => {
@@ -624,6 +646,10 @@ impl ProgramTracer {
                                     println!("trace reg {} = {:04x}", r, v);
                                 }
                                 self.regs.set_r16(r, v);
+                                self.annotations.push(TraceAnnotation{
+                                    address: ma,
+                                    note: format!("{} = 0x{:04X}", r, v)
+                                });
                             }
                         }
                         Parameter::Ptr8(seg, offset) => {

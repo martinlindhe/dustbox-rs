@@ -15,7 +15,7 @@ fn trace_simple() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004
+    assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004                    ; dx = 0x0004
 [085F:0103] 89D1             Mov16    cx, dx
 [085F:0105] EB00             JmpShort 0x0107
 
@@ -41,7 +41,7 @@ fn trace_unreferenced_data() {
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
     println!("{}", res);
-    assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004
+    assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004                    ; dx = 0x0004
 [085F:0103] 89D1             Mov16    cx, dx
 [085F:0105] EB01             JmpShort 0x0108
 
@@ -89,18 +89,17 @@ fn trace_sepatate_call_destination_separators() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] B80100           Mov16    ax, 0x0001
+    assert_eq!("[085F:0100] B80100           Mov16    ax, 0x0001                    ; ax = 0x0001
 [085F:0103] E80500           CallNear 0x010B
-[085F:0106] B80200           Mov16    ax, 0x0002
+[085F:0106] B80200           Mov16    ax, 0x0002                    ; ax = 0x0002
 [085F:0109] EB04             JmpShort 0x010F
 
-[085F:010B] B80300           Mov16    ax, 0x0003                    ; xref: call@085F:0103
+[085F:010B] B80300           Mov16    ax, 0x0003                    ; xref: call@085F:0103; ax = 0x0003
 [085F:010E] C3               Retn
 
 [085F:010F] CD20             Int      0x20                          ; xref: jump@085F:0109; exit to DOS
 ", res);
 }
-
 
 #[test]
 fn trace_virtual_memory() {
@@ -139,13 +138,12 @@ fn trace_annotate_int() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] B80300           Mov16    ax, 0x0003
+    assert_eq!("[085F:0100] B80300           Mov16    ax, 0x0003                    ; ax = 0x0003
 [085F:0103] CD10             Int      0x10                          ; video: set 80x25 text mode (0x03)
-[085F:0105] B44C             Mov8     ah, 0x4C
+[085F:0105] B44C             Mov8     ah, 0x4C                      ; ah = 0x4C
 [085F:0107] CD21             Int      0x21                          ; dos: terminate with return code in AL
 ", res);
 }
-
 
 #[test]
 fn trace_annotate_out() {
@@ -163,14 +161,35 @@ fn trace_annotate_out() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] B83412           Mov16    ax, 0x1234
-[085F:0103] BAC803           Mov16    dx, 0x03C8
+    assert_eq!("[085F:0100] B83412           Mov16    ax, 0x1234                    ; ax = 0x1234
+[085F:0103] BAC803           Mov16    dx, 0x03C8                    ; dx = 0x03C8
 [085F:0106] E640             Out8     0x40, al                      ; pit: counter 0, counter divisor (0x0040) = 34
 [085F:0108] E740             Out16    0x40, ax                      ; pit: counter 0, counter divisor (0x0040) = 1234
 [085F:010A] EE               Out8     dx, al                        ; vga: PEL address write mode (0x03C8) = 34
 [085F:010B] EF               Out16    dx, ax                        ; vga: PEL address write mode (0x03C8) = 1234
 ", res);
 }
+
+#[test]
+fn trace_annotate_regset() {
+    // this test makes sure that register initializations are set
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xB8, 0x13, 0x00,   // mov ax,0x13
+        0x31, 0xC0,         // xor ax,ax
+        0x30, 0xDB,         // xor bl,bl
+    ];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] B81300           Mov16    ax, 0x0013                    ; ax = 0x0013
+[085F:0103] 31C0             Xor16    ax, ax                        ; ax = 0x0000
+[085F:0105] 30DB             Xor8     bl, bl                        ; bl = 0x00
+", res);
+}
+
 
 /*
 [085F:011B] 6800A0           Push16   0xA000
