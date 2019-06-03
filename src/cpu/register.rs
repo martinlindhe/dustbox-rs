@@ -195,7 +195,6 @@ impl fmt::Display for AMode {
             AMode::ESI => "esi",
             AMode::EDI => "edi",
         };
-
         write!(f, "{}", s)
     }
 }

@@ -73,7 +73,7 @@ fn trace_decorates_stosw() {
 
 #[test]
 fn trace_sepatate_call_destination_separators() {
-    // makes sure newlines separate code blocks
+    // this test makes sure newlines separate code blocks
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x01, 0x00,   // mov ax,0x1
@@ -97,17 +97,16 @@ fn trace_sepatate_call_destination_separators() {
 [085F:010B] B80300           Mov16    ax, 0x0003                    ; xref: call@085F:0103
 [085F:010E] C3               Retn
 
-[085F:010F] CD20             Int      0x20                          ; xref: jump@085F:0109
+[085F:010F] CD20             Int      0x20                          ; xref: jump@085F:0109; exit to DOS
 ", res);
 }
 
 
 #[test]
 fn trace_virtual_memory() {
-    // makes sure newlines separate code blocks
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
-        0x2E, 0xA3, 0x02, 0x02, //  mov [cs:0x202],ax
+        0x2E, 0xA3, 0x02, 0x02, // mov [cs:0x202],ax
         0x2E, 0xA1, 0x02, 0x02, // mov ax,[cs:0x202]
         0x2E, 0xA2, 0x05, 0x02, // mov [cs:0x205],al
         0x2E, 0xA0, 0x05, 0x02, // mov al,[cs:0x205]
@@ -123,6 +122,27 @@ fn trace_virtual_memory() {
 [085F:010C] 2EA00502         Mov8     al, byte [cs:0x0205]
 [085F:0202] ?? ??            dw       ????                          ; xref: word@085F:0100, word@085F:0104
 [085F:0205] ??               db       ??                            ; xref: byte@085F:0108, byte@085F:010C
+", res);
+}
+
+#[test]
+fn trace_annotate_int() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xB8, 0x03, 0x00,       // mov ax, 0x0013
+        0xCD, 0x10,             // int 0x10
+        0xB4, 0x4C,             // mov ah, 0x4C
+        0xCD, 0x21,             // int 0x21
+];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] B80300           Mov16    ax, 0x0003
+[085F:0103] CD10             Int      0x10                          ; video: set 80x25 text mode (0x03)
+[085F:0105] B44C             Mov8     ah, 0x4C
+[085F:0107] CD21             Int      0x21                          ; dos: terminate with return code in AL
 ", res);
 }
 
@@ -142,13 +162,6 @@ fn trace_virtual_memory() {
 [085F:011A] BAC803           Mov16    dx, 0x03C8
 [085F:011D] 8AC1             Mov8     al, cl            ; al = 0x00
 [085F:011F] EE               Out8     dx, al            ; OUT 0x03C8, 0x00 ...
-*/
-
-/*
-[085F:01EB] B80300           Mov16    ax, 0x0003
-[085F:01EE] CD10             Int      0x10              ; video - 80x25 text mode (0x00, 0x03)
-[085F:01F0] B44C             Mov8     ah, 0x4C
-[085F:01F2] CD21             Int      0x21              ; DOS 2+ - EXIT - TERMINATE WITH RETURN CODE al   - XXX also stop parsing here, as if hit a RET
 */
 
 /*
