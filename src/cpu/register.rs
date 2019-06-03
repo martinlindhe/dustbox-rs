@@ -1,4 +1,5 @@
 use std::convert::From;
+use std::fmt;
 
 use crate::cpu::flag::Flags;
 use crate::cpu::decoder::AddressSize;
@@ -52,23 +53,10 @@ pub enum R {
     EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, //
 }
 
-impl R {
-    pub fn index(self) -> usize {
-          match self {
-            R::AL | R::AX | R::EAX | R::ES => 0,
-            R::CL | R::CX | R::ECX | R::CS => 1,
-            R::DL | R::DX | R::EDX | R::SS => 2,
-            R::BL | R::BX | R::EBX | R::DS => 3,
-            R::AH | R::SP | R::ESP | R::FS => 4,
-            R::CH | R::BP | R::EBP | R::GS => 5,
-            R::DH | R::SI | R::ESI => 6,
-            R::BH | R::DI | R::EDI => 7,
-            _ => unreachable!(),
-        }
-    }
 
-    pub fn as_str(self) -> &'static str {
-        match self {
+impl fmt::Display for R {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self {
             R::AL => "al",
             R::CL => "cl",
             R::DL => "dl",
@@ -102,6 +90,23 @@ impl R {
             R::EBP => "ebp",
             R::ESI => "esi",
             R::EDI => "edi",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl R {
+    pub fn index(self) -> usize {
+          match self {
+            R::AL | R::AX | R::EAX | R::ES => 0,
+            R::CL | R::CX | R::ECX | R::CS => 1,
+            R::DL | R::DX | R::EDX | R::SS => 2,
+            R::BL | R::BX | R::EBX | R::DS => 3,
+            R::AH | R::SP | R::ESP | R::FS => 4,
+            R::CH | R::BP | R::EBP | R::GS => 5,
+            R::DH | R::SI | R::ESI => 6,
+            R::BH | R::DI | R::EDI => 7,
+            _ => unreachable!(),
         }
     }
 }

@@ -61,10 +61,10 @@ pub enum Parameter {
 impl fmt::Display for Parameter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Parameter::Reg8(ref v) |
-            Parameter::Reg16(ref v) |
-            Parameter::Reg32(ref v) |
-            Parameter::SReg16(ref v) => write!(f, "{}", v.as_str()),
+            Parameter::Reg8(ref r) |
+            Parameter::Reg16(ref r) |
+            Parameter::Reg32(ref r) |
+            Parameter::SReg16(ref r) => write!(f, "{}", r),
 
             Parameter::Imm8(imm) => write!(f, "0x{:02X}", imm),
             Parameter::Imm16(imm) => write!(f, "0x{:04X}", imm),
