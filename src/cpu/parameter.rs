@@ -81,12 +81,12 @@ impl fmt::Display for Parameter {
             ),
             Parameter::Ptr16Imm(seg, v) => write!(f, "{:04X}:{:04X}", seg, v),
             Parameter::Ptr8(seg, v) => write!(f, "byte [{}:0x{:04X}]", seg, v),
-            Parameter::Ptr8Amode(seg, ref amode) => write!(f, "byte [{}:{}]", seg, amode.as_str()),
+            Parameter::Ptr8Amode(seg, ref amode) => write!(f, "byte [{}:{}]", seg, amode),
             Parameter::Ptr8AmodeS8(seg, ref amode, imm) => write!(
                 f,
                 "byte [{}:{}{}0x{:02X}]",
                 seg,
-                amode.as_str(),
+                amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
                     (Wrapping(0) - Wrapping(imm)).0
@@ -98,7 +98,7 @@ impl fmt::Display for Parameter {
                 f,
                 "byte [{}:{}{}0x{:04X}]",
                 seg,
-                amode.as_str(),
+                amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
                     (Wrapping(0) - Wrapping(imm)).0
@@ -107,12 +107,12 @@ impl fmt::Display for Parameter {
                 }
             ),
             Parameter::Ptr16(seg, v) => write!(f, "word [{}:0x{:04X}]", seg, v),
-            Parameter::Ptr16Amode(seg, ref amode) => write!(f, "word [{}:{}]", seg, amode.as_str()),
+            Parameter::Ptr16Amode(seg, ref amode) => write!(f, "word [{}:{}]", seg, amode),
             Parameter::Ptr16AmodeS8(seg, ref amode, imm) => write!(
                 f,
                 "word [{}:{}{}0x{:02X}]",
                 seg,
-                amode.as_str(),
+                amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
                     (Wrapping(0) - Wrapping(imm)).0
@@ -124,7 +124,7 @@ impl fmt::Display for Parameter {
                 f,
                 "word [{}:{}{}0x{:04X}]",
                 seg,
-                amode.as_str(),
+                amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
                     (Wrapping(0) - Wrapping(imm)).0
@@ -133,12 +133,12 @@ impl fmt::Display for Parameter {
                 }
             ),
             Parameter::Ptr32(seg, v) => write!(f, "dword [{}:0x{:04X}]", seg, v),
-            Parameter::Ptr32Amode(seg, ref amode) => write!(f, "dword [{}:{}]", seg, amode.as_str()),
+            Parameter::Ptr32Amode(seg, ref amode) => write!(f, "dword [{}:{}]", seg, amode),
             Parameter::Ptr32AmodeS8(seg, ref amode, imm) => write!(
                 f,
                 "dword [{}:{}{}0x{:02X}]",
                 seg,
-                amode.as_str(),
+                amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
                     (Wrapping(0) - Wrapping(imm)).0
@@ -150,7 +150,7 @@ impl fmt::Display for Parameter {
                 f,
                 "dword [{}:{}{}0x{:04X}]",
                 seg,
-                amode.as_str(),
+                amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
                     (Wrapping(0) - Wrapping(imm)).0
