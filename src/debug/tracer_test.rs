@@ -67,7 +67,7 @@ fn trace_annotates_stosw() {
     let res = tracer.present_trace(&mut machine);
     assert_eq!("[085F:0100] AB               Stosw                                  ; [es:di] = ax
 [085F:0101] F3AB             Rep      Stosw                         ; while cx-- > 0 { [es:di] = ax }
-[085F:0103] E460             In8      al, 0x60                      ; keyboard or kb controller data output buffer
+[085F:0103] E460             In8      al, 0x60                      ; keyboard: input buffer (0x0060)
 ", res);
 }
 
@@ -205,6 +205,24 @@ fn trace_annotate_out() {
 [085F:0108] E740             Out16    0x40, ax                      ; pit: counter 0, counter divisor (0x0040) = 1234
 [085F:010A] EE               Out8     dx, al                        ; vga: PEL address write mode (0x03C8) = 34
 [085F:010B] EF               Out16    dx, ax                        ; vga: PEL address write mode (0x03C8) = 1234
+", res);
+}
+
+
+#[test]
+fn trace_annotate_in() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xBA, 0x60, 0x00,   // mov dx,0x0060
+        0xEC,               // in al,dx
+    ];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] BA6000           Mov16    dx, 0x0060                    ; dx = 0x0060
+[085F:0103] EC               In8      al, dx                        ; keyboard: input buffer (0x0060)
 ", res);
 }
 

@@ -254,41 +254,9 @@ impl ProgramTracer {
         self.accounted_bytes.sort();
     }
 
-    /// implementation is in src/hardware.rs in_u8()
-    fn in_u8_port_desc(&self, port: u16) -> String {
-        match port {
-            0x0040 => "pit counter 0".to_owned(),
-            0x0060 => "keyboard or kb controller data output buffer".to_owned(),
-            0x0061 => "keyboard controller port B control register".to_owned(),
-            _ => {
-                format!("XXX in_u8_port_desc unrecognized port {:04X}", port)
-            },
-        }
-    }
-
-    fn in_u16_port_desc(&self, port: u16) -> String {
-        match port {
-            _ => {
-                format!("XXX in_u16_port_desc unrecognized port {:04X}", port)
-            },
-        }
-    }
-
     /// returns a instruction annotation
     fn annotate_instruction(&self, ii: &InstructionInfo) -> String {
         match ii.instruction.command {
-            Op::In8 => {
-                match ii.instruction.params.src {
-                    Parameter::Imm8(port) => self.in_u8_port_desc(u16::from(port)),
-                    _ => "".to_owned(),
-                }
-            }
-            Op::In16 => {
-                match ii.instruction.params.src {
-                    Parameter::Imm8(port) => self.in_u16_port_desc(u16::from(port)),
-                    _ => "".to_owned(),
-                }
-            }
             Op::Lodsb => {
                 match ii.instruction.repeat {
                     RepeatMode::None => "al = [ds:si]".to_owned(),
@@ -596,16 +564,34 @@ impl ProgramTracer {
                 Op::Out8 | Op::Out16 => {
                     // TODO skip if register is dirty
                     let dst = match ii.instruction.params.dst {
-                        Parameter::Imm8(dst) => Some(dst as u16),
-                        Parameter::Reg16(dr) => Some(self.regs.get_r16(dr)),
+                        Parameter::Imm8(v) => Some(v as u16),
+                        Parameter::Reg16(r) => Some(self.regs.get_r16(r)),
                         _ => None
                     };
                     if let Some(dst) = dst {
                         match ii.instruction.params.src {
-                            Parameter::Reg8(sr) => self.annotations.push(TraceAnnotation{
-                                ma, note: format!("{} (0x{:04X}) = {:02X}", self.out_desc(dst as u16), dst, self.regs.get_r8(sr))}),
-                            Parameter::Reg16(sr) => self.annotations.push(TraceAnnotation{
-                                ma, note: format!("{} (0x{:04X}) = {:04X}", self.out_desc(dst as u16), dst, self.regs.get_r16(sr))}),
+                            Parameter::Reg8(r) => self.annotations.push(TraceAnnotation{
+                                ma, note: format!("{} (0x{:04X}) = {:02X}", self.out_desc(dst as u16), dst, self.regs.get_r8(r))}),
+                            Parameter::Reg16(r) => self.annotations.push(TraceAnnotation{
+                                ma, note: format!("{} (0x{:04X}) = {:04X}", self.out_desc(dst as u16), dst, self.regs.get_r16(r))}),
+                            _ => {}
+                        }
+                    }
+                }
+                Op::In8 | Op::In16 => {
+                    // TODO skip if register is dirty
+                    let src = match ii.instruction.params.src {
+                        Parameter::Imm8(v) => Some(v as u16),
+                        Parameter::Reg16(r) => Some(self.regs.get_r16(r)),
+                        _ => None
+                    };
+                    // TODO mark dst register dirty
+                    if let Some(src) = src {
+                        match ii.instruction.params.dst {
+                            Parameter::Reg8(_) => self.annotations.push(TraceAnnotation{
+                                ma, note: format!("{} (0x{:04X})", self.in_desc(src as u16), src)}),
+                            Parameter::Reg16(_) => self.annotations.push(TraceAnnotation{
+                                ma, note: format!("{} (0x{:04X})", self.in_desc(src as u16), src)}),
                             _ => {}
                         }
                     }
@@ -784,18 +770,41 @@ impl ProgramTracer {
         }
     }
 
-    /// describe out port
+    /// describe out port (write)
     fn out_desc(&self, port: u16) -> &str {
         match port {
             0x0040 => "pit: counter 0, counter divisor",
             0x0041 => "pit: counter 1, RAM refresh counter",
             0x0042 => "pit: counter 2, cassette & speaker",
-            0x03C4 => "ega: TS index register / vga: sequencer index register",
+            0x0060 => "keyboard: controller data port",
+            0x0061 => "keyboard: controller port B",
+            0x0201 => "joystick: fire four one-shots",
+            0x03C4 => "vga: sequencer index register", // ega: TS index register
             0x03C6 => "vga: PEL mask register",
             0x03C7 => "vga: PEL address read mode",
             0x03C8 => "vga: PEL address write mode",
             0x03C9 => "vga: PEL data register",
             0x03D4 => "ega/vga: CRT (6845) index register",
+            0x03DA => "ega/vga: feature control register",
+            _ => "unrecognized",
+        }
+    }
+
+    /// describe in port (read)
+    fn in_desc(&self, port: u16) -> &str {
+        match port {
+            0x0040 => "pit: counter 0, counter divisor",
+            0x0041 => "pit: counter 1, RAM refresh counter",
+            0x0042 => "pit: counter 2, cassette & speaker",
+            0x0060 => "keyboard: input buffer",
+            0x0061 => "keyboard: controller port B control register",
+            0x0201 => "joystick: read position and status",
+            0x03C4 => "vga: sequencer index register",
+            0x03C6 => "vga: PEL mask register",
+            0x03C7 => "vga: PEL address read mode / vga: DAC state register",
+            0x03C8 => "vga: PEL address write mode",
+            0x03C9 => "vga: PEL data register",
+            0x03DA => "ega/vga: input status 1 register", // cga: status register
             _ => "unrecognized",
         }
     }
@@ -841,6 +850,13 @@ impl ProgramTracer {
                     0x09 => String::from("dos: write $-terminated string at DS:DX to standard output"),
                     0x4C => String::from("dos: terminate program with return code in AL"),
                     _ => format!("dos: unrecognized AH = {:02X}", ah)
+                }
+            }
+            0x33 => { // mouse
+                let ax = self.regs.get_r16(R::AX);
+                match ax {
+                     0x0003 => String::from("mouse: get position and button status"),
+                     _ => format!("mouse: unrecognized AX = {:04X}", ax)
                 }
             }
             _ => {
