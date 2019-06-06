@@ -581,6 +581,17 @@ impl ProgramTracer {
                 Op::Int => if let Parameter::Imm8(v) = ii.instruction.params.dst {
                     // TODO skip if register is dirty
                     self.annotations.push(TraceAnnotation{ma, note: self.int_desc(v)});
+
+                    let ah = self.regs.get_r8(R::AH);
+
+                    if v == 0x20 {
+                        // int 0x20: exit to dos
+                        break
+                    }
+                    if v==0x21 && ah == 0x4C {
+                        // int 0x21, 0x4C: exit to dos
+                        break
+                    }
                 }
                 Op::Out8 | Op::Out16 => {
                     // TODO skip if register is dirty

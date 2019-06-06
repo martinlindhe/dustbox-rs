@@ -125,6 +125,44 @@ fn trace_virtual_memory() {
 }
 
 #[test]
+fn trace_break_after_dos_int20() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xCD, 0x20, // int 0x20
+        0x00, 0x00, // db 0,0
+    ];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] CD20             Int      0x20                          ; dos: terminate program with return code 0
+[085F:0102] 00               db       0x00
+[085F:0103] 00               db       0x00
+", res);
+}
+
+#[test]
+fn trace_break_after_dos_int21_4c() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xB4, 0x4C, // mov ah,0x4C
+        0xCD, 0x21, // int 0x21
+        0x3F,       // db 0x3f
+    ];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] B44C             Mov8     ah, 0x4C                      ; ah = 0x4C
+[085F:0102] CD21             Int      0x21                          ; dos: terminate program with return code in AL
+[085F:0104] 3F               db       0x3F
+", res);
+}
+
+
+#[test]
 fn trace_annotate_int() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
