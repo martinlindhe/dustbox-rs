@@ -25,6 +25,9 @@ run-release:
 disasm:
 	cargo run --release --package dustbox_disassembler
 
+install-disasm:
+	cargo install --path disassembler --force
+
 fuzz:
 	cargo run --package dustbox_fuzzer
 

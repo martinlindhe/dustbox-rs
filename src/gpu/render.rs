@@ -225,6 +225,20 @@ impl Component for GPU {
                 let y2 = cpu.get_r8(R::DH);
                 println!("XXX int10 - SCROLL UP WINDOW, lines {}, attr {}, upper left {},{}, lower right {},{}", lines, attr, x1, y1, x2, y2);
             }
+            0x07 => {
+                // VIDEO - SCROLL DOWN WINDOW
+                // AL = number of lines by which to scroll down (00h=clear entire window)
+                // BH = attribute used to write blank lines at top of window
+                // CH,CL = row,column of window's upper left corner
+                // DH,DL = row,column of window's lower right corner
+                let lines = cpu.get_r8(R::AL);
+                let attr = cpu.get_r8(R::BH);
+                let x1 = cpu.get_r8(R::CL);
+                let y1 = cpu.get_r8(R::CH);
+                let x2 = cpu.get_r8(R::DL);
+                let y2 = cpu.get_r8(R::DH);
+                println!("XXX int10 - SCROLL DOWN WINDOW, lines {}, attr {}, upper left {},{}, lower right {},{}", lines, attr, x1, y1, x2, y2);
+            }
             0x08 => {
                 // VIDEO - READ CHARACTER AND ATTRIBUTE AT CURSOR POSITION
                 let page = cpu.get_r8(R::BH);

@@ -182,7 +182,7 @@ impl ProgramTracer {
             self.trace_unvisited_address(machine);
             if !self.has_any_unvisited_addresses() {
                 if DEBUG_TRACER {
-                    println!("exhausted all destinations, breaking!");
+                    eprintln!("exhausted all destinations, breaking!");
                 }
                 break;
             }
@@ -206,13 +206,13 @@ impl ProgramTracer {
             let mut adr = *ma;
             self.accounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::InstrStart, address: adr});
             if  DEBUG_TRACER {
-                // println!("add start instr at {}", adr);
+                // eprintln!("add start instr at {}", adr);
             }
             for _ in abs + 1..(abs + ii.instruction.length as usize) {
                 adr.inc_u8();
                 self.accounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::InstrContinuation, address: adr});
                 if  DEBUG_TRACER {
-                    // println!("add continuation instr at {}", adr);
+                    // eprintln!("add continuation instr at {}", adr);
                 }
             }
         }
@@ -231,7 +231,7 @@ impl ProgramTracer {
             }
             if !found {
                 if  DEBUG_TRACER {
-                    println!("address is unaccounted {}", adr);
+                    eprintln!("address is unaccounted {}", adr);
                 }
                 let val = machine.mmu.read_u8(adr.segment(), adr.offset());
                 unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownByte(val), address: adr});
@@ -422,14 +422,14 @@ impl ProgramTracer {
         for seen in &mut self.seen_addresses {
             if seen.ma.value() == ma.value() {
                 if DEBUG_TRACER {
-                    println!("learn_address append {:?} [{:04X}:{:04X}]", kind, seg, offset);
+                    eprintln!("learn_address append {:?} [{:04X}:{:04X}]", kind, seg, offset);
                 }
                 seen.sources.sources.push(SeenSource{address: src, kind});
                 return;
             }
         }
         if DEBUG_TRACER {
-            println!("learn_address new {:?} [{:04X}:{:04X}]", kind, seg, offset);
+            eprintln!("learn_address new {:?} [{:04X}:{:04X}]", kind, seg, offset);
         }
         self.seen_addresses.push(SeenAddress{ma, visited: false, sources: SeenSources::from_source(SeenSource{address: src, kind})});
     }
@@ -469,7 +469,7 @@ impl ProgramTracer {
          for dst in &mut self.seen_addresses {
             if dst.ma == ma {
                 if DEBUG_TRACER {
-                    println!("mark_destination_visited {:04X}:{:04X}", ma.segment(), ma.offset());
+                    eprintln!("mark_destination_visited {:04X}:{:04X}", ma.segment(), ma.offset());
                 }
                 dst.visited = true;
                 return;
@@ -496,7 +496,7 @@ impl ProgramTracer {
     fn trace_unvisited_address(&mut self, machine: &mut Machine) {
         let (ma, sources) = self.get_unvisited_address();
         if ma.is_none() {
-            println!("ERROR: no destinations to visit");
+            eprintln!("ERROR: no destinations to visit");
             return;
         }
         let mut ma = ma.unwrap();
@@ -504,20 +504,20 @@ impl ProgramTracer {
 
         if self.has_visited_address(ma) {
             if DEBUG_TRACER {
-                println!("We've already visited {:04X}:{:04X} == {:06X}, marking destination visited!", ma.segment(), ma.offset(), ma.value());
+                eprintln!("We've already visited {:04X}:{:04X} == {:06X}, marking destination visited!", ma.segment(), ma.offset(), ma.value());
             }
             self.mark_address_visited(start_ma);
             return;
         }
 
         if DEBUG_TRACER {
-            println!("trace_destination starting at {:04X}:{:04X}", ma.segment(), ma.offset());
+            eprintln!("trace_destination starting at {:04X}:{:04X}", ma.segment(), ma.offset());
         }
 
         if let Some(sources) = sources {
             if !sources.sources.is_empty() && sources.only_memory_access() {
                 if DEBUG_TRACER {
-                    println!("trace_unvisited_address address only accessed by memory, leaving {:?}", sources);
+                    eprintln!("trace_unvisited_address address only accessed by memory, leaving {:?}", sources);
                 }
                 self.mark_address_visited(start_ma);
                 self.mark_virtual_memory(start_ma);
@@ -530,12 +530,12 @@ impl ProgramTracer {
         loop {
             let ii = decoder.get_instruction_info(&mut machine.mmu, ma.segment(), ma.offset());
             if DEBUG_TRACER {
-                println!("Found {}", ii);
+                eprintln!("Found {}", ii);
             }
 
             if self.has_visited_address(ma) {
                 if DEBUG_TRACER {
-                    println!("already been here! breaking");
+                    eprintln!("already been here! breaking");
                 }
                 break;
             }
@@ -543,7 +543,7 @@ impl ProgramTracer {
             self.visited_addresses.push(ma);
 
             match ii.instruction.command {
-                Op::Invalid(_, _) => println!("ERROR: invalid/unhandled op {}", ii.instruction),
+                Op::Invalid(_, _) => eprintln!("ERROR: invalid/unhandled op {}", ii.instruction),
                 Op::RetImm16 => panic!("FIXME handle {}", ii.instruction),
                 Op::Retn | Op::Retf => break,
                 Op::JmpNear | Op::JmpFar | Op::JmpShort => {
@@ -554,7 +554,7 @@ impl ProgramTracer {
                         Parameter::Ptr16Imm(_, _) => {}, // ignore "jmp far 0xFFFF:0x0000"
                         Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "jmp [di+0x10]
                         Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "jmp [si+0x662C]"
-                        _ => println!("ERROR1: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
+                        _ => eprintln!("ERROR1: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
                     }
                     // if unconditional branch, abort trace this path
                     break;
@@ -568,7 +568,7 @@ impl ProgramTracer {
                     Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
                     Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
                     Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "call [bx-0x67A0]"
-                    _ => println!("ERROR2: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
+                    _ => eprintln!("ERROR2: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
                 }
                 Op::CallNear | Op::CallFar => match ii.instruction.params.dst {
                     Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Call),
@@ -576,7 +576,7 @@ impl ProgramTracer {
                     Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
                     Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
                     Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "call [bx-0x67A0]"
-                    _ => println!("ERROR3: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
+                    _ => eprintln!("ERROR3: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
                 }
                 Op::Int => if let Parameter::Imm8(v) = ii.instruction.params.dst {
                     // TODO skip if register is dirty
@@ -701,7 +701,7 @@ impl ProgramTracer {
                             };
                             if let Some(v) = v {
                                 if DEBUG_TRACE_REGS {
-                                    println!("trace reg {} = {:02x}", r, v);
+                                    eprintln!("trace reg {} = {:02x}", r, v);
                                 }
                                 self.regs.set_r8(r, v);
                                 self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", r, v)});
@@ -715,7 +715,7 @@ impl ProgramTracer {
                             };
                             if let Some(v) = v {
                                 if DEBUG_TRACE_REGS {
-                                    println!("trace reg {} = {:04x}", dr, v);
+                                    eprintln!("trace reg {} = {:04x}", dr, v);
                                 }
                                 self.regs.set_r16(dr, v);
                                 self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, v)});
@@ -757,7 +757,7 @@ impl ProgramTracer {
             ma.inc_n(u16::from(ii.instruction.length));
 
             if (ma.offset() - machine.rom_base.offset()) as isize >= machine.rom_length as isize {
-                println!("XXX breaking because we reached end of file at offset {:04X}:{:04X} (indicates incorrect parsing or more likely missing symbolic execution eg meaning of 'int 0x20')", ma.segment(), ma.offset());
+                eprintln!("XXX breaking because we reached end of file at offset {:04X}:{:04X} (indicates incorrect parsing or more likely missing symbolic execution eg meaning of 'int 0x20')", ma.segment(), ma.offset());
                 break;
             }
 
@@ -793,24 +793,40 @@ impl ProgramTracer {
         let al = self.regs.get_r8(R::AL);
         let ah = self.regs.get_r8(R::AH);
         match int {
-            0x10 => { // video. fn in AH
+            0x10 => { // video
                 match ah {
                     0x00 => format!("video: set {} mode (0x{:02X})", self.video_mode_desc(al), al),
+                    0x02 => String::from("video: set cursor position"),
+                    0x06 => String::from("video: scroll up"),
+                    0x07 => String::from("video: scroll down"),
+                    0x10 => match al {
+                        0x12 => String::from("video: VIDEO - SET BLOCK OF DAC REGISTERS (VGA/MCGA)"),
+                        _ => format!("video: unrecognized AH = 10, AL = {:02X}", al)
+                    }
+                    0x13 => String::from("video: write string (row=DH, col=DL)"),
                     _ => format!("video: unrecognized AH = {:02X}", ah)
                 }
             }
-            0x16 => { // keyboard. fn in AH
+            0x16 => { // keyboard
                 match ah {
                     0x00 => String::from("keyboard: read scancode (blocking)"),
                     0x01 => String::from("keyboard: read scancode (non-blocking)"),
                     _ => format!("keyboard: unrecognized AH = {:02X}", ah)
                 }
             }
+            0x1A => { // pit timer
+                match ah {
+                    0x00 => String::from("pit: get system time"),
+                    _ => format!("pit: unrecognized AH = {:02X}", ah)
+                }
+            }
             0x20 => {
                 String::from("dos: terminate program with return code 0")
             }
-            0x21 => { // DOS. fn in AH
+            0x21 => { // DOS
                 match ah {
+                    0x02 => String::from("dos: write character in DL to standard output"),
+                    0x06 => String::from("dos: write character in DL to DIRECT CONSOLE OUTPUT"),
                     0x09 => String::from("dos: write $-terminated string at DS:DX to standard output"),
                     0x4C => String::from("dos: terminate program with return code in AL"),
                     _ => format!("dos: unrecognized AH = {:02X}", ah)
