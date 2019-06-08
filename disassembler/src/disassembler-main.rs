@@ -1,3 +1,6 @@
+extern crate chrono;
+use chrono::prelude::*;
+
 extern crate dustbox;
 use dustbox::machine::Machine;
 use dustbox::cpu::{Decoder};
@@ -17,10 +20,17 @@ fn main() {
             .arg(Arg::with_name("flat")
                 .long("flat")
                 .help("Show a flat disassembly listing (no tracing)"))
+            .arg(Arg::with_name("timestamp")
+                .long("timestamp")
+                .help("Include a timestamp in the output"))
             .get_matches();
 
     let filename = matches.value_of("INPUT").unwrap();
-    println!("# Input file {}", filename);
+    println!("; Source {}", filename);
+    if matches.is_present("timestamp") {
+        // disabled by default for reproducibility
+        println!("; Generated {}", Local::now().to_rfc2822());
+    }
     println!();
 
     if matches.is_present("flat") {
