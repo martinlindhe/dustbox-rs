@@ -27,6 +27,76 @@ fn trace_simple() {
 }
 
 #[test]
+fn trace_unknown_byte() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xC3,               // ret
+        0x00,
+    ];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] C3               Retn
+
+[085F:0101] 00               db       0x00
+", res);
+}
+
+#[test]
+fn trace_unknown_bytes() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xC3,               // ret
+        0x00, 0x01, 0x02, 0x03,
+        0x04, 0x05,
+    ];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] C3               Retn
+
+[085F:0101] 00 01 02 03      db       0x00, 0x01, 0x02, 0x03
+[085F:0105] 04 05            db       0x04, 0x05
+", res);
+}
+
+
+#[test]
+fn trace_unknown_bytes_fragmented() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x72, 0x06, // jc s_0108
+        0xEB, 0x01, // jmp short s_0105
+        0x03,       // db 3
+        0xC3,       // s_0105: ret
+        0x04, 0x05, // db 4, 5
+        0xEB, 0xFB, // s_0108: jmp s_0105
+        0x06,       // db 6
+    ];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] 7206             Jc       0x0108
+[085F:0102] EB01             JmpShort 0x0105
+
+[085F:0104] 03               db       0x03
+[085F:0105] C3               Retn                                   ; xref: jump@085F:0102, jump@085F:0108
+
+[085F:0106] 04 05            db       0x04, 0x05
+[085F:0108] EBFB             JmpShort 0x0105                        ; xref: branch@085F:0100
+
+[085F:010A] 06               db       0x06
+", res);
+}
+
+
+#[test]
 fn trace_unreferenced_data() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
@@ -131,7 +201,7 @@ fn trace_break_after_dos_int20() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xCD, 0x20, // int 0x20
-        0x00, 0x00, // db 0,0
+        0x90,       // db 0x90
     ];
     machine.load_executable(&code);
 
@@ -139,8 +209,7 @@ fn trace_break_after_dos_int20() {
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
     assert_eq!("[085F:0100] CD20             Int      0x20                          ; dos: terminate program with return code 0
-[085F:0102] 00               db       0x00
-[085F:0103] 00               db       0x00
+[085F:0102] 90               db       0x90
 ", res);
 }
 
@@ -150,7 +219,7 @@ fn trace_break_after_dos_int21_4c() {
     let code: Vec<u8> = vec![
         0xB4, 0x4C, // mov ah,0x4C
         0xCD, 0x21, // int 0x21
-        0x3F,       // db 0x3f
+        0x90,       // db 0x90
     ];
     machine.load_executable(&code);
 
@@ -159,7 +228,7 @@ fn trace_break_after_dos_int21_4c() {
     let res = tracer.present_trace(&mut machine);
     assert_eq!("[085F:0100] B44C             Mov8     ah, 0x4C                      ; ah = 0x4C
 [085F:0102] CD21             Int      0x21                          ; dos: terminate program with return code in AL
-[085F:0104] 3F               db       0x3F
+[085F:0104] 90               db       0x90
 ", res);
 }
 

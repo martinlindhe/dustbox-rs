@@ -120,7 +120,7 @@ enum GuessedDataType {
     MemoryWordUnset,
     //MemoryByte(u8),
     //MemoryWord(u16),
-    UnknownByte(u8),
+    UnknownBytes(Vec<u8>),
 }
 
 #[derive(Eq, PartialEq)]
@@ -219,6 +219,9 @@ impl ProgramTracer {
 
         // find all unvisited offsets
         let mut unaccounted_bytes = vec![];
+        let mut block = Vec::new();
+        let mut block_start = MemoryAddress::Unset;
+        let mut block_last = MemoryAddress::Unset;
         for ofs in (machine.rom_base.offset() as usize)..(machine.rom_base.offset() as usize + machine.rom_length) {
             let adr = MemoryAddress::RealSegmentOffset(machine.rom_base.segment(), ofs as u16);
 
@@ -233,9 +236,31 @@ impl ProgramTracer {
                 if  DEBUG_TRACER {
                     eprintln!("address is unaccounted {}", adr);
                 }
+
+                // determine if last byte was in this range
+                if let MemoryAddress::RealSegmentOffset(_seg, off) = block_last {
+                    if off != adr.offset() - 1 {
+                        unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownBytes(block.clone()), address: block_start});
+                        block.clear();
+                    }
+                }
+                if block.is_empty() {
+                    block_start = adr;
+                }
+                block_last = adr;
+
                 let val = machine.mmu.read_u8(adr.segment(), adr.offset());
-                unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownByte(val), address: adr});
+                block.push(val);
+
+                if block.len() >= 4 {
+                    unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownBytes(block.clone()), address: block_start});
+                    block.clear();
+                }
             }
+        }
+
+        if !block.is_empty() {
+            unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownBytes(block.clone()), address: block_start});
         }
 
         for ub in unaccounted_bytes {
@@ -294,7 +319,7 @@ impl ProgramTracer {
         }
     }
 
-    /// presents a flatish traced disassembly
+    /// presents a traced disassembly listing
     pub fn present_trace(&mut self, machine: &mut Machine) -> String {
 
         // Displays decoded instructions at the known instruction offsets
@@ -302,7 +327,7 @@ impl ProgramTracer {
         let mut res = String::new();
 
         for ab in &self.accounted_bytes {
-            match ab.kind {
+            match &ab.kind {
                 GuessedDataType::InstrStart => {
                     let ii = decoder.get_instruction_info(&mut machine.mmu, ab.address.segment(), ab.address.offset());
 
@@ -343,7 +368,11 @@ impl ProgramTracer {
                 }
                 //GuessedDataType::MemoryByte(val) => res.push_str(&format!("[{}] {:02X}        [BYTE] db       0x{:02X}\n", ab.address, val, val)),
                 //GuessedDataType::MemoryWord(val) => res.push_str(&format!("[{}] {:02X} {:02X} [WORD] dw       0x{:04X}\n", ab.address, val >> 8, val & 0xFF, val)), // XXX
-                GuessedDataType::UnknownByte(val) => res.push_str(&format!("[{}] {:02X}               db       0x{:02X}\n", ab.address, val, val)),
+                GuessedDataType::UnknownBytes(v) => {
+                    let hex: Vec<String> = v.iter().map(|b| format!("{:02X}", b)).collect();
+                    let pretty: Vec<String> = v.iter().map(|b| format!("0x{:02X}", b)).collect();
+                    res.push_str(&format!("[{}] {:11}      db       {}\n", ab.address, hex.join(" "), pretty.join(", ")));
+                },
             }
         }
 
