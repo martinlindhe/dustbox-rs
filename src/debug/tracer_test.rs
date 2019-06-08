@@ -7,6 +7,7 @@ fn trace_simple() {
     let code: Vec<u8> = vec![
         0xBA, 0x04, 0x00,   // mov dx,0x4
         0x89, 0xD1,         // mov cx,dx
+        0x8E, 0xC2,         // mov es,dx
         0xEB, 0x00,         // jmp short 0x107
         0xC3,               // ret
     ];
@@ -17,9 +18,10 @@ fn trace_simple() {
     let res = tracer.present_trace(&mut machine);
     assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004                    ; dx = 0x0004
 [085F:0103] 89D1             Mov16    cx, dx                        ; cx = 0x0004
-[085F:0105] EB00             JmpShort 0x0107
+[085F:0105] 8EC2             Mov16    es, dx                        ; es = 0x0004
+[085F:0107] EB00             JmpShort 0x0109
 
-[085F:0107] C3               Retn                                   ; xref: jump@085F:0105
+[085F:0109] C3               Retn                                   ; xref: jump@085F:0107
 
 ", res);
 }

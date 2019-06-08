@@ -704,7 +704,7 @@ impl ProgramTracer {
                                 self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", r, v)});
                             }
                         }
-                        Parameter::Reg16(dr) => {
+                        Parameter::Reg16(dr) | Parameter::SReg16(dr) => {
                             let v = match ii.instruction.params.src {
                                 Parameter::Reg16(sr) => Some(self.regs.get_r16(sr)),
                                 Parameter::Imm16(v) => Some(v),
