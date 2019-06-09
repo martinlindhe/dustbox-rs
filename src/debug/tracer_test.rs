@@ -232,6 +232,24 @@ fn trace_break_after_dos_int21_4c() {
 ", res);
 }
 
+#[test]
+fn trace_dont_annotate_dirty_regs() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xB8, 0x13, 0x00,   // mov ax,0x13
+        0xCD, 0x10,         // int 0x10       XXX makes all reg dirty
+        0x89, 0xC3,         // mov bx,ax      XXX ax is dirty
+    ];
+    machine.load_executable(&code);
+
+    let mut tracer = ProgramTracer::default();
+    tracer.trace_execution(&mut machine);
+    let res = tracer.present_trace(&mut machine);
+    assert_eq!("[085F:0100] B81300           Mov16    ax, 0x0013                    ; ax = 0x0013
+[085F:0103] CD10             Int      0x10                          ; video: set 320x200 VGA mode (0x13)            XXX makes all regs dirty
+[085F:0105] 89C3             Mov16    bx, ax                        ; bx = dirty
+", res);
+}
 
 #[test]
 fn trace_annotate_int() {
@@ -278,7 +296,6 @@ fn trace_annotate_out() {
 [085F:010B] EF               Out16    dx, ax                        ; vga: PEL address write mode (0x03C8) = 1234
 ", res);
 }
-
 
 #[test]
 fn trace_annotate_in() {

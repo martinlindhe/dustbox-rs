@@ -1,8 +1,8 @@
-use crate::cpu::register::{R, RegisterSnapshot};
+use crate::cpu::register::{R, RegisterState};
 
 #[test]
 fn can_access_gpr() {
-    let mut r = RegisterSnapshot::default();
+    let mut r = RegisterState::default();
     r.set_r32(R::ECX, 0xFFFF_FFFF);
     assert_eq!(0xFFFF_FFFF, r.get_r32(R::ECX));
 

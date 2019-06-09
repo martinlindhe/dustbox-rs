@@ -3,7 +3,7 @@ use std::fmt;
 use std::num::Wrapping;
 
 use crate::machine::Machine;
-use crate::cpu::{Decoder, RepeatMode, InstructionInfo, RegisterSnapshot, R, Op, Parameter, Segment};
+use crate::cpu::{Decoder, RepeatMode, InstructionInfo, RegisterState, R, Op, Parameter, Segment};
 use crate::memory::MemoryAddress;
 use crate::string::right_pad;
 use crate::hex::hex_bytes;
@@ -31,10 +31,17 @@ pub struct ProgramTracer {
     virtual_memory: Vec<MemoryAddress>,
 
     /// traced register state
-    regs: RegisterSnapshot,
+    regs: RegisterState,
+    tainted_regs: TaintedRegister,
 
     /// annotations for an address
     annotations: Vec<TraceAnnotation>,
+}
+
+#[derive(Default)]
+struct TaintedRegister {
+    pub gpr: [bool; 8 + 6 + 1],
+    pub sreg16: [bool; 6],
 }
 
 struct TraceAnnotation {
@@ -167,7 +174,8 @@ impl ProgramTracer {
             visited_addresses: Vec::new(),
             accounted_bytes: Vec::new(),
             virtual_memory: Vec::new(),
-            regs: RegisterSnapshot::default(),
+            regs: RegisterState::default(),
+            tainted_regs: TaintedRegister::default(),
             annotations: Vec::new(),
         }
     }
@@ -576,7 +584,7 @@ impl ProgramTracer {
                     _ => eprintln!("ERROR3: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
                 }
                 Op::Int => if let Parameter::Imm8(v) = ii.instruction.params.dst {
-                    // TODO skip if register is dirty
+                    // XXX mark all regs dirty
                     self.annotations.push(TraceAnnotation{ma, note: self.int_desc(v)});
 
                     let ah = self.regs.get_r8(R::AH);
