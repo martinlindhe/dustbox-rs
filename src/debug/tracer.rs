@@ -3,7 +3,7 @@ use std::fmt;
 use std::num::Wrapping;
 
 use crate::machine::Machine;
-use crate::cpu::{Decoder, RepeatMode, InstructionInfo, RegisterState, R, Op, Parameter, Segment};
+use crate::cpu::{Decoder, RepeatMode, InstructionInfo, RegisterState, R, GPR, Op, Parameter, Segment};
 use crate::memory::MemoryAddress;
 use crate::string::right_pad;
 use crate::hex::hex_bytes;
@@ -13,8 +13,6 @@ use crate::hex::hex_bytes;
 mod tracer_test;
 
 const DEBUG_TRACER: bool = false;
-
-const DEBUG_TRACE_REGS: bool = false;
 
 /// ProgramTracer holds the state of the program being analyzed
 #[derive(Default)]
@@ -32,16 +30,40 @@ pub struct ProgramTracer {
 
     /// traced register state
     regs: RegisterState,
-    tainted_regs: TaintedRegister,
+    dirty_regs: DirtyRegisters,
 
     /// annotations for an address
     annotations: Vec<TraceAnnotation>,
 }
 
 #[derive(Default)]
-struct TaintedRegister {
+struct DirtyRegisters {
     pub gpr: [bool; 8 + 6 + 1],
     pub sreg16: [bool; 6],
+}
+
+impl DirtyRegisters {
+    /// marks all registers as dirty
+    pub fn all_dirty(&mut self) {
+        for i in 0..(8 + 6 + 1) {
+            self.gpr[i] = true;
+        }
+        for i in 0..6 {
+            self.sreg16[i] = true;
+        }
+    }
+
+    pub fn is_dirty_gpr(&self, r: R) -> bool {
+        self.gpr[r.index()]
+    }
+
+    pub fn clean_r(&mut self, r: R) {
+        if r.is_gpr() {
+            self.gpr[r.index()] = false;
+        } else {
+            self.sreg16[r.index()] = false;
+        } 
+    }
 }
 
 struct TraceAnnotation {
@@ -175,7 +197,7 @@ impl ProgramTracer {
             accounted_bytes: Vec::new(),
             virtual_memory: Vec::new(),
             regs: RegisterState::default(),
-            tainted_regs: TaintedRegister::default(),
+            dirty_regs: DirtyRegisters::default(),
             annotations: Vec::new(),
         }
     }
@@ -497,6 +519,15 @@ impl ProgramTracer {
         false
     }
 
+    /// returns value of clean register or None
+    fn clean_r16(&self, r: R) -> Option<u16> {
+        //   ,    self fn that take r16 and return Option
+        if !self.dirty_regs.gpr[r.index()] {
+            return Some(self.regs.get_r16(r));
+        }
+        None
+    }
+
     /// traces along one execution path until we have to give up, marking it as visited when complete
     fn trace_unvisited_address(&mut self, machine: &mut Machine) {
         let (ma, sources) = self.get_unvisited_address();
@@ -584,10 +615,12 @@ impl ProgramTracer {
                     _ => eprintln!("ERROR3: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
                 }
                 Op::Int => if let Parameter::Imm8(v) = ii.instruction.params.dst {
-                    // XXX mark all regs dirty
+                    let ah = self.regs.get_r8(R::AH);
+
                     self.annotations.push(TraceAnnotation{ma, note: self.int_desc(v)});
 
-                    let ah = self.regs.get_r8(R::AH);
+                    self.annotations.push(TraceAnnotation{ma, note: "dirty all regs".to_owned()});
+                    self.dirty_regs.all_dirty();
 
                     if v == 0x20 {
                         // int 0x20: exit to dos
@@ -734,25 +767,26 @@ impl ProgramTracer {
                                 _ => None
                             };
                             if let Some(v) = v {
-                                if DEBUG_TRACE_REGS {
-                                    eprintln!("trace reg {} = {:02x}", r, v);
-                                }
                                 self.regs.set_r8(r, v);
                                 self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", r, v)});
                             }
                         }
-                        Parameter::Reg16(dr) | Parameter::SReg16(dr) => {
+                        Parameter::Reg16(r) | Parameter::SReg16(r) => {
                             let v = match ii.instruction.params.src {
-                                Parameter::Reg16(sr) => Some(self.regs.get_r16(sr)),
+                                Parameter::Reg16(sr) => self.clean_r16(sr),
                                 Parameter::Imm16(v) => Some(v),
                                 _ => None
                             };
                             if let Some(v) = v {
-                                if DEBUG_TRACE_REGS {
-                                    eprintln!("trace reg {} = {:04x}", dr, v);
+                                self.regs.set_r16(r, v);
+                                self.dirty_regs.clean_r(r);
+                                self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", r, v)});
+                            } else {
+                                if let Parameter::Reg16(sr) = ii.instruction.params.src {
+                                    if self.dirty_regs.is_dirty_gpr(sr) {
+                                        self.annotations.push(TraceAnnotation{ma, note: format!("{} is dirty", sr)});
+                                    }
                                 }
-                                self.regs.set_r16(dr, v);
-                                self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, v)});
                             }
                         }
                         Parameter::Ptr8(seg, offset) => {
@@ -791,10 +825,9 @@ impl ProgramTracer {
             ma.inc_n(u16::from(ii.instruction.length));
 
             if (ma.offset() - machine.rom_base.offset()) as isize >= machine.rom_length as isize {
-                eprintln!("XXX breaking because we reached end of file at offset {:04X}:{:04X} (indicates incorrect parsing or more likely missing symbolic execution eg meaning of 'int 0x20')", ma.segment(), ma.offset());
+                eprintln!("ERROR: breaking because we reached end of file at {} (indicates incorrect parsing)", ma);
                 break;
             }
-
         }
         self.mark_address_visited(start_ma);
     }

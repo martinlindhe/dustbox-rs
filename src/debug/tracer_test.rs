@@ -237,8 +237,10 @@ fn trace_dont_annotate_dirty_regs() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xB8, 0x13, 0x00,   // mov ax,0x13
-        0xCD, 0x10,         // int 0x10       XXX makes all reg dirty
-        0x89, 0xC3,         // mov bx,ax      XXX ax is dirty
+        0xCD, 0x10,         // int 0x10       ; makes all reg dirty
+        0x89, 0xC3,         // mov bx,ax      ; ax is dirty
+        0xB8, 0x12, 0x00,   // mov ax,0x12
+        0x89, 0xC3,         // mov bx,ax      ; ax is is clean == 0x12
     ];
     machine.load_executable(&code);
 
@@ -246,8 +248,10 @@ fn trace_dont_annotate_dirty_regs() {
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
     assert_eq!("[085F:0100] B81300           Mov16    ax, 0x0013                    ; ax = 0x0013
-[085F:0103] CD10             Int      0x10                          ; video: set 320x200 VGA mode (0x13)            XXX makes all regs dirty
-[085F:0105] 89C3             Mov16    bx, ax                        ; bx = dirty
+[085F:0103] CD10             Int      0x10                          ; video: set 320x200 VGA mode (0x13)
+[085F:0105] 89C3             Mov16    bx, ax                        ; ax is dirty
+[085F:0107] B81200           Mov16    ax, 0x0012                    ; ax = 0x0012
+[085F:010A] 89C3             Mov16    bx, ax                        ; bx = 0x0012
 ", res);
 }
 
