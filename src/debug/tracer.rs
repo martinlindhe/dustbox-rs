@@ -593,7 +593,7 @@ impl ProgramTracer {
                 Op::Out8 | Op::Out16 => {
                     // TODO skip if register is dirty
                     let dst = match ii.instruction.params.dst {
-                        Parameter::Imm8(v) => Some(v as u16),
+                        Parameter::Imm8(v) => Some(u16::from(v)),
                         Parameter::Reg16(r) => Some(self.regs.get_r16(r)),
                         _ => None
                     };
@@ -610,7 +610,7 @@ impl ProgramTracer {
                 Op::In8 | Op::In16 => {
                     // TODO skip if register is dirty
                     let src = match ii.instruction.params.src {
-                        Parameter::Imm8(v) => Some(v as u16),
+                        Parameter::Imm8(v) => Some(u16::from(v)),
                         Parameter::Reg16(r) => Some(self.regs.get_r16(r)),
                         _ => None
                     };

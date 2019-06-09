@@ -50,7 +50,7 @@ fn flat_disassembly(filename: &str) {
     let mut decoder = Decoder::default();
     let mut ma = machine.cpu.get_memory_address();
 
-    let mut rom_end = machine.rom_base.clone();
+    let mut rom_end = machine.rom_base;
     rom_end.add_offset(machine.rom_length as u16); // XXX only works on <=64k .com files
 
     loop {
