@@ -339,12 +339,12 @@ impl ProgramTracer {
                 }
             }
             _ => {
-                for a in &self.annotations {
-                    if a.ma == MemoryAddress::RealSegmentOffset(ii.segment as u16, ii.offset as u16) {
-                        return a.note.clone();
-                    }
-                }
-                "".to_owned()
+                let v: Vec<&TraceAnnotation> = self.annotations.iter()
+                    .filter(|a| a.ma == MemoryAddress::RealSegmentOffset(ii.segment as u16, ii.offset as u16))
+                    .collect();
+
+                let strs: Vec<String> = v.iter().map(|ta| format!("{}", ta.note)).collect();
+                strs.join(" | ")
             }
         }
     }
