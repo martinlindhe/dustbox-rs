@@ -57,7 +57,7 @@ pub struct CPU {
     pub cycle_count: usize,
 
     /// general purpose registers, segment registers, ip
-    pub regs: RegisterSnapshot,
+    pub regs: RegisterState,
 
     /// signals to debugger we hit an error (used by debugger)
     pub fatal_error: bool,
@@ -74,7 +74,7 @@ impl CPU {
         CPU {
             instruction_count: 0,
             cycle_count: 0,
-            regs: RegisterSnapshot::default(),
+            regs: RegisterState::default(),
             fatal_error: false,
             deterministic: false,
             decoder: Decoder::default(),

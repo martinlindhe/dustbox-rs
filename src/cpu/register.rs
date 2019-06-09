@@ -248,14 +248,14 @@ impl AddressSize {
 }
 
 #[derive(Clone, Default)]
-pub struct RegisterSnapshot {
+pub struct RegisterState {
     pub ip: u16,
     pub gpr: [GPR; 8 + 6 + 1],   // 8 general purpose registers, 6 segment registers, 1 ip
     pub sreg16: [u16; 6],        // segment registers
     pub flags: Flags,
 }
 
-impl RegisterSnapshot {
+impl RegisterState {
     pub fn get_r8(&self, r: R) -> u8 {
         match r {
             R::AL => self.gpr[0].lo_u8(),

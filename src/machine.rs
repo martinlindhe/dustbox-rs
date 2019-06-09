@@ -5,7 +5,7 @@ use std::time::{Duration, SystemTime};
 use bincode::deserialize;
 
 use crate::bios::BIOS;
-use crate::cpu::{CPU, Op, Invalid, R, RegisterSnapshot, Segment, OperandSize};
+use crate::cpu::{CPU, Op, Invalid, R, RegisterState, Segment, OperandSize};
 use crate::cpu::{Instruction, InstructionInfo, ModRegRm, RepeatMode, Exception};
 use crate::cpu::{Parameter, ParameterSet};
 use crate::gpu::GFXMode;
@@ -281,7 +281,7 @@ impl Machine {
     }
 
     /// returns a copy of register values at a given time
-    pub fn register_snapshot(&self) -> RegisterSnapshot {
+    pub fn register_snapshot(&self) -> RegisterState {
         self.cpu.regs.clone()
     }
 

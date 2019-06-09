@@ -4,7 +4,7 @@
 #[path = "./flag_test.rs"]
 mod flag_test;
 
-// https://en.wikipedia.org/wiki/FLAGS_register
+/// https://en.wikipedia.org/wiki/FLAGS_register
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Flags {
     // ____ O___ SZ_A _P_C

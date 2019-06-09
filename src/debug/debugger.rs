@@ -4,7 +4,7 @@ use std::io::Error as IoError;
 use std::process::exit;
 
 use crate::machine::Machine;
-use crate::cpu::{R, RegisterSnapshot, Decoder};
+use crate::cpu::{R, RegisterState, Decoder};
 use crate::tools;
 use crate::memory::MemoryAddress;
 use crate::debug::{Breakpoints, MemoryBreakpoints};
@@ -16,7 +16,7 @@ mod debugger_test;
 
 pub struct Debugger {
     pub machine: Machine,
-    pub prev_regs: RegisterSnapshot,
+    pub prev_regs: RegisterState,
     last_program: Option<String>,
 
     /// break when IP reach these addresses
