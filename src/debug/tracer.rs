@@ -53,8 +53,12 @@ impl DirtyRegisters {
         }
     }
 
-    pub fn is_dirty_gpr(&self, r: R) -> bool {
-        self.gpr[r.index()]
+    pub fn is_dirty(&self, r: R) -> bool {
+        if r.is_gpr() {
+            self.gpr[r.index()]
+        } else {
+            self.sreg16[r.index()]
+        }
     }
 
     pub fn clean_r(&mut self, r: R) {
@@ -62,7 +66,15 @@ impl DirtyRegisters {
             self.gpr[r.index()] = false;
         } else {
             self.sreg16[r.index()] = false;
-        } 
+        }
+    }
+
+    pub fn dirty_r(&mut self, r: R) {
+        if r.is_gpr() {
+            self.gpr[r.index()] = true;
+        } else {
+            self.sreg16[r.index()] = true;
+        }
     }
 }
 
@@ -521,9 +533,16 @@ impl ProgramTracer {
 
     /// returns value of clean register or None
     fn clean_r16(&self, r: R) -> Option<u16> {
-        //   ,    self fn that take r16 and return Option
         if !self.dirty_regs.gpr[r.index()] {
             return Some(self.regs.get_r16(r));
+        }
+        None
+    }
+
+    fn clean_r8(&self, r: R) -> Option<u8> {
+        // XXX fixme all wrong - need to track dirty state better   
+        if !self.dirty_regs.gpr[r.index()] {
+            return Some(self.regs.get_r8(r));
         }
         None
     }
@@ -670,6 +689,7 @@ impl ProgramTracer {
                     match ii.instruction.params.src {
                         Parameter::Reg8(sr) => if dr == sr {
                             self.regs.set_r8(dr, 0);
+                            self.dirty_regs.clean_r(dr);
                             self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", dr, 0)});
                         }
                         _ => {}
@@ -679,6 +699,7 @@ impl ProgramTracer {
                     match ii.instruction.params.src {
                         Parameter::Reg16(sr) => if dr == sr {
                             self.regs.set_r16(dr, 0);
+                            self.dirty_regs.clean_r(dr);
                             self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, 0)});
                         }
                         _ => {}
@@ -707,27 +728,29 @@ impl ProgramTracer {
                 Op::Add8 => if let Parameter::Reg8(dr) = ii.instruction.params.dst {
                     // TODO skip if register is dirty
                     let v = match ii.instruction.params.src {
-                        Parameter::Imm8(v) => Some(v),
-                        Parameter::Reg8(sr) => Some(self.regs.get_r8(sr)),
+                        Parameter::Imm8(i) => Some(i),
+                        Parameter::Reg8(sr) => self.clean_r8(sr),
                         _ => None
                     };
                     if let Some(v) = v {
                         let v = (Wrapping(self.regs.get_r8(dr)) + Wrapping(v)).0;
                         self.regs.set_r8(dr, v);
+                        self.dirty_regs.clean_r(dr);
                         self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", dr, v)});
                     }
                 }
                 Op::Add16 => if let Parameter::Reg16(dr) = ii.instruction.params.dst {
                     // TODO skip if register is dirty
                     let v = match ii.instruction.params.src {
-                        Parameter::ImmS8(v) => Some(v as u16), // XXX should be treated as signed
-                        Parameter::Imm16(v) => Some(v),
-                        Parameter::Reg16(sr) => Some(self.regs.get_r16(sr)),
+                        Parameter::ImmS8(i) => Some(i as u16), // XXX should be treated as signed
+                        Parameter::Imm16(i) => Some(i),
+                        Parameter::Reg16(sr) => self.clean_r16(sr),
                         _ => None
                     };
                     if let Some(v) = v {
                         let v = (Wrapping(self.regs.get_r16(dr)) + Wrapping(v)).0;
                         self.regs.set_r16(dr, v);
+                        self.dirty_regs.clean_r(dr);
                         self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, v)});
                     }
                 }
@@ -763,7 +786,7 @@ impl ProgramTracer {
                         Parameter::Reg8(r) => {
                             let v = match ii.instruction.params.src {
                                 Parameter::Reg8(sr) => Some(self.regs.get_r8(sr)),
-                                Parameter::Imm8(v) => Some(v),
+                                Parameter::Imm8(i) => Some(i),
                                 _ => None
                             };
                             if let Some(v) = v {
@@ -774,7 +797,7 @@ impl ProgramTracer {
                         Parameter::Reg16(r) | Parameter::SReg16(r) => {
                             let v = match ii.instruction.params.src {
                                 Parameter::Reg16(sr) => self.clean_r16(sr),
-                                Parameter::Imm16(v) => Some(v),
+                                Parameter::Imm16(i) => Some(i),
                                 _ => None
                             };
                             if let Some(v) = v {
@@ -783,8 +806,9 @@ impl ProgramTracer {
                                 self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", r, v)});
                             } else {
                                 if let Parameter::Reg16(sr) = ii.instruction.params.src {
-                                    if self.dirty_regs.is_dirty_gpr(sr) {
-                                        self.annotations.push(TraceAnnotation{ma, note: format!("{} is dirty", sr)});
+                                    if self.dirty_regs.is_dirty(sr) {
+                                        self.dirty_regs.dirty_r(r);
+                                        self.annotations.push(TraceAnnotation{ma, note: format!("{} is dirty", r)});
                                     }
                                 }
                             }
@@ -817,6 +841,27 @@ impl ProgramTracer {
                                 self.learn_address(machine.cpu.regs.get_r16(R::CS), offset, ma, AddressUsageKind::MemoryWord);
                             }
                         },
+                        _ => {}
+                    }
+                }
+                Op::Xchg8 | Op::Xchg16 |
+                Op::And8 | Op::And16 |
+                Op::Adc8 | Op::Adc16 |
+                Op::Or8 | Op::Or16 |
+                Op::Pop16 | Op::Pop32 |
+                Op::Mul8 | Op::Mul16 |
+                Op::Div8 | Op::Div16 |
+                Op::Imul8 | Op::Imul16 |
+                Op::Idiv8 | Op::Idiv16 |
+                Op::Shl8 | Op::Shl16 | Op::Shld |
+                Op::Shr8 | Op::Shr16 | Op::Shrd => {
+                    // NOTE: several of these instructions could be simulated,
+                    // but for now just mark dst registers as dirty.
+                    match ii.instruction.params.dst {
+                        Parameter::Reg8(r) | Parameter::Reg16(r) | Parameter::SReg16(r) => {
+                            self.dirty_regs.dirty_r(r);
+                            self.annotations.push(TraceAnnotation{ma, note: format!("{} is dirty", r)});
+                        }
                         _ => {}
                     }
                 }
