@@ -108,6 +108,15 @@ impl R {
             _ => unreachable!(),
         }
     }
+
+    pub fn is_gpr(self) -> bool {
+        match self {
+            R::AL | R::CL | R::DL | R::BL | R::AH | R::CH | R::DH | R::BH |
+            R::AX | R::CX | R::DX | R::BX | R::SP | R::BP | R::SI | R::DI |
+            R::EAX | R::ECX | R::EDX | R::EBX | R::ESP | R::EBP | R::ESI | R::EDI => true,
+            _ => false
+        }
+    }
 }
 
 pub fn r8(v: u8) -> R {
