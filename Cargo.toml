@@ -1,10 +1,16 @@
 [package]
 name = "dustbox"
-version = "0.1.0"
+version = "0.0.1"
 authors = [
     "Martin Lindhe <martin@ubique.se>"
 ]
 edition = "2018"
+description = "PC x86 emulator with the goal of easily running MS-DOS games on Windows, macOS and Linux."
+license = "MIT"
+repository = "https://github.com/martinlindhe/dustbox-rs"
+exclude = [
+    "utils/*",
+]
 
 [lib]
 path = "src/lib.rs"
