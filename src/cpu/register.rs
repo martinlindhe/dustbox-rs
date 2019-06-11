@@ -117,6 +117,13 @@ impl R {
             _ => false
         }
     }
+
+    pub fn is_8bit(self) -> bool {
+        match self {
+            R::AL | R::CL | R::DL | R::BL | R::AH | R::CH | R::DH | R::BH => true,
+            _ => false
+        }
+    }
 }
 
 pub fn r8(v: u8) -> R {
