@@ -112,7 +112,7 @@ fn trace_unreferenced_data() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    println!("{}", res);
+
     assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004                    ; dx = 0x0004
 [085F:0103] 89D1             Mov16    cx, dx                        ; cx = 0x0004
 [085F:0105] EB01             JmpShort 0x0108
@@ -371,6 +371,7 @@ fn trace_annotate_regset() {
 }
 
 /*
+; TODO detect pattern
 ; a way to manipulate ES from bmatch.com, should be able to figure that 010F is "es = 0x0040"
 [085F:0105] 50               Push16   ax
 [085F:0106] 55               Push16   bp
@@ -380,25 +381,8 @@ fn trace_annotate_regset() {
 [085F:010F] 07               Pop16    es                            ; es = 0x0040
 */
 
-
-
 /*
-[085F:0118] B100             Mov8     cl, 0x00
-[085F:011A] BAC803           Mov16    dx, 0x03C8                    ; xref: branch@085F:012D
-[085F:011D] 8AC1             Mov8     al, cl
-[085F:011F] EE               Out8     dx, al        ; set DAC write index to CL with write to 3c8
-[085F:0120] 8AC1             Mov8     al, cl
-[085F:0122] C0E802           Shr8     al, 0x02      ; al = cl >> 2, to scale 0..256 to 0..64
-[085F:0125] 42               Inc16    dx            ; dx = 0x3C9
-[085F:0126] EE               Out8     dx, al        ; set R value for DAC register
-[085F:0127] EE               Out8     dx, al        ; G
-[085F:0128] EE               Out8     dx, al        ; B
-[085F:0129] 41               Inc16    cx
-[085F:012A] 80F900           Cmp8     cl, 0x00
-[085F:012D] 75EB             Jnz      0x011A        ; loop until cl wraps to 0 again (256 steps)
-*/
-
-/*
+; TODO better register tracing
 [085F:012F] 8CC8             Mov16    ax, cs
 [085F:0131] 80C410           Add8     ah, 0x10
 [085F:0134] 8EE0             Mov16    fs, ax    ; fs = cs + 0x1000
@@ -421,29 +405,20 @@ fn trace_annotate_regset() {
 [085F:014D] F3AA             Rep      Stosb     ; dst is [cs + 0x1000:0]
 */
 
-/*
-[085F:0147] 33C0             Xor16    ax, ax
-[085F:0149] 8BF0             Mov16    si, ax    ; si = 0
-*/
-
-/*
 #[test]
 fn trace_data_ref() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
-        0xBA, 0x10, 0x01,       // mov dx,0x110
+        0xBA, 0x14, 0x01,       // mov dx,string
         0xB4, 0x09,             // mov ah,0x9
-        0xCD, 0x21,             // int 0x21     ; print $-string at cs:dx XXX ?
+        0xCD, 0x21,             // int 0x21     ; DS:DX -> '$'-terminated string
         0x8B, 0x0E, 0x1D, 0x01, // mov cx,[0x11d]
         0xE9, 0x09, 0x00,       // jmp place
-        0xB8, 0x00, 0x4C,       // mov ax,0x4c00        ; label exit
+        0xB8, 0x00, 0x4C,       // exit: mov ax,0x4c00
         0xCD, 0x21,             // int 0x21
-
-        0x00,   // XXX ? alignment?
-        0x68, 0x69, 0x24,       // db 'hi$'
-
-        0xE9, 0xF4, 0xFF,       // jmp exit             ; label place
-
+        0x00,                   // db 0
+        0x68, 0x69, 0x24,       // string: db 'hi$'
+        0xE9, 0xF4, 0xFF,       // place: jmp exit
         0x04, 0x04, 0x04,       // db (unused)
         0x66, 0x66,             // dw
         0x00, 0x01, 0x02, 0x03, // db (unused)
@@ -451,30 +426,27 @@ fn trace_data_ref() {
     ];
     machine.load_executable(&code);
 
-    let mut tracer = ProgramTracer::new();
+    let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    println!("{}", res);
 
-    // FIXME [085F:0113] and [085F:0116] is not code!
-    // XXX [085F:0118] and forward - why is this parsed???!
-    assert_eq!("[085F:0100] BA1001           Mov16    dx, 0x0110
-[085F:0103] B409             Mov8     ah, 0x09
-[085F:0105] CD21             Int      0x21
+// XXX [085F:0114] 686924           Push16   0x2469                        ; xref: str$@085F:0105
+// XXX strip trailing space
+
+    assert_eq!("[085F:0100] BA1401           Mov16    dx, 0x0114                    ; dx = 0x0114
+[085F:0103] B409             Mov8     ah, 0x09                      ; ah = 0x09
+[085F:0105] CD21             Int      0x21                          ; dos: write $-terminated string at DS:DX to stdout | dirty all regs
 [085F:0107] 8B0E1D01         Mov16    cx, word [ds:0x011D]
 [085F:010B] E90900           JmpNear  0x0117
-[085F:010E] B8004C           Mov16    ax, 0x4C00                    ; xref: 085F:0117
-[085F:0111] CD21             Int      0x21
-[085F:0113] 006869           Add8     byte [ds:bx+si+0x69], ch
-[085F:0116] 24E9             And8     al, 0xE9
 
+[085F:010E] B8004C           Mov16    ax, 0x4C00                    ; xref: jump@085F:0117; ax = 0x4C00
+[085F:0111] CD21             Int      0x21                          ; dos: terminate program with return code in AL | dirty all regs
+[085F:0113] 00               db       0x00                          
+[085F:0114] 686924           db       \'hi$\'                         ; xref: str$@085F:0105
+[085F:0117] E9F4FF           JmpNear  0x010E                        ; xref: jump@085F:010B
 
-[085F:0117] E9F4FF           JmpNear  0x010E                        ; xref: 085F:010B
-
-[085F:0118] F4               Hlt
-[085F:0119] FF04             Inc16    word [ds:si]
-[085F:011B] 0404             Add8     al, 0x04
-[085F:011D] 66660001         Add8     byte [ds:bx+di], al
-[085F:0121] 0203             Add8     al, byte [ds:bp+di]", res);
+[085F:011A] 04040466         db       0x04, 0x04, 0x04, 0x66                          
+[085F:011E] 66000102         db       0x66, 0x00, 0x01, 0x02                          
+[085F:0122] 03               db       0x03                          
+", res);
 }
-*/

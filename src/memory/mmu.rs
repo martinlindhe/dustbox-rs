@@ -62,6 +62,14 @@ impl MMU {
         res
     }
 
+    pub fn read_u8_addr(&self, addr: MemoryAddress) -> u8 {
+        let v = self.memory.read_u8(addr.value());
+        if DEBUG_MMU {
+            println!("mmu.read_u8_addr from {} = {:02X}", addr, v);
+        }
+        v
+    }
+
     pub fn read_u8(&self, seg: u16, offset: u16) -> u8 {
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
         let v = self.memory.read_u8(addr);

@@ -34,6 +34,9 @@ pub struct ProgramTracer {
 
     /// annotations for an address
     annotations: Vec<TraceAnnotation>,
+
+    /// traced $-strings in memory which can be decoded in final pass
+    dollar_strings: Vec<MemoryAddress>,
 }
 
 #[derive(Default)]
@@ -162,6 +165,10 @@ enum GuessedDataType {
     //MemoryByte(u8),
     //MemoryWord(u16),
     UnknownBytes(Vec<u8>),
+
+    /// $-terminated ascii string
+    DollarStringStart(Vec<u8>,String),
+    DollarStringContinuation,
 }
 
 #[derive(Eq, PartialEq)]
@@ -177,6 +184,7 @@ enum AddressUsageKind {
     Jump,
     MemoryByte,
     MemoryWord,
+    DollarString,
 }
 
 impl AddressUsageKind {
@@ -211,11 +219,19 @@ impl ProgramTracer {
             regs: RegisterState::default(),
             dirty_regs: DirtyRegisters::default(),
             annotations: Vec::new(),
+            dollar_strings: Vec::new(),
         }
     }
 
     /// traces all discovered paths of the program by static analysis
     pub fn trace_execution(&mut self, machine: &mut Machine) {
+        // init known register values at program start
+        self.dirty_regs.all_dirty();
+        self.trace_r16(R::CS, machine.cpu.get_r16(R::CS));
+        self.trace_r16(R::DS, machine.cpu.get_r16(R::DS));
+        self.trace_r16(R::ES, machine.cpu.get_r16(R::ES));
+        self.trace_r16(R::SS, machine.cpu.get_r16(R::SS));
+
         // tell tracer to start at CS:IP
         let ma = MemoryAddress::RealSegmentOffset(machine.cpu.get_r16(R::CS), machine.cpu.regs.ip);
         self.seen_addresses.push(SeenAddress{ma, visited: false, sources: SeenSources::default()});
@@ -236,6 +252,34 @@ impl ProgramTracer {
     /// performs final post-processing of the program trace
     fn post_process_execution(&mut self, machine: &mut Machine) {
         let mut decoder = Decoder::default();
+
+        // account dollar-string bytes
+        for adr in &self.dollar_strings {
+            let mut adr = adr.clone();
+            println!("XXX self.dollar_strings {}", adr);
+
+            // build string of bytes starting at offset until $
+            let mut dollars = String::new();
+            let adr_start = adr;
+            let mut data = Vec::new();
+
+            // XXX learn xref
+
+            for x in 0..100 {
+                let val = machine.mmu.read_u8_addr(adr);
+                data.push(val);
+                if x > 0 {
+                    self.accounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::DollarStringContinuation, address: adr});
+                }
+                adr.inc_n(1);
+                dollars.push(val as char);
+                
+                if val == b'$' {
+                    break;
+                }
+            }
+            self.accounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::DollarStringStart(data, dollars), address: adr_start});
+        }
 
         // walk each byte of the loaded rom and check w instr lengths
         // if any bytes are not known to occupy, allows for us to show them as data
@@ -282,8 +326,10 @@ impl ProgramTracer {
                 // determine if last byte was in this range
                 if let MemoryAddress::RealSegmentOffset(_seg, off) = block_last {
                     if off != adr.offset() - 1 {
-                        unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownBytes(block.clone()), address: block_start});
-                        block.clear();
+                        if !block.is_empty() {
+                            unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownBytes(block.clone()), address: block_start});
+                            block.clear();
+                        }
                     }
                 }
                 if block.is_empty() {
@@ -411,10 +457,17 @@ impl ProgramTracer {
                 //GuessedDataType::MemoryByte(val) => res.push_str(&format!("[{}] {:02X}        [BYTE] db       0x{:02X}\n", ab.address, val, val)),
                 //GuessedDataType::MemoryWord(val) => res.push_str(&format!("[{}] {:02X} {:02X} [WORD] dw       0x{:04X}\n", ab.address, val >> 8, val & 0xFF, val)), // XXX
                 GuessedDataType::UnknownBytes(v) => {
+                    let xref = self.render_xref(ab.address);
                     let hex: Vec<String> = v.iter().map(|b| format!("{:02X}", b)).collect();
                     let pretty: Vec<String> = v.iter().map(|b| format!("0x{:02X}", b)).collect();
-                    res.push_str(&format!("[{}] {:11}      db       {}\n", ab.address, hex.join(" "), pretty.join(", ")));
-                },
+                    res.push_str(&format!("[{}] {:11}      db       {}                          {}\n", ab.address, hex.join(""), pretty.join(", "),  xref));
+                }
+                GuessedDataType::DollarStringStart(v, s) => {
+                    let xref = self.render_xref(ab.address);
+                    let hex: Vec<String> = v.iter().map(|b| format!("{:02X}", b)).collect();
+                    res.push_str(&format!("[{}] {:11}      db       '{}'                         {}\n", ab.address, hex.join(""), s, xref));
+                }
+                GuessedDataType::DollarStringContinuation => {},
             }
         }
 
@@ -446,16 +499,16 @@ impl ProgramTracer {
                     AddressUsageKind::Call => "call",
                     AddressUsageKind::MemoryByte => "byte",
                     AddressUsageKind::MemoryWord => "word",
+                    AddressUsageKind::DollarString => "str$",
                 };
                 source_offsets.push(format!("{}@{}", label, src.address));
             }
             s = format!("; xref: {}", source_offsets.join(", "));
         }
-
         s
     }
 
-    // learns of a new address to probe later
+    // learns of a new address to probe later (creates a xref)
     fn learn_address(&mut self, seg: u16, offset: u16, src: MemoryAddress, kind: AddressUsageKind) {
         let ma = MemoryAddress::RealSegmentOffset(seg, offset);
         for seen in &mut self.seen_addresses {
@@ -531,18 +584,53 @@ impl ProgramTracer {
         false
     }
 
-    /// returns value of clean register or None
-    fn clean_r16(&self, r: R) -> Option<u16> {
-        if !self.dirty_regs.gpr[r.index()] {
-            return Some(self.regs.get_r16(r));
-        }
-        None
+    /// debug fn - print register value or dirty state
+    fn print_register_state(&self) {
+        println!("ax:{} bx:{} cx:{} dx:{}", self.traced_r_desc(R::AX), self.traced_r_desc(R::BX), self.traced_r_desc(R::CX), self.traced_r_desc(R::DX));
+        println!("sp:{} bp:{} si:{} di:{}", self.traced_r_desc(R::SP), self.traced_r_desc(R::BP), self.traced_r_desc(R::SI), self.traced_r_desc(R::DI));
+        println!("cs:{} ss:{} ds:{} es:{}", self.traced_r_desc(R::CS), self.traced_r_desc(R::SS), self.traced_r_desc(R::DS), self.traced_r_desc(R::ES));
+        println!("fs:{} gs:{}", self.traced_r_desc(R::FS), self.traced_r_desc(R::GS));
     }
 
-    fn clean_r8(&self, r: R) -> Option<u8> {
-        // XXX fixme all wrong - need to track dirty state better   
-        if !self.dirty_regs.gpr[r.index()] {
-            return Some(self.regs.get_r8(r));
+    fn traced_r_desc(&self, r: R) -> String {
+        // XXX impl
+        if let Some(v) = self.clean_r(r) {
+            format!("{:04X}", v)
+        } else {
+            format!("dirty")
+        }
+    }
+
+    /// sets and trace reg
+    fn trace_r8(&mut self, r: R, val: u8) {
+        // TODO mark 16-bit gpr dirty
+        self.dirty_regs.clean_r(r);
+        self.regs.set_r8(r, val);
+    }
+
+    /// sets and trace reg
+    fn trace_r16(&mut self, r: R, val: u16) {
+        self.dirty_regs.clean_r(r);
+        self.regs.set_r16(r, val);
+    }
+
+    /// returns value of clean register or None
+    fn clean_r(&self, r: R) -> Option<u16> {
+        // XXX TODO if 8bit, see that parent 16-bit is clean
+        if r.is_gpr() {
+            if r.is_8bit() {
+                if !self.dirty_regs.gpr[r.index()] {
+                    return Some(self.regs.get_r8(r) as u16);
+                }
+            } else {
+                 if !self.dirty_regs.gpr[r.index()] {
+                    return Some(self.regs.get_r16(r));
+                }
+            }
+        } else {
+            if !self.dirty_regs.sreg16[r.index()] {
+                return Some(self.regs.get_r16(r));
+            }
         }
         None
     }
@@ -639,7 +727,6 @@ impl ProgramTracer {
                     self.annotations.push(TraceAnnotation{ma, note: self.int_desc(v)});
 
                     self.annotations.push(TraceAnnotation{ma, note: "dirty all regs".to_owned()});
-                    self.dirty_regs.all_dirty();
 
                     if v == 0x20 {
                         // int 0x20: exit to dos
@@ -649,6 +736,18 @@ impl ProgramTracer {
                         // int 0x21, 0x4C: exit to dos
                         break
                     }
+                    if v==0x21 && ah == 0x09 {
+                        // track address for $-string in DS:DX
+                        self.print_register_state();
+                        if let Some(ds) = self.clean_r(R::DS) {
+                            if let Some(dx) = self.clean_r(R::DX) {
+                                self.learn_address(ds, dx, ma, AddressUsageKind::DollarString);
+                                self.dollar_strings.push(MemoryAddress::RealSegmentOffset(ds, dx));
+                            }
+                        }
+                    }
+
+                    self.dirty_regs.all_dirty();
                 }
                 Op::Out8 | Op::Out16 => {
                     // TODO skip if register is dirty
@@ -688,7 +787,7 @@ impl ProgramTracer {
                 Op::Xor8 => if let Parameter::Reg8(dr) = ii.instruction.params.dst {
                     match ii.instruction.params.src {
                         Parameter::Reg8(sr) => if dr == sr {
-                            self.regs.set_r8(dr, 0);
+                            self.trace_r8(dr, 0);
                             self.dirty_regs.clean_r(dr);
                             self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", dr, 0)});
                         }
@@ -698,7 +797,7 @@ impl ProgramTracer {
                 Op::Xor16 => if let Parameter::Reg16(dr) = ii.instruction.params.dst {
                     match ii.instruction.params.src {
                         Parameter::Reg16(sr) => if dr == sr {
-                            self.regs.set_r16(dr, 0);
+                            self.trace_r16(dr, 0);
                             self.dirty_regs.clean_r(dr);
                             self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, 0)});
                         }
@@ -707,34 +806,34 @@ impl ProgramTracer {
                 }
                 Op::Dec8 => if let Parameter::Reg8(dr) = ii.instruction.params.dst {
                     let v =(Wrapping(self.regs.get_r8(dr)) - Wrapping(1)).0;
-                    self.regs.set_r8(dr, v);
+                    self.trace_r8(dr, v);
                     self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", dr, v)});
                 }
                 Op::Dec16 => if let Parameter::Reg16(dr) = ii.instruction.params.dst {
                     let v = (Wrapping(self.regs.get_r16(dr)) - Wrapping(1)).0;
-                    self.regs.set_r16(dr, v);
+                    self.trace_r16(dr, v);
                     self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, v)});
                 }
                 Op::Inc8 => if let Parameter::Reg8(dr) = ii.instruction.params.dst {
                     let v =(Wrapping(self.regs.get_r8(dr)) + Wrapping(1)).0;
-                    self.regs.set_r8(dr, v);
+                    self.trace_r8(dr, v);
                     self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", dr, v)});
                 }
                 Op::Inc16 => if let Parameter::Reg16(dr) = ii.instruction.params.dst {
                     let v = (Wrapping(self.regs.get_r16(dr)) + Wrapping(1)).0;
-                    self.regs.set_r16(dr, v);
+                    self.trace_r16(dr, v);
                     self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, v)});
                 }
                 Op::Add8 => if let Parameter::Reg8(dr) = ii.instruction.params.dst {
                     // TODO skip if register is dirty
                     let v = match ii.instruction.params.src {
-                        Parameter::Imm8(i) => Some(i),
-                        Parameter::Reg8(sr) => self.clean_r8(sr),
+                        Parameter::Imm8(i) => Some(i as u16),
+                        Parameter::Reg8(sr) => self.clean_r(sr),
                         _ => None
                     };
                     if let Some(v) = v {
-                        let v = (Wrapping(self.regs.get_r8(dr)) + Wrapping(v)).0;
-                        self.regs.set_r8(dr, v);
+                        let v = (Wrapping(self.regs.get_r8(dr)) + Wrapping(v as u8)).0;
+                        self.trace_r8(dr, v);
                         self.dirty_regs.clean_r(dr);
                         self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", dr, v)});
                     }
@@ -744,12 +843,12 @@ impl ProgramTracer {
                     let v = match ii.instruction.params.src {
                         Parameter::ImmS8(i) => Some(i as u16), // XXX should be treated as signed
                         Parameter::Imm16(i) => Some(i),
-                        Parameter::Reg16(sr) => self.clean_r16(sr),
+                        Parameter::Reg16(sr) => self.clean_r(sr),
                         _ => None
                     };
                     if let Some(v) = v {
                         let v = (Wrapping(self.regs.get_r16(dr)) + Wrapping(v)).0;
-                        self.regs.set_r16(dr, v);
+                        self.trace_r16(dr, v);
                         self.dirty_regs.clean_r(dr);
                         self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, v)});
                     }
@@ -763,7 +862,7 @@ impl ProgramTracer {
                     };
                     if let Some(v) = v {
                         let v = (Wrapping(self.regs.get_r8(dr)) - Wrapping(v)).0;
-                        self.regs.set_r8(dr, v);
+                        self.trace_r8(dr, v);
                         self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", dr, v)});
                     }
                 }
@@ -777,7 +876,7 @@ impl ProgramTracer {
                     };
                     if let Some(v) = v {
                         let v = (Wrapping(self.regs.get_r16(dr)) - Wrapping(v)).0;
-                        self.regs.set_r16(dr, v);
+                        self.trace_r16(dr, v);
                         self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", dr, v)});
                     }
                 }
@@ -790,18 +889,18 @@ impl ProgramTracer {
                                 _ => None
                             };
                             if let Some(v) = v {
-                                self.regs.set_r8(r, v);
+                                self.trace_r8(r, v);
                                 self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:02X}", r, v)});
                             }
                         }
                         Parameter::Reg16(r) | Parameter::SReg16(r) => {
                             let v = match ii.instruction.params.src {
-                                Parameter::Reg16(sr) => self.clean_r16(sr),
+                                Parameter::Reg16(sr) => self.clean_r(sr),
                                 Parameter::Imm16(i) => Some(i),
                                 _ => None
                             };
                             if let Some(v) = v {
-                                self.regs.set_r16(r, v);
+                                self.trace_r16(r, v);
                                 self.dirty_regs.clean_r(r);
                                 self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", r, v)});
                             } else {
@@ -960,9 +1059,9 @@ impl ProgramTracer {
             }
             0x21 => { // DOS
                 match ah {
-                    0x02 => String::from("dos: write character in DL to standard output"),
+                    0x02 => String::from("dos: write character in DL to stdout"),
                     0x06 => String::from("dos: write character in DL to DIRECT CONSOLE OUTPUT"),
-                    0x09 => String::from("dos: write $-terminated string at DS:DX to standard output"),
+                    0x09 => String::from("dos: write $-terminated string at DS:DX to stdout"),
                     0x4C => String::from("dos: terminate program with return code in AL"),
                     _ => format!("dos: unrecognized AH = {:02X}", ah)
                 }
