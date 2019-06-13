@@ -240,7 +240,6 @@ fn demo_com_16bit() {
         path.to_owned() + "morales/morales.com",
         path.to_owned() + "skylight/skylight.com",
         path.to_owned() + "tiled/tiled.com",
-        path.to_owned() + "triopti2/triopti2.com",
         path.to_owned() + "unknown/unknown.com",
         path.to_owned() + "wamma/wamma.com",
         path.to_owned() + "waves/waves.com",
