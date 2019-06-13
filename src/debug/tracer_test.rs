@@ -450,3 +450,58 @@ fn trace_data_ref() {
 [085F:0122] 03               db       0x03                          
 ", res);
 }
+
+
+/*
+// BUG:
+games-com-commercial/Pente (1984)(Michael Leach)/pente.com
+
+[085F:0CDD] 0BC0             Or16     ax, ax                        ; ax is dirty
+[085F:0CDE] C0740653         INVALID C0byte [ds:si+0x06], 0x53      ; xref: branch@085F:0C7A				XXX since this offset is part of a instruction, do not track it separately
+[085F:0CDF] 7406             Jz       0x0CE7
+[085F:0CE1] 53               Push16   bx
+
+00000CDD  0BC0              or ax,ax
+00000CDF  7406              jz 0xce7
+00000CE1  53                push bx
+
+or16 takes up 1 byte in some sense but 2 bytes in op size ?+++
+
+earlier:
+[085F:0C79] 6F               Outsw
+[085F:0C7A] 677261           Jc       0x0CDE
+[085F:0C7D] 6D               Insw
+
+the reason is this jump ref to middle of the or instr at [085F:0CDD]
+
+
+same issue:
+games-com-commercial/Snake Game (1992)(Freeware)/snake.com: ERROR: invalid/unhandled reg op INVALID C0byte [ds:si+0x06], 0x53
+games-com-commercial/Gooku (1987)(Anonymous)/go-moku.com: ERROR: invalid/unhandled reg op INVALID C0byte [ds:si+0x06], 0x53
+games-com-commercial/Yatzy (1984)(Jan Ivar Gundersen)/yatzy.com: ERROR: invalid/unhandled reg op INVALID C0byte [ds:si+0x06], 0x53
+games-com-commercial/Gnafu (1986)(Anonymous)/gnafu.com: ERROR: invalid/unhandled reg op INVALID C0byte [ds:si+0x06], 0x53
+games-com-commercial/Madball (1985)(Microtec)/madball.com: ERROR: invalid/unhandled reg op INVALID C0byte [ds:si+0x06], 0x53
+games-com-commercial/Turbo Bridge (1985)(Anonymous)/tbridge.com: ERROR: invalid/unhandled reg op INVALID C0byte [ds:si+0x06], 0x53
+*/
+
+/*
+
+BUG: demo-com-16bit/conf/org/conf.com
+020E+ in listing is not in rom, so they should be marked as unknown bytes and not visited
+
+[085F:01FF] 2400             And8     al, 0x00                      ; al is dirty
+[085F:020E] 0000             Add8     byte [ds:bx+si], al           ; xref: branch@085F:01EC
+[085F:0212] 0000             Add8     byte [ds:bx+si], al           ; xref: branch@085F:01F0
+[085F:024A] 0000             Add8     byte [ds:bx+si], al           ; xref: branch@085F:01E3
+[085F:0251] 0000             Add8     byte [ds:bx+si], al           ; xref: branch@085F:01EA
+[085F:025A] 0000             Add8     byte [ds:bx+si], al           ; xref: branch@085F:01E5
+
+leads to errors:
+ERROR: breaking because we reached end of file at 085F:0201 (indicates incorrect parsing)
+ERROR: breaking because we reached end of file at 085F:024C (indicates incorrect parsing)
+ERROR: breaking because we reached end of file at 085F:025C (indicates incorrect parsing)
+ERROR: breaking because we reached end of file at 085F:0253 (indicates incorrect parsing)
+ERROR: breaking because we reached end of file at 085F:0210 (indicates incorrect parsing)
+ERROR: breaking because we reached end of file at 085F:0214 (indicates incorrect parsing)
+*/
+

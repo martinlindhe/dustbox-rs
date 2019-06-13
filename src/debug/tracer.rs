@@ -3,7 +3,7 @@ use std::fmt;
 use std::num::Wrapping;
 
 use crate::machine::Machine;
-use crate::cpu::{Decoder, RepeatMode, InstructionInfo, RegisterState, R, GPR, Op, Parameter, Segment};
+use crate::cpu::{Decoder, RepeatMode, InstructionInfo, RegisterState, R, GPR, Op, Invalid, Parameter, Segment};
 use crate::memory::MemoryAddress;
 use crate::string::right_pad;
 use crate::hex::hex_bytes;
@@ -13,6 +13,8 @@ use crate::hex::hex_bytes;
 mod tracer_test;
 
 const DEBUG_TRACER: bool = false;
+
+const DEBUG_LEARN_ADDRESS: bool = false;
 
 /// ProgramTracer holds the state of the program being analyzed
 #[derive(Default)]
@@ -102,6 +104,16 @@ impl SeenSources {
         SeenSources {
             sources: Vec::new(),
         }
+    }
+
+    /// returns true if any source says its code
+    pub fn has_code(&self) -> bool {
+        for src in &self.sources {
+            if !src.kind.is_code() {
+                return false;
+            }
+        }
+        true
     }
 
     pub fn from_source(source: SeenSource) -> Self {
@@ -194,6 +206,14 @@ impl AddressUsageKind {
             _ => false,
         }
     }
+
+    /// returns true if it's known the address holds code
+    pub fn is_code(&self) -> bool {
+        match *self {
+            AddressUsageKind::Branch | AddressUsageKind::Call | AddressUsageKind::Jump => true,
+            _ => false,
+        }
+    }
 }
 
 
@@ -256,14 +276,11 @@ impl ProgramTracer {
         // account dollar-string bytes
         for adr in &self.dollar_strings {
             let mut adr = adr.clone();
-            println!("XXX self.dollar_strings {}", adr);
 
             // build string of bytes starting at offset until $
             let mut dollars = String::new();
             let adr_start = adr;
             let mut data = Vec::new();
-
-            // XXX learn xref
 
             for x in 0..100 {
                 let val = machine.mmu.read_u8_addr(adr);
@@ -477,9 +494,11 @@ impl ProgramTracer {
     /// returns true if anyone called to given MemoryAddress
     fn is_call_dst(&self, ma: MemoryAddress) -> bool {
         if let Some(sources) = self.get_sources_for_address(ma) {
-            for src in &sources.sources {
-                if src.kind == AddressUsageKind::Call {
-                    return true;
+            if sources.has_code() {
+                for src in &sources.sources {
+                    if src.kind == AddressUsageKind::Call {
+                        return true;
+                    }
                 }
             }
         }
@@ -513,14 +532,14 @@ impl ProgramTracer {
         let ma = MemoryAddress::RealSegmentOffset(seg, offset);
         for seen in &mut self.seen_addresses {
             if seen.ma.value() == ma.value() {
-                if DEBUG_TRACER {
+                if DEBUG_LEARN_ADDRESS {
                     eprintln!("learn_address append {:?} [{:04X}:{:04X}]", kind, seg, offset);
                 }
                 seen.sources.sources.push(SeenSource{address: src, kind});
                 return;
             }
         }
-        if DEBUG_TRACER {
+        if DEBUG_LEARN_ADDRESS {
             eprintln!("learn_address new {:?} [{:04X}:{:04X}]", kind, seg, offset);
         }
         self.seen_addresses.push(SeenAddress{ma, visited: false, sources: SeenSources::from_source(SeenSource{address: src, kind})});
@@ -529,7 +548,7 @@ impl ProgramTracer {
     fn get_sources_for_address(&self, ma: MemoryAddress) -> Option<SeenSources> {
         for dst in &self.seen_addresses {
             if dst.ma.value() == ma.value() {
-                if dst.sources.sources.is_empty() {
+                if !dst.sources.has_code() || dst.sources.sources.is_empty() {
                     return None;
                 }
                 return Some(dst.sources.clone());
@@ -540,7 +559,7 @@ impl ProgramTracer {
 
     fn has_any_unvisited_addresses(&self) -> bool {
         for dst in &self.seen_addresses {
-            if !dst.visited {
+            if dst.sources.has_code() && !dst.visited {
                 return true;
             }
         }
@@ -686,7 +705,13 @@ impl ProgramTracer {
             self.visited_addresses.push(ma);
 
             match ii.instruction.command {
-                Op::Invalid(_, _) => eprintln!("ERROR: invalid/unhandled op {}", ii.instruction),
+                Op::Invalid(_, ref kind) => {
+                    match kind {
+                        Invalid::Op => eprintln!("ERROR: invalid/unhandled op {}", ii.instruction),
+                        Invalid::FPUOp => eprintln!("ERROR: invalid/unhandled FPU op {}", ii.instruction),
+                        Invalid::Reg(_) => eprintln!("ERROR: invalid/unhandled reg op {}", ii.instruction)
+                    }
+                },
                 Op::RetImm16 => panic!("FIXME handle {}", ii.instruction),
                 Op::Retn | Op::Retf => break,
                 Op::JmpNear | Op::JmpFar | Op::JmpShort => {
@@ -695,6 +720,7 @@ impl ProgramTracer {
                         Parameter::Reg16(_) => {}, // ignore "jmp bx"
                         Parameter::Ptr16(_, _) => {}, // ignore "jmp [0x4422]"
                         Parameter::Ptr16Imm(_, _) => {}, // ignore "jmp far 0xFFFF:0x0000"
+                        Parameter::Ptr16Amode(_, _) => {}, // ignore "2EFF27            jmp [cs:bx]"
                         Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "jmp [di+0x10]
                         Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "jmp [si+0x662C]"
                         _ => eprintln!("ERROR1: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
@@ -717,6 +743,7 @@ impl ProgramTracer {
                     Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Call),
                     Parameter::Reg16(_) => {}, // ignore "call bp"
                     Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
+                    Parameter::Ptr16Amode(_, _) => {}, // ignore "FF1F              call far [bx]"
                     Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
                     Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "call [bx-0x67A0]"
                     _ => eprintln!("ERROR3: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
