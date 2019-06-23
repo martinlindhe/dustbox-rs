@@ -59,8 +59,8 @@ fn trace_unknown_bytes() {
     let res = tracer.present_trace(&mut machine);
     assert_eq!("[085F:0100] C3               Retn
 
-[085F:0101] 00 01 02 03      db       0x00, 0x01, 0x02, 0x03
-[085F:0105] 04 05            db       0x04, 0x05
+[085F:0101] 00010203         db       0x00, 0x01, 0x02, 0x03
+[085F:0105] 0405             db       0x04, 0x05
 ", res);
 }
 
@@ -88,7 +88,7 @@ fn trace_unknown_bytes_fragmented() {
 [085F:0104] 03               db       0x03
 [085F:0105] C3               Retn                                   ; xref: jump@085F:0102, jump@085F:0108
 
-[085F:0106] 04 05            db       0x04, 0x05
+[085F:0106] 0405             db       0x04, 0x05
 [085F:0108] EBFB             JmpShort 0x0105                        ; xref: branch@085F:0100
 
 [085F:010A] 06               db       0x06
