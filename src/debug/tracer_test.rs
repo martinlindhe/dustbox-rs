@@ -1,6 +1,27 @@
 use crate::machine::Machine;
 use crate::debug::ProgramTracer;
 
+use std::fmt;
+
+// workaround for lack of pretty multiline diffs: https://github.com/colin-kiegel/rust-pretty-assertions/issues/24
+/// Wrapper around string slice that makes debug output `{:?}` to print string same way as `{}`.
+/// Used in different `assert*!` macros in combination with `pretty_assertions` crate to make
+/// test failures to show nice diffs.
+#[derive(PartialEq, Eq)]
+#[doc(hidden)]
+struct PrettyString<'a>(pub &'a str);
+
+/// Make diff to display string as multi-line string
+impl<'a> fmt::Debug for PrettyString<'a> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    f.write_str(self.0)
+  }
+}
+
+fn ass_eq(left: &str, right: &str) {
+    assert_eq!(PrettyString(left), PrettyString(right));
+}
+
 #[test]
 fn trace_simple() {
     let mut machine = Machine::deterministic();
@@ -16,14 +37,14 @@ fn trace_simple() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004                    ; dx = 0x0004
+    ass_eq("[085F:0100] BA0400           Mov16    dx, 0x0004                    ; dx = 0x0004
 [085F:0103] 89D1             Mov16    cx, dx                        ; cx = 0x0004
 [085F:0105] 8EC2             Mov16    es, dx                        ; es = 0x0004
 [085F:0107] EB00             JmpShort 0x0109
 
 [085F:0109] C3               Retn                                   ; xref: jump@085F:0107
 
-", res);
+", &res);
 }
 
 #[test]
@@ -38,10 +59,10 @@ fn trace_unknown_byte() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] C3               Retn
+    ass_eq("[085F:0100] C3               Retn
 
 [085F:0101] 00               db       0x00
-", res);
+", &res);
 }
 
 #[test]
@@ -57,11 +78,11 @@ fn trace_unknown_bytes() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] C3               Retn
+    ass_eq("[085F:0100] C3               Retn
 
 [085F:0101] 00010203         db       0x00, 0x01, 0x02, 0x03
 [085F:0105] 0405             db       0x04, 0x05
-", res);
+", &res);
 }
 
 
@@ -82,7 +103,7 @@ fn trace_unknown_bytes_fragmented() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] 7206             Jc       0x0108
+    ass_eq("[085F:0100] 7206             Jc       0x0108
 [085F:0102] EB01             JmpShort 0x0105
 
 [085F:0104] 03               db       0x03
@@ -92,7 +113,7 @@ fn trace_unknown_bytes_fragmented() {
 [085F:0108] EBFB             JmpShort 0x0105                        ; xref: branch@085F:0100
 
 [085F:010A] 06               db       0x06
-", res);
+", &res);
 }
 
 
@@ -113,7 +134,7 @@ fn trace_unreferenced_data() {
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
 
-    assert_eq!("[085F:0100] BA0400           Mov16    dx, 0x0004                    ; dx = 0x0004
+    ass_eq("[085F:0100] BA0400           Mov16    dx, 0x0004                    ; dx = 0x0004
 [085F:0103] 89D1             Mov16    cx, dx                        ; cx = 0x0004
 [085F:0105] EB01             JmpShort 0x0108
 
@@ -121,7 +142,7 @@ fn trace_unreferenced_data() {
 [085F:0108] C3               Retn                                   ; xref: jump@085F:0105
 
 [085F:0109] 40               db       0x40
-", res);
+", &res);
 }
 
 #[test]
@@ -137,10 +158,10 @@ fn trace_annotates_stosw() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] AB               Stosw                                  ; [es:di] = ax
+    ass_eq("[085F:0100] AB               Stosw                                  ; [es:di] = ax
 [085F:0101] F3AB             Rep      Stosw                         ; while cx-- > 0 { [es:di] = ax }
 [085F:0103] E460             In8      al, 0x60                      ; keyboard: input buffer (0x0060)
-", res);
+", &res);
 }
 
 #[test]
@@ -161,7 +182,7 @@ fn trace_sepatate_call_destination_separators() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] B80100           Mov16    ax, 0x0001                    ; ax = 0x0001
+    ass_eq("[085F:0100] B80100           Mov16    ax, 0x0001                    ; ax = 0x0001
 [085F:0103] E80500           CallNear 0x010B
 [085F:0106] B80200           Mov16    ax, 0x0002                    ; ax = 0x0002
 [085F:0109] EB04             JmpShort 0x010F
@@ -170,7 +191,7 @@ fn trace_sepatate_call_destination_separators() {
 [085F:010E] C3               Retn
 
 [085F:010F] CD20             Int      0x20                          ; xref: jump@085F:0109; dos: terminate program with return code 0 | dirty all regs
-", res);
+", &res);
 }
 
 #[test]
@@ -187,13 +208,13 @@ fn trace_virtual_memory() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] 2EA30202         Mov16    word [cs:0x0202], ax
+    ass_eq("[085F:0100] 2EA30202         Mov16    word [cs:0x0202], ax
 [085F:0104] 2EA10202         Mov16    ax, word [cs:0x0202]
 [085F:0108] 2EA20502         Mov8     byte [cs:0x0205], al
 [085F:010C] 2EA00502         Mov8     al, byte [cs:0x0205]
 [085F:0202] ?? ??            dw       ????                          ; xref: word@085F:0100, word@085F:0104
 [085F:0205] ??               db       ??                            ; xref: byte@085F:0108, byte@085F:010C
-", res);
+", &res);
 }
 
 #[test]
@@ -208,9 +229,9 @@ fn trace_break_after_dos_int20() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] CD20             Int      0x20                          ; dos: terminate program with return code 0 | dirty all regs
+    ass_eq("[085F:0100] CD20             Int      0x20                          ; dos: terminate program with return code 0 | dirty all regs
 [085F:0102] 90               db       0x90
-", res);
+", &res);
 }
 
 #[test]
@@ -226,10 +247,10 @@ fn trace_break_after_dos_int21_4c() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] B44C             Mov8     ah, 0x4C                      ; ah = 0x4C
+    ass_eq("[085F:0100] B44C             Mov8     ah, 0x4C                      ; ah = 0x4C
 [085F:0102] CD21             Int      0x21                          ; dos: terminate program with return code in AL | dirty all regs
 [085F:0104] 90               db       0x90
-", res);
+", &res);
 }
 
 #[test]
@@ -247,12 +268,12 @@ fn trace_dont_annotate_dirty_regs() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] B81300           Mov16    ax, 0x0013                    ; ax = 0x0013
+    ass_eq("[085F:0100] B81300           Mov16    ax, 0x0013                    ; ax = 0x0013
 [085F:0103] CD10             Int      0x10                          ; video: set 320x200 VGA mode (0x13) | dirty all regs
 [085F:0105] 89C3             Mov16    bx, ax                        ; bx is dirty
 [085F:0107] B81200           Mov16    ax, 0x0012                    ; ax = 0x0012
 [085F:010A] 89C3             Mov16    bx, ax                        ; bx = 0x0012
-", res);
+", &res);
 }
 
 #[test]
@@ -269,11 +290,11 @@ fn trace_annotate_int() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] B80300           Mov16    ax, 0x0003                    ; ax = 0x0003
+    ass_eq("[085F:0100] B80300           Mov16    ax, 0x0003                    ; ax = 0x0003
 [085F:0103] CD10             Int      0x10                          ; video: set 80x25 text mode (0x03) | dirty all regs
 [085F:0105] B44C             Mov8     ah, 0x4C                      ; ah = 0x4C
 [085F:0107] CD21             Int      0x21                          ; dos: terminate program with return code in AL | dirty all regs
-", res);
+", &res);
 }
 
 #[test]
@@ -292,13 +313,13 @@ fn trace_annotate_out() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] B83412           Mov16    ax, 0x1234                    ; ax = 0x1234
+    ass_eq("[085F:0100] B83412           Mov16    ax, 0x1234                    ; ax = 0x1234
 [085F:0103] BAC803           Mov16    dx, 0x03C8                    ; dx = 0x03C8
 [085F:0106] E640             Out8     0x40, al                      ; pit: counter 0, counter divisor (0x0040) = 34
 [085F:0108] E740             Out16    0x40, ax                      ; pit: counter 0, counter divisor (0x0040) = 1234
 [085F:010A] EE               Out8     dx, al                        ; vga: PEL address write mode (0x03C8) = 34
 [085F:010B] EF               Out16    dx, ax                        ; vga: PEL address write mode (0x03C8) = 1234
-", res);
+", &res);
 }
 
 #[test]
@@ -313,9 +334,9 @@ fn trace_annotate_in() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] BA6000           Mov16    dx, 0x0060                    ; dx = 0x0060
+    ass_eq("[085F:0100] BA6000           Mov16    dx, 0x0060                    ; dx = 0x0060
 [085F:0103] EC               In8      al, dx                        ; keyboard: input buffer (0x0060)
-", res);
+", &res);
 }
 
 #[test]
@@ -348,7 +369,7 @@ fn trace_annotate_regset() {
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
-    assert_eq!("[085F:0100] B81300           Mov16    ax, 0x0013                    ; ax = 0x0013
+    ass_eq("[085F:0100] B81300           Mov16    ax, 0x0013                    ; ax = 0x0013
 [085F:0103] 89C2             Mov16    dx, ax                        ; dx = 0x0013
 [085F:0105] 42               Inc16    dx                            ; dx = 0x0014
 [085F:0106] FEC2             Inc8     dl                            ; dl = 0x15
@@ -367,7 +388,7 @@ fn trace_annotate_regset() {
 [085F:0126] 83EB04           Sub16    bx, byte +0x04                ; bx = 0xA003
 [085F:0129] 31C0             Xor16    ax, ax                        ; ax = 0x0000
 [085F:012B] 30DB             Xor8     bl, bl                        ; bl = 0x00
-", res);
+", &res);
 }
 
 /*
@@ -433,7 +454,7 @@ fn trace_data_ref() {
 // XXX [085F:0114] 686924           Push16   0x2469                        ; xref: str$@085F:0105
 // XXX strip trailing space
 
-    assert_eq!("[085F:0100] BA1401           Mov16    dx, 0x0114                    ; dx = 0x0114
+    ass_eq("[085F:0100] BA1401           Mov16    dx, 0x0114                    ; dx = 0x0114
 [085F:0103] B409             Mov8     ah, 0x09                      ; ah = 0x09
 [085F:0105] CD21             Int      0x21                          ; dos: write $-terminated string at DS:DX to stdout | dirty all regs
 [085F:0107] 8B0E1D01         Mov16    cx, word [ds:0x011D]
@@ -441,14 +462,14 @@ fn trace_data_ref() {
 
 [085F:010E] B8004C           Mov16    ax, 0x4C00                    ; xref: jump@085F:0117; ax = 0x4C00
 [085F:0111] CD21             Int      0x21                          ; dos: terminate program with return code in AL | dirty all regs
-[085F:0113] 00               db       0x00                          
+[085F:0113] 00               db       0x00
 [085F:0114] 686924           db       \'hi$\'                         ; xref: str$@085F:0105
 [085F:0117] E9F4FF           JmpNear  0x010E                        ; xref: jump@085F:010B
 
-[085F:011A] 04040466         db       0x04, 0x04, 0x04, 0x66                          
-[085F:011E] 66000102         db       0x66, 0x00, 0x01, 0x02                          
-[085F:0122] 03               db       0x03                          
-", res);
+[085F:011A] 04040466         db       0x04, 0x04, 0x04, 0x66
+[085F:011E] 66000102         db       0x66, 0x00, 0x01, 0x02
+[085F:0122] 03               db       0x03
+", &res);
 }
 
 
