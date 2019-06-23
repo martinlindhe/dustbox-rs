@@ -436,11 +436,7 @@ impl ProgramTracer {
                 GuessedDataType::InstrStart => {
                     let ii = decoder.get_instruction_info(&mut machine.mmu, ab.address.segment(), ab.address.offset());
 
-                    let mut tail = String::new();
-                    let xref = self.render_xref(ab.address);
-                    if xref != "" {
-                        tail.push_str(&xref);
-                    }
+                    let mut tail = self.render_xref(ab.address);
 
                     let decor = self.annotate_instruction(&ii);
                     if decor != "" {
@@ -474,10 +470,15 @@ impl ProgramTracer {
                 //GuessedDataType::MemoryByte(val) => res.push_str(&format!("[{}] {:02X}        [BYTE] db       0x{:02X}\n", ab.address, val, val)),
                 //GuessedDataType::MemoryWord(val) => res.push_str(&format!("[{}] {:02X} {:02X} [WORD] dw       0x{:04X}\n", ab.address, val >> 8, val & 0xFF, val)), // XXX
                 GuessedDataType::UnknownBytes(v) => {
-                    let xref = self.render_xref(ab.address);
+                    let tail = self.render_xref(ab.address);
                     let hex: Vec<String> = v.iter().map(|b| format!("{:02X}", b)).collect();
                     let pretty: Vec<String> = v.iter().map(|b| format!("0x{:02X}", b)).collect();
-                    res.push_str(&format!("[{}] {:11}      db       {}                          {}\n", ab.address, hex.join(""), pretty.join(", "),  xref));
+                    let mut s = format!("[{}] {:11}      db       {}", ab.address, hex.join(""), pretty.join(", "));
+                    if tail != "" {
+                        s.push_str(&format!("                          {}", tail));
+                    }
+                    s.push_str("\n");
+                    res.push_str(&s);
                 }
                 GuessedDataType::DollarStringStart(v, s) => {
                     let xref = self.render_xref(ab.address);
