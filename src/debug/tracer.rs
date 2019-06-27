@@ -549,7 +549,7 @@ impl ProgramTracer {
     fn get_sources_for_address(&self, ma: MemoryAddress) -> Option<SeenSources> {
         for dst in &self.seen_addresses {
             if dst.ma.value() == ma.value() {
-                if !dst.sources.has_code() || dst.sources.sources.is_empty() {
+                if dst.sources.sources.is_empty() {
                     return None;
                 }
                 return Some(dst.sources.clone());
@@ -567,9 +567,10 @@ impl ProgramTracer {
         false
     }
 
+    // returns a unvisted address pointing to code
     fn get_unvisited_address(&self) -> (Option<MemoryAddress>, Option<SeenSources>) {
         for dst in &self.seen_addresses {
-            if !dst.visited {
+            if !dst.visited && dst.sources.has_code() {
                 return (Some(dst.ma), Some(dst.sources.clone()));
             }
         }
