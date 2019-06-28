@@ -168,7 +168,7 @@ impl Ord for SeenSource {
 }
 
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 enum GuessedDataType {
     InstrStart,
     InstrContinuation,
@@ -183,7 +183,7 @@ enum GuessedDataType {
     DollarStringContinuation,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 struct GuessedDataAddress {
     kind: GuessedDataType,
     address: MemoryAddress,
@@ -202,7 +202,7 @@ enum AddressUsageKind {
 impl AddressUsageKind {
     pub fn is_memory_kind(&self) -> bool {
         match *self {
-            AddressUsageKind::MemoryByte | AddressUsageKind::MemoryWord => true,
+            AddressUsageKind::MemoryByte | AddressUsageKind::MemoryWord | AddressUsageKind::DollarString => true,
             _ => false,
         }
     }
@@ -258,7 +258,7 @@ impl ProgramTracer {
 
         loop {
             self.trace_unvisited_address(machine);
-            if !self.has_any_unvisited_addresses() {
+            if !self.has_unvisited_code_addresses() {
                 if DEBUG_TRACER {
                     eprintln!("exhausted all destinations, breaking!");
                 }
@@ -269,7 +269,8 @@ impl ProgramTracer {
         self.post_process_execution(machine);
     }
 
-    /// performs final post-processing of the program trace
+    /// Performs final post-processing of the program trace.
+    /// Produces the self.accounted_bytes vec
     fn post_process_execution(&mut self, machine: &mut Machine) {
         let mut decoder = Decoder::default();
 
@@ -373,6 +374,8 @@ impl ProgramTracer {
         }
 
         // find all memory addresses past end of rom file size thats mem locations, add them to self.accounted_bytes
+
+        /*
         for adr in &self.virtual_memory {
             let sources = self.get_sources_for_address(*adr);
             if let Some(sources) = sources {
@@ -380,6 +383,7 @@ impl ProgramTracer {
                 self.accounted_bytes.push(GuessedDataAddress{kind, address: *adr});
             }
         }
+        */
 
         self.accounted_bytes.sort();
     }
@@ -558,7 +562,8 @@ impl ProgramTracer {
         None
     }
 
-    fn has_any_unvisited_addresses(&self) -> bool {
+    // returns true if we know about unvisited code addresses
+    fn has_unvisited_code_addresses(&self) -> bool {
         for dst in &self.seen_addresses {
             if dst.sources.has_code() && !dst.visited {
                 return true;
@@ -568,13 +573,13 @@ impl ProgramTracer {
     }
 
     // returns a unvisted address pointing to code
-    fn get_unvisited_address(&self) -> (Option<MemoryAddress>, Option<SeenSources>) {
+    fn get_unvisited_code_address(&self) -> Option<MemoryAddress> {
         for dst in &self.seen_addresses {
-            if !dst.visited && dst.sources.has_code() {
-                return (Some(dst.ma), Some(dst.sources.clone()));
+            if dst.sources.has_code() && !dst.visited {
+                return Some(dst.ma);
             }
         }
-        (None, None)
+        None
     }
 
     /// marks given seen address as visited by the prober
@@ -658,7 +663,7 @@ impl ProgramTracer {
 
     /// traces along one execution path until we have to give up, marking it as visited when complete
     fn trace_unvisited_address(&mut self, machine: &mut Machine) {
-        let (ma, sources) = self.get_unvisited_address();
+        let ma = self.get_unvisited_code_address();
         if ma.is_none() {
             eprintln!("ERROR: no destinations to visit");
             return;
@@ -676,17 +681,6 @@ impl ProgramTracer {
 
         if DEBUG_TRACER {
             eprintln!("trace_destination starting at {:04X}:{:04X}", ma.segment(), ma.offset());
-        }
-
-        if let Some(sources) = sources {
-            if !sources.sources.is_empty() && sources.only_memory_access() {
-                if DEBUG_TRACER {
-                    eprintln!("trace_unvisited_address address only accessed by memory, leaving {:?}", sources);
-                }
-                self.mark_address_visited(start_ma);
-                self.mark_virtual_memory(start_ma);
-                return;
-            }
         }
 
         let mut decoder = Decoder::default();
