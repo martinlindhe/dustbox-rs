@@ -27,9 +27,6 @@ pub struct ProgramTracer {
     /// finalized analysis result
     accounted_bytes: Vec<GuessedDataAddress>,
 
-    /// areas known to be mapped only by memory access
-    virtual_memory: Vec<MemoryAddress>,
-
     /// traced register state
     regs: RegisterState,
     dirty_regs: DirtyRegisters,
@@ -88,6 +85,7 @@ struct TraceAnnotation {
     note: String,
 }
 
+#[derive(Debug)]
 struct SeenAddress {
     ma: MemoryAddress,
     sources: SeenSources,
@@ -235,7 +233,6 @@ impl ProgramTracer {
             seen_addresses: Vec::new(),
             visited_addresses: Vec::new(),
             accounted_bytes: Vec::new(),
-            virtual_memory: Vec::new(),
             regs: RegisterState::default(),
             dirty_regs: DirtyRegisters::default(),
             annotations: Vec::new(),
@@ -373,19 +370,25 @@ impl ProgramTracer {
             self.accounted_bytes.push(ub);
         }
 
-        // find all memory addresses past end of rom file size thats mem locations, add them to self.accounted_bytes
-
-        /*
-        for adr in &self.virtual_memory {
-            let sources = self.get_sources_for_address(*adr);
-            if let Some(sources) = sources {
-                let kind = sources.guess_data_type();
-                self.accounted_bytes.push(GuessedDataAddress{kind, address: *adr});
+        // find all unvisited memory addresses
+        for dst in &self.seen_addresses {
+            if !dst.visited && !dst.sources.has_code() && !self.did_account_for(&dst.ma) {
+                let kind = dst.sources.guess_data_type();
+                self.accounted_bytes.push(GuessedDataAddress{kind, address: dst.ma});
             }
         }
-        */
 
         self.accounted_bytes.sort();
+    }
+
+    /// returns true if ma exists in self.accounted_bytes
+    fn did_account_for(&self, ma: &MemoryAddress) -> bool {
+        for ab in &self.accounted_bytes {
+            if ab.address == *ma {
+                return true;
+            }
+        }
+        false
     }
 
     /// returns a instruction annotation
@@ -469,7 +472,7 @@ impl ProgramTracer {
                 }
                 GuessedDataType::MemoryWordUnset => {
                     let xref = self.render_xref(ab.address);
-                    res.push_str(&format!("[{}] ?? ??            dw       ????                          {}\n", ab.address, xref));
+                    res.push_str(&format!("[{}] ????             dw       ????                          {}\n", ab.address, xref));
                 }
                 //GuessedDataType::MemoryByte(val) => res.push_str(&format!("[{}] {:02X}        [BYTE] db       0x{:02X}\n", ab.address, val, val)),
                 //GuessedDataType::MemoryWord(val) => res.push_str(&format!("[{}] {:02X} {:02X} [WORD] dw       0x{:04X}\n", ab.address, val >> 8, val & 0xFF, val)), // XXX
@@ -594,11 +597,6 @@ impl ProgramTracer {
             }
         }
         panic!("never found address to mark as visited! {}", ma);
-    }
-
-    /// marks given address as a virtual memory address (outside of the ROM memory map being traced)
-    fn mark_virtual_memory(&mut self, ma: MemoryAddress) {
-        self.virtual_memory.push(ma);
     }
 
     fn has_visited_address(&self, ma: MemoryAddress) -> bool {
@@ -748,18 +746,17 @@ impl ProgramTracer {
                     let ah = self.regs.get_r8(R::AH);
 
                     self.annotations.push(TraceAnnotation{ma, note: self.int_desc(v)});
-
                     self.annotations.push(TraceAnnotation{ma, note: "dirty all regs".to_owned()});
 
                     if v == 0x20 {
                         // int 0x20: exit to dos
                         break
                     }
-                    if v==0x21 && ah == 0x4C {
+                    if v == 0x21 && ah == 0x4C {
                         // int 0x21, 0x4C: exit to dos
                         break
                     }
-                    if v==0x21 && ah == 0x09 {
+                    if v == 0x21 && ah == 0x09 {
                         // track address for $-string in DS:DX
                         self.print_register_state();
                         if let Some(ds) = self.clean_r(R::DS) {

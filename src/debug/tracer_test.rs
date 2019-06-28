@@ -214,7 +214,8 @@ fn trace_virtual_memory() {
 [085F:0108] 2EA20502         Mov8     byte [cs:0x0205], al
 [085F:010C] 2EA00502         Mov8     al, byte [cs:0x0205]
 [085F:0110] C3               Retn
-[085F:0202] ?? ??            dw       ????                          ; xref: word@085F:0100, word@085F:0104
+
+[085F:0202] ????             dw       ????                          ; xref: word@085F:0100, word@085F:0104
 [085F:0205] ??               db       ??                            ; xref: byte@085F:0108, byte@085F:010C
 ", &res);
 }
