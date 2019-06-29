@@ -186,7 +186,7 @@ fn reg_str_to_index(s: &str) -> usize {
 }
 
 fn assemble_prober(data: &[u8], prober_com: &str) {
-    let mut tera = compile_templates!("../utils/prober/*.tpl.asm");
+    let mut tera = compile_templates!("utils/prober/*.tpl.asm");
 
     // disable autoescaping
     tera.autoescape_on(vec![]);
@@ -196,7 +196,7 @@ fn assemble_prober(data: &[u8], prober_com: &str) {
     // add stuff to context
     match tera.render("prober.tpl.asm", &context) {
         Ok(res) => {
-            let mut f = File::create("../utils/prober/prober.asm").expect("Unable to create file");
+            let mut f = File::create("utils/prober/prober.asm").expect("Unable to create file");
             f.write_all(res.as_bytes()).expect("Unable to write data");
         }
         Err(why) => panic!("fatal tera error: {}", why),

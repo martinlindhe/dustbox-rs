@@ -21,8 +21,8 @@ chrono = "0.4"
 image = "0.21"
 sdl2 = "0.32"
 quick-error = "1.2"
-rand = "0.6"
-rand_xorshift = "0.1"
+rand = "0.7"
+rand_xorshift = "0.2"
 serde = "1.0"
 serde_derive = "1.0"
 simple-error = "0.2"
@@ -39,4 +39,4 @@ name = "cpu"
 harness = false
 
 [workspace]
-members = [ "disassembler", "debugger", "frontend", "fuzzer" ]
+members = [ "debugger", "disassembler", "frontend", "fuzzer" ]

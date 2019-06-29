@@ -78,7 +78,7 @@ impl Interface {
             .borrow()
             .get_object("input_command")
             .unwrap();
-        input_command.set_placeholder_text("Enter command (or type help)");
+        input_command.set_placeholder_text(Some("Enter command (or type help)"));
 
         let canvas: gtk::DrawingArea = self.builder
             .borrow()
@@ -116,7 +116,7 @@ impl Interface {
             help_about.connect_activate(move |_| {
                 let p = gtk::AboutDialog::new();
                 p.set_program_name("dustbox");
-                p.set_version("0.1.0");
+                p.set_version(Some("0.1.0"));
                 p.set_authors(&["Martin Lindhe"]);
                 p.set_website(Some("https://martinlindhe.github.io/dustbox-rs"));
                 p.set_comments(Some("A MS-DOS debugger / emulator"));
