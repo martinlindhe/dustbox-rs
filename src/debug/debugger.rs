@@ -224,10 +224,7 @@ impl Debugger {
                                         println!("Breakpoint was already added");
                                     }
                                 }
-                                Err(e) => {
-                                    println!("parse error: {:?}", e);
-                                    return;
-                                }
+                                Err(e) => println!("parse error: {:?}", e),
                             }
                         }
                         "del" | "delete" | "remove" => {
@@ -238,10 +235,7 @@ impl Debugger {
                                         None => println!("Breakpoint not found, so not removed!"),
                                     }
                                 }
-                                Err(e) => {
-                                    println!("parse error: {:?}", e);
-                                    return;
-                                }
+                                Err(e) => println!("parse error: {:?}", e),
                             }
                         }
                         "clear" => {
@@ -279,10 +273,7 @@ impl Debugger {
                                         println!("Breakpoint was already added");
                                     }
                                 }
-                                Err(e) => {
-                                    println!("parse error: {:?}", e);
-                                    return;
-                                }
+                                Err(e) => println!("parse error: {:?}", e),
                             }
                         }
                         "del" | "delete" | "remove" => {
@@ -293,10 +284,7 @@ impl Debugger {
                                         None => println!("Breakpoint not found, so not removed!"),
                                     }
                                 }
-                                Err(e) => {
-                                    println!("parse error: {:?}", e);
-                                    return;
-                                }
+                                Err(e) => println!("parse error: {:?}", e),
                             }
                         }
                         "clear" => {

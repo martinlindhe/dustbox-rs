@@ -47,7 +47,7 @@ struct DirtyRegisters {
 impl DirtyRegisters {
     /// marks all registers as dirty
     pub fn all_dirty(&mut self) {
-        for i in 0..(8 + 6 + 1) {
+        for i in 0..=8 + 6 {
             self.gpr[i] = true;
         }
         for i in 0..6 {
@@ -273,7 +273,7 @@ impl ProgramTracer {
 
         // account dollar-string bytes
         for adr in &self.dollar_strings {
-            let mut adr = adr.clone();
+            let mut adr = *adr;
 
             // build string of bytes starting at offset until $
             let mut dollars = String::new();
@@ -340,11 +340,9 @@ impl ProgramTracer {
 
                 // determine if last byte was in this range
                 if let MemoryAddress::RealSegmentOffset(_seg, off) = block_last {
-                    if off != adr.offset() - 1 {
-                        if !block.is_empty() {
-                            unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownBytes(block.clone()), address: block_start});
-                            block.clear();
-                        }
+                    if off != adr.offset() - 1 && !block.is_empty() {
+                        unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownBytes(block.clone()), address: block_start});
+                        block.clear();
                     }
                 }
                 if block.is_empty() {
@@ -372,7 +370,7 @@ impl ProgramTracer {
 
         // find all unvisited memory addresses
         for dst in &self.seen_addresses {
-            if !dst.visited && !dst.sources.has_code() && !self.did_account_for(&dst.ma) {
+            if !dst.visited && !dst.sources.has_code() && !self.did_account_for(dst.ma) {
                 let kind = dst.sources.guess_data_type();
                 self.accounted_bytes.push(GuessedDataAddress{kind, address: dst.ma});
             }
@@ -382,9 +380,9 @@ impl ProgramTracer {
     }
 
     /// returns true if ma exists in self.accounted_bytes
-    fn did_account_for(&self, ma: &MemoryAddress) -> bool {
+    fn did_account_for(&self, ma: MemoryAddress) -> bool {
         for ab in &self.accounted_bytes {
-            if ab.address == *ma {
+            if ab.address == ma {
                 return true;
             }
         }
@@ -425,7 +423,7 @@ impl ProgramTracer {
                     .filter(|a| a.ma == MemoryAddress::RealSegmentOffset(ii.segment as u16, ii.offset as u16))
                     .collect();
 
-                let strs: Vec<String> = v.iter().map(|ta| format!("{}", ta.note)).collect();
+                let strs: Vec<String> = v.iter().map(|ta| ta.note.to_string()).collect();
                 strs.join(" | ")
             }
         }
@@ -621,7 +619,7 @@ impl ProgramTracer {
         if let Some(v) = self.clean_r(r) {
             format!("{:04X}", v)
         } else {
-            format!("dirty")
+            "dirty".to_string()
         }
     }
 
@@ -644,17 +642,13 @@ impl ProgramTracer {
         if r.is_gpr() {
             if r.is_8bit() {
                 if !self.dirty_regs.gpr[r.index()] {
-                    return Some(self.regs.get_r8(r) as u16);
+                    return Some(u16::from(self.regs.get_r8(r)));
                 }
-            } else {
-                 if !self.dirty_regs.gpr[r.index()] {
-                    return Some(self.regs.get_r16(r));
-                }
-            }
-        } else {
-            if !self.dirty_regs.sreg16[r.index()] {
+            } else if !self.dirty_regs.gpr[r.index()] {
                 return Some(self.regs.get_r16(r));
             }
+        } else if !self.dirty_regs.sreg16[r.index()] {
+            return Some(self.regs.get_r16(r));
         }
         None
     }
@@ -847,7 +841,7 @@ impl ProgramTracer {
                 Op::Add8 => if let Parameter::Reg8(dr) = ii.instruction.params.dst {
                     // TODO skip if register is dirty
                     let v = match ii.instruction.params.src {
-                        Parameter::Imm8(i) => Some(i as u16),
+                        Parameter::Imm8(i) => Some(u16::from(i)),
                         Parameter::Reg8(sr) => self.clean_r(sr),
                         _ => None
                     };
@@ -923,12 +917,10 @@ impl ProgramTracer {
                                 self.trace_r16(r, v);
                                 self.dirty_regs.clean_r(r);
                                 self.annotations.push(TraceAnnotation{ma, note: format!("{} = 0x{:04X}", r, v)});
-                            } else {
-                                if let Parameter::Reg16(sr) = ii.instruction.params.src {
-                                    if self.dirty_regs.is_dirty(sr) {
-                                        self.dirty_regs.dirty_r(r);
-                                        self.annotations.push(TraceAnnotation{ma, note: format!("{} is dirty", r)});
-                                    }
+                            } else if let Parameter::Reg16(sr) = ii.instruction.params.src {
+                                if self.dirty_regs.is_dirty(sr) {
+                                    self.dirty_regs.dirty_r(r);
+                                    self.annotations.push(TraceAnnotation{ma, note: format!("{} is dirty", r)});
                                 }
                             }
                         }

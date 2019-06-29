@@ -59,7 +59,7 @@ pub fn ndisasm_bytes(bytes: &[u8]) -> Result<Vec<String>, io::Error> {
 fn ndisasm_instruction(op: &Instruction) -> Result<Vec<String>, io::Error> {
     let encoder = Encoder::new();
     if let Ok(data) = encoder.encode(op) {
-        return ndisasm_bytes(&data);
+        ndisasm_bytes(&data)
     } else {
         panic!("invalid byte sequence");
     }
