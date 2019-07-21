@@ -160,8 +160,8 @@ fn draw_ascii(img: &ImageBuffer<Rgb<u8>, Vec<u8>>) -> String {
 
 fn pixel_256_to_ascii(v: &image::Rgb<u8>) -> char {
     let vals: [char; 9] = ['.', ',', '+', 'o', '5', '6', 'O', '0', '#'];
-	let col = v.to_rgb();
-    let avg = (f64::from(col.data[0]) + f64::from(col.data[1]) + f64::from(col.data[2])) / 3.;
+	let Rgb([r, g, b]) = v.to_rgb();
+    let avg = (f64::from(r) + f64::from(g) + f64::from(b)) / 3.;
     let n = scale(avg, 0., 255., 0., (vals.len() - 1) as f64) as usize;
     assert_eq!(true, n <= vals.len());
 

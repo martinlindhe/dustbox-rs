@@ -18,7 +18,7 @@ path = "src/lib.rs"
 [dependencies]
 bincode = "1.1"
 chrono = "0.4"
-image = "0.21"
+image = "0.22"
 sdl2 = "0.32"
 quick-error = "1.2"
 rand = "0.7"
