@@ -9,5 +9,5 @@ path = "src/frontend-main.rs"
 
 [dependencies]
 clap = "2.33"
+dustbox = { path = "../dustbox" }
 sdl2 = { version = "0.32", default-features = false, features = [ "gfx" ] }
-dustbox = { path = "../" }

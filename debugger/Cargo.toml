@@ -8,10 +8,7 @@ path = "src/lib.rs"
 
 [dependencies]
 cairo-rs = "0.8"
-dustbox = { path = "../" }
+dustbox = { path = "../dustbox" }
 gdk = "0.12"
 gdk-pixbuf = "0.8"
-
-[dependencies.gtk]
-version = "0.8"
-features = ["v3_16"]
+gtk = { version = "0.8", features = [ "v3_16" ] }

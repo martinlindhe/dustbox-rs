@@ -1,42 +1,8 @@
-[package]
-name = "dustbox"
-version = "0.0.1"
-authors = [
-    "Martin Lindhe <martin@ubique.se>"
-]
-edition = "2018"
-description = "PC x86 emulator with the goal of easily running MS-DOS games on Windows, macOS and Linux."
-license = "MIT"
-repository = "https://github.com/martinlindhe/dustbox-rs"
-exclude = [
-    "utils/*",
-]
-
-[lib]
-path = "src/lib.rs"
-
-[dependencies]
-bincode = "1.2"
-chrono = "0.4"
-image = { version = "0.22", default-features = false, features = [ "png" ] }
-quick-error = "1.2"
-rand = "0.7"
-rand_xorshift = "0.2"
-sdl2 = { version = "0.32", default-features = false, features = [ "gfx" ] }
-serde = "1.0"
-serde_derive = "1.0"
-simple-error = "0.2"
-tempdir = "0.3"
-tera = { version = "1.0", default-features = false }
-toml = "0.5"
-
-[dev-dependencies]
-criterion = "0.2"
-pretty_assertions = "0.6"
-
-[[bench]]
-name = "cpu"
-harness = false
-
 [workspace]
-members = [ "debugger", "disassembler", "frontend", "fuzzer" ]
+members = [
+    "debugger",
+    "dustbox",
+    "disassembler",
+    "frontend",
+    "fuzzer",
+]
