@@ -3,7 +3,7 @@ use std::fs::File;
 use std::process::Command;
 use std::str;
 
-use tempdir::TempDir;
+use tempfile::tempdir;
 
 use crate::cpu::{Encoder, Instruction};
 
@@ -33,7 +33,7 @@ pub fn ndisasm_first_instr(bytes: &[u8]) -> Result<String, io::Error> {
 }
 
 pub fn ndisasm_bytes(bytes: &[u8]) -> Result<Vec<String>, io::Error> {
-    let tmp_dir = TempDir::new("ndisasm")?;
+    let tmp_dir = tempdir()?;
     let file_path = tmp_dir.path().join("binary.bin");
     let file_str = file_path.to_str().unwrap();
     let mut tmp_file = File::create(&file_path)?;

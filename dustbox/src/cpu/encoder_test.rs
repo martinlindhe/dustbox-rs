@@ -7,7 +7,6 @@ use std::time::Instant;
 use std::path::{Path, PathBuf};
 use std::iter::FromIterator;
 
-use tempdir::TempDir;
 use tera::Context;
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;

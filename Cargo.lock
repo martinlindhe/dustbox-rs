@@ -373,8 +373,6 @@ checksum = "06aa71e9208a54def20792d877bc663d6aae0732b9852e612c4a933177c31283"
 dependencies = [
  "curl-sys",
  "libc",
- "openssl-probe",
- "openssl-sys",
  "schannel",
  "socket2",
  "winapi",
@@ -389,7 +387,6 @@ dependencies = [
  "cc",
  "libc",
  "libz-sys",
- "openssl-sys",
  "pkg-config",
  "vcpkg",
  "winapi",
@@ -436,7 +433,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "simple-error",
- "tempdir",
+ "tempfile",
  "tera",
  "toml",
 ]
@@ -478,7 +475,7 @@ dependencies = [
  "dustbox",
  "rand 0.7.2",
  "rand_xorshift 0.2.0",
- "tempdir",
+ "tempfile",
  "tera",
 ]
 
@@ -983,25 +980,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
 
 [[package]]
-name = "openssl-probe"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77af24da69f9d9341038eba93a073b1fdaaa1b788221b00a69bce9e762cb32de"
-
-[[package]]
-name = "openssl-sys"
-version = "0.9.53"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "465d16ae7fc0e313318f7de5cecf57b2fbe7511fd213978b457e1c96ff46736f"
-dependencies = [
- "autocfg",
- "cc",
- "libc",
- "pkg-config",
- "vcpkg",
-]
-
-[[package]]
 name = "output_vt100"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1161,19 +1139,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "053a8c8bcc71fcce321828dc897a98ab9760bef03a4fc36693c231e5b3216cfe"
 dependencies = [
  "proc-macro2",
-]
-
-[[package]]
-name = "rand"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "552840b97013b1a26992c11eac34bdd778e464601a4c2054b5f0bff7c6761293"
-dependencies = [
- "fuchsia-cprng",
- "libc",
- "rand_core 0.3.1",
- "rdrand",
- "winapi",
 ]
 
 [[package]]
@@ -1579,13 +1544,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "tempdir"
-version = "0.3.7"
+name = "tempfile"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15f2b5fb00ccdf689e0149d1b1b3c03fead81c2b37735d812fa8bddbbf41b6d8"
+checksum = "7a6e24d9338a0a5be79593e2fa15a648add6138caa803e2d5bc782c371732ca9"
 dependencies = [
- "rand 0.4.6",
+ "cfg-if",
+ "libc",
+ "rand 0.7.2",
+ "redox_syscall",
  "remove_dir_all",
+ "winapi",
 ]
 
 [[package]]

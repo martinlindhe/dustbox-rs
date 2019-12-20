@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 
 use tera::{Tera, Context};
-use tempdir::TempDir;
+use tempfile::tempdir;
 
 use dustbox::machine::Machine;
 use dustbox::cpu::{CPU, Op, r16};
@@ -324,7 +324,7 @@ fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
         .output()
         .expect("failed to execute process");
 
-    let tmp_dir = TempDir::new("vmware").unwrap();
+    let tmp_dir = tempdir().unwrap();
     let file_path = tmp_dir.path().join("prober.out");
     let file_str = file_path.to_str().unwrap();
 

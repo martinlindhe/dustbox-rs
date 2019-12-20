@@ -7,9 +7,9 @@ authors = ["Martin Lindhe"]
 path = "src/lib.rs"
 
 [dependencies]
-curl = "0.4"
+curl = { version = "0.4", default-features = false }
 dustbox = { path = "../dustbox" }
 rand = "0.7"
 rand_xorshift = "0.2"
-tempdir = "0.3"
+tempfile = "3.1"
 tera = { version = "1.0", default-features = false }

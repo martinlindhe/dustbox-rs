@@ -6,7 +6,7 @@ extern crate toml;
 extern crate chrono;
 extern crate rand;
 extern crate rand_xorshift;
-extern crate tempdir;
+extern crate tempfile;
 extern crate image;
 extern crate tera;
 
