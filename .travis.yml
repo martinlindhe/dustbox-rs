@@ -14,16 +14,13 @@ install:
   - sudo apt-get install -y libgtk-3-dev libsdl2-dev libsdl2-gfx-dev libegl1-mesa-dev libgles2-mesa-dev
   - curl -O http://archive.ubuntu.com/ubuntu/pool/universe/n/nasm/nasm_2.13.03-2_amd64.deb && sudo dpkg -i nasm_2.13.03-2_amd64.deb
   - ndisasm -V
-  - cd .. && git clone https://github.com/martinlindhe/dos-software-decoding && cd -
+  - cd .. && git clone --depth 1 https://github.com/martinlindhe/dos-software-decoding && cd -
 
 script:
-  - cargo build --verbose --all
-  - cargo test --verbose --all
+  - cargo build --all
+  - cargo test --all
 
 cache: cargo
 before_cache:
   # Travis can't cache files that are not readable by "others"
   - chmod -R a+r $HOME/.cargo
-
-
-
