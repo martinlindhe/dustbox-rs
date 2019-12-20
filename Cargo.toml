@@ -16,18 +16,18 @@ exclude = [
 path = "src/lib.rs"
 
 [dependencies]
-bincode = "1.1"
+bincode = "1.2"
 chrono = "0.4"
-image = "0.22"
-sdl2 = "0.32"
+image = { version = "0.22", default-features = false, features = [ "png" ] }
 quick-error = "1.2"
 rand = "0.7"
 rand_xorshift = "0.2"
+sdl2 = { version = "0.32", default-features = false, features = [ "gfx" ] }
 serde = "1.0"
 serde_derive = "1.0"
 simple-error = "0.2"
 tempdir = "0.3"
-tera = "0.11"
+tera = { version = "1.0", default-features = false }
 toml = "0.5"
 
 [dev-dependencies]

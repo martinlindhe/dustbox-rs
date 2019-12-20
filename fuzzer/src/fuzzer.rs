@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::{Read, Write};
 
-use tera::Context;
+use tera::{Tera, Context};
 use tempdir::TempDir;
 
 use dustbox::machine::Machine;
@@ -186,7 +186,13 @@ fn reg_str_to_index(s: &str) -> usize {
 }
 
 fn assemble_prober(data: &[u8], prober_com: &str) {
-    let mut tera = compile_templates!("utils/prober/*.tpl.asm");
+    let mut tera = match Tera::new("utils/prober/*.tpl.asm") {
+        Ok(t) => t,
+        Err(e) => {
+            println!("Parsing error(s): {}", e);
+            ::std::process::exit(1);
+        }
+    };
 
     // disable autoescaping
     tera.autoescape_on(vec![]);

@@ -12,4 +12,4 @@ dustbox = { path = "../" }
 rand = "0.7"
 rand_xorshift = "0.2"
 tempdir = "0.3"
-tera = "0.11"
+tera = "1.0"

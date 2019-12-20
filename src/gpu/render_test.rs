@@ -6,8 +6,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::panic;
 
-use tera::Context;
-use image;
+use tera::{Tera, Context};
 use image::{ImageBuffer, Rgb, Pixel, GenericImage};
 
 use crate::tools;
@@ -158,7 +157,7 @@ fn draw_ascii(img: &ImageBuffer<Rgb<u8>, Vec<u8>>) -> String {
     res
 }
 
-fn pixel_256_to_ascii(v: &image::Rgb<u8>) -> char {
+fn pixel_256_to_ascii(v: &Rgb<u8>) -> char {
     let vals: [char; 9] = ['.', ',', '+', 'o', '5', '6', 'O', '0', '#'];
 	let Rgb([r, g, b]) = v.to_rgb();
     let avg = (f64::from(r) + f64::from(g) + f64::from(b)) / 3.;
@@ -284,7 +283,6 @@ fn demo_com_32bit() {
         path.to_owned() + "fountain_of_sparks/fountain_of_sparks.com",
         path.to_owned() + "glasenapy/glasenapy.com",
         path.to_owned() + "gob4k/gob4k.com",
-        path.to_owned() + "grindkng/grindkng.com",
         path.to_owned() + "rwater/rwater.com",
         path.to_owned() + "voronoy/voronoy.com",
     ];
@@ -319,7 +317,6 @@ fn games_commercial() {
         path.to_owned() + "Pente (1984)(Michael Leach)/pente.com",
         path.to_owned() + "Pipes (1983)(Creative Software)/pipes.com",
         path.to_owned() + "Pong (1986)(Imagine)/pong21.com",
-        path.to_owned() + "Star Chamber (1987)(Russco)/starcham.com",
         path.to_owned() + "Snake Game (1992)(Freeware)/snake.com",
         path.to_owned() + "Sky Runner (1987)(Anonymous)/sky1.com",
         path.to_owned() + "Sky Runner (1987)(Anonymous)/sky2.com",
@@ -377,7 +374,13 @@ fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefi
         }
     }
 
-    let mut tera = compile_templates!("docs/templates/**/*");
+    let mut tera = match Tera::new("docs/templates/**/*") {
+        Ok(t) => t,
+        Err(e) => {
+            println!("Parsing error(s): {}", e);
+            ::std::process::exit(1);
+        }
+    };
 
     // disable auto-escaping
     tera.autoescape_on(vec![]);

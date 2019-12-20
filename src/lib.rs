@@ -8,8 +8,6 @@ extern crate rand;
 extern crate rand_xorshift;
 extern crate tempdir;
 extern crate image;
-
-#[macro_use]
 extern crate tera;
 
 #[macro_use]
