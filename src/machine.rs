@@ -316,7 +316,7 @@ impl Machine {
     /// returns first line of disassembly using nasm
     fn external_disasm_of_bytes(&self, cs: u16, ip: u16) -> String {
         let bytes = self.mmu.read(cs, ip, 16);
-        ndisasm_first_instr(&bytes).unwrap().to_owned()
+        ndisasm_first_instr(&bytes).unwrap()
     }
 
     fn handle_interrupt(&mut self, int: u8) {

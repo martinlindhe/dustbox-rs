@@ -253,7 +253,6 @@ impl Interface {
         {
             let app = Rc::clone(&self.app);
             let builder = Rc::clone(&self.builder);
-            let disasm_text = disasm_text.clone();
 
             window.connect_key_press_event(move |_, key| {
                 if let key::Return = key.get_keyval() as u32 {

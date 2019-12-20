@@ -361,7 +361,7 @@ impl ProgramTracer {
         }
 
         if !block.is_empty() {
-            unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownBytes(block.clone()), address: block_start});
+            unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownBytes(block), address: block_start});
         }
 
         for ub in unaccounted_bytes {
