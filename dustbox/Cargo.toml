@@ -37,6 +37,9 @@ toml = "0.5"
 criterion = "0.3"
 pretty_assertions = "0.6"
 
+[target.'cfg(windows)'.build-dependencies]
+vcpkg = "0.2"
+
 [[bench]]
 name = "cpu"
 harness = false
