@@ -30,7 +30,7 @@ use std::marker::PhantomData;
 
 use crate::gpu::GPU;
 use crate::interrupt;
-use crate::machine::Machine;
+use crate::machine::{Machine, DEBUG_MARK_STACK, STACK_MARKER};
 use crate::memory::{MMU, MemoryAddress};
 
 /// prints diagnostics if writes to memory close to SS:SP occurs
@@ -166,6 +166,9 @@ impl CPU {
         let ss = self.get_r16(R::SS);
         if DEBUG_STACK {
             println!("[{}] push16 {:04X} to {:04X}:{:04X}", self.get_memory_address(), data, ss, sp);
+        }
+        if DEBUG_MARK_STACK && data == STACK_MARKER {
+            println!("[{}] push16 {:04X} to {:04X}:{:04X} STACK MARKER", self.get_memory_address(), data, ss, sp);
         }
         mmu.write_u16(ss, sp, data);
     }

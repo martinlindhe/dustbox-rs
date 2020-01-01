@@ -32,7 +32,10 @@ const DEBUG_EXEC: bool = false;
 const DEBUG_IO: bool = false;
 
 /// DEBUG FEATURE: adds a 16-bit stack marker in order to end execution if it is found
-const DEBUG_MARK_STACK: bool = true;
+pub const DEBUG_MARK_STACK: bool = true;
+
+/// value used to taint the stack, to notice on errors or small com apps just using "retn" to exit to DOS
+pub const STACK_MARKER: u16 = 0xDEAD;
 
 #[derive(Deserialize, Debug)]
 struct ExeHeader {
@@ -105,9 +108,6 @@ pub struct Machine {
     /// length of loaded rom in bytes (used by disassembler)
     pub rom_length: usize,
 
-    /// value used to taint the stack, to notice on errors or small com apps just using "retn" to exit to DOS
-    stack_marker: u16,
-
     /// handlers for i/o ports and interrupts
     components: Vec<MachineComponent>,
 }
@@ -131,7 +131,6 @@ impl Machine {
             bios,
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,
-            stack_marker: 0xDEAD,
             components: Vec::new(),
         };
 
@@ -275,8 +274,7 @@ impl Machine {
     /// (for debugging): marks the stack with a magic value so we can detect when last "ret" exits the application
     fn mark_stack(&mut self) {
         if DEBUG_MARK_STACK {
-            let mark = self.stack_marker;
-            self.cpu.push16(&mut self.mmu, mark);
+            self.cpu.push16(&mut self.mmu, STACK_MARKER);
         }
     }
 
@@ -1907,8 +1905,8 @@ impl Machine {
             }
             Op::Retn => {
                 let val = self.cpu.pop16(&mut self.mmu);
-                if DEBUG_MARK_STACK && val == self.stack_marker {
-                    println!("[{}] WARNING: ending execution after {} instr because stack marker was found (can be valid where small app just return to DOS with a 'ret', but can also indicate memory corruption)",
+                if DEBUG_MARK_STACK && val == STACK_MARKER {
+                    println!("[{}] WARNING: stack marker was popped after {} instr. execution ended. (can be valid where small app just return to DOS with a 'ret', but can also indicate memory corruption)",
                         self.cpu.get_memory_address(), self.cpu.instruction_count);
                     self.cpu.fatal_error = true;
                 }

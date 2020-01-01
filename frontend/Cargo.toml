@@ -11,3 +11,4 @@ path = "src/frontend-main.rs"
 clap = "2.33"
 dustbox = { path = "../dustbox" }
 sdl2 = { version = "0.32", default-features = false, features = [ "gfx" ] }
+image = { version = "0.22", default-features = false, features = [ "png" ] }

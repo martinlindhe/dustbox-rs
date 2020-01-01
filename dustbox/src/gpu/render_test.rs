@@ -173,7 +173,7 @@ fn scale(value_in:f64, base_min:f64, base_max:f64, limit_min:f64, limit_max:f64)
 
 #[test] #[ignore] // expensive test
 fn demo_com_16bit() {
-    let path = "../dos-software-decoding/demo-com-16bit/";
+    let path = "../../dos-software-decoding/demo-com-16bit/";
     let test_bins = vec![
         path.to_owned() + "4sum/4sum.com",
         path.to_owned() + "165plasm/165plasm.com",
@@ -252,7 +252,7 @@ fn demo_com_16bit() {
 
 #[test] #[ignore] // expensive test
 fn demo_com_32bit() {
-    let path = "../dos-software-decoding/demo-com-32bit/";
+    let path = "../../dos-software-decoding/demo-com-32bit/";
     let test_bins = vec![
         path.to_owned() + "anding/anding.com",
         path.to_owned() + "enchante/enchante.com",
@@ -291,7 +291,7 @@ fn demo_com_32bit() {
 
 #[test] #[ignore] // expensive test
 fn games_commercial() {
-    let path = "../dos-software-decoding/games-com-commercial/";
+    let path = "../../dos-software-decoding/games-com-commercial/";
     let test_bins = vec![
         path.to_owned() + "8088 Othello (1985)(Bayley)/8088_othello.com",
         path.to_owned() + "Apple Panic (1982)(Broderbund Software Inc)/panic.com",
@@ -350,11 +350,11 @@ fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefi
 
         let path = Path::new(&bin);
 
-        let _ = fs::create_dir(&format!("docs/render/{}", group));
+        let _ = fs::create_dir(&format!("../docs/render/{}", group));
         let stem = path.file_stem().unwrap_or(OsStr::new(""));
         let mut filename = OsString::new(); // XXX base on dirname
         let outname = &format!("render/{}/{:02x}_{}", group, machine.gpu_mut().unwrap().mode.mode, name_prefix);
-        filename.push(format!("docs/{}", outname));
+        filename.push(format!("../docs/{}", outname));
         filename.push(stem.to_os_string());
         filename.push(".png");
 
@@ -374,7 +374,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefi
         }
     }
 
-    let mut tera = match Tera::new("docs/templates/**/*") {
+    let mut tera = match Tera::new("../docs/templates/**/*") {
         Ok(t) => t,
         Err(e) => {
             println!("Parsing error(s): {}", e);
@@ -393,7 +393,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefi
         Ok(res) => {
             use std::fs::File;
             use std::io::Write;
-            let mut f = File::create(format!("docs/{}.html", group)).expect("Unable to create file");
+            let mut f = File::create(format!("../docs/{}.html", group)).expect("Unable to create file");
             f.write_all(res.as_bytes()).expect("Unable to write data");
         }
         Err(why) => println!("ERROR = {}", why),

@@ -21,7 +21,7 @@ path = "src/lib.rs"
 [dependencies]
 bincode = "1.2"
 chrono = "0.4"
-image = { version = "0.22", default-features = false, features = [ "png" ] }
+image = "0.22"
 quick-error = "1.2"
 rand = "0.7"
 rand_xorshift = "0.2"
@@ -34,7 +34,7 @@ tera = { version = "1.0", default-features = false }
 toml = "0.5"
 
 [dev-dependencies]
-criterion = "0.2"
+criterion = "0.3"
 pretty_assertions = "0.6"
 
 [[bench]]
