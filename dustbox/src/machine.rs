@@ -32,7 +32,7 @@ const DEBUG_EXEC: bool = false;
 const DEBUG_IO: bool = false;
 
 /// DEBUG FEATURE: adds a 16-bit stack marker in order to end execution if it is found
-pub const DEBUG_MARK_STACK: bool = true;
+pub const DEBUG_MARK_STACK: bool = false;
 
 /// value used to taint the stack, to notice on errors or small com apps just using "retn" to exit to DOS
 pub const STACK_MARKER: u16 = 0xDEAD;
