@@ -11,9 +11,6 @@ extern crate image;
 extern crate tera;
 
 #[macro_use]
-extern crate quick_error;
-
-#[macro_use]
 extern crate simple_error;
 
 #[cfg(test)] #[macro_use]

@@ -1,3 +1,6 @@
+use std::fmt;
+use std::error::Error;
+
 use simple_error::SimpleError;
 
 use crate::cpu::instruction::{Instruction, ModRegRm};
@@ -10,20 +13,19 @@ use crate::cpu::op::{Op};
 #[path = "./encoder_test.rs"]
 mod encoder_test;
 
-quick_error! {
-    #[derive(Debug)]
-    pub enum EncodeError {
-        UnhandledOp(op: Op) {
-            description("unhandled op")
-            display("unhandled op: {:?}", op)
-        }
-        UnhandledParameter(param: Parameter) {
-            description("unhandled param")
-            display("unhandled param: {:?}", param)
-        }
-        Text(s: String) {
-            description("text")
-            display("{}", s)
+#[derive(Debug)]
+pub enum EncodeError {
+    UnhandledOp(Op),
+    UnhandledParameter(Parameter),
+    Text(String),
+}
+
+impl fmt::Display for EncodeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            EncodeError::UnhandledOp(op) => write!(f, "unhandled op: {:?}", op),
+            EncodeError::UnhandledParameter(p) => write!(f, "unhandled param: {:?}", p),
+            EncodeError::Text(s) => write!(f, "text: {}", s),
         }
     }
 }
