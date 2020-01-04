@@ -1,27 +1,21 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-extern crate toml;
-
+extern crate bincode;
 extern crate chrono;
+extern crate image;
 extern crate rand;
 extern crate rand_xorshift;
+extern crate sdl2;
 extern crate tempfile;
-extern crate image;
 extern crate tera;
-
-#[macro_use]
-extern crate simple_error;
-
-#[cfg(test)] #[macro_use]
-extern crate pretty_assertions;
+extern crate toml;
 
 #[macro_use]
 extern crate serde_derive;
 
-extern crate bincode;
-
-extern crate sdl2;
+#[cfg(test)]
+extern crate pretty_assertions;
 
 pub mod machine;
 pub mod cpu;

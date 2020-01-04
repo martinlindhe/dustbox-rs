@@ -1,8 +1,6 @@
 use std::fmt;
 use std::error::Error;
 
-use simple_error::SimpleError;
-
 use crate::cpu::instruction::{Instruction, ModRegRm};
 use crate::cpu::parameter::{Parameter, ParameterSet};
 use crate::cpu::segment::Segment;
@@ -17,6 +15,7 @@ mod encoder_test;
 pub enum EncodeError {
     UnhandledOp(Op),
     UnhandledParameter(Parameter),
+    UnexpectedDstType(Parameter),
     Text(String),
 }
 
@@ -25,6 +24,7 @@ impl fmt::Display for EncodeError {
         match self {
             EncodeError::UnhandledOp(op) => write!(f, "unhandled op: {:?}", op),
             EncodeError::UnhandledParameter(p) => write!(f, "unhandled param: {:?}", p),
+            EncodeError::UnexpectedDstType(p) => write!(f, "unexpected dst type: {:?}", p),
             EncodeError::Text(s) => write!(f, "text: {}", s),
         }
     }
@@ -296,20 +296,20 @@ impl Encoder {
             Op::And8 | Op::Or8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 | Op::Cmp8 | Op::Xor8 => {
                 match self.arith_instr8(op) {
                     Ok(data) => out.extend(data),
-                    Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
+                    Err(why) => return Err(why),
                 }
             }
             Op::Test8 | Op::Not8 | Op::Neg8 | Op::Mul8 | Op::Imul8 | Op::Div8 | Op::Idiv8 => {
                 match self.math_instr8(op) {
                     Ok(data) => out.extend(data),
-                    Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
+                    Err(why) => return Err(why),
                 }
             }
             Op::Rol8 | Op::Ror8 | Op::Rcl8 | Op::Rcr8 |
             Op::Shl8 | Op::Shr8 | Op::Sar8 => {
                 match self.bitshift_instr8(op) {
                     Ok(data) => out.extend(data),
-                    Err(why) => return Err(EncodeError::Text(why.as_str().to_owned())),
+                    Err(why) => return Err(why),
                 }
             }
             Op::Push16 => {
@@ -330,7 +330,7 @@ impl Encoder {
         Ok(out)
     }
 
-    fn arith_instr8(&self, ins: &Instruction) -> Result<Vec<u8>, SimpleError> {
+    fn arith_instr8(&self, ins: &Instruction) -> Result<Vec<u8>, EncodeError> {
         let mut out = vec!();
         let idx = match ins.command {
             Op::Add8 => 0x00,
@@ -401,11 +401,11 @@ impl Encoder {
                 out.extend(self.encode_rm_r(&ins.params));
                 Ok(out)
             }
-            _ => Err(SimpleError::new(format!("unhandled param {:?}", ins.params.dst))),
+            _ => Err(EncodeError::UnhandledParameter(ins.params.dst.clone())),
         }
     }
 
-    fn math_instr8(&self, ins: &Instruction) -> Result<Vec<u8>, SimpleError> {
+    fn math_instr8(&self, ins: &Instruction) -> Result<Vec<u8>, EncodeError> {
         // XXX 0xD2: bit shift byte by CL
         let mut out = vec!();
         match ins.params.dst {
@@ -448,11 +448,11 @@ impl Encoder {
                 }
                 Ok(out)
             }
-            _ => Err(SimpleError::new(format!("unexpected dst type: {:?}", ins.params.dst))),
+            _ => Err(EncodeError::UnexpectedDstType(ins.params.dst.clone())),
         }
     }
 
-    fn bitshift_instr8(&self, ins: &Instruction) -> Result<Vec<u8>, SimpleError> {
+    fn bitshift_instr8(&self, ins: &Instruction) -> Result<Vec<u8>, EncodeError> {
         let mut out = vec!();
         match ins.params.dst {
             Parameter::Reg8(r) => {
@@ -479,7 +479,7 @@ impl Encoder {
                 }
                 Ok(out)
             }
-            _ => Err(SimpleError::new(format!("unexpected dst type: {:?}", ins.params.dst))),
+            _ => Err(EncodeError::UnexpectedDstType(ins.params.dst.clone())),
         }
     }
 

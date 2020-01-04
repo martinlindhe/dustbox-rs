@@ -27,7 +27,6 @@ rand_xorshift = "0.2"
 sdl2 = { version = "0.32", default-features = false, features = [ "gfx" ] }
 serde = "1.0"
 serde_derive = "1.0"
-simple-error = "0.2"
 tempfile = "3.1"
 tera = { version = "1.0", default-features = false }
 toml = "0.5"
