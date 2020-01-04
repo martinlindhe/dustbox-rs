@@ -1,14 +1,11 @@
-#![allow(unused_imports)]
 #![allow(dead_code)]
 
 extern crate bincode;
 extern crate chrono;
-extern crate image;
 extern crate rand;
 extern crate rand_xorshift;
 extern crate sdl2;
 extern crate tempfile;
-extern crate tera;
 extern crate toml;
 
 #[macro_use]

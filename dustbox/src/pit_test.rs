@@ -1,4 +1,4 @@
-use crate::machine::{Component, Machine};
+use crate::machine::Component;
 use crate::pit::PIT;
 
 #[test]

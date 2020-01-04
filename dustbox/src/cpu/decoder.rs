@@ -1,6 +1,4 @@
-use std::cell::RefCell;
 use std::num::Wrapping;
-use std::rc::Rc;
 
 use crate::cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
 use crate::cpu::parameter::{Parameter, ParameterSet};

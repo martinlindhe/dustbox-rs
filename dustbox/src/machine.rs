@@ -1,18 +1,17 @@
 use std::{mem, u8};
 use std::num::Wrapping;
-use std::time::{Duration, SystemTime};
 
 use bincode::deserialize;
 
 use crate::bios::BIOS;
-use crate::cpu::{CPU, Op, Invalid, R, RegisterState, Segment, OperandSize};
-use crate::cpu::{Instruction, InstructionInfo, ModRegRm, RepeatMode, Exception};
-use crate::cpu::{Parameter, ParameterSet};
+use crate::cpu::{CPU, Op, Invalid, R, RegisterState};
+use crate::cpu::{Instruction, RepeatMode, Exception};
+use crate::cpu::{Parameter};
 use crate::gpu::GFXMode;
 use crate::hex::hex_bytes;
 use crate::interrupt;
 use crate::memory::{MMU, MemoryAddress};
-use crate::ndisasm::{ndisasm_bytes, ndisasm_first_instr};
+use crate::ndisasm::ndisasm_first_instr;
 
 use crate::storage::Storage as StorageComponent;
 use crate::keyboard::Keyboard as KeyboardComponent;

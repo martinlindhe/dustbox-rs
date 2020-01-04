@@ -1,11 +1,8 @@
 test:
 	cargo test --all -- --color always --nocapture
 
-expensive-demo:
-	RUST_TEST_THREADS=1 cargo test demo --release -- --color always --nocapture --ignored
-
-expensive-games:
-	RUST_TEST_THREADS=1 cargo test games_com --release -- --color always --nocapture --ignored
+test-harness:
+	cargo run --release --package dustbox_harness
 
 expensive-encode:
 	RUST_TEST_THREADS=1 cargo test encode -- --color always --nocapture --ignored

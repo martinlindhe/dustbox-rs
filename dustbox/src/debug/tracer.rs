@@ -1,12 +1,10 @@
 use std::cmp;
-use std::fmt;
 use std::num::Wrapping;
 
 use crate::machine::Machine;
-use crate::cpu::{Decoder, RepeatMode, InstructionInfo, RegisterState, R, GPR, Op, Invalid, Parameter, Segment};
+use crate::cpu::{Decoder, RepeatMode, InstructionInfo, RegisterState, R, Op, Invalid, Parameter, Segment};
 use crate::memory::MemoryAddress;
 use crate::string::right_pad;
-use crate::hex::hex_bytes;
 
 #[cfg(test)]
 #[path = "./tracer_test.rs"]

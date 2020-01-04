@@ -1,8 +1,7 @@
 use std::num::Wrapping;
 
 use crate::machine::Machine;
-use crate::cpu::{Flags, R, Segment};
-use crate::memory::MMU;
+use crate::cpu::{Flags, R};
 
 #[test]
 fn can_execute_push_pop() {

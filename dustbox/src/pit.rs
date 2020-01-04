@@ -5,10 +5,8 @@
 // A 8253/8254 chip that runs at 18.2065 Hz (or an IRQ every 54.9254 ms)
 // with the default divisor of 0x1_0000
 
-use std::num::Wrapping;
-
 use crate::cpu::{CPU, R};
-use crate::machine::{Component, Machine};
+use crate::machine::Component;
 use crate::memory::MMU;
 
 #[cfg(test)]

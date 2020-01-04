@@ -24,13 +24,10 @@ mod op;
 pub use self::encoder::*;
 mod encoder;
 
-use std::{mem, u8};
+use std::u8;
 use std::num::Wrapping;
-use std::marker::PhantomData;
 
-use crate::gpu::GPU;
-use crate::interrupt;
-use crate::machine::{Machine, DEBUG_MARK_STACK, STACK_MARKER};
+use crate::machine::{DEBUG_MARK_STACK, STACK_MARKER};
 use crate::memory::{MMU, MemoryAddress};
 
 /// prints diagnostics if writes to memory close to SS:SP occurs

@@ -1,8 +1,7 @@
 use sdl2::keyboard::{Keycode, Mod};
 
-use crate::cpu::R;
 use crate::keyboard::{Keyboard, StatusRegister};
-use crate::machine::{Component, Machine};
+use crate::machine::Component;
 
 #[test]
 fn test_status_register() {

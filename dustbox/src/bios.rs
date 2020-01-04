@@ -1,9 +1,7 @@
 // https://wiki.osdev.org/BIOS
 // dosbox-x: src/hardware/bios.cpp
 
-use crate::cpu::{CPU, Flags};
 use crate::memory::{MMU, MemoryAddress};
-use crate::gpu::{GFXMode, VideoModeBlock};
 
 #[derive(Clone)]
 pub struct BIOS {

@@ -1,25 +1,18 @@
-use std::cell::RefCell;
-use std::num::Wrapping;
-use std::marker::PhantomData;
-
-use image::{ImageBuffer, Rgb, Pixel, GenericImage};
+use image::{ImageBuffer, Rgb};
 
 use crate::cpu::{CPU, R};
 use crate::machine::Component;
 use crate::memory::{MMU, MemoryAddress};
 use crate::gpu::palette;
 use crate::gpu::palette::ColorSpace;
-use crate::gpu::palette::ColorSpace::RGB;
 use crate::gpu::font;
 use crate::gpu::video_parameters;
 use crate::gpu::modes::GFXMode;
 use crate::gpu::modes::VideoModeBlock;
 use crate::gpu::graphic_card::GraphicCard;
 use crate::bios::BIOS;
-use crate::bios;
 use crate::gpu::crtc::CRTC;
 use crate::gpu::dac::DAC;
-use crate::gpu::dac;
 
 #[cfg(test)]
 #[path = "./render_test.rs"]

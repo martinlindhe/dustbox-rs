@@ -1,7 +1,7 @@
 use chrono::prelude::*;
 use std::str;
 
-use crate::cpu::{CPU, R};
+use crate::cpu::R;
 use crate::codepage::cp437;
 use crate::machine::Machine;
 use crate::memory::MemoryAddress;

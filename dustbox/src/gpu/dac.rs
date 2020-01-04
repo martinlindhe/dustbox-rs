@@ -1,5 +1,3 @@
-use std::num::Wrapping;
-
 use crate::gpu::palette::{ColorSpace, text_palette};
 use crate::gpu::palette::ColorSpace::RGB;
 

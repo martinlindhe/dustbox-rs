@@ -1,7 +1,4 @@
 use crate::machine::Machine;
-use crate::cpu::register::R;
-use crate::cpu::segment::Segment;
-use crate::memory::MMU;
 
 #[test]
 fn can_disassemble_basic() {

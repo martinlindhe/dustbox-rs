@@ -1,25 +1,16 @@
-use std::fs::File;
-use std::io::{self, Read, Write};
-use std::process::Command;
 use std::str;
-use std::collections::HashMap;
-use std::time::Instant;
-use std::path::{Path, PathBuf};
 use std::iter::FromIterator;
 
-use tera::Context;
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
 
-use crate::cpu::CPU;
 use crate::cpu::encoder::{Encoder};
 use crate::cpu::segment::Segment;
 use crate::cpu::parameter::Parameter;
-use crate::cpu::instruction::{Instruction, InstructionInfo, RepeatMode};
+use crate::cpu::instruction::Instruction;
 use crate::cpu::op::Op;
 use crate::cpu::register::{R, AMode};
 use crate::machine::Machine;
-use crate::memory::MMU;
 use crate::hex::hex_bytes;
 use crate::ndisasm::ndisasm_first_instr;
 

@@ -4,7 +4,6 @@
 // The 8259 PIC controls the CPU's interrupt mechanism, by accepting several
 // interrupt requests and feeding them to the processor in order.
 
-use crate::cpu::CPU;
 use crate::machine::Component;
 
 #[cfg(test)]

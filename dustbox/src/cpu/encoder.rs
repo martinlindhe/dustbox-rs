@@ -1,5 +1,4 @@
 use std::fmt;
-use std::error::Error;
 
 use crate::cpu::instruction::{Instruction, ModRegRm};
 use crate::cpu::parameter::{Parameter, ParameterSet};
