@@ -38,7 +38,7 @@ fn main() {
         Op::Dec8, Op::Dec16, Op::Dec32,
     );
 
-    let iterations_per_op = 500;
+    let iterations_per_op = 50;
     let mut rng = XorShiftRng::from_entropy();
     for op in ops_to_fuzz {
         println!("------");

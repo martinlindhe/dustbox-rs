@@ -109,7 +109,7 @@ impl Encoder {
             Op::Dec8 | Op::Inc8 => {
                 // 0xFE: r/m8
                 out.push(0xFE);
-                out.extend(self.encode_rm(&op.params.dst, op.command.feff_index()));
+                out.extend(self.encode_rm(&op.params.dst, Encoder::feff_index(&op.command)));
             }
             Op::Dec16 | Op::Inc16 => {
                 if let Parameter::Reg16(ref r) = op.params.dst {
@@ -123,7 +123,7 @@ impl Encoder {
                 } else {
                     // 0xFF: // 0xFF: r/m16
                     out.push(0xFF);
-                    out.extend(self.encode_rm(&op.params.dst, op.command.feff_index()));
+                    out.extend(self.encode_rm(&op.params.dst, Encoder::feff_index(&op.command)));
                 }
             }
             Op::Dec32 | Op::Inc32 => {
@@ -139,7 +139,7 @@ impl Encoder {
                 } else {
                     // 0xFF: // 0xFF: r/m16
                     out.push(0xFF);
-                    out.extend(self.encode_rm(&op.params.dst, op.command.feff_index()));
+                    out.extend(self.encode_rm(&op.params.dst, Encoder::feff_index(&op.command)));
                 }
             }
             Op::Int => {
@@ -444,11 +444,39 @@ impl Encoder {
                 } else {
                     // 0xF6: not r/m8
                     out.push(0xF6);
-                    out.extend(self.encode_rm(&ins.params.dst, ins.command.f6_index()));
+                    out.extend(self.encode_rm(&ins.params.dst, Encoder::f6_index(&ins.command)));
                 }
                 Ok(out)
             }
             _ => Err(EncodeError::UnexpectedDstType(ins.params.dst.clone())),
+        }
+    }
+
+    /// used for 0xF6 encodings
+    fn f6_index(op: &Op) -> u8 {
+        match *op {
+            Op::Test8 => 0,
+            Op::Not8  => 2,
+            Op::Neg8  => 3,
+            Op::Mul8  => 4,
+            Op::Imul8 => 5,
+            Op::Div8  => 6,
+            Op::Idiv8 => 7,
+            _ => panic!("f6_index {:?}", op),
+        }
+    }
+
+    /// used for 0xFE and 0xFF encodings
+    fn feff_index(op: &Op) -> u8 {
+        match *op {
+            Op::Inc8 | Op::Inc16 | Op::Inc32 => 0,
+            Op::Dec8 | Op::Dec16 | Op::Dec32 => 1,
+            Op::CallNear => 2,
+            // 3 => call far
+            Op::JmpNear => 4,
+            // 5 => jmp far
+            Op::Push16 => 6,
+            _ => panic!("feff_index {:?}", op),
         }
     }
 

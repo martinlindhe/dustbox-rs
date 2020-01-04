@@ -282,34 +282,6 @@ impl Op {
             _ => true,
         }
     }
-
-    /// used by encoder
-    pub fn f6_index(&self) -> u8 {
-        match *self {
-            Op::Test8 => 0,
-            Op::Not8  => 2,
-            Op::Neg8  => 3,
-            Op::Mul8  => 4,
-            Op::Imul8 => 5,
-            Op::Div8  => 6,
-            Op::Idiv8 => 7,
-            _ => panic!("f6_index {:?}", self),
-        }
-    }
-
-    /// used by encoder
-    pub fn feff_index(&self) -> u8 {
-        match *self {
-            Op::Inc8 | Op::Inc16 | Op::Inc32 => 0,
-            Op::Dec8 | Op::Dec16 | Op::Dec32 => 1,
-            Op::CallNear => 2,
-            // 3 => call far
-            Op::JmpNear => 4,
-            // 5 => jmp far
-            Op::Push16 => 6,
-            _ => panic!("feff_index {:?}", self),
-        }
-    }
 }
 
 /// the class of instruction decode error that occured
