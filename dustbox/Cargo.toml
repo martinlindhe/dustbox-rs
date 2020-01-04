@@ -21,7 +21,7 @@ path = "src/lib.rs"
 [dependencies]
 bincode = "1.2"
 chrono = "0.4"
-image = "0.22"
+image = { version = "0.22", default-features = false, features = [ "png" ] }
 rand = "0.7"
 rand_xorshift = "0.2"
 sdl2 = { version = "0.32", default-features = false, features = [ "gfx" ] }
