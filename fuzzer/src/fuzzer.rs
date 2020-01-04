@@ -51,36 +51,57 @@ pub fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers:
     let dustbox_masked_flags = dustbox_flags & affected_flag_mask;
     if vm_masked_flags != dustbox_masked_flags {
         let xored = vm_masked_flags ^ dustbox_masked_flags;
-        print!("\nflags differ: vm {:04x}, dustbox {:04x}: ", vm_masked_flags, dustbox_masked_flags);
-        // XXX show differing flag names
-        if xored & 0x0000_0001 != 0 {
-            print!("C ");
-        }
-        if xored & 0x0000_0004 != 0 {
-            print!("P ");
-        }
-        if xored & 0x0000_0010 != 0 {
-            print!("A ");
-        }
-        if xored & 0x0000_0040 != 0 {
-            print!("Z ");
-        }
-        if xored & 0x0000_0080 != 0 {
-            print!("S ");
-        }
-        if xored & 0x0000_0200 != 0 {
-            print!("I ");
-        }
-        if xored & 0x0000_0400 != 0 {
-            print!("D ");
-        }
-        if xored & 0x0000_0800 != 0 {
-            print!("O ");
-        }
-        println!();
+        print!("\nflag diff: vm {:04x} {:8} vs dustbox {:04x} {:8} = diff {:8}\n",
+            vm_masked_flags, bitflags_str(vm_masked_flags), dustbox_masked_flags, bitflags_str(dustbox_masked_flags), bitflags_str(xored));
         return false;
     }
     true
+}
+
+// return 8 char string
+fn bitflags_str(f: u16) -> String {
+    let mut s = String::new();
+    if f & 0x0000_0001 != 0 {
+        s.push_str("C");
+    } else {
+        s.push_str(" ");
+    }
+    if f & 0x0000_0004 != 0 {
+        s.push_str("P");
+    } else {
+        s.push_str(" ");
+    }
+    if f & 0x0000_0010 != 0 {
+        s.push_str("A");
+    } else {
+        s.push_str(" ");
+    }
+    if f & 0x0000_0040 != 0 {
+        s.push_str("Z");
+    } else {
+        s.push_str(" ");
+    }
+    if f & 0x0000_0080 != 0 {
+        s.push_str("S");
+    } else {
+        s.push_str(" ");
+    }
+    if f & 0x0000_0200 != 0 {
+        s.push_str("I");
+    } else {
+        s.push_str(" ");
+    }
+    if f & 0x0000_0400 != 0 {
+        s.push_str("D");
+    } else {
+        s.push_str(" ");
+    }
+    if f & 0x0000_0800 != 0 {
+        s.push_str("O");
+    } else {
+        s.push_str(" ");
+    }
+    s
 }
 
 pub struct AffectedFlags {

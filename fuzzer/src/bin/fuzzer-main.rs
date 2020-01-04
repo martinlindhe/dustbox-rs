@@ -13,21 +13,29 @@ use dustbox::cpu::{Instruction, Op, Parameter, Segment, R, AMode, Encoder, instr
 use dustbox_fuzzer::fuzzer::{fuzz, VmRunner, AffectedFlags};
 
 fn main() {
+    // TODO take cmdline args:
+    // - take prober.com.tpl exact path as arg
+    // - take VM ip as arg
+
     let affected_registers = vec!("ax", "dx");
 
     let ops_to_fuzz = vec!(
         //Op::Cmpsw,
         //Op::Shrd,
         Op::Shld, //  overflow differs from winxp. may be wrong in both
-        Op::Aaa, Op::Aas, Op::Aad, Op::Daa, Op::Das,
-        Op::Aam, // Aam - P Z S flags differ from winxp & dosbox-x
+
         //Op::Shl8, Op::Rol8, Op::Ror8, Op::Rcr8, // OVERFLOW flag differ from winxp
         //Op::Rcl8, // register values dont match with dosbox-x, but with bochs & winxp
+        Op::Div8, Op::Idiv8, // hard to fuzz due to input that triggers DIV0 exception
+        Op::Neg8, // mov ah,0; neg ah =   OVERFLOW flag differs vs winxp
+
+
+        /*
+        // SEEMS ALL OK
+        Op::Aaa, Op::Aam,, Op::Aas, Op::Aad, Op::Daa, Op::Das,
         Op::Shr8, Op::Sar8,
         Op::Cmp8, Op::And8, Op::Xor8, Op::Or8, Op::Add8, Op::Adc8, Op::Sub8, Op::Sbb8,
         Op::Test8, Op::Not8, Op::Mul8, Op::Imul8, Op::Xchg8,
-        Op::Div8, Op::Idiv8, // hard to fuzz due to input that triggers DIV0 exception
-        Op::Neg8, // mov ah,0; neg ah =   OVERFLOW flag differs vs winxp
         Op::Lahf,
         Op::Sahf, Op::Salc,
         Op::Nop,
@@ -36,6 +44,7 @@ fn main() {
         Op::Lea16,
         Op::Inc8, Op::Inc16, Op::Inc32,
         Op::Dec8, Op::Dec16, Op::Dec32,
+        */
     );
 
     let iterations_per_op = 50;
@@ -69,7 +78,7 @@ fn main() {
             };
 
             if !fuzz(&runner, &data, ops.len(), &affected_registers, affected_flags_mask) {
-                println!("fuzz failed with this input:");
+                println!("failed:");
                 println!("{}", instructions_to_str(&snippet));
                 println!("------");
             }

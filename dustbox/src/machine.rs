@@ -561,7 +561,7 @@ impl Machine {
             }
             Op::Aad => {
                 // one parameter
-                let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16; // read_parameter_value XXX add param that specify mmu
+                let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 let mut ax = u16::from(self.cpu.get_r8(R::AH)) * op1;
                 ax += u16::from(self.cpu.get_r8(R::AL));
                 let al = ax as u8;
@@ -592,7 +592,8 @@ impl Machine {
                 self.cpu.regs.flags.overflow = false;
                 self.cpu.regs.flags.adjust = false;
                 // The SF, ZF, and PF flags are set according to the resulting binary value in the AL register
-                self.cpu.regs.flags.sign = al & 0x80 != 0; // XXX
+                let al = self.cpu.get_r8(R::AL);
+                self.cpu.regs.flags.sign = al & 0x80 != 0;
                 self.cpu.regs.flags.zero = al == 0;
                 self.cpu.regs.flags.set_parity(al as usize);
             }

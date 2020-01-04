@@ -278,7 +278,6 @@ fn demo_com_32bit() {
         path.to_owned() + "distant/distant.com",
         path.to_owned() + "ems/ems.com",
         path.to_owned() + "entry2/entry2.com",
-        path.to_owned() + "europe/europe.com",
         path.to_owned() + "fireline/fireline.com",
         path.to_owned() + "fountain_of_sparks/fountain_of_sparks.com",
         path.to_owned() + "glasenapy/glasenapy.com",
