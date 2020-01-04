@@ -24,7 +24,8 @@ pub fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers:
     machine.execute_instructions(op_count);
 
     // run in vm, compare regs
-    let prober_com = "/Users/m/dev/rs/dustbox-rs/utils/prober/prober.com"; // XXX expand relative path
+
+    let prober_com = Path::new("utils/prober/prober.com");
     assemble_prober(data, prober_com);
 
     let output = match *runner {
@@ -185,7 +186,7 @@ fn reg_str_to_index(s: &str) -> usize {
     }
 }
 
-fn assemble_prober(data: &[u8], prober_com: &str) {
+fn assemble_prober(data: &[u8], path: &Path) {
     let mut tera = match Tera::new("utils/prober/*.tpl.asm") {
         Ok(t) => t,
         Err(e) => {
@@ -208,9 +209,11 @@ fn assemble_prober(data: &[u8], prober_com: &str) {
         Err(why) => panic!("fatal tera error: {}", why),
     }
 
+    let dir = path.parent().unwrap();
+
     // assemble generated prober.asm
     Command::new("nasm")
-        .current_dir("/Users/m/dev/rs/dustbox-rs/utils/prober") // XXX get path name from prober_com
+        .current_dir(dir)
         .args(&["-f", "bin", "-o", "prober.com", "prober.asm"])
         .output()
         .expect("failed to execute process");
@@ -261,17 +264,17 @@ fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
 }
 
 /// upload data as http post to supersafe http server running in VM
-fn stdout_from_vm_http(prober_com: &str) -> String {
+fn stdout_from_vm_http(path: &Path) -> String {
     use curl::easy::{Easy, Form};
     use std::time::Duration;
     let mut dst = Vec::new();
     let mut easy = Easy::new();
     let timeout = Duration::from_millis(1000);
     easy.timeout(timeout).unwrap();
-    easy.url("http://10.10.30.63:28111/run").unwrap();
+    easy.url("http://172.16.72.129:28111/run").unwrap();
 
     let mut form = Form::new();
-    form.part("com").file(prober_com).add().unwrap();
+    form.part("com").file(path).add().unwrap();
     easy.httppost(form).unwrap();
 
     {
@@ -286,11 +289,11 @@ fn stdout_from_vm_http(prober_com: &str) -> String {
     str::from_utf8(&dst).unwrap().to_owned()
 }
 
-fn stdout_from_dosbox(prober_com: &str) -> String {
+fn stdout_from_dosbox(path: &Path) -> String {
 
     // copy prober_com to ~/dosbox-x
     use std::fs;
-    fs::copy(prober_com, "/Users/m/dosbox-x/prober.com").unwrap();
+    fs::copy(path, "/Users/m/dosbox-x/prober.com").unwrap();
 
     Command::new("dosbox-x")
         .args(&["-c", "prober.com > PROBER.OUT", "--exit"])
@@ -305,7 +308,7 @@ fn stdout_from_dosbox(prober_com: &str) -> String {
 }
 
 /// run .com with vmrun (vmware), parse result
-fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
+fn stdout_from_vmx_vmrun(path: &Path) -> String {
     let vmx = "/Users/m/Documents/Virtual Machines.localized/Windows XP Professional.vmwarevm/Windows XP Professional.vmx";
     let vm_user = "vmware";
     let vm_password = "vmware";
@@ -313,7 +316,7 @@ fn stdout_from_vmx_vmrun(prober_com: &str) -> String {
     // copy file to guest
     Command::new("vmrun")
         .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
-            "copyFileFromHostToGuest", vmx, prober_com, "C:\\prober.com"])
+            "copyFileFromHostToGuest", vmx, path.to_str().unwrap(), "C:\\prober.com"])
         .output()
         .expect("failed to execute process");
 
