@@ -22,20 +22,20 @@ fn main() {
     let ops_to_fuzz = vec!(
         //Op::Cmpsw,
         //Op::Shrd,
-        Op::Shld, //  overflow differs from winxp. may be wrong in both
 
         //Op::Shl8, Op::Rol8, Op::Ror8, Op::Rcr8, // OVERFLOW flag differ from winxp
-        //Op::Rcl8, // register values dont match with dosbox-x, but with bochs & winxp
-        Op::Div8, Op::Idiv8, // hard to fuzz due to input that triggers DIV0 exception
-        Op::Neg8, // mov ah,0; neg ah =   OVERFLOW flag differs vs winxp
+        Op::Rcl8, // register values dont match with dosbox-x, but with bochs & winxp
 
+        // DIFFERS FROM WINXP:
+        //Op::Shld, // overflow flag is set incorrectly
+        //Op::Div8, Op::Idiv8, // hard to fuzz due to input that triggers DIV0 exception
 
         /*
         // SEEMS ALL OK
         Op::Aaa, Op::Aam,, Op::Aas, Op::Aad, Op::Daa, Op::Das,
         Op::Shr8, Op::Sar8,
         Op::Cmp8, Op::And8, Op::Xor8, Op::Or8, Op::Add8, Op::Adc8, Op::Sub8, Op::Sbb8,
-        Op::Test8, Op::Not8, Op::Mul8, Op::Imul8, Op::Xchg8,
+        Op::Test8, Op::Not8, Op::Mul8, Op::Imul8, Op::Xchg8, Op::Neg8,
         Op::Lahf,
         Op::Sahf, Op::Salc,
         Op::Nop,
@@ -52,6 +52,7 @@ fn main() {
     for op in ops_to_fuzz {
         println!("------");
         println!("fuzzing {} forms of {:?} ...", iterations_per_op, op);
+        let mut failures = 0;
         for _ in 0..iterations_per_op {
             let runner = VmRunner::VmHttp;
             let affected_flags_mask = AffectedFlags::for_op(&op);
@@ -81,7 +82,11 @@ fn main() {
                 println!("failed:");
                 println!("{}", instructions_to_str(&snippet));
                 println!("------");
+                failures += 1;
             }
+        }
+        if failures > 0 {
+            println!("{}/{} successes", iterations_per_op - failures, iterations_per_op)
         }
     }
 }
