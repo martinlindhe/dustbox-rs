@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
 #[cfg(test)]
-#[path = "./breakpoints_test.rs"]
-mod breakpoints_test;
+#[path = "./memory_breakpoints_test.rs"]
+mod memory_breakpoints_test;
 
 #[derive(Default)]
 pub struct MemoryBreakpoints {
     breakpoints: Vec<u32>,
+
+    /// tracks previous memory values to find changes
     map: HashMap<u32, u8>,
 }
 
@@ -52,11 +54,9 @@ impl MemoryBreakpoints {
 
     /// returns true if memory value has changed since last check
     pub fn has_changed(&mut self, address: u32, val: u8) -> bool {
-        if !self.map.contains_key(&address) {
-            self.map.insert(address, val);
-            return false;
-        }
-        let old = &self.map[&address];
-        *old != val
+        let t = self.map.entry(address).or_insert(val);
+        let old = *t;
+        *t = val;
+        old != val
     }
 }
