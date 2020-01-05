@@ -26,7 +26,7 @@ fn can_encode_random_seq() {
             *b = rng.gen();
         }
 
-        machine.load_executable(&code);
+        machine.load_executable(&code, 0x085F);
 
         let encoder = Encoder::new();
 
@@ -54,7 +54,7 @@ fn can_encode_random_seq() {
 
                 // - if encode was successful, try to decode that seq again and make sure the resulting
                 //   ops are the same (this should ensure all cases code 2-way to the same values)
-                machine.load_executable(&enc);
+                machine.load_executable(&enc, 0x085F);
                 let decoded = machine.cpu.decoder.decode_to_block(&mut machine.mmu, cs, 0x100, 1);
                 let reencoded_op = &decoded[0];
                 if op.instruction != reencoded_op.instruction {
@@ -562,7 +562,7 @@ fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u
 
     let mut want_op = op.clone();
     let mut machine = Machine::deterministic();
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
     let cs = machine.cpu.get_r16(R::CS);
     let ops = machine.cpu.decoder.decode_to_block(&mut machine.mmu, cs, 0x100, 1);
     let decoded_op = &ops[0].instruction;

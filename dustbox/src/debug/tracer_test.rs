@@ -32,7 +32,7 @@ fn trace_simple() {
         0xEB, 0x00,         // jmp short 0x107
         0xC3,               // ret
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -54,7 +54,7 @@ fn trace_unknown_byte() {
         0xC3,               // ret
         0x00,
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -73,7 +73,7 @@ fn trace_unknown_bytes() {
         0x00, 0x01, 0x02, 0x03,
         0x04, 0x05,
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -98,7 +98,7 @@ fn trace_unknown_bytes_fragmented() {
         0xEB, 0xFB, // s_0108: jmp s_0105
         0x06,       // db 6
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -128,7 +128,7 @@ fn trace_unreferenced_data() {
         0xC3,               // ret
         0x40,               // inc ax (unreferenceed)
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -153,7 +153,7 @@ fn trace_annotates_stosw() {
         0xF3, 0xAB,     // rep stosw
         0xE4, 0x60,     // in al, 0x60
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -177,7 +177,7 @@ fn trace_sepatate_call_destination_separators() {
         0xC3,               // ret
         0xCD, 0x20,         // int 0x20
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -204,7 +204,7 @@ fn trace_virtual_memory() {
         0x2E, 0xA0, 0x05, 0x02, // mov al,[cs:0x205]
         0xC3,                   // ret
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -227,7 +227,7 @@ fn trace_break_after_dos_int20() {
         0xCD, 0x20, // int 0x20
         0x90,       // db 0x90
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -245,7 +245,7 @@ fn trace_break_after_dos_int21_4c() {
         0xCD, 0x21, // int 0x21
         0x90,       // db 0x90
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -266,7 +266,7 @@ fn trace_dont_annotate_dirty_regs() {
         0xB8, 0x12, 0x00,   // mov ax,0x12
         0x89, 0xC3,         // mov bx,ax      ; ax is is clean == 0x12
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -288,7 +288,7 @@ fn trace_annotate_int() {
         0xB4, 0x4C,             // mov ah,0x4C
         0xCD, 0x21,             // int 0x21
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -311,7 +311,7 @@ fn trace_annotate_out() {
         0xEE,               // out dx,al
         0xEF,               // out dx,ax
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -332,7 +332,7 @@ fn trace_annotate_in() {
         0xBA, 0x60, 0x00,   // mov dx,0x0060
         0xEC,               // in al,dx
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -367,7 +367,7 @@ fn trace_annotate_regset() {
         0x31, 0xC0,             // xor ax,ax
         0x30, 0xDB,             // xor bl,bl
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);
@@ -448,7 +448,7 @@ fn trace_data_ref() {
         0x00, 0x01, 0x02, 0x03, // db (unused)
         
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let mut tracer = ProgramTracer::default();
     tracer.trace_execution(&mut machine);

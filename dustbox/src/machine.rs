@@ -220,16 +220,16 @@ impl Machine {
         self.cpu = CPU::default();
     }
 
-    pub fn load_executable(&mut self, data: &[u8]) {
+    pub fn load_executable(&mut self, data: &[u8], psp_segment: u16) {
         if data[0] == b'M' && data[1] == b'Z' {
-            self.load_exe(data);
+            self.load_exe(data, psp_segment);
         } else {
-            self.load_com(data);
+            self.load_com(data, psp_segment);
         }
     }
 
     /// loads an exe file (TODO finish impl)
-    fn load_exe(&mut self, data: &[u8]) {
+    fn load_exe(&mut self, data: &[u8], psp_segment: u16) {
         let hdr: ExeHeader = deserialize(data).unwrap();
         println!("load_exe header: {:?}", hdr);
 
@@ -248,7 +248,7 @@ impl Machine {
         }
         println!("load exe code from {:04X}:{:04X}", code_offset, code_end);
 
-        self.load_com(&data[code_offset..code_end]);
+        self.load_com(&data[code_offset..code_end], psp_segment);
         self.cpu.set_r16(R::SP, hdr.sp);
         self.cpu.set_r16(R::SS, hdr.ss); // XXX dosbox = 0923
         
@@ -264,10 +264,9 @@ impl Machine {
     }
 
     /// load .com program into CS:0100 and set IP to program start
-    fn load_com(&mut self, data: &[u8]) {
+    fn load_com(&mut self, data: &[u8], psp_segment: u16) {
 
         // CS,DS,ES,SS = PSP segment
-        let psp_segment = 0x0329;
         self.cpu.set_r16(R::CS, psp_segment);
         self.cpu.set_r16(R::DS, psp_segment);
         self.cpu.set_r16(R::ES, psp_segment);

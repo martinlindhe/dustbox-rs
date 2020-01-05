@@ -15,7 +15,7 @@ fn exec_simple_loop(c: &mut Criterion) {
         0xEB, 0xFA,       // jmp short 0x100
     ];
 
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     c.bench_function("execute small jmp short loop", move |b| b.iter(|| machine.execute_instruction()));
 }
@@ -32,7 +32,7 @@ fn disasm_small_prog(c: &mut Criterion) {
         0xEB, 0xFA,                     // jmp short 0x100
         0xB9, 0xFF, 0xFF,               // mov cx,0xffff
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     c.bench_function("disasm small prog", move |b| b.iter(|| machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 8)));
 }

@@ -56,7 +56,7 @@ fn main() {
 
     match tools::read_binary(filename) {
         Ok(data) => {
-            machine.load_executable(&data);
+            machine.load_executable(&data, 0x085F);
         }
         Err(what) => panic!("error {}", what),
     };

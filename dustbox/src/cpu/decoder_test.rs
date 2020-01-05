@@ -11,7 +11,7 @@ fn can_disassemble_basic() {
         0xE8, 0xFB, 0xFF, // call l_0x108   ; call an earlier offset
         0xFF, 0x18,       // call far [bx+si]
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 6);
     assert_eq!("[085F:0100] E80500           CallNear 0x0108
@@ -29,7 +29,7 @@ fn can_disassemble_lea() {
     let code: Vec<u8> = vec![
         0x8D, 0x47, 0x80, // lea ax,[bx-0x80]
  ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 1);
     assert_eq!("[085F:0100] 8D4780           Lea16    ax, word [ds:bx-0x80]",
@@ -43,7 +43,7 @@ fn can_disassemble_segment_prefixed() {
         0x26, 0x88, 0x25, // mov [es:di],ah
         0x26, 0x8A, 0x25, // mov ah,[es:di]
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
     assert_eq!("[085F:0100] 268825           Mov8     byte [es:di], ah
@@ -60,7 +60,7 @@ fn can_disassemble_values() {
         0x83, 0xC7, 0x3A,             // add di,byte +0x3a
         0x83, 0xC7, 0xC6,             // add di,byte -0x3a
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
     assert_eq!("[085F:0100] 803E311000       Cmp8     byte [ds:0x1031], 0x00
@@ -79,7 +79,7 @@ fn can_disassemble_relative_short_jumps() {
         0x74, 0x00, // jz 0x106
         0x74, 0xFA, // jz 0x102
     ];
-    machine.load_executable(&code);
+    machine.load_executable(&code, 0x085F);
 
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
     assert_eq!("[085F:0100] 7404             Jz       0x0106

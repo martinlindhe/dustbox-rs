@@ -407,7 +407,7 @@ impl Debugger {
         match tools::read_binary(name) {
             Ok(data) => {
                 self.machine.hard_reset();
-                self.machine.load_executable(&data);
+                self.machine.load_executable(&data, 0x085F);
             }
             Err(what) => println!("error {}", what),
         };

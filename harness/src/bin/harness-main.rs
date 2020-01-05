@@ -189,7 +189,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefi
 
         let mut machine = Machine::deterministic();
         match tools::read_binary(&bin) {
-            Ok(data) => machine.load_executable(&data),
+            Ok(data) => machine.load_executable(&data, 0x085F),
             Err(err) => panic!("failed to read {}: {}", bin, err),
         }
 

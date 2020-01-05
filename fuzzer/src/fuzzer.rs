@@ -30,7 +30,7 @@ pub fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers:
     }
 
 
-    machine.load_executable(data);
+    machine.load_executable(data, 0x085F);
     machine.execute_instructions(op_count);
 
     // run in vm, compare regs
