@@ -24,8 +24,11 @@ fn main() {
 
         //Op::Cmp16, Op::And16, Op::Xor16, Op::Or16, Op::Add16, Op::Adc16, Op::Sub16, Op::Sbb16,
 
+        // Op::Shr8, Op::Sar8, // OK !
+        //Op::Rcr8,       // XXX MAJOR - REGS DIFFER !!!
+
         // DIFFERS FROM WINXP:
-        //Op::Shl8, Op::Rol8, Op::Ror8, Op::Rcl8, Op::Rcr8, // OVERFLOW flag differ from winxp
+        //Op::Shl8, Op::Rcl8, Op::Rol8, Op::Ror8,          // XXX overflow flag differs
         //Op::Shld, // overflow flag is wrong
         //Op::Shrd, // overflow flag is wrong
         //Op::Cmpsw,        // XXX not impl encoding
@@ -35,14 +38,15 @@ fn main() {
         Op::Div8, Op::Div16, Op::Idiv8, Op::Idiv16, // seems correct. NOTE that winxp crashes with "Divide overflow" on some input
         Op::Bt, Op::Bsf,
         Op::Aaa, Op::Aad, Op::Aam, Op::Aas, Op::Daa, Op::Das,
-        Op::Shr8, Op::Sar8,
-        Op::Cmp8, Op::And8, Op::Xor8, Op::Or8, Op::Add8, Op::Adc8, Op::Sub8, Op::Sbb8,
+        
+        Op::Cmp8, Op::And8, Op::Xor8, Op::Or8,
+        Op::Add8, Op::Adc8,
+        Op::Sub8, Op::Sbb8,
         Op::Test8, Op::Test16,
         Op::Not8, Op::Not16,
         Op::Neg8, Op::Neg16,
         Op::Xchg8, Op::Xchg16,
-        Op::Mul8, Op::Mul16,
-        Op::Imul8, Op::Imul16,
+        Op::Mul8, Op::Mul16, Op::Imul8, Op::Imul16,
         Op::Lahf, Op::Sahf, Op::Salc,
         Op::Nop,
         Op::Clc, Op::Cld, Op::Cli, Op::Cmc, Op::Stc, Op::Std, Op::Sti,

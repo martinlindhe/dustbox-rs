@@ -456,10 +456,13 @@ fn can_encode_shrd() {
 }
 
 #[test]
-fn can_encode_bitshift_instructions() {
+fn can_encode_shr8() {
     let op = Instruction::new2(Op::Shr8, Parameter::Reg8(R::AH), Parameter::Imm8(0xFF));
     assert_encdec(&op, "shr ah,byte 0xff", vec!(0xC0, 0xEC, 0xFF));
+}
 
+#[test]
+fn can_encode_shl8() {
     let op = Instruction::new2(Op::Shl8, Parameter::Reg8(R::AH), Parameter::Imm8(0xFF));
     assert_encdec(&op, "shl ah,byte 0xff", vec!(0xC0, 0xE4, 0xFF));
 }
