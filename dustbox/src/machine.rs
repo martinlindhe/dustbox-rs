@@ -1,5 +1,9 @@
 use std::{mem, u8};
 use std::num::Wrapping;
+use std::fs::File;
+use std::path::Path;
+use std::error::Error;
+use std::io::{BufWriter, Write};
 
 use bincode::deserialize;
 
@@ -107,6 +111,10 @@ pub struct Machine {
     /// length of loaded rom in bytes (used by disassembler)
     pub rom_length: usize,
 
+    /// if true, write opcode trace to trace_file
+    tracing: bool,
+    trace_file: Option<File>,
+
     /// handlers for i/o ports and interrupts
     components: Vec<MachineComponent>,
 }
@@ -130,11 +138,27 @@ impl Machine {
             bios,
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,
+            tracing: false,
+            trace_file: None,
             components: Vec::new(),
         };
 
         m.register_components();
         m
+    }
+
+    /// Enables writing of opcode trace to file.
+    /// The format tries to be similar to dosbox debugger "LOGS" format.
+    pub fn write_trace_to(&mut self, filename: &str) {
+        let trace_path = Path::new(filename);
+
+        let file = match File::create(&trace_path) {
+            Err(why) => panic!("couldn't create {:?}: {}", trace_path.display(), why.description()),
+            Ok(file) => file,
+        };
+
+        self.trace_file = Some(file);
+        self.tracing = true;
     }
 
     fn register_components(&mut self) {
@@ -243,7 +267,7 @@ impl Machine {
     fn load_com(&mut self, data: &[u8]) {
 
         // CS,DS,ES,SS = PSP segment
-        let psp_segment = 0x085F; // is what dosbox used
+        let psp_segment = 0x0329;
         self.cpu.set_r16(R::CS, psp_segment);
         self.cpu.set_r16(R::DS, psp_segment);
         self.cpu.set_r16(R::ES, psp_segment);
@@ -259,6 +283,8 @@ impl Machine {
         self.cpu.set_r16(R::DX, psp_segment);
         self.cpu.set_r16(R::SI, 0x0100);
         self.cpu.set_r16(R::DI, 0xFFFE);
+
+        self.cpu.regs.flags.interrupt = true;
 
         self.cpu.regs.ip = 0x0100;
         self.rom_base = self.cpu.get_memory_address();
@@ -384,6 +410,42 @@ impl Machine {
         }
 
         let op = self.cpu.decoder.get_instruction(&mut self.mmu, cs, ip);
+
+        if self.tracing {
+            let ax = self.cpu.get_r16(R::AX);
+            let bx = self.cpu.get_r16(R::BX);
+            let cx = self.cpu.get_r16(R::CX);
+            let dx = self.cpu.get_r16(R::DX);
+
+            let si = self.cpu.get_r16(R::SI);
+            let di = self.cpu.get_r16(R::DI);
+            let bp = self.cpu.get_r16(R::BP);
+            let sp = self.cpu.get_r16(R::SP);
+
+            let ds = self.cpu.get_r16(R::DS);
+            let es = self.cpu.get_r16(R::ES);
+            //let fs = self.cpu.get_r16(R::FS);
+            //let gs = self.cpu.get_r16(R::GS);
+            let ss = self.cpu.get_r16(R::SS);
+
+            let cf = self.cpu.regs.flags.carry_numeric();
+            let zf = self.cpu.regs.flags.zero_numeric();
+            let sf = self.cpu.regs.flags.sign_numeric();
+            let of = self.cpu.regs.flags.overflow_numeric();
+            let iflag = self.cpu.regs.flags.interrupt_numeric();
+
+            // format similar to dosbox LOGS output
+            if let Some(file) = &self.trace_file {
+                let disasm = &format!("{:30}", format!("{}", op))[..30];
+                let mut writer = BufWriter::new(file);
+                let _ = write!(&mut writer, "{:04X}:{:04X}  {}", cs, ip, disasm);
+                let _ = write!(&mut writer, " EAX:{:08X} EBX:{:08X} ECX:{:08X} EDX:{:08X} ESI:{:08X} EDI:{:08X} EBP:{:08X} ESP:{:08X}", ax, bx, cx, dx, si, di, bp, sp);
+                let _ = write!(&mut writer, " DS:{:04X} ES:{:04X}", ds, es);
+                // let _ = write!(&mut writer, " FS:{:04X} GS:{:04X}", fs, g);
+                let _ = write!(&mut writer, " SS:{:04X}", ss);
+                let _ = write!(&mut writer, " C{} Z{} S{} O{} I{}\n", cf, zf, sf, of, iflag);
+            }
+        }
 
         match op.command {
             Op::Uninitialized => {

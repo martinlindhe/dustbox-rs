@@ -8,8 +8,9 @@ use std::io::{Read, Write};
 use tera::{Tera, Context};
 use tempfile::tempdir;
 
-use dustbox::machine::Machine;
 use dustbox::cpu::{CPU, Op, r16};
+use dustbox::machine::Machine;
+use dustbox::ndisasm::ndisasm_bytes;
 
 pub enum VmRunner {
     VmHttp,
@@ -21,6 +22,11 @@ pub enum VmRunner {
 pub fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&str], affected_flag_mask: u16) -> bool {
     let mut machine = Machine::deterministic();
     println!("EXECUTING {:X?}", data);
+    // XXX dump ndisasm
+
+    println!("{}", ndisasm_bytes(&data).unwrap().join("\n"));
+
+
     machine.load_executable(data);
     machine.execute_instructions(op_count);
 
@@ -131,7 +137,7 @@ impl AffectedFlags {
             Op::Inc8 | Op::Inc16 | Op::Inc32 | Op::Dec8 | Op::Dec16 | Op::Dec32 | Op::Shld => AffectedFlags{s:1, z:1, a:1, p:1, o:1, c:0, d:0, i:0}.mask(), // S Z P O A
             Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1, d:0, i:0}.mask(), // C O S Z
             Op::Aaa | Op::Aas => AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0, d:0, i:0}.mask(),  // C A
-            Op::Rol8 | Op::Rcl8 | Op::Ror8 | Op::Rcr8 | Op::Mul8 | Op::Imul8 => AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0, d:0, i:0}.mask(), // C O
+            Op::Rol8 | Op::Rcl8 | Op::Ror8 | Op::Rcr8 | Op::Mul8 | Op::Imul8 | Op::Imul16 => AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0, d:0, i:0}.mask(), // C O
             Op::Aad | Op::Aam | Op::Test8 => AffectedFlags{s:1, z:1, p:1, c:0, a:0, o:0, d:0, i:0}.mask(),        // S Z P
             Op::Bt | Op::Clc | Op::Cmc | Op::Stc => AffectedFlags{c:1, a:0, o:0, s:0, z:0, p:0, d:0, i:0}.mask(),  // C
             Op::Cld | Op::Std => AffectedFlags{d:1, c:0, a:0, o:0, s:0, z:0, p:0, i:0}.mask(),  // D

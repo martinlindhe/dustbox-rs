@@ -20,9 +20,10 @@ fn main() {
     let affected_registers = vec!("ax", "dx");
 
     let ops_to_fuzz = vec!(
+
+        // Op::Imul16, // BROKEN flags .... imul8 works
         
-        
-        //Op::Cmpsw,
+        //Op::Cmpsw,        // XXX not impl encoding
 
         
         // DIFFERS FROM WINXP:
@@ -140,6 +141,12 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::DL), Parameter::Imm8(rng.gen())),
             Instruction::new1(op.clone(), Parameter::Reg8(R::DL)),
+        )}
+        Op::Imul16 => { vec!(
+            // imul r/m16        dx:ax = AX ∗ r/m
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(rng.gen())),
+            Instruction::new1(op.clone(), Parameter::Reg16(R::BX)),
         )}
         Op::Xchg8 => { vec!(
             // xchg r/m8, r8

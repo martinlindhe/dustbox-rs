@@ -323,6 +323,12 @@ impl Encoder {
                     Err(why) => return Err(why),
                 }
             }
+            Op::Imul16 => {
+                match self.math_instr16(op) {
+                    Ok(data) => out.extend(data),
+                    Err(why) => return Err(why),
+                }
+            }
             Op::Push16 => {
                 if let Parameter::Imm16(imm16) = op.params.dst {
                     // 0x68: push imm16
@@ -463,6 +469,19 @@ impl Encoder {
         }
     }
 
+    fn math_instr16(&self, ins: &Instruction) -> Result<Vec<u8>, EncodeError> {
+        let mut out = vec!();
+        match ins.params.dst {
+            Parameter::Reg16(r) => {
+                // 0xF7: <math> r/m16.  reg = instruction
+                out.push(0xF7);
+                out.push(ModRegRm::rm_reg(r.index() as u8, self.math_index(&ins.command)));
+                Ok(out)
+            }
+            _ => Err(EncodeError::UnexpectedDstType(ins.params.dst.clone())),
+        }
+    }
+
     /// used for 0xF6 encodings
     fn f6_index(op: &Op) -> u8 {
         match *op {
@@ -555,7 +574,7 @@ impl Encoder {
             Op::Not8  => 2,
             Op::Neg8 => 3,
             Op::Mul8 => 4,
-            Op::Imul8 => 5,
+            Op::Imul8 | Op::Imul16 => 5,
             Op::Div8 => 6,
             Op::Idiv8 => 7,
             _ => panic!("math_get_index {:?}", op),
