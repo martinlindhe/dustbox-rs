@@ -399,6 +399,7 @@ impl Machine {
         self.cpu.set_r16(R::CS, cs);
     }
 
+    /// executes the next CPU instruction
     pub fn execute_instruction(&mut self) {
         let cs = self.cpu.get_r16(R::CS);
         let ip = self.cpu.regs.ip;
@@ -442,7 +443,7 @@ impl Machine {
                 let _ = write!(&mut writer, " DS:{:04X} ES:{:04X}", ds, es);
                 // let _ = write!(&mut writer, " FS:{:04X} GS:{:04X}", fs, g);
                 let _ = write!(&mut writer, " SS:{:04X}", ss);
-                let _ = write!(&mut writer, " C{} Z{} S{} O{} I{}\n", cf, zf, sf, of, iflag);
+                let _ = writeln!(&mut writer, " C{} Z{} S{} O{} I{}", cf, zf, sf, of, iflag);
             }
         }
 

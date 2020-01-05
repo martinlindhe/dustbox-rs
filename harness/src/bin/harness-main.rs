@@ -202,7 +202,7 @@ fn run_and_save_video_frames(mut test_bins: Vec<String>, group: &str, name_prefi
         }
 
         let path = Path::new(&bin);
-        let stem = path.file_stem().unwrap_or(OsStr::new(""));
+        let stem = path.file_stem().unwrap_or_else(|| OsStr::new(""));
         let mut filename = OsString::new(); // XXX base on dirname
         let outname = &format!("render/{}/{:02x}_{}", group, machine.gpu_mut().unwrap().mode.mode, name_prefix);
         filename.push(format!("docs/{}", outname));
