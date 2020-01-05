@@ -177,8 +177,26 @@ impl Encoder {
             }
             */
             Op::Xchg8 => {
-                // 0x86: xchg r/m8, r8
+                // 86 /r           XCHG r/m8, r8
                 out.push(0x86);
+                out.extend(self.encode_rm_r(&op.params));
+            }
+            Op::Xchg16 => {
+                // XXX if both are registers and one is AX, use 1-byte encoding
+                if let Parameter::Reg16(r1) = op.params.dst {
+                    if let Parameter::Reg16(r2) = op.params.src {
+                        if r1 == R::AX {
+                            out.push(0x90 + r2.index() as u8);
+                            return Ok(out);
+                        } else if r2 == R::AX {
+                            out.push(0x90 + r1.index() as u8);
+                            return Ok(out);
+                        }
+                    }
+                }
+
+                // 87 /r           XCHG r/m16, r16
+                out.push(0x87);
                 out.extend(self.encode_rm_r(&op.params));
             }
             Op::Lea16 => {

@@ -21,7 +21,7 @@ fn main() {
 
     let ops_to_fuzz = vec!(
         // XXX test rest of 16-bit math:
-        //Op::Xchg16,
+
         //Op::Cmp16, Op::And16, Op::Xor16, Op::Or16, Op::Add16, Op::Adc16, Op::Sub16, Op::Sbb16,
 
         // DIFFERS FROM WINXP:
@@ -40,11 +40,10 @@ fn main() {
         Op::Test8, Op::Test16,
         Op::Not8, Op::Not16,
         Op::Neg8, Op::Neg16,
-        Op::Xchg8,
+        Op::Xchg8, Op::Xchg16,
         Op::Mul8, Op::Mul16,
         Op::Imul8, Op::Imul16,
-        Op::Lahf,
-        Op::Sahf, Op::Salc,
+        Op::Lahf, Op::Sahf, Op::Salc,
         Op::Nop,
         Op::Clc, Op::Cld, Op::Cli, Op::Cmc, Op::Stc, Op::Std, Op::Sti,
         Op::Cbw, Op::Cwd16,
@@ -122,9 +121,10 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
         )}
-        Op::Bt | Op::Bsf => {vec!(
+        Op::Bt | Op::Bsf | Op::Xchg16 => {vec!(
             // bsf r16, r/m16
             // bt r/m16, r16
+            // xchg r/m16, r16
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg16(R::BX)),

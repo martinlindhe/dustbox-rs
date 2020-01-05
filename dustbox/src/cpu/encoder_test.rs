@@ -71,12 +71,26 @@ fn can_encode_random_seq() {
 
 #[test]
 fn can_encode_xchg8() {
-    // r/m8, r8
+    // 86 /r           XCHG r/m8, r8
+    // 86 /r           XCHG r8, r/m8
+
+    // NOTE: nasm encode operands in the reverse so we create an instruction in the same way for test to succeed
     let op = Instruction::new2(Op::Xchg8, Parameter::Reg8(R::BH), Parameter::Reg8(R::DL));
     assert_encdec(&op, "xchg dl,bh", vec!(0x86, 0xD7));
-    // XXX NOTE: nasm encodes differently:
-    // 00000100  86FA              xchg bh,dl       nasm        FA = 0b1111_1010
-    // 00000102  86D7              xchg dl,bh       us          D7 = 0b1101_0111
+}
+
+#[test]
+fn can_encode_xchg16() {
+    // 87 /r           XCHG r/m16, r16
+    // 87 /r           XCHG r16, r/m16
+    // NOTE: nasm encode operands in the reverse so we create an instruction in the same way for test to succeed
+    let op = Instruction::new2(Op::Xchg16, Parameter::Reg16(R::BX), Parameter::Reg16(R::DX));
+    assert_encdec(&op, "xchg dx,bx", vec!(0x87, 0xD3));
+
+    // 90+rw           XCHG AX, r16
+    // 90+rw           XCHG r16, AX
+    let op = Instruction::new2(Op::Xchg16, Parameter::Reg16(R::AX), Parameter::Reg16(R::DX));
+    assert_encdec(&op, "xchg ax,dx", vec!(0x92));
 }
 
 #[test]
