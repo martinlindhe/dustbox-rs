@@ -99,6 +99,21 @@ fn can_encode_test8() {
 }
 
 #[test]
+fn can_encode_test16() {
+    // A9 iw            TEST AX, imm16
+    let op = Instruction::new2(Op::Test16, Parameter::Reg16(R::AX), Parameter::Imm16(0x8F4F));
+    assert_encdec(&op, "test ax,0x8f4f", vec!(0xA9, 0x4F, 0x8F));
+
+    // F7 /0 iw         TEST r/m16, imm16
+    let op = Instruction::new2(Op::Test16, Parameter::Reg16(R::BX), Parameter::Imm16(0x8F4F));
+    assert_encdec(&op, "test bx,0x8f4f", vec!(0xF7, 0xC3, 0x4F, 0x8F));
+
+    // 85 /r            TEST r/m16, r16
+    let op = Instruction::new2(Op::Test16, Parameter::Reg16(R::CX), Parameter::Reg16(R::AX));
+    assert_encdec(&op, "test cx,ax", vec!(0x85, 0xC1));
+}
+
+#[test]
 fn can_encode_not8() {
     // r/m8
     let op = Instruction::new1(Op::Not8, Parameter::Reg8(R::BH));

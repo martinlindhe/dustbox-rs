@@ -130,18 +130,17 @@ impl AffectedFlags {
     /// returns a flag mask for affected flag registers by op
     pub fn for_op(op: &Op) -> u16 {
         match *op {
-            Op::Nop | Op::Salc | Op::Not8 | Op::Div8 | Op::Div16 | Op::Idiv8 | Op::Cbw | Op::Cwd16 | Op::Lahf |
+            Op::Nop | Op::Salc | Op::Not8 | Op::Div8 | Op::Div16 | Op::Idiv8 | Op::Idiv16 | Op::Cbw | Op::Cwd16 | Op::Lahf |
             Op::Lea16 | Op::Xchg8 | Op::Xlatb => AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // no affected flags
             Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 |
             Op::Neg8 | Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::Sahf => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1, d:1, i:1}.mask(), // all
-            Op::Xor8 => AffectedFlags{o:1, s:1, z:1, p:1, c:1, a:0, d:0, i:0}.mask(), // O C S Z P
             Op::Shrd | Op::Cmpsw => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:1, d:0, i:0}.mask(), // C A S Z P O
             Op::Daa | Op::Das => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:0, d:0, i:0}.mask(), // C A S Z P
             Op::Inc8 | Op::Inc16 | Op::Inc32 | Op::Dec8 | Op::Dec16 | Op::Dec32 | Op::Shld => AffectedFlags{s:1, z:1, a:1, p:1, o:1, c:0, d:0, i:0}.mask(), // S Z P O A
             Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1, d:0, i:0}.mask(), // C O S Z
             Op::Aaa | Op::Aas => AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0, d:0, i:0}.mask(),  // C A
             Op::Rol8 | Op::Rcl8 | Op::Ror8 | Op::Rcr8 | Op::Mul8 | Op::Mul16 | Op::Imul8 | Op::Imul16 => AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0, d:0, i:0}.mask(), // C O
-            Op::Aad | Op::Aam | Op::Test8 => AffectedFlags{s:1, z:1, p:1, c:0, a:0, o:0, d:0, i:0}.mask(),        // S Z P
+            Op::Aad | Op::Aam | Op::Xor8 | Op::Test8 | Op::Test16 => AffectedFlags{s:1, z:1, p:1, c:1, a:0, o:1, d:0, i:0}.mask(),        // O C S Z P
             Op::Bt | Op::Clc | Op::Cmc | Op::Stc => AffectedFlags{c:1, a:0, o:0, s:0, z:0, p:0, d:0, i:0}.mask(),  // C
             Op::Cld | Op::Std => AffectedFlags{d:1, c:0, a:0, o:0, s:0, z:0, p:0, i:0}.mask(),  // D
             Op::Cli | Op::Sti => AffectedFlags{i:1, d:0, c:0, a:0, o:0, s:0, z:0, p:0}.mask(),  // I

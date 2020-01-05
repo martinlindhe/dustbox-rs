@@ -20,11 +20,12 @@ fn main() {
     let affected_registers = vec!("ax", "dx");
 
     let ops_to_fuzz = vec!(
-        // XXX test Div16, Idiv16 flag errors + rest of 16-bit mat
-        // XXX
+        // XXX test rest of 16-bit mat
+
+        // Op::Not16, Op::Neg16,
+        
 
         // DIFFERS FROM WINXP:
-        //Op::Idiv8, Op::Idiv16, // hard to fuzz due to input that triggers DIV0 exception
         //Op::Shl8, Op::Rol8, Op::Ror8, Op::Rcl8, Op::Rcr8, // OVERFLOW flag differ from winxp
         //Op::Shld, // overflow flag is wrong
         //Op::Shrd, // overflow flag is wrong
@@ -32,12 +33,14 @@ fn main() {
 
         /*
         // SEEMS ALL OK:
-        Op::Div8, Op::Div16, // seems correct. NOTE that winxp crashes with "Divide overflow" on some input
+        Op::Div8, Op::Div16, Op::Idiv8, Op::Idiv16, // seems correct. NOTE that winxp crashes with "Divide overflow" on some input
         Op::Bt, Op::Bsf,
         Op::Aaa, Op::Aad, Op::Aam, Op::Aas, Op::Daa, Op::Das,
         Op::Shr8, Op::Sar8,
         Op::Cmp8, Op::And8, Op::Xor8, Op::Or8, Op::Add8, Op::Adc8, Op::Sub8, Op::Sbb8,
-        Op::Test8, Op::Not8, Op::Xchg8, Op::Neg8,
+        Op::Test8, Op::Test16,
+        Op::Not8, Op::Neg8,
+        Op::Xchg8,
         Op::Mul8, Op::Mul16,
         Op::Imul8, Op::Imul16,
         Op::Lahf,
@@ -139,8 +142,9 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::DL), Parameter::Imm8(rng.gen())),
             Instruction::new1(op.clone(), Parameter::Reg8(R::DL)),
         )}
-        Op::Div16 => { vec!(
+        Op::Div16 | Op::Idiv16 => { vec!(
             // div r/m16        divide DX:AX by r/m16, with result stored in AX ← Quotient, DX ← Remainde
+            // idiv r/m16       Signed divide DX:AX by r/m16, with result stored in AX ← Quotient, DX ← Remainder.
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::DX), Parameter::Imm16(rng.gen())),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(rng.gen())),
@@ -192,6 +196,11 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             // mutate ax: no args
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new(op.clone()),
+        )}
+        Op::Test16 => { vec!(
+            // TEST AX, imm16
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
+            Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
         )}
         Op::Inc16 | Op::Dec16 => { vec!(
             // mutate ax: r/m16

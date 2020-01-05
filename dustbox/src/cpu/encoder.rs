@@ -323,7 +323,7 @@ impl Encoder {
                     Err(why) => return Err(why),
                 }
             }
-            Op::Div16 | Op::Mul16 | Op::Imul16 => {
+            Op::Test16 | Op::Div16 | Op::Idiv16 | Op::Mul16 | Op::Imul16 => {
                 match self.math_instr16(op) {
                     Ok(data) => out.extend(data),
                     Err(why) => return Err(why),
@@ -483,22 +483,40 @@ impl Encoder {
             _ => {}
         }
 
-        match ins.params.src {
-            Parameter::Reg16(_) => {
-                // 2 operand form: 0F AF /r
-                out.push(0x0F);
-                out.push(0xAF);
-                out.extend(self.encode_r_rm(&ins.params));
-                return Ok(out);
+        if ins.command != Op::Test16 {
+            match ins.params.src {
+                Parameter::Reg16(_) => {
+                    // 2 operand form: 0F AF /r
+                    out.push(0x0F);
+                    out.push(0xAF);
+                    out.extend(self.encode_r_rm(&ins.params));
+                    return Ok(out);
+                }
+                _ => {}
             }
-            _ => {}
         }
 
         match ins.params.dst {
             Parameter::Reg16(r) => {
-                // 1 operand form: F7 /5
-                out.push(0xF7);
-                out.push(ModRegRm::rm_reg(r.index() as u8, self.math_index(&ins.command)));
+                if ins.command == Op::Test16 {
+                    if let Parameter::Imm16(i) = ins.params.src {
+                        if r == R::AX {
+                            out.push(0xA9); // test AX, imm16
+                        } else {
+                            out.push(0xF7); // test r/m16, imm16
+                            out.push(ModRegRm::rm_reg(r.index() as u8, self.math_index(&ins.command)));
+                        }
+                        out.push(i as u8);
+                        out.push((i >> 8) as u8);
+                    } else {
+                        out.push(0x85); // test r/m16, r16
+                        out.extend(self.encode_rm_r(&ins.params));
+                    }
+                } else {
+                    // 1 operand form: F7 /5
+                    out.push(0xF7);
+                    out.push(ModRegRm::rm_reg(r.index() as u8, self.math_index(&ins.command)));
+                }
                 Ok(out)
             }
             _ => Err(EncodeError::UnexpectedDstType(ins.params.dst.clone())),
@@ -593,13 +611,13 @@ impl Encoder {
 
     fn math_index(&self, op: &Op) -> u8 {
         match *op {
-            Op::Test8 => 0,
+            Op::Test8 | Op::Test16 => 0,
             Op::Not8  => 2,
             Op::Neg8 => 3,
             Op::Mul8 | Op::Mul16 => 4,
             Op::Imul8 | Op::Imul16 => 5,
             Op::Div8 | Op::Div16 => 6,
-            Op::Idiv8 => 7,
+            Op::Idiv8 | Op::Idiv16 => 7,
             _ => panic!("math_get_index {:?}", op),
         }
     }
