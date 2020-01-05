@@ -20,16 +20,17 @@ fn main() {
     let affected_registers = vec!("ax", "dx");
 
     let ops_to_fuzz = vec!(
-        // XXX test Mul16, Div16, Idiv16 flag errors + rest of 16-bit math
+        // XXX test Div16, Idiv16 flag errors + rest of 16-bit mat
+        // XXX
 
         //Op::Cmpsw,        // XXX not impl encoding
 
         
         // DIFFERS FROM WINXP:
+        //Op::Div8, Op::Idiv8, Op::Idiv16, // hard to fuzz due to input that triggers DIV0 exception
         //Op::Shl8, Op::Rol8, Op::Ror8, Op::Rcl8, Op::Rcr8, // OVERFLOW flag differ from winxp
         //Op::Shld, // overflow flag is wrong
         //Op::Shrd, // overflow flag is wrong
-        //Op::Div8, Op::Idiv8, // hard to fuzz due to input that triggers DIV0 exception
 
         /*
         // SEEMS ALL OK
@@ -37,8 +38,9 @@ fn main() {
         Op::Aaa, Op::Aad, Op::Aam, Op::Aas, Op::Daa, Op::Das,
         Op::Shr8, Op::Sar8,
         Op::Cmp8, Op::And8, Op::Xor8, Op::Or8, Op::Add8, Op::Adc8, Op::Sub8, Op::Sbb8,
-        Op::Test8, Op::Not8, Op::Mul8, Op::Imul8, Op::Xchg8, Op::Neg8,
-        Op::Imul16,
+        Op::Test8, Op::Not8, Op::Xchg8, Op::Neg8,
+        Op::Mul8, Op::Mul16,
+        Op::Imul8, Op::Imul16,
         Op::Lahf,
         Op::Sahf, Op::Salc,
         Op::Nop,
@@ -142,14 +144,19 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::DL), Parameter::Imm8(rng.gen())),
             Instruction::new1(op.clone(), Parameter::Reg8(R::DL)),
         )}
+        Op::Mul16 => { vec!(
+            // mul r/m16        DX:AX ← AX ∗ r/m16
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(rng.gen())),
+            Instruction::new1(op.clone(), Parameter::Reg16(R::BX)),
+        )}
         Op::Imul16 => { vec!(
-            // imul r/m16        dx:ax = AX ∗ r/m
+            // imul r/m16        DX:AX = AX ∗ r/m16
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(rng.gen())),
 
             // Instruction::new1(op.clone(), Parameter::Reg16(R::BX)), // 1-operand form
             // Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg16(R::BX)), // 2-operand form
-
             Instruction::new3(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg16(R::BX), Parameter::ImmS8(rng.gen())), // 3-operand form
         )}
         Op::Xchg8 => { vec!(
