@@ -21,13 +21,12 @@ fn main() {
 
     let ops_to_fuzz = vec!(
         //Op::Cmpsw,
-        //Op::Shrd,
 
-        //Op::Shl8, Op::Rol8, Op::Ror8, Op::Rcr8, // OVERFLOW flag differ from winxp
-        Op::Rcl8, // register values dont match with dosbox-x, but with bochs & winxp
-
+        
         // DIFFERS FROM WINXP:
-        //Op::Shld, // overflow flag is set incorrectly
+        //Op::Shl8, Op::Rol8, Op::Ror8, Op::Rcl8, Op::Rcr8, // OVERFLOW flag differ from winxp
+        //Op::Shld, // overflow flag is wrong
+        //Op::Shrd, // overflow flag is wrong
         //Op::Div8, Op::Idiv8, // hard to fuzz due to input that triggers DIV0 exception
 
         /*

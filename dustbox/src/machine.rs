@@ -1813,19 +1813,20 @@ impl Machine {
                         ((op1 << count) | (cf << (count - 1)) | (op1 >> (9 - count)))
                     } as u8;
                     self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, res);
-                    self.cpu.regs.flags.carry = (op1 >> (8 - count)) & 1 != 0;
+                    let cf = (op1 >> (8 - count)) & 1;
+                    self.cpu.regs.flags.carry = cf != 0;
                     // For left rotates, the OF flag is set to the exclusive OR of the CF bit
                     // (after the rotate) and the most-significant bit of the result.
-                    self.cpu.regs.flags.overflow = self.cpu.regs.flags.carry_val() as u16 ^ (u16::from(res) >> 7) != 0;
+                    self.cpu.regs.flags.overflow = cf ^ (u16::from(res) >> 7) != 0;
                 }
             }
             Op::Rcl16 => {
                 // Rotate 9 bits (CF, r/m8) left imm8 times.
                 // two arguments
-                let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 let count = (self.cpu.read_parameter_value(&self.mmu, &op.params.src) & 0x1F) % 17;
                 if count > 0 {
                     let cf = self.cpu.regs.flags.carry_val() as u16;
+                    let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                     let res = if count == 1 {
                         (op1 << 1) | cf
                     } else if count == 16 {
@@ -2218,12 +2219,13 @@ impl Machine {
             }
             Op::Shld => {
                 // 3 arguments
-                let count = self.cpu.read_parameter_value(&self.mmu, &op.params.src2) & 0x1F;
+                let count = self.cpu.read_parameter_value(&self.mmu, &op.params.src2) & 0x1F; // use 5 lsb
                 if count > 0 {
-                    let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
-                    let op2 = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u16;
+                    let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
+                    let op2 = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u32;
+
                     // count < 32, since only lower 5 bits used
-                    let temp_32 = (u32::from(op1) << 16) | u32::from(op2); // double formed by op1:op2
+                    let temp_32 = (op1 << 16) | op2; // double formed by op1:op2
                     let mut result_32 = temp_32 << count;
 
                     // hack to act like x86 SHLD when count > 16
@@ -2233,7 +2235,7 @@ impl Machine {
                         // For P6 and later (CPU_LEVEL >= 6), when count > 16, actually shifting op1:op2:op1 << count,
                         // which is the same as shifting op2:op1 by count-16
                         // The behavior is undefined so both ways are correct, we prefer P6 way of implementation
-                        result_32 |= u32::from(op1) << (count - 16);
+                        result_32 |= op1 << (count - 16);
                      }
 
                     let res16 = (result_32 >> 16) as u16;
@@ -2241,10 +2243,12 @@ impl Machine {
 
                     let cf = (temp_32 >> (32 - count)) & 0x1;
                     self.cpu.regs.flags.carry = cf != 0;
-                    self.cpu.regs.flags.overflow = cf ^ (u32::from(res16) >> 15) != 0;
+
+                    let of = cf ^ (u32::from(res16 >> 15));
+                    self.cpu.regs.flags.overflow = of != 0;
+
                     self.cpu.regs.flags.set_zero_u16(res16 as usize);
                     self.cpu.regs.flags.set_sign_u16(res16 as usize);
-                    self.cpu.regs.flags.set_adjust(res16 as usize, op1 as usize, op2 as usize);
                     self.cpu.regs.flags.set_parity(res16 as usize);
                 }
             }
@@ -2302,40 +2306,44 @@ impl Machine {
             Op::Shrd => {
                 // 3 arguments
 
-                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let count = self.cpu.read_parameter_value(&self.mmu, &op.params.src2);
+                let count = self.cpu.read_parameter_value(&self.mmu, &op.params.src2) & 0x1F; // use 5 lsb
                 if count == 0 {
                     return;
                 }
+                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
 
-                // Shift `dst` to right `count` places while shifting bits from `src` in from the left
-                let res = (src & count_to_bitmask(count) as usize) << (16-count) | (dst >> count);
+                // count < 32, since only lower 5 bits used
+                let temp_32 = (src << 16) | dst;
+                let mut result_32 = temp_32 >> count;
 
-                self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, res as u16);
-
-                if count >= 1 {
-                    // XXX carry if count is >= 1
-
-                    // If the count is 1 or greater, the CF flag is filled with the last bit shifted out
-                    // of the destination operand
-
-                    self.cpu.regs.flags.carry = (dst & 1) != 0; // XXX this would be the first bit.. which is wrong
+                // hack to act like x86 SHRD when count > 16
+                if count > 16 {
+                    // for Pentium processor, when count > 16, actually shifting op2:op2:op1 >> count,
+                    // it is the same as shifting op2:op2 by count-16
+                    // For P6 and later (CPU_LEVEL >= 6), when count > 16, actually shifting op1:op2:op1 >> count,
+                    // which is the same as shifting op1:op2 by count-16
+                    // The behavior is undefined so both ways are correct, we prefer P6 way of implementation
+                    result_32 |= dst << (32 - count);
                 }
+
+                let result_16 = result_32 as u16;
+
+                self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, result_16);
 
                 // SF, ZF, and PF flags are set according to the value of the result.
-                self.cpu.regs.flags.set_sign_u16(res);
-                self.cpu.regs.flags.set_zero_u16(res);
-                self.cpu.regs.flags.set_parity(res);
+                self.cpu.regs.flags.set_sign_u16(result_16 as usize);
+                self.cpu.regs.flags.set_zero_u16(result_16 as usize);
+                self.cpu.regs.flags.set_parity(result_16 as usize);
 
-                if count == 1 {
-                    // XXX overflow if count == 1
-                    // For a 1-bit shift, the OF flag is set if a sign change occurred; otherwise, it is cleared.
-                    // For shifts greater than 1 bit, the OF flag is undefined. 
+                let mut cf = (dst >> (count - 1)) & 0x1;
+                let of = (((result_16 << 1) ^ result_16) >> 15) & 0x1; // of = result14 ^ result15
+                if count > 16 {
+                    // undefined flags behavior matching real HW
+                    cf = (src >> (count - 17)) & 0x1;
                 }
-
-                // If a shift occurs, the AF flag is undefined. If the count is greater than the operand size,
-                // the flags are undefined.
+                self.cpu.regs.flags.carry = cf != 0;
+                self.cpu.regs.flags.overflow = of != 0;
             }
             Op::Sldt => {
                 println!("XXX impl {:?}", op);
