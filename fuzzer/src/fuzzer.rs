@@ -133,8 +133,8 @@ impl AffectedFlags {
             Op::Nop | Op::Salc | Op::Not8 | Op::Not16 | Op::Div8 | Op::Div16 | Op::Idiv8 | Op::Idiv16 | Op::Cbw | Op::Cwd16 | Op::Lahf |
             Op::Lea16 | Op::Xchg8 | Op::Xlatb => AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // no affected flags
             Op::Cmp8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 |
-            Op::Neg8 | Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::Sahf => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1, d:1, i:1}.mask(), // all
-            Op::Shrd | Op::Cmpsw => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:1, d:0, i:0}.mask(), // C A S Z P O
+            Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::Sahf => AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1, d:1, i:1}.mask(), // all
+            Op::Neg8 | Op::Neg16 | Op::Shrd | Op::Cmpsw => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:1, d:0, i:0}.mask(), // C A S Z P O
             Op::Daa | Op::Das => AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:0, d:0, i:0}.mask(), // C A S Z P
             Op::Inc8 | Op::Inc16 | Op::Inc32 | Op::Dec8 | Op::Dec16 | Op::Dec32 | Op::Shld => AffectedFlags{s:1, z:1, a:1, p:1, o:1, c:0, d:0, i:0}.mask(), // S Z P O A
             Op::And8 | Op::Or8 => AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1, d:0, i:0}.mask(), // C O S Z
