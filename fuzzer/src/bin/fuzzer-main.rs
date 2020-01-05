@@ -22,8 +22,7 @@ fn main() {
     let ops_to_fuzz = vec!(
         // XXX test rest of 16-bit mat
 
-        // Op::Not16, Op::Neg16,
-        
+        // Op::Neg16,
 
         // DIFFERS FROM WINXP:
         //Op::Shl8, Op::Rol8, Op::Ror8, Op::Rcl8, Op::Rcr8, // OVERFLOW flag differ from winxp
@@ -39,7 +38,8 @@ fn main() {
         Op::Shr8, Op::Sar8,
         Op::Cmp8, Op::And8, Op::Xor8, Op::Or8, Op::Add8, Op::Adc8, Op::Sub8, Op::Sbb8,
         Op::Test8, Op::Test16,
-        Op::Not8, Op::Neg8,
+        Op::Not8, Op::Not16,
+        Op::Neg8,
         Op::Xchg8,
         Op::Mul8, Op::Mul16,
         Op::Imul8, Op::Imul16,
@@ -202,10 +202,10 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
         )}
-        Op::Inc16 | Op::Dec16 => { vec!(
+        Op::Inc16 | Op::Dec16 | Op::Not16 => { vec!(
             // mutate ax: r/m16
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
-            Instruction::new1(op.clone(), Parameter::Reg8(R::AX)),
+            Instruction::new1(op.clone(), Parameter::Reg16(R::AX)),
         )}
         Op::Aad | Op::Aam => { vec!(
             // mutate ax: imm8

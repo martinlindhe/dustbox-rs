@@ -125,6 +125,13 @@ fn can_encode_not8() {
 }
 
 #[test]
+fn can_encode_not16() {
+    // F7 /2        NOT r/m16
+    let op = Instruction::new1(Op::Not16, Parameter::Reg16(R::BX));
+    assert_encdec(&op, "not bx", vec!(0xF7, 0xD3));
+}
+
+#[test]
 fn can_encode_neg8() {
     // r/m8
     let op = Instruction::new1(Op::Neg8, Parameter::Reg8(R::BH));
