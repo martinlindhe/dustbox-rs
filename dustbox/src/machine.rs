@@ -979,7 +979,6 @@ impl Machine {
                 }
                 self.cpu.set_r8(R::AH, remainder);
                 self.cpu.set_r8(R::AL, quo8);
-                // The CF, OF, SF, ZF, AF, and PF flags are undefined.
             }
             Op::Div16 => {
                 // Unsigned divide DX:AX by r/m16, with result stored in AX ← Quotient, DX ← Remainder.
@@ -996,7 +995,6 @@ impl Machine {
                 }
                 self.cpu.set_r16(R::DX, remainder);
                 self.cpu.set_r16(R::AX, quo16);
-                // The CF, OF, SF, ZF, AF, and PF flags are undefined.
             }
             Op::Div32 => {
                 // Unsigned divide EDX:EAX by r/m32, with result stored in EAX ← Quotient, EDX ← Remainder.
@@ -1013,7 +1011,6 @@ impl Machine {
                 }
                 self.cpu.set_r32(R::EDX, remainder);
                 self.cpu.set_r32(R::EAX, quo32);
-                // The CF, OF, SF, ZF, AF, and PF flags are undefined.
             }
             Op::Enter => {
                 // Make Stack Frame for Procedure Parameters

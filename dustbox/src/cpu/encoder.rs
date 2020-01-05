@@ -323,7 +323,7 @@ impl Encoder {
                     Err(why) => return Err(why),
                 }
             }
-            Op::Mul16 | Op::Imul16 => {
+            Op::Div16 | Op::Mul16 | Op::Imul16 => {
                 match self.math_instr16(op) {
                     Ok(data) => out.extend(data),
                     Err(why) => return Err(why),
@@ -598,7 +598,7 @@ impl Encoder {
             Op::Neg8 => 3,
             Op::Mul8 | Op::Mul16 => 4,
             Op::Imul8 | Op::Imul16 => 5,
-            Op::Div8 => 6,
+            Op::Div8 | Op::Div16 => 6,
             Op::Idiv8 => 7,
             _ => panic!("math_get_index {:?}", op),
         }
