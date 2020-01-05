@@ -20,6 +20,8 @@ fn main() {
     let affected_registers = vec!("ax", "dx");
 
     let ops_to_fuzz = vec!(
+        
+        
         //Op::Cmpsw,
 
         
@@ -31,7 +33,8 @@ fn main() {
 
         /*
         // SEEMS ALL OK
-        Op::Aaa, Op::Aam,, Op::Aas, Op::Aad, Op::Daa, Op::Das,
+        Op::Bt, Op::Bsf,
+        Op::Aaa, Op::Aad, Op::Aam, Op::Aas, Op::Daa, Op::Das,
         Op::Shr8, Op::Sar8,
         Op::Cmp8, Op::And8, Op::Xor8, Op::Or8, Op::Add8, Op::Adc8, Op::Sub8, Op::Sbb8,
         Op::Test8, Op::Not8, Op::Mul8, Op::Imul8, Op::Xchg8, Op::Neg8,
@@ -112,6 +115,18 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             // test r/m8, imm8
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
+        )}
+        Op::Bsf => {vec!(
+            // bsf r16, r/m16
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(rng.gen())),
+            Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg16(R::BX)),
+        )}
+        Op::Bt => {vec!(
+            // bt r/m16, r16
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(rng.gen())),
+            Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg16(R::BX)),
         )}
         Op::Mul8 | Op::Imul8 => { vec!(
             // mul r/m8      ax = al * r/m

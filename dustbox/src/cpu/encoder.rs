@@ -73,6 +73,18 @@ impl Encoder {
             Op::Das => out.push(0x2F),
             Op::Aaa => out.push(0x37),
             Op::Aas => out.push(0x3F),
+            Op::Bsf => {
+                // bsf r16, r/m16
+                out.push(0x0F);
+                out.push(0xBC);
+                out.extend(self.encode_r_rm(&op.params));
+            }
+            Op::Bt => {
+                // bt r/m16, r16
+                out.push(0x0F);
+                out.push(0xA3); // XXX BT r/m16, imm8   form is 0xBA
+                out.extend(self.encode_rm_r(&op.params));
+            }
             Op::Cmc => out.push(0xF5),
             Op::Clc => out.push(0xF8),
             Op::Stc => out.push(0xF9),

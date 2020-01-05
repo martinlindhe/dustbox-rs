@@ -20,6 +20,7 @@ pub enum VmRunner {
 /// return false on failure
 pub fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&str], affected_flag_mask: u16) -> bool {
     let mut machine = Machine::deterministic();
+    println!("EXECUTING {:X?}", data);
     machine.load_executable(data);
     machine.execute_instructions(op_count);
 
@@ -132,9 +133,10 @@ impl AffectedFlags {
             Op::Aaa | Op::Aas => AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0, d:0, i:0}.mask(),  // C A
             Op::Rol8 | Op::Rcl8 | Op::Ror8 | Op::Rcr8 | Op::Mul8 | Op::Imul8 => AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0, d:0, i:0}.mask(), // C O
             Op::Aad | Op::Aam | Op::Test8 => AffectedFlags{s:1, z:1, p:1, c:0, a:0, o:0, d:0, i:0}.mask(),        // S Z P
-            Op::Clc | Op::Cmc | Op::Stc => AffectedFlags{c:1, a:0, o:0, s:0, z:0, p:0, d:0, i:0}.mask(),  // C
+            Op::Bt | Op::Clc | Op::Cmc | Op::Stc => AffectedFlags{c:1, a:0, o:0, s:0, z:0, p:0, d:0, i:0}.mask(),  // C
             Op::Cld | Op::Std => AffectedFlags{d:1, c:0, a:0, o:0, s:0, z:0, p:0, i:0}.mask(),  // D
             Op::Cli | Op::Sti => AffectedFlags{i:1, d:0, c:0, a:0, o:0, s:0, z:0, p:0}.mask(),  // I
+            Op::Bsf => AffectedFlags{s:0, z:1, p:0, c:0, a:0, o:0, d:0, i:0}.mask(),        // Z
             _ => panic!("AffectedFlags: unhandled op {:?}", op),
         }
     }
