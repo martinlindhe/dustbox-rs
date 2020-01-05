@@ -189,7 +189,15 @@ pub enum Op {
     Pushf,
 
     Rcl8, Rcl16, Rcl32,
-    Rcr8, Rcr16, Rcr32,
+
+    /// Rotate 9 bits (CF, r/m8) right
+    Rcr8,
+    
+    /// Rotate 17 bits (CF, r/m16) right
+    Rcr16,
+    
+    /// Rotate 33 bits (CF, r/m32) right
+    Rcr32,
 
     Retn, Retf, RetImm16,
 

@@ -24,17 +24,21 @@ fn main() {
 
         //Op::Cmp16, Op::And16, Op::Xor16, Op::Or16, Op::Add16, Op::Adc16, Op::Sub16, Op::Sbb16,
 
-        // Op::Shr8, Op::Sar8, // OK !
-        //Op::Rcr8,       // XXX MAJOR - REGS DIFFER !!!
+        Op::Shl8,  // dosbox O differs.   winxp O differs
+
+
+        // UNSURE: overflow is identical to bochs and dosbox, but differs in WinXP vm:
+        //Op::Rcr8,
 
         // DIFFERS FROM WINXP:
-        //Op::Shl8, Op::Rcl8, Op::Rol8, Op::Ror8,          // XXX overflow flag differs
+        //, Op::Rcl8, Op::Rol8, Op::Ror8,          // XXX overflow flag differs
         //Op::Shld, // overflow flag is wrong
         //Op::Shrd, // overflow flag is wrong
         //Op::Cmpsw,        // XXX not impl encoding
 
         /*
         // SEEMS ALL OK:
+        Op::Shr8, Op::Sar8, // OK !
         Op::Div8, Op::Div16, Op::Idiv8, Op::Idiv16, // seems correct. NOTE that winxp crashes with "Divide overflow" on some input
         Op::Bt, Op::Bsf,
         Op::Aaa, Op::Aad, Op::Aam, Op::Aas, Op::Daa, Op::Das,
@@ -65,6 +69,7 @@ fn main() {
         let mut failures = 0;
         for _ in 0..iterations_per_op {
             let runner = VmRunner::VmHttp;
+            //let runner = VmRunner::DosboxX;
             let affected_flags_mask = AffectedFlags::for_op(&op);
 
             let mut ops = vec!(
@@ -122,6 +127,8 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
         Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::Rol8 | Op::Ror8 | Op::Rcl8 | Op::Rcr8 |
         Op::Cmp8 | Op::And8 | Op::Xor8 | Op::Or8 | Op::Add8 | Op::Adc8 | Op::Sub8 | Op::Sbb8 | Op::Test8 => { vec!(
             // test r/m8, imm8
+            Instruction::new1(Op::Push16, Parameter::Imm16(rng.gen())),
+            Instruction::new(Op::Popf),
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
         )}

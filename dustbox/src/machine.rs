@@ -1918,23 +1918,22 @@ impl Machine {
             }
             Op::Rcr8 => {
                 // two arguments
-                // rotate 9 bits right `op1` times
-                let mut count = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u16/* & 0x1F*/;
-                if count % 9 != 0 {
-                    count %= 9;
-                    let cf = self.cpu.regs.flags.carry_val() as u16;
+                let count = ((self.cpu.read_parameter_value(&self.mmu, &op.params.src) & 0x1F) % 9) as u16;
+                if count != 0 {
                     let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
-                    let res = (op1 >> count | (cf << (8 - count)) | (op1 << (9 - count))) as u8;
+                    let cf = self.cpu.regs.flags.carry_val() as u16;
+
+                    let res = ((op1 >> count) | (cf << (8 - count)) | (op1 << (9 - count))) as u8;
                     self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, res);
-                    self.cpu.regs.flags.carry = (op1 >> (count - 1)) & 1 != 0;
-                    // The OF flag is set to the exclusive OR of the two most-significant bits of the result.
-                    self.cpu.regs.flags.overflow = (res ^ (res << 1)) & 0x80 != 0; // dosbox
-                    //self.cpu.regs.flags.overflow = (((res << 1) ^ res) >> 7) & 0x1 != 0; // bochs. of = result6 ^ result7
+
+                    // NOTE: overflow is identical to bochs and dosbox, but differs in WinXP vm.
+                    let of = ((res ^ (res << 1)) & 0x80) >> 7;
+                    self.cpu.regs.flags.carry = (op1 >> (count - 1)) & 0x1 != 0;
+                    self.cpu.regs.flags.overflow = of != 0;
                 }
             }
             Op::Rcr16 => {
                 // two arguments
-                // rotate 9 bits right `op1` times
                 let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let count = (self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u32 & 0x1F) % 17;
                 if count > 0 {
