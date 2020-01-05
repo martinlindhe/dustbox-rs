@@ -155,13 +155,13 @@ impl AffectedFlags {
             Op::Rol8 | Op::Rcl8 | Op::Ror8 | Op::Rcr8 | Op::Mul8 | Op::Mul16 | Op::Imul8 | Op::Imul16 =>
                 AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0, d:0, i:0}.mask(), // C O
 
-            Op::Sub8 | Op::Sbb8 |
-            Op::Add8 | Op::Adc8 | Op::Cmp8 | Op::Cmp16 | Op::Neg8 | Op::Neg16 |
-            Op::Shrd | Op::Cmpsw =>
+            Op::Add8 | Op::Add16 | Op::Adc8 | Op::Adc16 |
+            Op::Sub8 | Op::Sub16 | Op::Sbb8 | Op::Sbb16 |
+            Op::Cmp8 | Op::Cmp16 | Op::Neg8 | Op::Neg16 | Op::Shrd | Op::Cmpsw =>
                 AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:1, d:0, i:0}.mask(), // C A S Z P O
 
-            Op::Aad | Op::Aam | Op::Xor8 | Op::Test8 | Op::Test16 |
-            Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::And8 | Op::Or8 =>
+            Op::Aad | Op::Aam | Op::Xor8 | Op::Xor16 | Op::Test8 | Op::Test16 |
+            Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::And8 | Op::And16 | Op::Or8 | Op::Or16 =>
                 AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1, d:0, i:0}.mask(), // C O S Z P
 
             Op::Daa | Op::Das =>

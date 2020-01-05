@@ -362,7 +362,7 @@ fn can_encode_cmp8() {
     let op = Instruction::new2(Op::Cmp8, Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10), Parameter::Reg8(R::BH));
     assert_encdec(&op, "cmp [bp+0x10],bh", vec!(0x38, 0x7E, 0x10));
 
-    // r/m8, r8  (dst is AMode::BP + imm8)    - reversed
+    // r8, r/m8  (src is AMode::BP + imm8)
     let op = Instruction::new2(Op::Cmp8, Parameter::Reg8(R::BH), Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10));
     assert_encdec(&op, "cmp bh,[bp+0x10]", vec!(0x3A, 0x7E, 0x10));
 
@@ -385,10 +385,37 @@ fn can_encode_cmp8() {
 
 #[test]
 fn can_encode_cmp16() {
-    // XXX cmp16
     // r16, imm16
-    //let op = Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(0x8844));
-    //assert_encdec(&op, "mov bx,0x8844", vec!(0xBB, 0x44, 0x88));
+    let op = Instruction::new2(Op::Cmp16, Parameter::Reg16(R::BX), Parameter::Imm16(0xFF40));
+    assert_encdec(&op, "cmp bx,0xff40", vec!(0x81, 0xFB, 0x40, 0xFF));
+
+    // r/m16, r16  (dst is r16)
+    let op = Instruction::new2(Op::Cmp16, Parameter::Reg16(R::BX), Parameter::Reg16(R::DX));
+    assert_encdec(&op, "cmp bx,dx", vec!(0x39, 0xD3));
+
+    // r/m16, r16  (dst is AMode::BP + imm8)
+    let op = Instruction::new2(Op::Cmp16, Parameter::Ptr16AmodeS8(Segment::Default, AMode::BP, 0x10), Parameter::Reg16(R::BX));
+    assert_encdec(&op, "cmp [bp+0x10],bx", vec!(0x39, 0x5E, 0x10));
+
+    // r16, r/m16  (src is AMode::BP + imm8)
+    let op = Instruction::new2(Op::Cmp16, Parameter::Reg16(R::BX), Parameter::Ptr16AmodeS8(Segment::Default, AMode::BP, 0x10));
+    assert_encdec(&op, "cmp bx,[bp+0x10]", vec!(0x3B, 0x5E, 0x10));
+
+    // r16, r/m16
+    let op = Instruction::new2(Op::Cmp16, Parameter::Reg16(R::BX), Parameter::Ptr16(Segment::Default, 0xC365));
+    assert_encdec(&op, "cmp bx,[0xc365]", vec!(0x3B, 0x1E, 0x65, 0xC3));
+
+    // r/m16, r16  (dst is AMode::BP + imm8)
+    let op = Instruction::new2(Op::Cmp16, Parameter::Ptr16AmodeS16(Segment::Default, AMode::BP, -0x800), Parameter::Reg16(R::BX));
+    assert_encdec(&op, "cmp [bp-0x800],bx", vec!(0x39, 0x9E, 0x00, 0xF8));
+
+    // r16, r/m16  (dst is [imm16])
+    let op = Instruction::new2(Op::Cmp16, Parameter::Ptr16(Segment::Default, 0x8000), Parameter::Reg16(R::BX));
+    assert_encdec(&op, "cmp [0x8000],bx", vec!(0x39, 0x1E, 0x00, 0x80));
+
+    // r/m16, r8  (dst is [bx])
+    let op = Instruction::new2(Op::Cmp16, Parameter::Ptr16Amode(Segment::Default, AMode::BX), Parameter::Reg16(R::BX));
+    assert_encdec(&op, "cmp [bx],bx", vec!(0x39, 0x1F));
 }
 
 #[test]

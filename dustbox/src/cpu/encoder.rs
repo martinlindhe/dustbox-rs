@@ -341,6 +341,12 @@ impl Encoder {
                     Err(why) => return Err(why),
                 }
             }
+            Op::And16 | Op::Or16 | Op::Add16 | Op::Adc16 | Op::Sub16 | Op::Sbb16 | Op::Cmp16 | Op::Xor16 => {
+                match self.arith_instr16(op) {
+                    Ok(data) => out.extend(data),
+                    Err(why) => return Err(why),
+                }
+            }
             Op::Test16 | Op::Not16 | Op::Neg16 | Op::Div16 | Op::Idiv16 | Op::Mul16 | Op::Imul16 => {
                 match self.math_instr16(op) {
                     Ok(data) => out.extend(data),
@@ -432,6 +438,65 @@ impl Encoder {
                 // 0x20: and r/m8, r8
                 // 0x30: xor r/m8, r8
                 // 0x38: cmp r/m8, r8
+                out.push(idx);
+                out.extend(self.encode_rm_r(&ins.params));
+                Ok(out)
+            }
+            _ => Err(EncodeError::UnhandledParameter(ins.params.dst.clone())),
+        }
+    }
+
+    fn arith_instr16(&self, ins: &Instruction) -> Result<Vec<u8>, EncodeError> {
+        let mut out = vec!();
+        let idx = match ins.command {
+            Op::Add16 => 0x01,
+            Op::Or16  => 0x09,
+            Op::Adc16 => 0x11,
+            Op::Sbb16 => 0x19,
+            Op::And16 => 0x21,
+            Op::Sub16 => 0x29,
+            Op::Xor16 => 0x31,
+            Op::Cmp16 => 0x39,
+            _ => panic!("unhandled {:?}", ins.command),
+        };
+
+        if let Parameter::Reg16(r) = ins.params.dst {
+            if r == R::AX {
+                if let Parameter::Imm16(i) = ins.params.src {
+                    // 0x3D: CMP AX, imm16
+                    out.push(idx + 4);
+                    out.push(i as u8);
+                    out.push((i >> 8) as u8);
+                    return Ok(out);
+                }
+            }
+        }
+        match ins.params.dst {
+            Parameter::Reg16(r) => {
+                if let Parameter::Imm16(i) = ins.params.src {
+                    // 0x81: <arithmetic> r/m16, imm16
+                    out.push(0x81);
+                    // md 3 = register adressing
+                    let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.arith_index(&ins.command)};
+                    out.push(mrr.u8());
+                    out.push(i as u8);
+                    out.push((i >> 8) as u8);
+                } else if ins.params.src.is_ptr() {
+                    // 0x3B: CMP r16, r/m16
+                    out.push(idx + 2);
+                    out.extend(self.encode_r_rm(&ins.params));
+                } else {
+                    // 0x39: CMP r/m16, r16
+                    out.push(idx);
+                    out.extend(self.encode_rm_r(&ins.params));
+                }
+                Ok(out)
+            }
+            Parameter::Ptr16(_, _) |
+            Parameter::Ptr16Amode(_, _) |
+            Parameter::Ptr16AmodeS8(_, _, _) |
+            Parameter::Ptr16AmodeS16(_, _, _) => {
+                // 0x39: CMP r/m16, r16
                 out.push(idx);
                 out.extend(self.encode_rm_r(&ins.params));
                 Ok(out)
@@ -615,14 +680,14 @@ impl Encoder {
 
     fn arith_index(&self, op: &Op) -> u8 {
         match *op {
-            Op::Add8 => 0,
-            Op::Or8  => 1,
-            Op::Adc8 => 2,
-            Op::Sbb8 => 3,
-            Op::And8 => 4,
-            Op::Sub8 => 5,
-            Op::Xor8 => 6,
-            Op::Cmp8 => 7,
+            Op::Add8 | Op::Add16 => 0,
+            Op::Or8  | Op::Or16  => 1,
+            Op::Adc8 | Op::Adc16 => 2,
+            Op::Sbb8 | Op::Sbb16 => 3,
+            Op::And8 | Op::And16 => 4,
+            Op::Sub8 | Op::Sub16 => 5,
+            Op::Xor8 | Op::Xor16 => 6,
+            Op::Cmp8 | Op::Cmp16 => 7,
             _ => panic!("arith_get_index {:?}", op),
         }
     }
@@ -675,14 +740,14 @@ impl Encoder {
     fn encode_rm(&self, dst: &Parameter, reg: u8) -> Vec<u8> {
         let mut out = Vec::new();
         match *dst {
-            Parameter::Ptr8(_, imm16) => {
+            Parameter::Ptr8(_, imm16) |
+            Parameter::Ptr16(_, imm16) => {
                 out.push(ModRegRm{md: 0, rm: 6, reg}.u8());
                 out.push(imm16 as u8);
                 out.push((imm16 >> 8) as u8);
             }
             Parameter::Ptr8Amode(_, ref amode) |
             Parameter::Ptr16Amode(_, ref amode) => {
-                // XXX how does md:0, rm: 0 not collide with above one...
                 out.push(ModRegRm{md: 0, rm: amode.index() as u8, reg}.u8());
             }
             Parameter::Ptr8AmodeS8(_, ref amode, imm) |
@@ -690,7 +755,8 @@ impl Encoder {
                 out.push(ModRegRm{md: 1, rm: amode.index() as u8, reg}.u8());
                 out.push(imm as u8);
             },
-            Parameter::Ptr8AmodeS16(_, ref amode, imm16) => {
+            Parameter::Ptr8AmodeS16(_, ref amode, imm16) |
+            Parameter::Ptr16AmodeS16(_, ref amode, imm16) => {
                 out.push(ModRegRm{md: 2, rm: amode.index() as u8, reg}.u8());
                 out.push(imm16 as u8);
                 out.push((imm16 >> 8) as u8);

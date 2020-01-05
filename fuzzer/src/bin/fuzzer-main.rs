@@ -20,21 +20,16 @@ fn main() {
     let affected_registers = vec!("ax", "dx");
 
     let ops_to_fuzz = vec!(
-        // XXX test rest of 16-bit math:
 
-        //Op::Cmp16, Op::And16, Op::Xor16, Op::Or16, Op::Add16, Op::Adc16, Op::Sub16, Op::Sbb16,
+        // ENCODING NOT IMPLEMENTED:
+        //Op::Cmpsw,
 
-
-
-        // DIFFERS FROM WINXP:
-        //, Op::Rcl8, Op::Rol8, Op::Ror8,          // XXX overflow flag differs
-        //Op::Shld, // overflow flag is wrong
-        //Op::Shrd, // overflow flag is wrong
-        //Op::Cmpsw,        // XXX not impl encoding
+        // ERROR - regs differ vs dosbox, regs match vs winxp! - overflow flag is wrong in both:
+        // Op::Shld, Op::Shrd,
 
         /*
         // UNSURE: overflow is identical to bochs and dosbox, but differs in WinXP vm:
-        Op::Rcr8, Op::Shl8,
+        Op::Rcl8, Op::Rcr8, Op::Ror8, Op::Shl8, Op::Rol8,
 
         // SEEMS ALL OK:
         Op::Shr8, Op::Sar8, // OK !
@@ -42,9 +37,12 @@ fn main() {
         Op::Bt, Op::Bsf,
         Op::Aaa, Op::Aad, Op::Aam, Op::Aas, Op::Daa, Op::Das,
         
-        Op::Cmp8, Op::And8, Op::Xor8, Op::Or8,
-        Op::Add8, Op::Adc8,
-        Op::Sub8, Op::Sbb8,
+        Op::Cmp8, Op::Cmp16,
+        Op::And8, Op::And16,
+        Op::Xor8, Op::Xor16,
+        Op::Or8, Op::Or16,
+        Op::Add8, Op::Add16, Op::Adc8, Op::Adc16,
+        Op::Sub8, Op::Sub16, Op::Sbb8, Op::Sbb16,
         Op::Test8, Op::Test16,
         Op::Not8, Op::Not16,
         Op::Neg8, Op::Neg16,
@@ -67,8 +65,8 @@ fn main() {
         println!("fuzzing {} forms of {:?} ...", iterations_per_op, op);
         let mut failures = 0;
         for _ in 0..iterations_per_op {
-            //let runner = VmRunner::VmHttp;
-            let runner = VmRunner::DosboxX;
+            let runner = VmRunner::VmHttp;
+            //let runner = VmRunner::DosboxX;
             let affected_flags_mask = AffectedFlags::for_op(&op);
 
             let mut ops = vec!(
@@ -207,7 +205,7 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new(op.clone()),
         )}
-        Op::Test16 => { vec!(
+        Op::Add16 | Op::Adc16 | Op::And16 | Op::Cmp16 | Op::Sub16 | Op::Or16 | Op::Sbb16 | Op::Test16 | Op::Xor16 => { vec!(
             // TEST AX, imm16
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
