@@ -24,11 +24,7 @@ fn main() {
 
         //Op::Cmp16, Op::And16, Op::Xor16, Op::Or16, Op::Add16, Op::Adc16, Op::Sub16, Op::Sbb16,
 
-        Op::Shl8,  // dosbox O differs.   winxp O differs
 
-
-        // UNSURE: overflow is identical to bochs and dosbox, but differs in WinXP vm:
-        //Op::Rcr8,
 
         // DIFFERS FROM WINXP:
         //, Op::Rcl8, Op::Rol8, Op::Ror8,          // XXX overflow flag differs
@@ -37,6 +33,9 @@ fn main() {
         //Op::Cmpsw,        // XXX not impl encoding
 
         /*
+        // UNSURE: overflow is identical to bochs and dosbox, but differs in WinXP vm:
+        Op::Rcr8, Op::Shl8,
+
         // SEEMS ALL OK:
         Op::Shr8, Op::Sar8, // OK !
         Op::Div8, Op::Div16, Op::Idiv8, Op::Idiv16, // seems correct. NOTE that winxp crashes with "Divide overflow" on some input
@@ -68,8 +67,8 @@ fn main() {
         println!("fuzzing {} forms of {:?} ...", iterations_per_op, op);
         let mut failures = 0;
         for _ in 0..iterations_per_op {
-            let runner = VmRunner::VmHttp;
-            //let runner = VmRunner::DosboxX;
+            //let runner = VmRunner::VmHttp;
+            let runner = VmRunner::DosboxX;
             let affected_flags_mask = AffectedFlags::for_op(&op);
 
             let mut ops = vec!(

@@ -91,72 +91,87 @@ impl Flags {
         self.parity = b;
     }
 
+    /// Set equal to the most-significant bit of the result,
+    /// which is the sign bit of a signed integer.
+    /// (0 indicates a positive value and 1 indicates a negative value.)
     pub fn set_sign_u8(&mut self, v: usize) {
-        // Set equal to the most-significant bit of the result,
-        // which is the sign bit of a signed integer.
-        // (0 indicates a positive value and 1 indicates a negative value.)
         self.sign = v & 0x80 != 0;
     }
+
     pub fn set_sign_u16(&mut self, v: usize) {
         self.sign = v & 0x8000 != 0;
     }
+
     pub fn set_sign_u32(&mut self, v: usize) {
         self.sign = v & 0x8000_0000 != 0;
     }
-    pub fn set_parity(&mut self, v: usize) {
-        // Set if the least-significant byte of the result contains an
-        // even number of 1 bits; cleared otherwise.
 
+    /// Set if the least-significant byte of the result contains an
+    /// even number of 1 bits; cleared otherwise.
+    pub fn set_parity(&mut self, v: usize) {
         // TODO later: rework flag register to be a u16 directly, use FLAG_PF
         self.parity = PARITY_LOOKUP[v & 0xFF] != 0
     }
+
+    /// Zero flag — Set if the result is zero; cleared otherwise.
     pub fn set_zero_u8(&mut self, v: usize) {
-        // Zero flag — Set if the result is zero; cleared otherwise.
         self.zero = v.trailing_zeros() >= 8;
     }
+
     pub fn set_zero_u16(&mut self, v: usize) {
         self.zero = v.trailing_zeros() >= 16;
     }
+
     pub fn set_zero_u32(&mut self, v: usize) {
         self.zero = v.trailing_zeros() >= 32;
     }
+
+    /// Set if an arithmetic operation generates a carry or a borrow out
+    /// of bit 3 of the result; cleared otherwise. This flag is used in
+    /// binary-coded decimal (BCD) arithmetic.
     pub fn set_adjust(&mut self, res: usize, v1: usize, v2: usize) {
-        // Set if an arithmetic operation generates a carry or a borrow out
-        // of bit 3 of the result; cleared otherwise. This flag is used in
-        // binary-coded decimal (BCD) arithmetic.
         self.adjust = (res ^ (v1 ^ v2)) & 0x10 != 0;
     }
+
+    /// Set if the integer result is too large a positive number or too
+    /// small a negative number (excluding the sign-bit) to fit in the
+    /// destination operand; cleared otherwise. This flag indicates an
+    /// overflow condition for signed-integer (two’s complement) arithmetic.
     pub fn set_overflow_add_u8(&mut self, res: usize, v1: usize, v2: usize) {
-        // Set if the integer result is too large a positive number or too
-        // small a negative number (excluding the sign-bit) to fit in the
-        // destination operand; cleared otherwise. This flag indicates an
-        // overflow condition for signed-integer (two’s complement) arithmetic.
         self.overflow = (res ^ v1) & (res ^ v2) & 0x80 != 0;
     }
+
     pub fn set_overflow_add_u16(&mut self, res: usize, v1: usize, v2: usize) {
         self.overflow = (res ^ v1) & (res ^ v2) & 0x8000 != 0;
     }
+
     pub fn set_overflow_add_u32(&mut self, res: usize, v1: usize, v2: usize) {
         self.overflow = (res ^ v1) & (res ^ v2) & 0x8000_0000 != 0;
     }
+
     pub fn set_overflow_sub_u8(&mut self, res: usize, v1: usize, v2: usize) {
         self.overflow = (v2 ^ v1) & (v2 ^ res) & 0x80 != 0;
     }
+
     pub fn set_overflow_sub_u16(&mut self, res: usize, v1: usize, v2: usize) {
         self.overflow = (v2 ^ v1) & (v2 ^ res) & 0x8000 != 0;
     }
+
     pub fn set_overflow_sub_u32(&mut self, res: usize, v1: usize, v2: usize) {
         self.overflow = (v2 ^ v1) & (v2 ^ res) & 0x8000_0000 != 0;
     }
+
+    /// Set if an arithmetic operation generates a carry or a borrow out of
+    /// the most-significant bit of the result; cleared otherwise. This flag
+    /// indicates an overflow condition for unsigned-integer arithmetic.
     pub fn set_carry_u8(&mut self, res: usize) {
-        // Set if an arithmetic operation generates a carry or a borrow out of
-        // the most-significant bit of the result; cleared otherwise. This flag
-        // indicates an overflow condition for unsigned-integer arithmetic.
         self.carry = res & 0x100 != 0;
     }
+
     pub fn set_carry_u16(&mut self, res: usize) {
         self.carry = res & 0x1_0000 != 0;
     }
+
     pub fn set_carry_u32(&mut self, res: usize) {
         self.carry = res & 0x1_0000_0000 != 0;
     }
@@ -185,6 +200,7 @@ impl Flags {
             0
         }
     }
+
     pub fn carry_numeric(&self) -> String {
         format!("{}", if self.carry {
             1
@@ -192,6 +208,7 @@ impl Flags {
             0
         })
     }
+
     pub fn zero_numeric(&self) -> String {
         format!("{}", if self.zero {
             1
@@ -199,9 +216,11 @@ impl Flags {
             0
         })
     }
+
     pub fn sign_numeric(&self) -> String {
         format!("{}", if self.sign { 1 } else { 0 })
     }
+
     pub fn overflow_numeric(&self) -> String {
         format!("{}", if self.overflow {
             1
@@ -209,6 +228,7 @@ impl Flags {
             0
         })
     }
+
     pub fn adjust_numeric(&self) -> String {
         format!("{}", if self.adjust {
             1
@@ -216,6 +236,7 @@ impl Flags {
             0
         })
     }
+
     pub fn parity_numeric(&self) -> String {
         format!("{}", if self.parity {
             1
@@ -223,6 +244,7 @@ impl Flags {
             0
         })
     }
+
     pub fn direction_numeric(&self) -> String {
         format!("{}", if self.direction {
             1
@@ -230,6 +252,7 @@ impl Flags {
             0
         })
     }
+
     pub fn interrupt_numeric(&self) -> String {
         format!("{}", if self.interrupt {
             1

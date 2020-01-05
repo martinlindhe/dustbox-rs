@@ -232,6 +232,7 @@ pub enum Op {
     /// alias setne: Set byte if not equal (ZF=0).
     Setnz,
 
+    /// Multiply `dst` by 2, `src` times (alias sal)
     Shl8, Shl16, Shl32,
 
     /// Double Precision Shift Left

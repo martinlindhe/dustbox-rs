@@ -2231,33 +2231,29 @@ impl Machine {
                 self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, val);
             }
             Op::Shl8 => {
-                // Multiply `dst` by 2, `src` times.
-                // two arguments    (alias: sal)
-                let count = self.cpu.read_parameter_value(&self.mmu, &op.params.src) & 0b1_1111;
-                // XXX differs from dosbox & winxp
-                //if count > 0 {
+                // two arguments
+                let count = self.cpu.read_parameter_value(&self.mmu, &op.params.src) & 0x1F;
+                if count > 0 {
                     let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
-                    let res = if count < 8 {
-                        op1 << count
-                    } else {
-                        0
-                    };
-                    let cf = if count > 8 {
-                        0
-                    } else {
-                        op1 >> (8 - count) & 0x1
-                    };
-                    self.cpu.regs.flags.carry = cf != 0;
-                    //self.cpu.regs.flags.overflow = cf ^ (res >> 7) != 0; // bochs
-                    //self.cpu.regs.flags.overflow = (op1 ^ res) & 0x80 != 0; // dosbox buggy
-                    self.cpu.regs.flags.overflow = res >> 7 ^ cf as u16 != 0; // MSB of result XOR CF. WARNING: This only works because FLAGS_CF == 1
-                    //self.cpu.regs.flags.overflow = ((op1 ^ res) >> (12 - 8)) & 0x800 != 0; // qemu
-                    //self.cpu.regs.flags.adjust = count & 0x1F != 0; // XXX dosbox. AF not set in winxp
+
+                    let mut res: u16 = 0;
+                    let mut of: u16 = 0;
+                    let mut cf: u16 = 0;
+                    if count <= 8 {
+                        res = op1 << count;
+                        cf = (op1 >> (8 - count)) & 0x1;
+                        // NOTE: overflow is identical to bochs and dosbox, but differs in WinXP vm.
+                        of = cf ^ (res >> 7);
+                    }
+
+                    self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, res as u8);
+
                     self.cpu.regs.flags.set_sign_u8(res as usize);
                     self.cpu.regs.flags.set_zero_u8(res as usize);
                     self.cpu.regs.flags.set_parity(res as usize);
-                    self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, res as u8);
-                //}
+                    self.cpu.regs.flags.carry = cf != 0;
+                    self.cpu.regs.flags.overflow = of != 0;
+                }
             }
             Op::Shl16 => {
                 // Multiply `dst` by 2, `src` times.
