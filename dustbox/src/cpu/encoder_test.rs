@@ -143,6 +143,21 @@ fn can_encode_imul8() {
 }
 
 #[test]
+fn can_encode_imul16() {
+    // 1 operand: IMUL r/m16
+    let op = Instruction::new1(Op::Imul16, Parameter::Reg16(R::DX));
+    assert_encdec(&op, "imul dx", vec!(0xF7, 0xEA));
+
+    // 2 operands: IMUL r16, r/m16
+    let op = Instruction::new2(Op::Imul16, Parameter::Reg16(R::CX), Parameter::Reg16(R::BX));
+    assert_encdec(&op, "imul cx,bx", vec!(0x0F, 0xAF, 0xCB));
+
+    // 3 operands: IMUL r16, r/m16, imm8
+    let op = Instruction::new3(Op::Imul16, Parameter::Reg16(R::CX), Parameter::Reg16(R::BX), Parameter::ImmS8(0x41));
+    assert_encdec(&op, "imul cx,bx,byte +0x41", vec!(0x6B, 0xCB, 0x41));
+}
+
+#[test]
 fn can_encode_div8() {
     // r/m8
     let op = Instruction::new1(Op::Div8, Parameter::Reg8(R::BH));

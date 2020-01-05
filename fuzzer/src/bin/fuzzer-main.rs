@@ -20,9 +20,8 @@ fn main() {
     let affected_registers = vec!("ax", "dx");
 
     let ops_to_fuzz = vec!(
+        // XXX test Mul16, Div16, Idiv16 flag errors + rest of 16-bit math
 
-        // Op::Imul16, // BROKEN flags .... imul8 works
-        
         //Op::Cmpsw,        // XXX not impl encoding
 
         
@@ -39,6 +38,7 @@ fn main() {
         Op::Shr8, Op::Sar8,
         Op::Cmp8, Op::And8, Op::Xor8, Op::Or8, Op::Add8, Op::Adc8, Op::Sub8, Op::Sbb8,
         Op::Test8, Op::Not8, Op::Mul8, Op::Imul8, Op::Xchg8, Op::Neg8,
+        Op::Imul16,
         Op::Lahf,
         Op::Sahf, Op::Salc,
         Op::Nop,
@@ -146,7 +146,11 @@ fn get_mutator_snippet(op: &Op, rng: &mut XorShiftRng) -> Vec<Instruction> {
             // imul r/m16        dx:ax = AX ∗ r/m
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(rng.gen())),
-            Instruction::new1(op.clone(), Parameter::Reg16(R::BX)),
+
+            // Instruction::new1(op.clone(), Parameter::Reg16(R::BX)), // 1-operand form
+            // Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg16(R::BX)), // 2-operand form
+
+            Instruction::new3(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg16(R::BX), Parameter::ImmS8(rng.gen())), // 3-operand form
         )}
         Op::Xchg8 => { vec!(
             // xchg r/m8, r8

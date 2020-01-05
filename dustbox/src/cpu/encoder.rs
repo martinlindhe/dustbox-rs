@@ -471,9 +471,32 @@ impl Encoder {
 
     fn math_instr16(&self, ins: &Instruction) -> Result<Vec<u8>, EncodeError> {
         let mut out = vec!();
+
+        match ins.params.src2 {
+            Parameter::ImmS8(v) => {
+                // 3 operand form: 6B /r ib
+                out.push(0x6B);
+                out.extend(self.encode_r_rm(&ins.params));
+                out.push(v as u8);
+                return Ok(out);
+            }
+            _ => {}
+        }
+
+        match ins.params.src {
+            Parameter::Reg16(_) => {
+                // 2 operand form: 0F AF /r
+                out.push(0x0F);
+                out.push(0xAF);
+                out.extend(self.encode_r_rm(&ins.params));
+                return Ok(out);
+            }
+            _ => {}
+        }
+
         match ins.params.dst {
             Parameter::Reg16(r) => {
-                // 0xF7: <math> r/m16.  reg = instruction
+                // 1 operand form: F7 /5
                 out.push(0xF7);
                 out.push(ModRegRm::rm_reg(r.index() as u8, self.math_index(&ins.command)));
                 Ok(out)

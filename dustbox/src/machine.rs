@@ -1097,14 +1097,12 @@ impl Machine {
             Op::Imul8 => {
                 // NOTE: only 1-parameter imul8 instruction exists
                 // IMUL r/m8               : AX← AL ∗ r/m byte.
+
                 let f1 = self.cpu.get_r8(R::AL) as i8;
                 let f2 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as i8;
                 let ax = (i16::from(f1) * i16::from(f2)) as u16; // product
                 self.cpu.set_r16(R::AX, ax);
 
-                // For the one operand form of the instruction, the CF and OF flags are set when significant
-                // bits are carried into the upper half of the result and cleared when the result fits
-                // exactly in the lower half of the result.
                 if (ax & 0xFF80) == 0xFF80 || (ax & 0xFF80) == 0x0000 {
                     self.cpu.regs.flags.carry = false;
                     self.cpu.regs.flags.overflow = false;
@@ -1117,36 +1115,56 @@ impl Machine {
                 match op.params.count() {
                     1 => {
                         // IMUL r/m16               : DX:AX ← AX ∗ r/m word.
-                        let a = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as i16;
-                        let tmp = (self.cpu.get_r16(R::AX) as i16) as isize * a as isize;
-                        self.cpu.set_r16(R::AX, tmp as u16);
-                        self.cpu.set_r16(R::DX, (tmp >> 16) as u16);
+                        let a = self.cpu.get_r16(R::AX);
+                        let b = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as i16;
+                        let temps = (a as i16) as isize * b as isize;
+                        self.cpu.set_r16(R::AX, temps as u16);
+                        self.cpu.set_r16(R::DX, (temps >> 16) as u16);
+
+                        let tempi = temps as u32;
+                        if (tempi & 0xFFFF_8000) == 0xFFFF_8000 || (tempi & 0xFFFF_8000) == 0x0000_0000 {
+                            self.cpu.regs.flags.carry = false;
+                            self.cpu.regs.flags.overflow = false;
+                        } else {
+                            self.cpu.regs.flags.carry = true;
+                            self.cpu.regs.flags.overflow = true;
+                        }
                     }
                     2 => {
                         // IMUL r16, r/m16          : word register ← word register ∗ r/m16.
                         let a = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                        let b = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
-                        let tmp = a as isize * b as isize;
-                        self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, tmp as u16);
+                        let b = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as i16;
+                        let temps = (a as i16) as isize * b as isize;
+                        self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, temps as u16);
+
+                        let tempi = temps as u32;
+                        if (tempi & 0xFFFF_8000) == 0xFFFF_8000 || (tempi & 0xFFFF_8000) == 0x0000_0000 {
+                            self.cpu.regs.flags.carry = false;
+                            self.cpu.regs.flags.overflow = false;
+                        } else {
+                            self.cpu.regs.flags.carry = true;
+                            self.cpu.regs.flags.overflow = true;
+                        }
                     }
                     3 => {
                         // IMUL r16, r/m16, imm8    : word register ← r/m16 ∗ sign-extended immediate byte.
                         // IMUL r16, r/m16, imm16   : word register ← r/m16 ∗ immediate word.
                         let a = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
-                        let b = self.cpu.read_parameter_value(&self.mmu, &op.params.src2);
-                        let tmp = b as isize * a as isize;
-                        self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, tmp as u16);
+                        let b = self.cpu.read_parameter_value(&self.mmu, &op.params.src2) as i16;
+                        let temps = (a as i16) as isize * b as isize;
+                        self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, temps as u16);
+
+                        let tempi = temps as u32;
+                        if (tempi & 0xFFFF_8000) == 0xFFFF_8000 || (tempi & 0xFFFF_8000) == 0x0000_0000 {
+                            self.cpu.regs.flags.carry = false;
+                            self.cpu.regs.flags.overflow = false;
+                        } else {
+                            self.cpu.regs.flags.carry = true;
+                            self.cpu.regs.flags.overflow = true;
+                        }
                     }
                     _ => unreachable!(),
                 }
-
-                // XXX flags
-                // Flags Affected
-                // For the one operand form of the instruction, the CF and OF flags are set when significant bits are carried
-                // into the upper half of the result and cleared when the result fits exactly in the lower half of the result.
-                // For the two- and three-operand forms of the instruction, the CF and OF flags are set when the result must be
-                // truncated to fit in the destination operand size and cleared when the result fits exactly in the destination
-                // operand size. The SF, ZF, AF, and PF flags are undefined.
             }
             Op::Imul32 => {
                 match op.params.count() {

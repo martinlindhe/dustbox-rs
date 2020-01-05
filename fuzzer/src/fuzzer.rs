@@ -18,13 +18,16 @@ pub enum VmRunner {
     DosboxX,
 }
 
+const DEBUG_CODEGEN: bool = false;
+
 /// return false on failure
 pub fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&str], affected_flag_mask: u16) -> bool {
     let mut machine = Machine::deterministic();
     println!("EXECUTING {:X?}", data);
-    // XXX dump ndisasm
 
-    println!("{}", ndisasm_bytes(&data).unwrap().join("\n"));
+    if DEBUG_CODEGEN {
+        println!("{}", ndisasm_bytes(&data).unwrap().join("\n"));
+    }
 
 
     machine.load_executable(data);

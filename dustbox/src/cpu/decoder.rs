@@ -739,13 +739,13 @@ impl Decoder {
                     // imul r16, r/m16, imm8
                     op.command = Op::Imul16;
                     op.params = self.r16_rm16(&mut mmu, op);
-                    op.params.src2 = Parameter::Imm8(self.read_u8(mmu));
+                    op.params.src2 = Parameter::ImmS8(self.read_s8(mmu));
                 }
                 OperandSize::_32bit => {
                     // imul r32, r/m32, imm8
                     op.command = Op::Imul32;
                     op.params = self.r32_rm32(&mut mmu, op);
-                    op.params.src2 = Parameter::Imm8(self.read_u8(mmu));
+                    op.params.src2 = Parameter::ImmS8(self.read_s8(mmu));
                 }
             },
             0x6C => op.command = Op::Insb,

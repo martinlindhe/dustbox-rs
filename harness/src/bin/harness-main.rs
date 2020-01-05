@@ -17,8 +17,8 @@ use dustbox::tools;
 fn main() {
     // XXX TODO read harness listing from text file + take filename as cli argument
     demo_com_16bit();
-    // demo_com_32bit();
-    // games_commercial();
+    demo_com_32bit();
+    games_commercial();
 }
 
 
