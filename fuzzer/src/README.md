@@ -22,15 +22,12 @@ DosboxX:
 - uses the `dosbox-x` command line to execute programs inside a Dosbox-X environment.
 
 ## TODO
-- cli arg: number of mutations per OP
-- vmhttp: ip as cli argument
 
-- deterministic mode toggle cli (give seed as arg)
- - take prober.com.tpl exact path as arg
+- able to chose runner from cli
+- take prober.com.tpl exact path as arg
 - vmrun: able to specify VM name to execute program in on cli.
 - vmrun: should be able to extract full path to vm:s from "vmrun" cmd if even needed ?
 - dosboxx: verity that DosboxX runner works vs original dosbox project
-- able to chose runner from cli
 
 - mutate 1, 2 and 3 operand forms of instrs
 
