@@ -62,7 +62,7 @@ fn main() {
 
     match tools::read_binary(filename) {
         Ok(data) => {
-            machine.load_executable(&data, 0x085F);
+            machine.load_executable(&data, 0x0329);
         }
         Err(what) => panic!("error {}", what),
     };
@@ -78,7 +78,7 @@ fn main() {
 
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
 
-    println!("renderer: sdl2 \"{}\"", canvas.info().name);
+    // println!("renderer: sdl2 \"{}\"", canvas.info().name);
 
     canvas.set_draw_color(pixels::Color::RGB(0, 0, 0));
     canvas.clear();
