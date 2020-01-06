@@ -4,6 +4,7 @@ use std::str;
 use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::{Read, Write};
+use std::time::{Duration, Instant};
 
 use rand::Rng;
 
@@ -29,13 +30,24 @@ pub struct FuzzConfig {
     pub remote_ip: String,
 }
 
+impl FuzzConfig {
+    fn counter_width(&self) -> usize {
+        match self.mutations_per_op {
+            0..=9     => 1,
+            10..=99   => 2,
+            100..=999 => 3,
+            _ => 4,
+        }
+    }
+}
+
 pub fn fuzz_ops<RNG: Rng + ?Sized>(runner: &CodeRunner, ops_to_fuzz: Vec<Op>, cfg: &FuzzConfig, rng: &mut RNG) {
     for op in ops_to_fuzz {
         println!("fuzzing {} forms of {:?} ...", cfg.mutations_per_op, op);
         let mut failures = 0;
-        for _ in 0..cfg.mutations_per_op {
-            let affected_flags_mask = AffectedFlags::for_op(&op);
-
+        let mut sum_duration = Duration::new(0, 0);
+        for i in 0..cfg.mutations_per_op {
+            let start = Instant::now();
             let snippet = get_mutator_snippet(&op, rng);
             let mut ops = prober_setupcode();
             ops.extend(snippet.to_vec());
@@ -46,17 +58,28 @@ pub fn fuzz_ops<RNG: Rng + ?Sized>(runner: &CodeRunner, ops_to_fuzz: Vec<Op>, cf
                 Err(why) => panic!("{}", why),
             };
 
-            if !fuzz(&runner, &data, ops.len(), affected_flags_mask, &cfg) {
+            print!("MUT {:width$}/{} {:02X?}", i + 1, cfg.mutations_per_op, data, width = cfg.counter_width());
+
+            if DEBUG_ENCODER {
+                println!("{}", ndisasm_bytes(&data).unwrap().join("\n"));
+            }
+        
+            if !fuzz(&runner, &data, ops.len(), AffectedFlags::for_op(&op), &cfg) {
                 println!("failed:");
                 println!("{}", instructions_to_str(&snippet));
                 println!("------");
                 failures += 1;
             }
+            let elapsed = start.elapsed();
+            sum_duration = sum_duration.checked_add(elapsed).unwrap();
+            println!(" in {:.2} s", elapsed.as_secs_f64());
         }
         if failures > 0 {
             let successes = cfg.mutations_per_op - failures;
             println!("{}/{} successes", successes, cfg.mutations_per_op)
         }
+        let secs = sum_duration.as_secs_f64();
+        println!("done in {:.2} s. average {:.2} s", secs, secs / (cfg.mutations_per_op as f64));
         println!("-");
     }
 }
@@ -66,11 +89,6 @@ pub fn fuzz_ops<RNG: Rng + ?Sized>(runner: &CodeRunner, ops_to_fuzz: Vec<Op>, cf
 fn fuzz(runner: &CodeRunner, data: &[u8], op_count: usize, affected_flag_mask: u16, cfg: &FuzzConfig) -> bool {
     let affected_registers = vec!("ax", "dx");
     let mut machine = Machine::deterministic();
-    println!("EXECUTING {:X?}", data);
-
-    if DEBUG_ENCODER {
-        println!("{}", ndisasm_bytes(&data).unwrap().join("\n"));
-    }
 
     machine.load_executable(data, 0x085F);
     machine.execute_instructions(op_count);
@@ -345,7 +363,6 @@ fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
 /// upload data as http post to supersafe http server running in VM
 fn stdout_from_supersafe(path: &Path, remote_ip: &str) -> String {
     use curl::easy::{Easy, Form};
-    use std::time::Duration;
     let mut dst = Vec::new();
     let mut easy = Easy::new();
     let timeout = Duration::from_millis(1000);
