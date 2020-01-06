@@ -49,7 +49,7 @@ fn run_and_save_video_frames(set: &SetDocument) {
         let mut machine = Machine::deterministic();
         let bin_path = format!("{}{}", set.root, bin);
         match tools::read_binary(&bin_path) {
-            Ok(data) => machine.load_executable(&data, 0x085F),
+            Ok(data) => machine.load_executable(&data, 0x0329),
             Err(err) => panic!("failed to read {}: {}", bin, err),
         }
 
