@@ -7,7 +7,7 @@ test-harness:
 	cargo run --release --package harness harness/sets/games-com-commercial-16bit.yml
 
 expensive-encode:
-	RUST_TEST_THREADS=1 cargo test encode -- --color always --nocapture --ignored
+	cargo test encode -- --color always --nocapture --ignored
 
 bench:
 	cargo bench --all

@@ -9,21 +9,23 @@ Used to verify instruction implementation correctness.
 
 Currently the following code runners exists:
 
-VmHttp:
+supersafe:
 
 - Connects to an instance of the [supersafe](https://github.com/martinlindhe/supersafe) program running inside a VM.
 
-VmxVmrun:
+vmrun:
 
 - uses the `vmrun` command line interface to execute programs inside a VMware Virtual Machine.
 
-DosboxX:
+dosboxx:
 
 - uses the `dosbox-x` command line to execute programs inside a Dosbox-X environment.
 
 ## TODO
 
-- able to chose runner from cli
+- supersafe.exe dont run in win98. linked to missing export KERNEL32.DLL:AddVectoredExceptionHandler
+- could run serial DOS program here too
+
 - take prober.com.tpl exact path as arg
 - vmrun: able to specify VM name to execute program in on cli.
 - vmrun: should be able to extract full path to vm:s from "vmrun" cmd if even needed ?
@@ -41,3 +43,8 @@ DosboxX:
     make use of https://crates.io/crates/serialport
     https://en.wikibooks.org/wiki/Serial_Programming/DOS_Programming
     https://www.dosbox.com/wiki/Configuration:SerialPort
+
+    use winXP + djgpp to build dos .exe
+
+    djgpp: "use unix to build DOS programs" also exists at http://www.delorie.com/djgpp/zip-picker.html
+
