@@ -16,15 +16,21 @@ use dustbox_fuzzer::fuzzer::{fuzz_ops, FuzzConfig, CodeRunner};
 fn main() {
     let matches = App::new("dustbox-fuzzer")
         .version("0.1")
-        .arg(Arg::with_name("mutations")
+        .arg(Arg::with_name("RUNNER")
+            .help("Code runner to use")
+            .required(true)
+            .index(1)
+            // XXX show options
+            .long("runner"))
+        .arg(Arg::with_name("MUTATIONS")
             .help("Number of mutations per instruction")
             .takes_value(true)
             .long("mutations"))
-        .arg(Arg::with_name("ip")
-            .help("Remote IP for supersafe client")
+        .arg(Arg::with_name("HOST")
+            .help("Remote HOST for supersafe client")
             .takes_value(true)
-            .long("ip"))
-        .arg(Arg::with_name("seed")
+            .long("host"))
+        .arg(Arg::with_name("SEED")
             .help("Specify PRNG seed for reproducibility")
             .takes_value(true)
             .long("seed"))
@@ -71,18 +77,22 @@ fn main() {
     );
 
     let cfg = FuzzConfig{
-        mutations_per_op: value_t!(matches, "mutations", usize).unwrap_or(50),
-        remote_ip: matches.value_of("ip").unwrap_or("127.0.0.1").to_string(),
+        mutations_per_op: value_t!(matches, "MUTATIONS", usize).unwrap_or(50),
+        remote_host: matches.value_of("HOST").unwrap_or("127.0.0.1").to_string(),
     };
 
-    let runner = CodeRunner::SuperSafe;
-    //let runner = CodeRunner::DosboxX;
+    let runner = match matches.value_of("RUNNER").unwrap() {
+        "supersafe" => CodeRunner::SuperSafe,
+        "dosboxx"   => CodeRunner::DosboxX,
+        "vmrun"     => CodeRunner::Vmrun,
+        _ => panic!("unrecognized runner"),
+    };
 
     // seed prng if argument was given
     let mut rng: XorShiftRng;
     let seed_value: u64;
-    if let Some(_) = matches.value_of("seed") {
-        seed_value = value_t!(matches, "seed", u64).unwrap();
+    if matches.is_present("SEED") {
+        seed_value = value_t!(matches, "SEED", u64).unwrap();
     } else {
         let mut tmp = XorShiftRng::from_entropy();
         seed_value = tmp.gen();

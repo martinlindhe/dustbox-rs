@@ -111,12 +111,14 @@ pub struct Machine {
     /// length of loaded rom in bytes (used by disassembler)
     pub rom_length: usize,
 
-    /// if true, write opcode trace to trace_file
-    tracing: bool,
-    trace_file: Option<File>,
-
     /// handlers for i/o ports and interrupts
     components: Vec<MachineComponent>,
+
+    /// if set, writes opcode trace to `trace_file`
+    trace_file: Option<File>,
+
+    /// if set, limits the execution to `trace_count` instructions
+    trace_count: Option<usize>,
 }
 
 impl Machine {
@@ -138,8 +140,8 @@ impl Machine {
             bios,
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,
-            tracing: false,
             trace_file: None,
+            trace_count: None,
             components: Vec::new(),
         };
 
@@ -158,7 +160,11 @@ impl Machine {
         };
 
         self.trace_file = Some(file);
-        self.tracing = true;
+    }
+
+    /// Limits the instruction trace to `count` instructions
+    pub fn set_trace_count(&mut self, count: usize) {
+        self.trace_count = Some(count);
     }
 
     fn register_components(&mut self) {
@@ -411,7 +417,7 @@ impl Machine {
 
         let op = self.cpu.decoder.get_instruction(&mut self.mmu, cs, ip);
 
-        if self.tracing {
+        if self.trace_file.is_some() {
             let ax = self.cpu.get_r16(R::AX);
             let bx = self.cpu.get_r16(R::BX);
             let cx = self.cpu.get_r16(R::CX);
@@ -444,6 +450,13 @@ impl Machine {
                 // let _ = write!(&mut writer, " FS:{:04X} GS:{:04X}", fs, g);
                 let _ = write!(&mut writer, " SS:{:04X}", ss);
                 let _ = writeln!(&mut writer, " C{} Z{} S{} O{} I{}", cf, zf, sf, of, iflag);
+            }
+        }
+        if let Some(max) = self.trace_count {
+            if self.cpu.instruction_count >= max {
+                self.cpu.fatal_error = true;
+                println!("[{:04X}:{:04X}] ending execution trace after {} instructions", cs, ip, self.cpu.instruction_count);
+                return;
             }
         }
 

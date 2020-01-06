@@ -18,8 +18,16 @@ use dustbox::ndisasm::ndisasm_bytes;
 
 /// Runs program code in a specific environment
 pub enum CodeRunner {
+    /// uses https://github.com/martinlindhe/supersafe to connect to client over HTTP.
+    /// Currently the fastest at about ~0.2 s
     SuperSafe,
-    VmxVmrun,
+
+    /// uses VMware `vmrun` command
+    /// ~2.3 seconds
+    Vmrun,
+
+    /// uses `dosbox-x` command
+    /// ~2.2 s
     DosboxX,
 }
 
@@ -27,16 +35,17 @@ const DEBUG_ENCODER: bool = false;
 
 pub struct FuzzConfig {
     pub mutations_per_op: usize,
-    pub remote_ip: String,
+    pub remote_host: String,
 }
 
 impl FuzzConfig {
     fn counter_width(&self) -> usize {
         match self.mutations_per_op {
-            0..=9     => 1,
-            10..=99   => 2,
-            100..=999 => 3,
-            _ => 4,
+            0   ..=   9 => 1,
+            10  ..=  99 => 2,
+            100 ..= 999 => 3,
+            1000..=9999 => 4,
+            _           => 5,
         }
     }
 }
@@ -97,9 +106,9 @@ fn fuzz(runner: &CodeRunner, data: &[u8], op_count: usize, affected_flag_mask: u
     assemble_prober(data, prober_com);
 
     let output = match *runner {
-        CodeRunner::SuperSafe => stdout_from_supersafe(prober_com, &cfg.remote_ip), // ~0.05 seconds per call
-        CodeRunner::VmxVmrun => stdout_from_vmx_vmrun(prober_com), // ~2.3 seconds
-        CodeRunner::DosboxX => stdout_from_dosbox(prober_com), // ~2.3 seconds
+        CodeRunner::SuperSafe => stdout_from_supersafe(prober_com, &cfg.remote_host),
+        CodeRunner::Vmrun => stdout_from_vmx_vmrun(prober_com),
+        CodeRunner::DosboxX => stdout_from_dosbox(prober_com),
     };
 
     let vm_regs = prober_reg_map(&output);

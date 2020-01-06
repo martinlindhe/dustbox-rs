@@ -24,33 +24,40 @@ fn main() {
             .help("Sets the input file to use")
             .required(true)
             .index(1))
-        .arg(Arg::with_name("deterministic")
-            .help("Enables deterministic mode (debugging)")
-            .long("deterministic"))
-        .arg(Arg::with_name("trace")
-            .help("Output a instruction trace similar to dosbox LOGS")
-            .takes_value(true)
-            .long("trace"))
-        .arg(Arg::with_name("scale")
+        .arg(Arg::with_name("SCALE")
             .help("Scale the window resolution")
             .takes_value(true)
             .long("scale"))
+        .arg(Arg::with_name("DETERMINISTIC")
+            .help("Enables deterministic mode (debugging)")
+            .long("deterministic"))
+        .arg(Arg::with_name("TRACEFILE")
+            .help("Output a instruction trace similar to dosbox LOGS (debugging)")
+            .takes_value(true)
+            .long("trace"))
+        .arg(Arg::with_name("TRACECOUNT")
+            .help("Limits the trace to a number of instructions (debugging)")
+            .takes_value(true)
+            .long("tracecount"))
         .get_matches();
 
     let filename = matches.value_of("INPUT").unwrap();
 
-    let scale = value_t!(matches, "scale", f32).unwrap_or(1.);
+    let scale = value_t!(matches, "SCALE", f32).unwrap_or(1.);
 
-    let mut machine = if matches.is_present("deterministic") {
+    let mut machine = if matches.is_present("DETERMINISTIC") {
         Machine::deterministic()
     } else {
         Machine::default()
     };
 
-    if matches.is_present("trace") {
-        let tracename = matches.value_of("trace").unwrap();
+    if matches.is_present("TRACEFILE") {
+        let tracename = matches.value_of("TRACEFILE").unwrap();
         println!("Instruction trace will be written to {}", tracename);
         machine.write_trace_to(tracename);
+    }
+    if matches.is_present("TRACECOUNT") {
+        machine.set_trace_count(value_t!(matches, "TRACECOUNT", usize).unwrap());
     }
 
     match tools::read_binary(filename) {
