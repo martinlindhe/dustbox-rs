@@ -14,9 +14,6 @@ extern crate dustbox;
 use dustbox::machine::Machine;
 use dustbox::tools;
 
-const SCREEN_WIDTH: u32 = 320;
-const SCREEN_HEIGHT: u32 = 200;
-
 fn main() {
     let matches = App::new("dustbox-frontend")
         .version("0.1")
@@ -28,6 +25,9 @@ fn main() {
             .help("Scale the window resolution")
             .takes_value(true)
             .long("scale"))
+        .arg(Arg::with_name("NOSQUARE")
+            .help("Don't make pixels square by stretching (default)")
+            .long("no-square"))
         .arg(Arg::with_name("DETERMINISTIC")
             .help("Enables deterministic mode (debugging)")
             .long("deterministic"))
@@ -42,8 +42,6 @@ fn main() {
         .get_matches();
 
     let filename = matches.value_of("INPUT").unwrap();
-
-    let scale = value_t!(matches, "SCALE", f32).unwrap_or(1.);
 
     let mut machine = if matches.is_present("DETERMINISTIC") {
         Machine::deterministic()
@@ -69,7 +67,12 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsys = sdl_context.video().unwrap();
-    let window = video_subsys.window(&format!("dustbox {}", filename), ((SCREEN_WIDTH as f32) * scale) as u32, ((SCREEN_HEIGHT as f32) * scale) as u32)
+
+    let scale_factor = value_t!(matches, "SCALE", f32).unwrap_or(1.);
+
+    let initial_screen_width  = (320. * scale_factor) as u32;
+    let initial_screen_height = (200. * scale_factor) as u32;
+    let window = video_subsys.window(&format!("dustbox - {}", filename), initial_screen_width, initial_screen_height)
         .position_centered()
         .opengl()
         .allow_highdpi()
@@ -77,13 +80,11 @@ fn main() {
         .unwrap();
 
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
-
     // println!("renderer: sdl2 \"{}\"", canvas.info().name);
 
     canvas.set_draw_color(pixels::Color::RGB(0, 0, 0));
     canvas.clear();
     canvas.present();
-
     let texture_creator = canvas.texture_creator();
 
     let mut events = sdl_context.event_pump().unwrap();
@@ -94,6 +95,8 @@ fn main() {
     let mut frame_render_sum = Duration::new(0, 0);
     let mut frame_sleep_sum = Duration::new(0, 0);
     let mut last_video_mode = 0;
+
+    let square_pixels = !matches.is_present("NOSQUARE");
 
     let mut frame_num = 0;
     'main: loop {
@@ -124,6 +127,7 @@ fn main() {
         let locked_fps = 30;
 
         let frame = machine.gpu().unwrap().render_frame(&machine.mmu);
+
         let mut texture = texture_creator.create_texture_streaming(PixelFormatEnum::RGB24, frame.mode.swidth, frame.mode.sheight).unwrap();
 
         {
@@ -131,8 +135,22 @@ fn main() {
             if frame.mode.mode != last_video_mode {
                 let window = canvas.window_mut();
 
-                println!("Resizing window for mode {:02x} to {}x{}, scale {}x", frame.mode.mode, frame.mode.swidth, frame.mode.sheight, scale);
-                window.set_size((frame.mode.swidth as f32 * scale) as u32, (frame.mode.sheight as f32 * scale) as u32).unwrap();
+                let (internal_scale_x, internal_scale_y) = if square_pixels {
+                    (scale_factor * frame.mode.scale_x, scale_factor * frame.mode.scale_y)
+                } else {
+                    (scale_factor, scale_factor)
+                };
+
+                // window size is the display size
+                let window_width  = (frame.mode.swidth as f32 * internal_scale_x) as u32;
+                let window_height = ((frame.mode.sheight as f32 * internal_scale_y)) as u32;
+
+                println!("Resizing window for mode {:02x} to {}x{} pixels, {}x{} frame size, scale factor {}x, internal scale x:{}, y:{}",
+                    frame.mode.mode, window_width, window_height, frame.mode.swidth, frame.mode.sheight, scale_factor, internal_scale_x, internal_scale_y);
+                window.set_size(window_width, window_height).unwrap();
+
+                // makes the canvas fill the whole window (no black borders)
+                canvas.set_logical_size(window_width, window_width).unwrap();
 
                 last_video_mode = frame.mode.mode;
             }
@@ -215,6 +233,7 @@ fn main() {
         }
 
         canvas.copy(&texture, None, None).unwrap();
+
         canvas.present();
     }
 }
