@@ -432,6 +432,7 @@ dependencies = [
 name = "dustbox_fuzzer"
 version = "0.1.0"
 dependencies = [
+ "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "curl 0.4.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "dustbox 0.0.1",
  "rand 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",

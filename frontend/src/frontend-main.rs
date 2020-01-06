@@ -1,22 +1,21 @@
-extern crate sdl2;
+use std::time::{Duration, SystemTime};
+use std::thread::sleep;
 
+extern crate sdl2;
 use sdl2::event::Event;
 use sdl2::pixels;
 use sdl2::pixels::PixelFormatEnum;
-
-const SCREEN_WIDTH: u32 = 320;
-const SCREEN_HEIGHT: u32 = 200;
-
-extern crate dustbox;
-use dustbox::machine::Machine;
-use dustbox::tools;
 
 #[macro_use]
 extern crate clap;
 use clap::{Arg, App};
 
-use std::time::{Duration, SystemTime};
-use std::thread::sleep;
+extern crate dustbox;
+use dustbox::machine::Machine;
+use dustbox::tools;
+
+const SCREEN_WIDTH: u32 = 320;
+const SCREEN_HEIGHT: u32 = 200;
 
 fn main() {
     let matches = App::new("dustbox-frontend")

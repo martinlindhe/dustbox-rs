@@ -1,25 +1,36 @@
 extern crate rand;
 extern crate rand_xorshift;
 
+#[macro_use]
+extern crate clap;
+use clap::{Arg, App};
+
 extern crate dustbox;
 extern crate dustbox_fuzzer;
-
-use std::io::{self, Write};
 
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
 
 use dustbox::cpu::{Instruction, Op, Parameter, Segment, R, AMode, Encoder, instructions_to_str};
-use dustbox_fuzzer::fuzzer::{fuzz, VmRunner, AffectedFlags};
+use dustbox_fuzzer::fuzzer::{fuzz, FuzzConfig, CodeRunner, AffectedFlags};
 
 fn main() {
-    // TODO take cmdline args:
-    // - take prober.com.tpl exact path as arg
-    // - take VM ip as arg
+    let matches = App::new("dustbox-fuzzer")
+        .version("0.1")
+        .arg(Arg::with_name("mutations")
+            .help("Number of mutations per instruction")
+            .takes_value(true)
+            .long("mutations"))
+        .arg(Arg::with_name("ip")
+            .help("Remote IP for supersafe client")
+            .takes_value(true)
+            .long("ip"))
+        .get_matches();
 
     let affected_registers = vec!("ax", "dx");
 
     let ops_to_fuzz = vec!(
+        Op::Cmp8,
 
         // ENCODING NOT IMPLEMENTED:
         //Op::Cmpsw,
@@ -58,39 +69,33 @@ fn main() {
         */
     );
 
-    let iterations_per_op = 50;
+    let cfg = FuzzConfig{
+        mutations_per_op: value_t!(matches, "mutations", usize).unwrap_or(50),
+        remote_ip: matches.value_of("ip").unwrap_or("127.0.0.1").to_string(),
+    };
+
     let mut rng = XorShiftRng::from_entropy();
+
+    let runner = CodeRunner::SuperSafe;
+    //let runner = CodeRunner::DosboxX;
+
     for op in ops_to_fuzz {
-        println!("------");
-        println!("fuzzing {} forms of {:?} ...", iterations_per_op, op);
+        println!("fuzzing {} forms of {:?} ...", cfg.mutations_per_op, op);
         let mut failures = 0;
-        for _ in 0..iterations_per_op {
-            let runner = VmRunner::VmHttp;
-            //let runner = VmRunner::DosboxX;
+        for _ in 0..cfg.mutations_per_op {
             let affected_flags_mask = AffectedFlags::for_op(&op);
 
-            let mut ops = vec!(
-                // clear eax,edx
-                Instruction::new2(Op::Mov32, Parameter::Reg32(R::EAX), Parameter::Imm32(0)),
-                Instruction::new2(Op::Mov32, Parameter::Reg32(R::EDX), Parameter::Imm32(0)),
-
-                // clear flags
-                Instruction::new1(Op::Push16, Parameter::Imm16(0)),
-                Instruction::new(Op::Popf),
-            );
-
-            // mutate parameters
             let snippet = get_mutator_snippet(&op, &mut rng);
+            let mut ops = prober_setupcode();
             ops.extend(snippet.to_vec());
 
-            io::stdout().flush().expect("Could not flush stdout");
             let encoder = Encoder::new();
             let data = match encoder.encode_vec(&ops) {
                 Ok(data) => data,
                 Err(why) => panic!("{}", why),
             };
 
-            if !fuzz(&runner, &data, ops.len(), &affected_registers, affected_flags_mask) {
+            if !fuzz(&runner, &data, ops.len(), &affected_registers, affected_flags_mask, &cfg) {
                 println!("failed:");
                 println!("{}", instructions_to_str(&snippet));
                 println!("------");
@@ -98,9 +103,24 @@ fn main() {
             }
         }
         if failures > 0 {
-            println!("{}/{} successes", iterations_per_op - failures, iterations_per_op)
+            let successes = cfg.mutations_per_op - failures;
+            println!("{}/{} successes", successes, cfg.mutations_per_op)
         }
+        println!("-");
     }
+}
+
+// returns the setup code (clear registers and flags)
+fn prober_setupcode() -> Vec<Instruction> {
+    vec!(
+        // clear ax,dx
+        Instruction::new2(Op::Xor16, Parameter::Reg16(R::AX), Parameter::Reg16(R::AX)),
+        Instruction::new2(Op::Xor16, Parameter::Reg16(R::DX), Parameter::Reg16(R::DX)),
+
+        // clear flags
+        Instruction::new1(Op::Push16, Parameter::Imm16(0)),
+        Instruction::new(Op::Popf),
+    )
 }
 
 // returns a snippet used to mutate state for op

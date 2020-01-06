@@ -26,7 +26,7 @@ install-disasm:
 	cargo install --path disassembler --force
 
 fuzz:
-	cargo run --package dustbox_fuzzer
+	cargo run --package dustbox_fuzzer -- --mutations 50 --ip 172.16.72.129
 
 lint:
 	cargo clippy --all

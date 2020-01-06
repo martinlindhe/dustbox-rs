@@ -12,16 +12,23 @@ use dustbox::cpu::{CPU, Op, r16};
 use dustbox::machine::Machine;
 use dustbox::ndisasm::ndisasm_bytes;
 
-pub enum VmRunner {
-    VmHttp,
+/// Runs program code in a specific environment
+pub enum CodeRunner {
+    SuperSafe,
     VmxVmrun,
     DosboxX,
 }
 
 const DEBUG_ENCODER: bool = false;
 
-/// return false on failure
-pub fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers: &[&str], affected_flag_mask: u16) -> bool {
+pub struct FuzzConfig {
+    pub mutations_per_op: usize,
+    pub remote_ip: String,
+}
+
+/// Runs given binary data in dustbox and in a CodeRunner, comparing the resulting regs and flags
+/// returns false on failure
+pub fn fuzz(runner: &CodeRunner, data: &[u8], op_count: usize, affected_registers: &[&str], affected_flag_mask: u16, cfg: &FuzzConfig) -> bool {
     let mut machine = Machine::deterministic();
     println!("EXECUTING {:X?}", data);
 
@@ -29,19 +36,16 @@ pub fn fuzz(runner: &VmRunner, data: &[u8], op_count: usize, affected_registers:
         println!("{}", ndisasm_bytes(&data).unwrap().join("\n"));
     }
 
-
     machine.load_executable(data, 0x085F);
     machine.execute_instructions(op_count);
-
-    // run in vm, compare regs
 
     let prober_com = Path::new("utils/prober/prober.com");
     assemble_prober(data, prober_com);
 
     let output = match *runner {
-        VmRunner::VmHttp => stdout_from_vm_http(prober_com), // ~0.05 seconds per call
-        VmRunner::VmxVmrun => stdout_from_vmx_vmrun(prober_com), // ~2.3 seconds
-        VmRunner::DosboxX => stdout_from_dosbox(prober_com), // ~2.3 seconds
+        CodeRunner::SuperSafe => stdout_from_supersafe(prober_com, &cfg.remote_ip), // ~0.05 seconds per call
+        CodeRunner::VmxVmrun => stdout_from_vmx_vmrun(prober_com), // ~2.3 seconds
+        CodeRunner::DosboxX => stdout_from_dosbox(prober_com), // ~2.3 seconds
     };
 
     let vm_regs = prober_reg_map(&output);
@@ -320,14 +324,14 @@ fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
 }
 
 /// upload data as http post to supersafe http server running in VM
-fn stdout_from_vm_http(path: &Path) -> String {
+fn stdout_from_supersafe(path: &Path, remote_ip: &str) -> String {
     use curl::easy::{Easy, Form};
     use std::time::Duration;
     let mut dst = Vec::new();
     let mut easy = Easy::new();
     let timeout = Duration::from_millis(1000);
     easy.timeout(timeout).unwrap();
-    easy.url("http://172.16.72.129:28111/run").unwrap();
+    easy.url(&format!("http://{}:28111/run", remote_ip)).unwrap();
 
     let mut form = Form::new();
     form.part("com").file(path).add().unwrap();
