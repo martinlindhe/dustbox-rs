@@ -1,13 +1,5 @@
 #![allow(dead_code)]
 
-extern crate bincode;
-extern crate chrono;
-extern crate rand;
-extern crate rand_xorshift;
-extern crate sdl2;
-extern crate tempfile;
-extern crate toml;
-
 #[macro_use]
 extern crate serde_derive;
 

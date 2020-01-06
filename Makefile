@@ -2,7 +2,9 @@ test:
 	cargo test --all -- --color always --nocapture
 
 test-harness:
-	cargo run --release --package dustbox_harness
+	cargo run --release --package harness harness/sets/demo-com-16bit.yml
+	cargo run --release --package harness harness/sets/demo-com-32bit.yml
+	cargo run --release --package harness harness/sets/games-com-commercial-16bit.yml
 
 expensive-encode:
 	RUST_TEST_THREADS=1 cargo test encode -- --color always --nocapture --ignored
@@ -14,19 +16,19 @@ mips:
 	cargo test --release mips -- --nocapture
 
 run:
-	cargo run --package dustbox_debugger
+	cargo run --package debugger
 
 run-release:
-	cargo run --release --package dustbox_debugger
+	cargo run --release --package debugger
 
 disasm:
-	cargo run --release --package dustbox_disassembler
+	cargo run --release --package disassembler
 
 install-disasm:
 	cargo install --path disassembler --force
 
 fuzz:
-	cargo run --package dustbox_fuzzer -- --mutations 50 --host 172.16.72.129
+	cargo run --package fuzzer -- --mutations 50 --host 172.16.72.129
 
 lint:
 	cargo clippy --all

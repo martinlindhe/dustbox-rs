@@ -2,16 +2,11 @@
 extern crate clap;
 use clap::{Arg, App};
 
-extern crate dustbox;
-extern crate dustbox_fuzzer;
-
-extern crate rand;
-extern crate rand_xorshift;
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
 
 use dustbox::cpu::Op;
-use dustbox_fuzzer::fuzzer::{fuzz_ops, FuzzConfig, CodeRunner};
+use fuzzer::fuzzer::{fuzz_ops, FuzzConfig, CodeRunner};
 
 fn main() {
     let matches = App::new("dustbox-fuzzer")
@@ -90,13 +85,11 @@ fn main() {
 
     // seed prng if argument was given
     let mut rng: XorShiftRng;
-    let seed_value: u64;
-    if matches.is_present("SEED") {
-        seed_value = value_t!(matches, "SEED", u64).unwrap();
+    let seed_value = if matches.is_present("SEED") {
+        value_t!(matches, "SEED", u64).unwrap()
     } else {
-        let mut tmp = XorShiftRng::from_entropy();
-        seed_value = tmp.gen();
-    }
+        XorShiftRng::from_entropy().gen()
+    };
 
     rng = XorShiftRng::seed_from_u64(seed_value);
     println!("rng seed = {}", seed_value);

@@ -1,7 +1,8 @@
 [package]
-name = "dustbox_frontend"
+name = "frontend"
 version = "0.1.0"
 authors = ["Martin Lindhe"]
+edition = "2018"
 
 [[bin]]
 name = "dustbox-frontend"

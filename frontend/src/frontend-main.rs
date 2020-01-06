@@ -1,7 +1,6 @@
 use std::time::{Duration, SystemTime};
 use std::thread::sleep;
 
-extern crate sdl2;
 use sdl2::event::Event;
 use sdl2::pixels;
 use sdl2::pixels::PixelFormatEnum;
@@ -10,7 +9,6 @@ use sdl2::pixels::PixelFormatEnum;
 extern crate clap;
 use clap::{Arg, App};
 
-extern crate dustbox;
 use dustbox::machine::Machine;
 use dustbox::tools;
 
@@ -68,7 +66,7 @@ fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsys = sdl_context.video().unwrap();
 
-    let scale_factor = value_t!(matches, "SCALE", f32).unwrap_or(1.);
+    let scale_factor = value_t!(matches, "SCALE", f32).unwrap_or(2.);
 
     let initial_screen_width  = (320. * scale_factor) as u32;
     let initial_screen_height = (200. * scale_factor) as u32;
@@ -142,8 +140,8 @@ fn main() {
                 };
 
                 // window size is the display size
-                let window_width  = (frame.mode.swidth as f32 * internal_scale_x) as u32;
-                let window_height = ((frame.mode.sheight as f32 * internal_scale_y)) as u32;
+                let window_width = (frame.mode.swidth as f32 * internal_scale_x) as u32;
+                let window_height = (frame.mode.sheight as f32 * internal_scale_y) as u32;
 
                 println!("Resizing window for mode {:02x} to {}x{} pixels, {}x{} frame size, scale factor {}x, internal scale x:{}, y:{}",
                     frame.mode.mode, window_width, window_height, frame.mode.swidth, frame.mode.sheight, scale_factor, internal_scale_x, internal_scale_y);

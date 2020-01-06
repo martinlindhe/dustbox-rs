@@ -1,7 +1,8 @@
 [package]
-name = "dustbox_fuzzer"
+name = "fuzzer"
 version = "0.1.0"
 authors = ["Martin Lindhe"]
+edition = "2018"
 
 [lib]
 path = "src/lib.rs"

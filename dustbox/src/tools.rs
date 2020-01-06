@@ -3,6 +3,7 @@ use std::io::Read;
 use std::io::Error;
 
 pub fn read_binary(path: &str) -> Result<Vec<u8>, Error> {
+    // TODO take Path arg instead
     let mut buffer: Vec<u8> = Vec::new();
 
     let mut f = match File::open(path) {

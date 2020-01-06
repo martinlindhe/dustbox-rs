@@ -1,13 +1,10 @@
-extern crate chrono;
 use chrono::prelude::*;
 
-extern crate dustbox;
 use dustbox::machine::Machine;
 use dustbox::cpu::{Decoder};
 use dustbox::debug::ProgramTracer;
 use dustbox::tools;
 
-extern crate clap;
 use clap::{Arg, App};
 
 fn main() {
