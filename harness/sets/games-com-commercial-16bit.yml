@@ -1,0 +1,41 @@
+name: games_com
+default_instructions: 7000000
+root: ../dos-software-decoding/games-com-commercial/
+
+set:
+  - 8088 Othello (1985)(Bayley)/8088_othello.com
+  - Apple Panic (1982)(Broderbund Software Inc)/panic.com
+  - Astro Dodge (1982)(Digital Marketing Corporation)/astroids.com
+  - Beast (1984)(Dan Baker)/beast.com
+  - Blort (1987)(Hennsoft)/blort.com
+  - Crossfire (1982)(Sierra Online)/cfire.com
+  - Dig Dug (1982)(Namco)/digdug.com
+  - F15 Strike Eagle I (1986)(Microprose Software Inc)/f15.com
+  - Galaxian (1983)(Atari Inc)/galaxian.com
+  - Gnafu (1986)(Anonymous)/gnafu.com
+  - Gooku (1987)(Anonymous)/go-moku.com
+  - Hard Hat Mack (1984)(Electronic Arts Inc)/hhm.com
+  - Invaders (1995)(Paul Reid)/invaders.com
+  - Kenguru (1997)(Pig Games)/keng.com
+  - Logical (1991)(Rainbow Arts)/logctrn1.com
+  - Madball (1985)(Microtec)/madball.com
+  - Mind Field (1985)(Everett Kaser)/mine.com
+  - Ms Pacman (1983)(Atari Inc)/mspacman.com
+  - Paratrooper (1982)(Orion Software)/ptrooper.com
+  - Pc Man (1982)(Orion Software)/pcmanv1.com
+  - Pc Man (1982)(Orion Software)/pcmanv2.com
+  - Pente (1984)(Michael Leach)/pente.com
+  - Pipes (1983)(Creative Software)/pipes.com
+  - Pong (1986)(Imagine)/pong21.com
+  - Robotron 2084 (1984)(Williams Electronics)/rt2084.com
+  - Rollo And The Brush Brothers (1983)(Windwill Software)/rollo.com
+  - Shamus (1984)(Synapse Software)/shamus.com
+  - Sky Runner (1987)(Anonymous)/sky1.com
+  - Sky Runner (1987)(Anonymous)/sky2.com
+  - Snake Game (1992)(Freeware)/snake.com
+  - Triskelion (1987)(Neil Rubenking)/triskel.com
+  - Turbo Bridge (1985)(Anonymous)/tbridge.com
+  - Vlak (1993)(Miroslav Nemecek)/vlak.com
+  - Yatzy (1984)(Jan Ivar Gundersen)/yatzy.com
+  - Zaxxon (1984)(Sega)/zaxxon.com
+  - Zyll (1984)(Marshal Linder)/zyll.com

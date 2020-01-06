@@ -1,15 +1,17 @@
 [package]
-name = "dustbox_harness"
+name = "harness"
 version = "0.1.0"
 authors = ["Martin Lindhe"]
+edition = "2018"
 
 [lib]
 path = "src/lib.rs"
 
 [dependencies]
+clap = "2.33"
+colored = "1.9"
 dustbox = { path = "../dustbox" }
 tera = { version = "1.0", default-features = false }
-
-# XXX: when disabling image default-features, "cargo run" wont find png support with workspaces and rust 1.42-nightly
-#image = { version = "0.22", default-features = false, features = [ "png" ] }
-image = "0.22"
+image = { version = "0.22", features = [ "png" ] }
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.8"
