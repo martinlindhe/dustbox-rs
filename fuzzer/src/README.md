@@ -15,28 +15,24 @@ supersafe:
 
 vmrun:
 
-- uses the `vmrun` command line interface to execute programs inside a VMware Virtual Machine.
+- Uses the `vmrun` command line interface to execute programs inside a VMware Virtual Machine.
+- Requires a password to be set in the guest VM in order to function.
 
-dosboxx:
+dosbox-x:
 
-- uses the `dosbox-x` command line to execute programs inside a Dosbox-X environment.
+- Uses the `dosbox-x` command line to execute programs inside a Dosbox-X environment.
 
 ## TODO
 
-- supersafe.exe dont run in win98. linked to missing export KERNEL32.DLL:AddVectoredExceptionHandler
-- could run serial DOS program here too
-
 - take prober.com.tpl exact path as arg
-- vmrun: able to specify VM name to execute program in on cli.
-- vmrun: should be able to extract full path to vm:s from "vmrun" cmd if even needed ?
-- dosboxx: verify that DosboxX runner works vs original dosbox project
+- dosbox-x: verify that DosboxX runner works vs original dosbox project
 
 - mutate 1, 2 and 3 operand forms of instrs
 
 - LATER: bochs runner
 - LATER: qemu runner
 
-- com: implement a DOS program that uses the COM serial interface,
+- com: implement superdos - a DOS program that uses the COM serial interface,
     and recieves binary data, executes it and sends back STDOUT over the wire,
     including checksums and re-transmit for real hardware and to be run inside
     dos emulator to speed things up.
@@ -44,7 +40,8 @@ dosboxx:
     https://en.wikibooks.org/wiki/Serial_Programming/DOS_Programming
     https://www.dosbox.com/wiki/Configuration:SerialPort
 
-    use winXP + djgpp to build dos .exe
+    - use winXP + djgpp to build dos .exe ?
+    - "use unix to build DOS programs" also exists at http://www.delorie.com/djgpp/zip-picker.html
 
-    djgpp: "use unix to build DOS programs" also exists at http://www.delorie.com/djgpp/zip-picker.html
-
+    - supersafe.exe dont run in win98. linked to missing export KERNEL32.DLL:AddVectoredExceptionHandler
+    - could run serial DOS program in win98 bare bones / vm

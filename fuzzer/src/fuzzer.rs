@@ -34,8 +34,18 @@ pub enum CodeRunner {
 const DEBUG_ENCODER: bool = false;
 
 pub struct FuzzConfig {
+    /// general config
     pub mutations_per_op: usize,
+
+    /// supersafe
     pub remote_host: String,
+
+    /// vmrun
+    pub vmx_path: String,
+
+    /// username in the VM
+    pub username: String,
+    pub password: String,
 }
 
 impl FuzzConfig {
@@ -107,7 +117,7 @@ fn fuzz(runner: &CodeRunner, data: &[u8], op_count: usize, affected_flag_mask: u
 
     let output = match *runner {
         CodeRunner::SuperSafe => stdout_from_supersafe(prober_com, &cfg.remote_host),
-        CodeRunner::Vmrun => stdout_from_vmx_vmrun(prober_com),
+        CodeRunner::Vmrun => stdout_from_vmrun(prober_com, &cfg.vmx_path, &cfg.username, &cfg.password),
         CodeRunner::DosboxX => stdout_from_dosbox(prober_com),
     };
 
@@ -412,23 +422,27 @@ fn stdout_from_dosbox(path: &Path) -> String {
     read_text_file(&file_path)
 }
 
-/// run .com with vmrun (vmware), parse result
-fn stdout_from_vmx_vmrun(path: &Path) -> String {
-    let vmx = "/Users/m/Documents/Virtual Machines.localized/Windows XP Professional.vmwarevm/Windows XP Professional.vmx";
-    let vm_user = "vmware";
-    let vm_password = "vmware";
+/// run .com with vmrun (vmware) in given vmx, parse result
+fn stdout_from_vmrun(path: &Path, vmx_path: &str, username: &str, password: &str) -> String {
+    let vmrun_path = if cfg!(windows) {
+        "C:\\Program Files (x86)\\VMware\\VMware Workstation\\vmrun.exe"
+    } else {
+        "vmrun"
+    };
 
     // copy file to guest
-    Command::new("vmrun")
-        .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
-            "copyFileFromHostToGuest", vmx, path.to_str().unwrap(), "C:\\prober.com"])
+    Command::new(vmrun_path)
+        .args(&["-T", "ws", "-gu", username, "-gp", password,
+            "copyFileFromHostToGuest", vmx_path, path.to_str().unwrap(), "C:\\prober.com"])
         .output()
         .expect("failed to execute process");
 
-    // run prober.bat, where prober.bat is "c:\prober.com > c:\prober.out" (XXX create this file in vm once)
-    Command::new("vmrun")
-        .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
-            "runProgramInGuest", vmx, "C:\\prober.bat"])
+    // XXX create C:\prober.bat in vm
+
+    // run prober.bat, where prober.bat is "c:\prober.com > c:\prober.out"
+    Command::new(vmrun_path)
+        .args(&["-T", "ws", "-gu", username, "-gp", password,
+            "runProgramInGuest", vmx_path, "C:\\prober.bat"])
         .output()
         .expect("failed to execute process");
 
@@ -437,9 +451,9 @@ fn stdout_from_vmx_vmrun(path: &Path) -> String {
     let file_str = file_path.to_str().unwrap();
 
     // copy back result
-    Command::new("vmrun")
-        .args(&["-T", "ws", "-gu", vm_user, "-gp", vm_password,
-            "copyFileFromGuestToHost", vmx, "C:\\prober.out", file_str])
+    Command::new(vmrun_path)
+        .args(&["-T", "ws", "-gu", username, "-gp", password,
+            "copyFileFromGuestToHost", vmx_path, "C:\\prober.out", file_str])
         .output()
         .expect("failed to execute process");
 

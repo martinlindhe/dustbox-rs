@@ -22,14 +22,26 @@ fn main() {
             .takes_value(true)
             .long("mutations"))
         .arg(Arg::with_name("HOST")
-            .help("Remote HOST for supersafe client")
+            .help("Remote host (supersafe)")
             .takes_value(true)
             .long("host"))
+        .arg(Arg::with_name("USERNAME")
+            .help("VM username (vmrun)")
+            .takes_value(true)
+            .long("username"))
+        .arg(Arg::with_name("PASSWORD")
+            .help("VM password (vmrun)")
+            .takes_value(true)
+            .long("password"))
         .arg(Arg::with_name("SEED")
             .help("Specify PRNG seed for reproducibility")
             .takes_value(true)
             .long("seed"))
-        .get_matches();
+        .arg(Arg::with_name("VMX")
+            .help("Specify VMX image (vmrun)")
+            .takes_value(true)
+            .long("vmx"))
+            .get_matches();
 
     let ops_to_fuzz = vec!(
         Op::Cmp8,
@@ -74,11 +86,15 @@ fn main() {
     let cfg = FuzzConfig{
         mutations_per_op: value_t!(matches, "MUTATIONS", usize).unwrap_or(50),
         remote_host: matches.value_of("HOST").unwrap_or("127.0.0.1").to_string(),
+        vmx_path: matches.value_of("VMX").unwrap_or("").to_string(),
+
+        username: matches.value_of("USERNAME").unwrap_or("vmware").to_string(),
+        password: matches.value_of("PASSWORD").unwrap_or("vmware").to_string(),
     };
 
     let runner = match matches.value_of("RUNNER").unwrap() {
         "supersafe" => CodeRunner::SuperSafe,
-        "dosboxx"   => CodeRunner::DosboxX,
+        "dosbox-x"  => CodeRunner::DosboxX,
         "vmrun"     => CodeRunner::Vmrun,
         _ => panic!("unrecognized runner"),
     };
