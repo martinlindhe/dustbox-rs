@@ -6,22 +6,23 @@ extern crate serde_derive;
 #[cfg(test)]
 extern crate pretty_assertions;
 
-pub mod machine;
+pub mod bios;
+pub mod cmos;
+pub mod codepage;
 pub mod cpu;
-pub mod memory;
+pub mod debug;
+pub mod format;
 pub mod gpu;
+pub mod hex;
+pub mod keyboard;
+pub mod machine;
+pub mod memory;
+pub mod mouse;
+pub mod ndisasm;
 pub mod pic;
 pub mod pit;
-pub mod cmos;
-pub mod bios;
-pub mod codepage;
-pub mod tools;
-pub mod hex;
-pub mod debug;
-pub mod ndisasm;
-pub mod string;
-pub mod keyboard;
-pub mod mouse;
 pub mod storage;
+pub mod string;
+pub mod tools;
 
 mod interrupt;

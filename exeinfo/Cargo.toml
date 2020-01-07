@@ -1,0 +1,16 @@
+[package]
+name = "exeinfo"
+version = "0.1.0"
+authors = ["Martin Lindhe"]
+edition = "2018"
+
+[[bin]]
+name = "dustbox-exeinfo"
+path = "src/exeinfo-main.rs"
+
+[dependencies]
+bincode = "1.2"
+clap = "2.33"
+dustbox = { path = "../dustbox" }
+serde = "1.0"
+serde_derive = "1.0"

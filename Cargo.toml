@@ -3,6 +3,7 @@ members = [
     "debugger",
     "dustbox",
     "disassembler",
+    "exeinfo",
     "frontend",
     "fuzzer",
     "harness",
