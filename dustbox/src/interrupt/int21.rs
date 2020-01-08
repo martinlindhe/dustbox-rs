@@ -5,6 +5,8 @@ use crate::cpu::R;
 use crate::codepage::cp437;
 use crate::machine::Machine;
 use crate::memory::MemoryAddress;
+use crate::hex::hex_bytes;
+use crate::string::bytes_to_ascii;
 
 // dos related interrupts
 pub fn handle(machine: &mut Machine) {
@@ -110,6 +112,14 @@ pub fn handle(machine: &mut Machine) {
                 _ => {},
             }
         }
+        0x1A => {
+            // DOS 1+ - SET DISK TRANSFER AREA ADDRESS
+            // DS:DX -> Disk Transfer Area (DTA)
+            // Notes: The DTA is set to PSP:0080h when a program is started.
+            let seg = machine.cpu.get_r16(R::DS);
+            let off = machine.cpu.get_r16(R::DX);
+            println!("XXX DOS - SET DISK TRANSFER AREA ADDRESS {:04X}:{:04X}", seg, off);
+        }
         0x25 => {
             // DOS 1+ - SET INTERRUPT VECTOR
             let seg = machine.cpu.get_r16(R::DS);
@@ -130,6 +140,11 @@ pub fn handle(machine: &mut Machine) {
                 machine.cpu.set_r8(R::DH, now.second() as u8);  // second
                 machine.cpu.set_r8(R::DL, centi_sec as u8);     // 1/100 second
             }
+        }
+        0x2F => {
+            // DOS 2+ - GET DISK TRANSFER AREA ADDRESS
+            // Return: ES:BX -> current DTA
+            println!("XXX DOS - GET DISK TRANSFER AREA ADDRESS");
         }
         0x30 => {
             // DOS 2+ - GET DOS VERSION
@@ -162,6 +177,19 @@ pub fn handle(machine: &mut Machine) {
             // fake MS-DOS 3.10, as needed by msdos32/APPEND.COM
             machine.cpu.set_r8(R::AL, 3); // AL = major version number (00h if DOS 1.x)
             machine.cpu.set_r8(R::AH, 10); // AH = minor version number
+        }
+        0x33 => {
+            // DOS 2+ - EXTENDED BREAK CHECKING
+            // AL = subfunction
+            // 00h get current extended break state
+            // Return:
+            // DL = current state, 00h = off, 01h = on
+            // 01h set state of extended ^C/^Break checking
+            // DL = new state
+            // 00h off, check only on character I/O functions
+            // 01h on, check on all DOS functions
+            let al = machine.cpu.get_r8(R::AL);
+            println!("XXX DOS - EXTENDED BREAK CHECKING, al:{:02X}", al);
         }
         0x35 => {
             // DOS 2+ - GET INTERRUPT VECTOR
@@ -224,11 +252,17 @@ pub fn handle(machine: &mut Machine) {
             // file must have been opened with AX=6C00h with the "extended size" flag in order
             // to expand the file beyond 2GB; otherwise the write will fail with error code
             // 0005h (access denied). The usual cause for AX < CX on return is a full disk
+            let ds = machine.cpu.get_r16(R::DS);
+            let dx = machine.cpu.get_r16(R::DX);
+            let count = machine.cpu.get_r16(R::CX);
             println!("XXX DOS - WRITE TO FILE OR DEVICE, handle={:04X}, count={:04X}, data from {:04X}:{:04X}",
                      machine.cpu.get_r16(R::BX),
-                     machine.cpu.get_r16(R::CX),
-                     machine.cpu.get_r16(R::DS),
-                     machine.cpu.get_r16(R::DX));
+                     count,
+                     ds,
+                     dx);
+
+            let data = machine.mmu.read(ds, dx, count as usize);
+            println!("  -- DATA: {} {}", hex_bytes(&data), bytes_to_ascii(&data));
         }
         0x43 => {
             match machine.cpu.get_r8(R::AL) {
@@ -307,6 +341,31 @@ pub fn handle(machine: &mut Machine) {
                      machine.cpu.get_r16(R::BX),
                      machine.cpu.get_r16(R::ES));
         }
+        0x4B => {
+            // DOS 2+ - EXEC - LOAD AND/OR EXECUTE PROGRAM
+            // AL = type of load
+            //  00h load and execute
+            //  01h load but do not execute
+            //  03h load overlay (see #01591)
+            //  04h load and execute in background (European MS-DOS 4.0 only)
+            // "Exec & Go" (see also AH=80h)
+            // DS:DX -> ASCIZ program name (must include extension)
+            // ES:BX -> parameter block (see #01590,#01591,#01592)
+            // CX = mode (subfunction 04h only)
+            //  0000h child placed in zombie mode after termination
+            //  0001h child's return code discarded on termination
+            // Return:
+            // CF clear if successful
+            // BX,DX destroyed
+            // if subfunction 01h, process ID set to new program's PSP; get with
+            // INT 21/AH=62h
+            // CF set on error
+            // AX = error code (01h,02h,05h,08h,0Ah,0Bh) (see #01680 at AH=59h)
+
+            let mode = machine.cpu.get_r8(R::AL);
+            let name = machine.mmu.read_asciiz(machine.cpu.get_r16(R::DS), machine.cpu.get_r16(R::DX));
+            println!("XXX DOS - EXEC - LOAD AND/OR EXECUTE PROGRAM {}, mode {:02X}", name, mode);
+        }
         0x4C => {
             // DOS 2+ - EXIT - TERMINATE WITH RETURN CODE
             // AL = return code
@@ -317,6 +376,18 @@ pub fn handle(machine: &mut Machine) {
             let al = machine.cpu.get_r8(R::AL);
             println!("DOS - TERMINATE WITH RETURN CODE {:02X}", al);
             machine.cpu.fatal_error = true; // XXX just to stop debugger.run() function
+        }
+        0x4D => {
+            // DOS 2+ - GET RETURN CODE (ERRORLEVEL)
+            // Return:
+            // AH = termination type
+            // 00h normal (INT 20,INT 21/AH=00h, or INT 21/AH=4Ch)
+            // 01h control-C abort
+            // 02h critical error abort
+            // 03h terminate and stay resident (INT 21/AH=31h or INT 27)
+            // AL = return code
+            // CF clear
+            println!("DOS 2+ - GET RETURN CODE");
         }
         0x59 => {
             match machine.cpu.get_r16(R::BX) {

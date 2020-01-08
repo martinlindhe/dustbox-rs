@@ -352,6 +352,14 @@ impl Machine {
                 self.cpu.fatal_error = true; // stops execution
             }
             0x21 => interrupt::int21::handle(self),
+            0x27 => {
+                // DOS 1+ - TERMINATE AND STAY RESIDENT
+                // DX = number of bytes to keep resident (max FFF0h)
+                // CS = segment of PSP
+                // Return: Never
+                println!("XXX DOS - TERMINATE AND STAY RESIDENT");
+                self.cpu.fatal_error = true; // stops execution
+            }
             _ => {
                 println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}",
                         int,
@@ -804,23 +812,19 @@ impl Machine {
                 let old_ip = self.cpu.regs.ip;
                 self.cpu.push16(&mut self.mmu, old_seg);
                 self.cpu.push16(&mut self.mmu, old_ip);
-                match op.params.dst {
-                    Parameter::Ptr16Imm(seg, offs) => {
-                        self.cpu.regs.ip = offs;
-                        self.cpu.regs.set_r16(R::CS, seg);
-                    }
-                    Parameter::Ptr16(seg, offs) => {
-                        let seg = self.cpu.segment(seg);
-                        self.cpu.set_r16(R::CS, seg);
-                        self.cpu.regs.ip = offs;
-                    }
-                    Parameter::Ptr16AmodeS8(seg, ref amode, imm) => {
-                        let seg = self.cpu.segment(seg);
-                        self.cpu.set_r16(R::CS, seg);
-                        self.cpu.regs.ip = (self.cpu.amode(amode) as isize + imm as isize) as u16;
-                    }
+                let (seg, offs) = match op.params.dst {
+                    Parameter::Ptr16Imm(seg, offs) =>
+                        (seg, offs),
+                    Parameter::Ptr16(seg, offs) =>
+                        (self.cpu.segment(seg), offs),
+                    Parameter::Ptr16Amode(seg, ref amode) =>
+                        (self.cpu.segment(seg), self.cpu.amode(amode) as u16),
+                    Parameter::Ptr16AmodeS8(seg, ref amode, imm) =>
+                        (self.cpu.segment(seg), (self.cpu.amode(amode) as isize + imm as isize) as u16),
                     _ => panic!("CallFar unhandled type {:?}", op.params.dst),
-                }
+                };
+                self.cpu.regs.set_r16(R::CS, seg);
+                self.cpu.regs.ip = offs;
             }
             Op::Cbw => {
                 let ah = if self.cpu.get_r8(R::AL) & 0x80 != 0 {
@@ -1276,23 +1280,19 @@ impl Machine {
                 }
             }
             Op::JmpFar => {
-                match op.params.dst {
-                    Parameter::Ptr16Imm(seg, imm) => {
-                        self.cpu.set_r16(R::CS, seg);
-                        self.cpu.regs.ip = imm;
-                    }
-                    Parameter::Ptr16Amode(seg, ref amode) => {
-                        let seg = self.cpu.segment(seg);
-                        self.cpu.set_r16(R::CS, seg);
-                        self.cpu.regs.ip = self.cpu.amode(amode) as u16;
-                    }
-                    Parameter::Ptr16AmodeS8(seg, ref amode, imm) => {
-                        let seg = self.cpu.segment(seg);
-                        self.cpu.set_r16(R::CS, seg);
-                        self.cpu.regs.ip = (self.cpu.amode(amode) as isize + imm as isize) as u16;
-                    }
-                    _ => panic!("jmp far with unexpected type {:?}", op.params.dst),
-                }
+                let (seg, offs) = match op.params.dst {
+                    Parameter::Ptr16(seg, imm) =>
+                        (self.cpu.segment(seg), imm),
+                    Parameter::Ptr16Imm(seg, imm) =>
+                        (seg, imm),
+                    Parameter::Ptr16Amode(seg, ref amode) =>
+                        (self.cpu.segment(seg), self.cpu.amode(amode) as u16),
+                    Parameter::Ptr16AmodeS8(seg, ref amode, imm) =>
+                        (self.cpu.segment(seg), (self.cpu.amode(amode) as isize + imm as isize) as u16),
+                    _ => panic!("[{}] JmpFar unhandled type {:?}",  self.cpu.get_memory_address(), op.params.dst),
+                };
+                self.cpu.set_r16(R::CS, seg);
+                self.cpu.regs.ip = offs;
             }
             Op::JmpNear | Op::JmpShort => {
                 self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;

@@ -27,3 +27,11 @@ pub fn parse_number_string(s: &str) -> Result<u32, ParseIntError> {
         x.parse::<u32>()
     }
 }
+
+pub fn bytes_to_ascii(data: &[u8]) -> String {
+    data.iter().map(|b| if *b < 128 && *b > 30 {
+        *b as char
+    } else {
+        '.' as char
+    }).collect()
+}

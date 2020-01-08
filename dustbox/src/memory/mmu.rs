@@ -60,6 +60,21 @@ impl MMU {
         res
     }
 
+    /// reads a sequence of text until a NULL byte is found
+    pub fn read_asciiz(&self, seg: u16, offset: u16) -> String {
+        let mut res = String::new();
+        let mut addr = MemoryAddress::RealSegmentOffset(seg, offset);
+        loop {
+            let b = self.memory.read_u8(addr.value());
+            if b == 0 {
+                break;
+            }
+            res.push(b as char);
+            addr.inc_u8();
+        }
+        res
+    }
+
     pub fn read_u8_addr(&self, addr: MemoryAddress) -> u8 {
         let v = self.memory.read_u8(addr.value());
         if DEBUG_MMU {
@@ -155,6 +170,7 @@ impl MMU {
 
     /// read interrupt vector, returns segment, offset
     pub fn read_vec(&self, v: u16) -> (u16, u16) {
+        // XXX better naming
         let v_abs = u32::from(v) << 2;
         let seg = self.memory.read_u16(v_abs);
         let off = self.memory.read_u16(v_abs + 2);
