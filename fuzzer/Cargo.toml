@@ -9,6 +9,7 @@ path = "src/lib.rs"
 
 [dependencies]
 clap = "2.33"
+colored = "1.9"
 curl = { version = "0.4", default-features = false }
 dustbox = { path = "../dustbox" }
 rand = "0.7"

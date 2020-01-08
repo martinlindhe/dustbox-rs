@@ -489,9 +489,21 @@ fn can_encode_shr8() {
 }
 
 #[test]
+fn can_encode_shr16() {
+    let op = Instruction::new2(Op::Shr16, Parameter::Reg16(R::AX), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "shr ax,byte 0xff", vec!(0xC1, 0xE8, 0xFF));
+}
+
+#[test]
 fn can_encode_shl8() {
     let op = Instruction::new2(Op::Shl8, Parameter::Reg8(R::AH), Parameter::Imm8(0xFF));
     assert_encdec(&op, "shl ah,byte 0xff", vec!(0xC0, 0xE4, 0xFF));
+}
+
+#[test]
+fn can_encode_shl16() {
+    let op = Instruction::new2(Op::Shl16, Parameter::Reg16(R::AX), Parameter::Imm8(0xFF));
+    assert_encdec(&op, "shl ax,byte 0xff", vec!(0xC1, 0xE0, 0xFF));
 }
 
 #[test]

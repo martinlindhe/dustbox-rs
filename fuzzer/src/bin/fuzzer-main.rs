@@ -44,17 +44,16 @@ fn main() {
             .get_matches();
 
     let ops_to_fuzz = vec!(
-        Op::Cmp8,
-
         // TODO - ENCODING NOT IMPLEMENTED:
         //Op::Cmpsw,
 
         // TODO FUZZ:
+        // Pop16, by pushing word on stack in setup
         // movsb/w, stosb/w
-    
 
-        // ERROR - regs differ vs dosbox, regs match vs winxp! - overflow flag is wrong in both:
-        // Op::Shld, Op::Shrd,
+        // Op::Shld, Op::Shrd,      // ERROR - regs differ vs dosbox, regs match vs winxp! - overflow flag is wrong in both:
+        // Op::Shl16,               // ERROR - overflow flag diff vs both dosbox & winxp. algo from bochs
+        // Op::Shr16,               // ERROR? - identical to winxp, but overflow flag differs vs dosbox
 
         /*
         // UNSURE: overflow is identical to bochs and dosbox, but differs in WinXP vm:
@@ -65,7 +64,8 @@ fn main() {
         Op::Div8, Op::Div16, Op::Idiv8, Op::Idiv16, // seems correct. NOTE that winxp crashes with "Divide overflow" on some input
         Op::Bt, Op::Bsf,
         Op::Aaa, Op::Aad, Op::Aam, Op::Aas, Op::Daa, Op::Das,
-        
+
+        Op::Mov8, Op::Mov16,
         Op::Cmp8, Op::Cmp16,
         Op::And8, Op::And16,
         Op::Xor8, Op::Xor16,

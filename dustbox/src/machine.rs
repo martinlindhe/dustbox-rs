@@ -2266,40 +2266,50 @@ impl Machine {
                 if count > 0 {
                     let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
 
-                    let mut res: u16 = 0;
                     let mut of: u16 = 0;
                     let mut cf: u16 = 0;
-                    if count <= 8 {
-                        res = op1 << count;
+                    let res = if count <= 8 {
+                        let v = op1 << count;
                         cf = (op1 >> (8 - count)) & 0x1;
                         // NOTE: overflow is identical to bochs and dosbox, but differs in WinXP vm.
-                        of = cf ^ (res >> 7);
-                    }
-
-                    self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, res as u8);
-
+                        of = cf ^ (v >> 7);
+                        v
+                    } else {
+                        0
+                    };
                     self.cpu.regs.flags.set_sign_u8(res as usize);
                     self.cpu.regs.flags.set_zero_u8(res as usize);
                     self.cpu.regs.flags.set_parity(res as usize);
                     self.cpu.regs.flags.carry = cf != 0;
                     self.cpu.regs.flags.overflow = of != 0;
+                
+                    self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, res as u8);
                 }
             }
             Op::Shl16 => {
-                // Multiply `dst` by 2, `src` times.
-                // two arguments    (alias: sal)
-                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let count = self.cpu.read_parameter_value(&self.mmu, &op.params.src) & 0x1F;
+                // two arguments
+                let count = self.cpu.read_parameter_value(&self.mmu, &op.params.src) & 0x1F; // use only 5 LSB
                 if count > 0 {
-                    let res = dst.wrapping_shl(count as u32);
+                    let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
+
+                    let mut of: u32 = 0;
+                    let mut cf: u32 = 0;
+                    let res = if count <= 16 {
+                        let v = op1 << count;
+                        cf = (op1 >> (16 - count)) & 0x1;
+                        of = cf ^ (v >> 15); // of = cf ^ result15
+                        v
+                    } else {
+                        0
+                    };
+
+                    self.cpu.regs.flags.set_sign_u16(res as usize);
+                    self.cpu.regs.flags.set_zero_u16(res as usize);
+                    self.cpu.regs.flags.set_parity(res as usize);
+                    self.cpu.regs.flags.carry = cf != 0;
+                    self.cpu.regs.flags.overflow = of != 0;
+
                     self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, res as u16);
-                    self.cpu.regs.flags.carry = (res & 0x8000) != 0;
-                    if count == 1 {
-                        self.cpu.regs.flags.overflow = self.cpu.regs.flags.carry_val() ^ ((res & 0x8000) >> 15) != 0;
-                    }
-                    self.cpu.regs.flags.set_sign_u16(res);
-                    self.cpu.regs.flags.set_zero_u16(res);
-                    self.cpu.regs.flags.set_parity(res);
                 }
             }
             Op::Shl32 => {

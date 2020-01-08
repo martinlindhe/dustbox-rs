@@ -6,6 +6,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::time::{Duration, Instant};
 
+use colored::*;
+
 use rand::Rng;
 
 use tera::{Tera, Context};
@@ -128,7 +130,7 @@ fn fuzz(runner: &CodeRunner, data: &[u8], op_count: usize, affected_flag_mask: u
     }
 
     if compare_regs(&machine.cpu, &vm_regs, &affected_registers) {
-        println!("\nMAJOR: regs differ");
+        println!("\n{}", "MAJOR: regs differ".red());
         return false;
     }
 
@@ -139,7 +141,7 @@ fn fuzz(runner: &CodeRunner, data: &[u8], op_count: usize, affected_flag_mask: u
     if vm_masked_flags != dustbox_masked_flags {
         let xored = vm_masked_flags ^ dustbox_masked_flags;
         print!("\nflag diff: vm {:04x} {:8} vs dustbox {:04x} {:8} = diff {:8}\n",
-            vm_masked_flags, bitflags_str(vm_masked_flags), dustbox_masked_flags, bitflags_str(dustbox_masked_flags), bitflags_str(xored));
+            vm_masked_flags, bitflags_str(vm_masked_flags).green(), dustbox_masked_flags, bitflags_str(dustbox_masked_flags).red(), bitflags_str(xored).red());
         return false;
     }
     true
@@ -207,8 +209,9 @@ impl AffectedFlags {
     /// returns a flag mask for affected flag registers by op
     pub fn for_op(op: &Op) -> u16 {
         match *op {
-            Op::Nop | Op::Salc | Op::Not8 | Op::Not16 | Op::Div8 | Op::Div16 | Op::Idiv8 | Op::Idiv16 |
-            Op::Cbw | Op::Cwd16 | Op::Lahf | Op::Lea16 | Op::Xchg8 | Op::Xchg16 | Op::Xlatb =>
+            Op::Nop | Op::Mov8 | Op::Mov16 | Op::Mov32 | Op::Not8 | Op::Not16 |
+            Op::Div8 | Op::Div16 | Op::Idiv8 | Op::Idiv16 | Op::Xchg8 | Op::Xchg16 |
+            Op::Salc | Op::Cbw | Op::Cwd16 | Op::Lahf | Op::Lea16 | Op::Xlatb =>
                 AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // none
 
             Op::Sahf =>
@@ -238,7 +241,8 @@ impl AffectedFlags {
                 AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:1, d:0, i:0}.mask(), // C A S Z P O
 
             Op::Aad | Op::Aam | Op::Xor8 | Op::Xor16 | Op::Test8 | Op::Test16 |
-            Op::Shl8 | Op::Shr8 | Op::Sar8 | Op::And8 | Op::And16 | Op::Or8 | Op::Or16 =>
+            Op::And8 | Op::And16 | Op::Or8 | Op::Or16 |
+            Op::Shl8 | Op::Shl16 | Op::Shr8 | Op::Shr16 | Op::Sar8 =>
                 AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1, d:0, i:0}.mask(), // C O S Z P
 
             Op::Daa | Op::Das =>
@@ -483,7 +487,6 @@ fn read_text_file(filename: &PathBuf) -> String {
     buffer
 }
 
-
 // returns the setup code (clear registers and flags)
 fn prober_setupcode() -> Vec<Instruction> {
     vec!(
@@ -500,6 +503,12 @@ fn prober_setupcode() -> Vec<Instruction> {
 // returns a snippet used to mutate state for op
 fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruction> {
     match *op {
+        Op::Mov8 => { vec!(
+            Instruction::new2(op.clone(), Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
+        )}
+        Op::Mov16 => { vec!(
+            Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
+        )}
         Op::Cmpsw => { vec!(
             // compare word at address DS:(E)SI with byte at address ES:(E)DI;
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::SI), Parameter::Imm16(0x3030)),
@@ -523,7 +532,13 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
         )}
-        Op::Bt | Op::Bsf | Op::Xchg16 => {vec!(
+        Op::Shl16 | Op::Shr16 => { vec!(
+            Instruction::new1(Op::Push16, Parameter::Imm16(rng.gen())),
+            Instruction::new(Op::Popf),
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
+            Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Imm8(rng.gen())),
+        )}
+        Op::Bt | Op::Bsf | Op::Xchg16 => { vec!(
             // bsf r16, r/m16
             // bt r/m16, r16
             // xchg r/m16, r16

@@ -341,6 +341,12 @@ impl Encoder {
                     Err(why) => return Err(why),
                 }
             }
+            Op::Shl16 | Op::Shr16 => {
+                match self.bitshift_instr16(op) {
+                    Ok(data) => out.extend(data),
+                    Err(why) => return Err(why),
+                }
+            }
             Op::And16 | Op::Or16 | Op::Add16 | Op::Adc16 | Op::Sub16 | Op::Sbb16 | Op::Cmp16 | Op::Xor16 => {
                 match self.arith_instr16(op) {
                     Ok(data) => out.extend(data),
@@ -644,11 +650,11 @@ impl Encoder {
                         // XXX ModRegRm.rm really should use enum AMode, not like AMode is now. naming there is wrong
                         let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.bitshift_index(&ins.command)};
                         if i == 1 {
-                            // 0xD0: bit shift byte by 1
+                            // 0xD0 = bit shift byte by 1
                             out.push(0xD0);
                             out.push(mrr.u8());
                         } else {
-                            // 0xC0: r8, byte imm8
+                            // 0xC0 = r/m8, byte imm8
                             out.push(0xC0);
                             out.push(mrr.u8());
                             out.push(i as u8);
@@ -665,15 +671,44 @@ impl Encoder {
         }
     }
 
+    fn bitshift_instr16(&self, ins: &Instruction) -> Result<Vec<u8>, EncodeError> {
+        let mut out = vec!();
+        match ins.params.dst {
+            Parameter::Reg16(r) => {
+                match ins.params.src {
+                    Parameter::Imm8(i) => {
+                        // md 3 = register adressing
+                        let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.bitshift_index(&ins.command)};
+                        if i == 1 {
+                            // 0xD1 = bit shift byte by 1
+                            out.push(0xD1);
+                            out.push(mrr.u8());
+                        } else {
+                            // 0xC1 = r/m16, byte imm8
+                            out.push(0xC1);
+                            out.push(mrr.u8());
+                            out.push(i as u8);
+                        }
+                    }
+                    _ => {
+                        panic!("bitshift_instr16 {}: {:?}", ins, ins);
+                    }
+                }
+                Ok(out)
+            }
+            _ => Err(EncodeError::UnexpectedDstType(ins.params.dst.clone())),
+        }
+    }
+
     fn bitshift_index(&self, op: &Op) -> u8 {
         match *op {
-            Op::Rol8 => 0,
-            Op::Ror8 => 1,
-            Op::Rcl8 => 2,
-            Op::Rcr8 => 3,
-            Op::Shl8 => 4,
-            Op::Shr8 => 5,
-            Op::Sar8 => 7,
+            Op::Rol8 | Op::Rol16 => 0,
+            Op::Ror8 | Op::Ror16 => 1,
+            Op::Rcl8 | Op::Rcl16 => 2,
+            Op::Rcr8 | Op::Rcr16 => 3,
+            Op::Shl8 | Op::Shl16 => 4,
+            Op::Shr8 | Op::Shr16 => 5,
+            Op::Sar8 | Op::Sar16 => 7,
             _ => panic!("bitshift_get_index {:?}", op),
         }
     }
