@@ -31,7 +31,10 @@ impl ExeFile {
             Err(e) => panic!(e),
         };
 
-        let program_data = data[header.exe_data_start_offset()..header.exe_data_end_offset()].to_vec();
+        if header.exe_data_end_offset() > data.len() {
+            println!("WARNING: program end = {:04X} but data len = {:04X}", header.exe_data_end_offset(), data.len());
+        }
+        let program_data = data[header.exe_data_start_offset()..data.len()].to_vec();
         let relocs = header.parse_relocations(data);
 
         Ok(ExeFile {

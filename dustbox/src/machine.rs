@@ -361,11 +361,12 @@ impl Machine {
                 self.cpu.fatal_error = true; // stops execution
             }
             _ => {
-                println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}, CX={:04X}",
+                println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}, CX={:04X}, DX={:04X}",
                         int,
                         self.cpu.get_r16(R::AX),
                         self.cpu.get_r16(R::BX),
-                        self.cpu.get_r16(R::CX));
+                        self.cpu.get_r16(R::CX),
+                        self.cpu.get_r16(R::DX));
             }
         }
     }
