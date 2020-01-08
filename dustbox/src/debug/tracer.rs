@@ -991,8 +991,9 @@ impl ProgramTracer {
 
     fn video_mode_desc(&self, mode: u8) -> &str {
         match mode {
-            0x03 => "80x25 text",
-            0x13 => "320x200 VGA",
+            0x03 => "80x25 16-color text",
+            0x11 => "640x480 B/W VGA",
+            0x13 => "320x200 256-color VGA",
             _ => "unrecognized"
         }
     }

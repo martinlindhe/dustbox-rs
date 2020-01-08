@@ -4,7 +4,7 @@ use crate::cpu::{CPU, R};
 use crate::machine::Component;
 use crate::memory::{MMU, MemoryAddress};
 use crate::gpu::palette;
-use crate::gpu::palette::ColorSpace;
+use crate::gpu::palette::{ColorSpace};
 use crate::gpu::font;
 use crate::gpu::video_parameters;
 use crate::gpu::modes::GFXMode;
@@ -599,7 +599,7 @@ impl GPU {
                 // 01: 40x25 16 color text (CGA,EGA,MCGA,VGA)
                 // 02: 80x25 16 shades of gray text (CGA,EGA,MCGA,VGA)
                 //0x03 => self.render_mode03_frame(memory), // 80x25 16 color text (CGA,EGA,MCGA,VGA)
-                0x04 => self.render_mode04_frame(&mmu.memory.data), // 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
+                0x04 => self.render_mode04_frame(&mmu.memory.data),
                 // 05: 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
                 //0x06 => self.render_mode06_frame(memory), // 640x200 B/W graphics (CGA,EGA,MCGA,VGA)
                 // 07: 80x25 Monochrome text (MDA,HERC,EGA,VGA)
@@ -611,9 +611,9 @@ impl GPU {
                 // 0F: 640x350 Monochrome graphics (EGA,VGA)
                 // 10: 640x350 16 color graphics (EGA or VGA with 128K)
                 //     640x350 4 color graphics (64K EGA)
-                //0x11 => self.render_mode11_frame(&memory), // 640x480 B/W graphics (MCGA,VGA)
+                0x11 => self.render_mode11_frame(&mmu.memory.data),
                 //0x12 => self.render_mode12_frame(&memory), // 640x480 16 color graphics (VGA)
-                0x13 => self.render_mode13_frame(&mmu.memory.data), // 320x200 256 color graphics (MCGA,VGA)
+                0x13 => self.render_mode13_frame(&mmu.memory.data),
                 _ => {
                     println!("XXX fixme render_frame for mode {:02x}", self.mode.mode);
                     Vec::new()
@@ -634,6 +634,7 @@ impl GPU {
         Vec::new()
     }
 */
+    /// 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
     fn render_mode04_frame(&self, memory: &[u8]) -> Vec<ColorSpace> {
         let mut buf: Vec<ColorSpace> = Vec::new();
         // XXX palette selection is done by writes to cga registers
@@ -663,11 +664,32 @@ impl GPU {
         //     = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
         // XXX impl
     }
-    fn render_mode11_frame(&self, memory: &[u8]) -> Vec<u8> {
-        // 11h = G  80x30  8x16  640x480  mono      .   A000 VGA,MCGA,ATI EGA,ATI VIP
-        // XXX impl
-    }
 */
+
+    /// 640x480 B/W graphics (MCGA,VGA)
+    fn render_mode11_frame(&self, memory: &[u8]) -> Vec<ColorSpace> {
+
+        let mut buf: Vec<ColorSpace> = Vec::new();
+        let pal = palette::mono_palette();
+
+        // 11h = G  80x30  8x16  640x480  mono      .   A000 VGA,MCGA,ATI EGA,ATI VIP
+        for y in 0..self.mode.sheight {
+            let base_y = 0xA_0000 + (y * (self.mode.swidth >> 3));
+            for x in 0..self.mode.swidth {
+                // 8 pixels in one byte, 640 pixels fit in 640/8 = 80 bytes (0x50 bytes)
+
+                // which bit represent the current pixel
+                let bit = (x % 8) & 7;
+
+                // x >> 3 == x / 8
+                let offset = (base_y + (x >> 3)) as usize;
+                let v = ((memory[offset] & (1 << (7-bit))) >> (7-bit)) & 1; // 1 bit
+                let pal = &pal[v as usize];
+                buf.push(pal.clone());
+            }
+        }
+        buf
+    }
 
 /*
     // planar mode
@@ -699,7 +721,8 @@ impl GPU {
     }
 */
 
-    // linear mode
+    /// 320x200 256 color graphics (MCGA,VGA)
+    /// linear mode
     fn render_mode13_frame(&self, memory: &[u8]) -> Vec<ColorSpace> {
         let mut buf: Vec<ColorSpace> = Vec::new();
         for y in 0..self.mode.sheight {

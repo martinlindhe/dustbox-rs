@@ -3,6 +3,9 @@ use std::num::Wrapping;
 use crate::machine::Machine;
 use crate::cpu::R;
 
+// TODO TEST retn, retf, retn imm16
+// TODO lds, les - write tests and fix implementation - it is wrong?!
+
 #[test]
 fn can_execute_push_pop() {
     let mut machine = Machine::deterministic();

@@ -46,8 +46,12 @@ fn main() {
     let ops_to_fuzz = vec!(
         Op::Cmp8,
 
-        // ENCODING NOT IMPLEMENTED:
+        // TODO - ENCODING NOT IMPLEMENTED:
         //Op::Cmpsw,
+
+        // TODO FUZZ:
+        // movsb/w, stosb/w
+    
 
         // ERROR - regs differ vs dosbox, regs match vs winxp! - overflow flag is wrong in both:
         // Op::Shld, Op::Shrd,
