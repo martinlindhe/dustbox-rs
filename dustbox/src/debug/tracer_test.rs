@@ -272,7 +272,7 @@ fn trace_dont_annotate_dirty_regs() {
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
     ass_eq("[085F:0100] B81300           Mov16    ax, 0x0013                    ; ax = 0x0013
-[085F:0103] CD10             Int      0x10                          ; video: set 320x200 VGA mode (0x13) | dirty all regs
+[085F:0103] CD10             Int      0x10                          ; video: set 320x200x256 mode (0x13) | dirty all regs
 [085F:0105] 89C3             Mov16    bx, ax                        ; bx is dirty
 [085F:0107] B81200           Mov16    ax, 0x0012                    ; ax = 0x0012
 [085F:010A] 89C3             Mov16    bx, ax                        ; bx = 0x0012
@@ -294,7 +294,7 @@ fn trace_annotate_int() {
     tracer.trace_execution(&mut machine);
     let res = tracer.present_trace(&mut machine);
     ass_eq("[085F:0100] B80300           Mov16    ax, 0x0003                    ; ax = 0x0003
-[085F:0103] CD10             Int      0x10                          ; video: set 80x25 text mode (0x03) | dirty all regs
+[085F:0103] CD10             Int      0x10                          ; video: set 80x25x16 text mode (0x03) | dirty all regs
 [085F:0105] B44C             Mov8     ah, 0x4C                      ; ah = 0x4C
 [085F:0107] CD21             Int      0x21                          ; dos: terminate program with return code in AL | dirty all regs
 ", &res);
