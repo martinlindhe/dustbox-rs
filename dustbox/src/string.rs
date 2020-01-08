@@ -32,6 +32,6 @@ pub fn bytes_to_ascii(data: &[u8]) -> String {
     data.iter().map(|b| if *b < 128 && *b > 30 {
         *b as char
     } else {
-        '.' as char
+        '.'
     }).collect()
 }

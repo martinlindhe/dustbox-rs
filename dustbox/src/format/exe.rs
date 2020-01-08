@@ -40,9 +40,9 @@ impl ExeFile {
         println!("  program start in exe: {:04X}", program_start);
 
         Ok(ExeFile {
-            header: header,
-            relocs: relocs,
-            program_data: program_data,
+            header,
+            relocs,
+            program_data,
             exe_size: data.len(),
         })
     }
@@ -53,9 +53,7 @@ impl ExeFile {
 
         if self.header.relocations > 0 {
             println!("relocations:");
-            let mut i = 0;
-            for reloc in &self.relocs {
-                i += 1;
+            for (i, reloc) in self.relocs.iter().enumerate() {
                 println!("  {}: {}", i, reloc);
             }
         }
