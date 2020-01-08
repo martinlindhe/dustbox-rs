@@ -251,6 +251,8 @@ impl ProgramTracer {
         let ma = MemoryAddress::RealSegmentOffset(machine.cpu.get_r16(R::CS), machine.cpu.regs.ip);
         self.seen_addresses.push(SeenAddress{ma, visited: false, sources: SeenSources::default()});
 
+        println!("; starting tracing disassembly at {}", ma);
+
         loop {
             self.trace_unvisited_address(machine);
             if !self.has_unvisited_code_addresses() {
@@ -338,7 +340,7 @@ impl ProgramTracer {
 
                 // determine if last byte was in this range
                 if let MemoryAddress::RealSegmentOffset(_seg, off) = block_last {
-                    if off != adr.offset() - 1 && !block.is_empty() {
+                    if off != adr.offset().wrapping_sub(1) && !block.is_empty() {
                         unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownBytes(block.clone()), address: block_start});
                         block.clear();
                     }
@@ -729,6 +731,7 @@ impl ProgramTracer {
                     Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Call),
                     Parameter::Reg16(_) => {}, // ignore "call bp"
                     Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
+                    Parameter::Ptr16Imm(_, _) => {} // ignore "call 0x4422:0x3050"
                     Parameter::Ptr16Amode(_, _) => {}, // ignore "FF1F              call far [bx]"
                     Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
                     Parameter::Ptr16AmodeS16(_, _, _) => {}, // ignore "call [bx-0x67A0]"
@@ -978,7 +981,7 @@ impl ProgramTracer {
             }
             ma.inc_n(u16::from(ii.instruction.length));
 
-            if (ma.offset() - machine.rom_base.offset()) as isize >= machine.rom_length as isize {
+            if (ma.offset() as isize - machine.rom_base.offset() as isize) >= machine.rom_length as isize {
                 eprintln!("ERROR: breaking because we reached end of file at {} (indicates incorrect parsing)", ma);
                 break;
             }

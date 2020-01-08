@@ -345,6 +345,25 @@ impl Machine {
                     self.cpu.fatal_error = true; // stops execution
                 }
             }
+            0x17 => {
+                // PRINTER
+                match self.cpu.get_r8(R::AH) {
+                    0x02 => {
+                        // PRINTER - GET STATUS
+                        // DX = printer number (00h-02h)
+                        // Return: AH = printer status (see #00631)
+                        let dx = self.cpu.get_r16(R::DX);
+                        println!("XXX PRINTER - GET STATUS, printer {}", dx);
+                    }
+                    _ => {
+                        println!("int error: unknown printer interrupt, AH={:02X}, BX={:04X}, CX={:04X}, DX={:04X}",
+                            self.cpu.get_r8(R::AH),
+                            self.cpu.get_r16(R::BX),
+                            self.cpu.get_r16(R::CX),
+                            self.cpu.get_r16(R::DX));
+                    }
+                }
+            }
             0x20 => {
                 // DOS 1+ - TERMINATE PROGRAM
                 // NOTE: Windows overloads INT 20

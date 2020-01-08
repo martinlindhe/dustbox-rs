@@ -112,6 +112,12 @@ pub fn handle(machine: &mut Machine) {
                 _ => {},
             }
         }
+        0x19 => {
+            // DOS 1+ - GET CURRENT DEFAULT DRIVE
+            // Return: AL = drive (00h = A:, 01h = B:, etc)
+            println!("XXX DOS - GET CURRENT DEFAULT DRIVE");
+            machine.cpu.set_r8(R::AL, 0); // XXX drive = A:
+        }
         0x1A => {
             // DOS 1+ - SET DISK TRANSFER AREA ADDRESS
             // DS:DX -> Disk Transfer Area (DTA)
@@ -313,6 +319,21 @@ pub fn handle(machine: &mut Machine) {
                 _ => println!("int21 (dos) error: ioctl ah=44, al={:02X}",
                      machine.cpu.get_r8(R::AL)),
             }
+        }
+        0x47 => {
+            // DOS 2+ - CWD - GET CURRENT DIRECTORY
+            // DL = drive number (00h = default, 01h = A:, etc)
+            // DS:SI -> 64-byte buffer for ASCIZ pathname
+
+            // Return:
+            // CF clear if successful
+            // AX = 0100h (undocumented)
+            // CF set on error
+            // AX = error code (0Fh) (see #01680 at AH=59h/BX=0000h)
+            let ds = machine.cpu.get_r16(R::DS);
+            let si = machine.cpu.get_r16(R::SI);
+            println!("XXX DOS - CWD - GET CURRENT DIRECTORY. dl={:02X}, DS:SI={:04X}:{:04X}",
+                machine.cpu.get_r8(R::DL), ds, si);
         }
         0x48 => {
             // DOS 2+ - ALLOCATE MEMORY

@@ -48,7 +48,9 @@ fn flat_disassembly(filename: &str) {
     let mut ma = machine.cpu.get_memory_address();
 
     let mut rom_end = machine.rom_base;
-    rom_end.add_offset(machine.rom_length as u16); // XXX only works on <=64k .com files
+    rom_end.add_offset(machine.rom_length as u16);
+
+    println!("; starting flat disassembly at {}", ma);
 
     loop {
         let op = decoder.get_instruction_info(&mut machine.mmu, ma.segment(), ma.offset());
