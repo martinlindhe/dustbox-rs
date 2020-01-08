@@ -868,6 +868,27 @@ impl Machine {
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 self.cpu.cmp32(dst, src);
             }
+            Op::Cmpsb => {
+                // no parameters
+                // Compare byte at address DS:(E)SI with byte at address ES:(E)DI
+                // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
+                let src = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI)) as usize;
+                let dst = self.mmu.read_u16(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI)) as usize;
+                self.cpu.cmp8(dst, src);
+
+                let si = if !self.cpu.regs.flags.direction {
+                    self.cpu.get_r16(R::SI).wrapping_add(1)
+                } else {
+                    self.cpu.get_r16(R::SI).wrapping_sub(1)
+                };
+                self.cpu.set_r16(R::SI, si);
+                let di = if !self.cpu.regs.flags.direction {
+                    self.cpu.get_r16(R::DI).wrapping_add(1)
+                } else {
+                    self.cpu.get_r16(R::DI).wrapping_sub(1)
+                };
+                self.cpu.set_r16(R::DI, di);
+            }
             Op::Cmpsw => {
                 // no parameters
                 // Compare word at address DS:(E)SI with word at address ES:(E)DI
