@@ -178,6 +178,16 @@ pub fn handle(machine: &mut Machine) {
             machine.cpu.set_r8(R::AL, 3); // AL = major version number (00h if DOS 1.x)
             machine.cpu.set_r8(R::AH, 10); // AH = minor version number
         }
+        0x31 => {
+            // DOS 2+ - TERMINATE AND STAY RESIDENT
+            // AL = return code
+            // DX = number of paragraphs to keep resident
+            // Return: Never
+            let code = machine.cpu.get_r8(R::AL);
+            let paragraphs = machine.cpu.get_r16(R::DX);
+            println!("XXX DOS - TERMINATE AND STAY RESIDENT, code:{:02X}, paragraphs:{:04X}", code, paragraphs);
+            machine.cpu.fatal_error = true;
+        }
         0x33 => {
             // DOS 2+ - EXTENDED BREAK CHECKING
             // AL = subfunction
@@ -387,7 +397,18 @@ pub fn handle(machine: &mut Machine) {
             // 03h terminate and stay resident (INT 21/AH=31h or INT 27)
             // AL = return code
             // CF clear
-            println!("DOS 2+ - GET RETURN CODE");
+            println!("XXX DOS 2+ - GET RETURN CODE");
+        }
+        0x50 => {
+            // DOS 2+ internal - SET CURRENT PROCESS ID (SET PSP ADDRESS)
+            // BX = segment of PSP for new process
+            let bx = machine.cpu.get_r16(R::BX);
+            println!("XXX DOS 2+ - SET CURRENT PROCESS ID, bx={:04X}", bx);
+        }
+        0x51 => {
+            // DOS 2+ internal - GET CURRENT PROCESS ID (GET PSP ADDRESS)
+            // Return: BX = segment of PSP for current process
+            println!("XXX DOS - GET CURRENT PROCESS ID");
         }
         0x59 => {
             match machine.cpu.get_r16(R::BX) {

@@ -91,6 +91,18 @@ impl Component for Keyboard {
                     println!("KEYBOARD - CHECK FOR KEYSTROKE, returns ah {:02x}, al {:02x}", ah, al);
                 }
             }
+            0x05 => {
+                // KEYBOARD - STORE KEYSTROKE IN KEYBOARD BUFFER (AT/PS w enh keybd only)
+                // CH = BIOS scan code
+                // CL = ASCII character
+                // Return:
+                // AL = status
+                // 00h if successful
+                // 01h if keyboard buffer full
+                let code = cpu.get_r8(R::CH);
+                let ascii = cpu.get_r8(R::CL);
+                println!("XXX impl KEYBOARD - STORE KEYSTROKE IN KEYBOARD BUFFER, code={:02X}, ascii={:02X}", code, ascii);
+            }
             0x11 => {
                 // KEYBOARD - CHECK FOR ENHANCED KEYSTROKE (enh kbd support only)
                 // Return:

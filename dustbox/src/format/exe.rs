@@ -157,8 +157,9 @@ impl ExeHeader {
     }
 
     fn print_details(&self) {
-        // println!("ExeHeader::print_details {:#?}", self);
-        println!("pages: {}, and {} bytes in last page. pages in bytes = {}", self.pages, self.bytes_in_last_page, self.pages * PAGE_SIZE);
+        println!("ExeHeader::print_details {:#?}", self);
+        let pages_in_bytes = self.pages as usize * PAGE_SIZE as usize;
+        println!("pages: {}, and {} bytes in last page, pages in bytes = {}", self.pages, self.bytes_in_last_page, pages_in_bytes);
         println!("header size: {} paragraphs / {} bytes (0x{:04X})", self.header_paragraphs, self.header_size(), self.header_size());
         println!("extra paragraphs: min {}, max {}", self.min_extra_paragraphs, self.max_extra_paragraphs);
         println!("ss:sp = {:04X}:{:04X}", self.ss, self.sp);
@@ -167,7 +168,6 @@ impl ExeHeader {
         if self.overlay_number != 0 {
             println!("overlay number: {}", self.overlay_number);
         }
-        println!("exe data start: {:04X}", self.exe_data_start_offset());
 
         if self.reloc_table_offset >= 0x40 {
             println!("ERROR: unhandled new-format (NE,LE,LX,W3,PE,etc.) executable");

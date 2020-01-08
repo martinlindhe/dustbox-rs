@@ -253,14 +253,14 @@ impl CPU {
     /// returns "segment, offset" pair
     fn get_amode_addr(&self, amode: &AMode) -> (u16, u16) {
         match *amode {
-            AMode::BX => (self.get_r16(R::DS), self.get_r16(R::BX)),
-            AMode::BP => (self.get_r16(R::SS), self.get_r16(R::BP)),
-            AMode::SI => (self.get_r16(R::DS), self.get_r16(R::SI)),
-            AMode::DI => (self.get_r16(R::DS), self.get_r16(R::DI)),
-            AMode::BXSI => (self.get_r16(R::DS), self.get_r16(R::BX) + self.get_r16(R::SI)),
-            AMode::BXDI => (self.get_r16(R::DS), self.get_r16(R::BX) + self.get_r16(R::DI)),
-            AMode::BPSI => (self.get_r16(R::SS), self.get_r16(R::BP) + self.get_r16(R::SI)),
-            AMode::BPDI => (self.get_r16(R::SS), self.get_r16(R::BP) + self.get_r16(R::DI)),
+            AMode::BX  => (self.get_r16(R::DS), self.get_r16(R::BX)),
+            AMode::BP  => (self.get_r16(R::SS), self.get_r16(R::BP)),
+            AMode::SI  => (self.get_r16(R::DS), self.get_r16(R::SI)),
+            AMode::DI  => (self.get_r16(R::DS), self.get_r16(R::DI)),
+            AMode::BXSI => (self.get_r16(R::DS), self.get_r16(R::BX).wrapping_add(self.get_r16(R::SI))),
+            AMode::BXDI => (self.get_r16(R::DS), self.get_r16(R::BX).wrapping_add(self.get_r16(R::DI))),
+            AMode::BPSI => (self.get_r16(R::SS), self.get_r16(R::BP).wrapping_add(self.get_r16(R::SI))),
+            AMode::BPDI => (self.get_r16(R::SS), self.get_r16(R::BP).wrapping_add(self.get_r16(R::DI))),
             _ => panic!("xxx"),
         }
     }

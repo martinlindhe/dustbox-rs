@@ -2,7 +2,6 @@ use std::{mem, u8};
 use std::num::Wrapping;
 use std::fs::File;
 use std::path::Path;
-use std::error::Error;
 use std::io::{BufWriter, Write};
 
 use crate::bios::BIOS;
@@ -126,7 +125,7 @@ impl Machine {
         let trace_path = Path::new(filename);
 
         let file = match File::create(&trace_path) {
-            Err(why) => panic!("couldn't create {:?}: {}", trace_path.display(), why.description()),
+            Err(why) => panic!("couldn't create {:?}: {}", trace_path.display(), why),
             Ok(file) => file,
         };
 
@@ -211,22 +210,23 @@ impl Machine {
             Ok(exe) => exe,
             Err(e) => panic!(e),
         };
+        // arbitrary numbers, some based on dosbox
+        let base_ss = 0x0339;
+        let base_cs = 0x0339;
 
         // relative SS
-        let ss = ((self.cpu.get_r16(R::SS) as isize) + (exe.header.ss as isize)) as u16;
+        let ss = (base_ss + (exe.header.ss as isize)) as u16;
         self.cpu.set_r16(R::SS, ss);
         self.cpu.set_r16(R::SP, exe.header.sp);
 
-        // arbitrary numbers, some based on dosbox
-        let base_cs = 0x0810;
         // relative CS
         let cs = (base_cs + (exe.header.cs as isize)) as u16;
         self.cpu.set_r16(R::CS, cs);
         self.cpu.regs.ip = exe.header.ip;
 
-        self.mmu.write(base_cs as u16, exe.header.ip, &exe.program_data);
+        self.mmu.write(base_cs as u16, 0, &exe.program_data);
 
-        let some_segment = 0x0910;
+        let some_segment = 0x0329;
         self.cpu.set_r16(R::DS, some_segment);
         self.cpu.set_r16(R::ES, some_segment);
         self.cpu.set_r16(R::BP, 0x091C);
@@ -361,10 +361,11 @@ impl Machine {
                 self.cpu.fatal_error = true; // stops execution
             }
             _ => {
-                println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}",
+                println!("int error: unknown interrupt {:02X}, AX={:04X}, BX={:04X}, CX={:04X}",
                         int,
                         self.cpu.get_r16(R::AX),
-                        self.cpu.get_r16(R::BX));
+                        self.cpu.get_r16(R::BX),
+                        self.cpu.get_r16(R::CX));
             }
         }
     }
@@ -1980,7 +1981,7 @@ impl Machine {
                 if op.params.count() == 1 {
                     // 1 argument: pop imm16 bytes from stack
                     let imm16 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
-                    let sp = self.cpu.get_r16(R::SP) + imm16;
+                    let sp = self.cpu.get_r16(R::SP).wrapping_add(imm16);
                     self.cpu.set_r16(R::SP, sp);
                 }
             }
