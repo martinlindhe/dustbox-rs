@@ -605,7 +605,7 @@ impl Machine {
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::cyclomatic_complexity))]
     fn execute(&mut self, op: &Instruction) {
         let start_ip = self.cpu.regs.ip;
-        self.cpu.regs.ip = (Wrapping(self.cpu.regs.ip) + Wrapping(u16::from(op.length))).0;
+        self.cpu.regs.ip = self.cpu.regs.ip.wrapping_add(op.length as u16);
         self.cpu.instruction_count += 1;
         self.cpu.cycle_count += 1; // XXX temp hack; we pretend each instruction takes 8 cycles due to lack of timing
         match op.command {
@@ -877,15 +877,15 @@ impl Machine {
                 self.cpu.cmp16(dst, src);
 
                 let si = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::SI)) + Wrapping(2)).0
+                    self.cpu.get_r16(R::SI).wrapping_add(2)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::SI)) - Wrapping(2)).0
+                    self.cpu.get_r16(R::SI).wrapping_sub(2)
                 };
                 self.cpu.set_r16(R::SI, si);
                 let di = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::DI)) + Wrapping(2)).0
+                    self.cpu.get_r16(R::DI).wrapping_add(2)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::DI)) - Wrapping(2)).0
+                    self.cpu.get_r16(R::DI).wrapping_sub(2)
                 };
                 self.cpu.set_r16(R::DI, di);
             }
@@ -913,7 +913,7 @@ impl Machine {
                 // single parameter (dst)
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let src = 1;
-                let res = (Wrapping(dst) - Wrapping(src)).0;
+                let res = dst.wrapping_sub(src);
 
                 // The CF flag is not affected. The OF, SF, ZF, AF,
                 // and PF flags are set according to the result.
@@ -929,7 +929,7 @@ impl Machine {
                 // single parameter (dst)
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let src = 1;
-                let res = (Wrapping(dst) - Wrapping(src)).0;
+                let res = dst.wrapping_sub(src);
 
                 // The CF flag is not affected. The OF, SF, ZF, AF,
                 // and PF flags are set according to the result.
@@ -945,7 +945,7 @@ impl Machine {
                 // single parameter (dst)
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let src = 1;
-                let res = (Wrapping(dst) - Wrapping(src)).0;
+                let res = dst.wrapping_sub(src);
 
                 // The CF flag is not affected. The OF, SF, ZF, AF,
                 // and PF flags are set according to the result.
@@ -1199,7 +1199,7 @@ impl Machine {
             Op::Inc8 => {
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let src = 1;
-                let res = (Wrapping(dst) + Wrapping(src)).0;
+                let res = dst.wrapping_add(src);
 
                 // The OF, SF, ZF, AF, and PF flags are set according to the result.
                 self.cpu.regs.flags.set_overflow_add_u8(res, src, dst);
@@ -1213,7 +1213,7 @@ impl Machine {
             Op::Inc16 => {
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let src = 1;
-                let res = (Wrapping(dst) + Wrapping(src)).0;
+                let res = dst.wrapping_add(src);
 
                 // The OF, SF, ZF, AF, and PF flags are set according to the result.
                 self.cpu.regs.flags.set_overflow_add_u16(res, src, dst);
@@ -1227,7 +1227,7 @@ impl Machine {
             Op::Inc32 => {
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let src = 1;
-                let res = (Wrapping(dst) + Wrapping(src)).0;
+                let res = dst.wrapping_add(src);
 
                 // The OF, SF, ZF, AF, and PF flags are set according to the result.
                 self.cpu.regs.flags.set_overflow_add_u32(res, src, dst);
@@ -1245,9 +1245,9 @@ impl Machine {
                 let data = self.in_u8(dx);
                 self.mmu.write_u8(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI), data);
                 let di = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::DI)) + Wrapping(1)).0
+                    self.cpu.get_r16(R::DI).wrapping_add(1)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::DI)) - Wrapping(1)).0
+                    self.cpu.get_r16(R::DI).wrapping_sub(1)
                 };
                 self.cpu.set_r16(R::DI, di);
             }
@@ -1412,9 +1412,9 @@ impl Machine {
 
                 self.cpu.set_r8(R::AL, val);
                 let si = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::SI)) + Wrapping(1)).0
+                    self.cpu.get_r16(R::SI).wrapping_add(1)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::SI)) - Wrapping(1)).0
+                    self.cpu.get_r16(R::SI).wrapping_sub(1)
                 };
                 self.cpu.set_r16(R::SI, si);
             }
@@ -1426,9 +1426,9 @@ impl Machine {
 
                 self.cpu.set_r16(R::AX, val);
                 let si = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::SI)) + Wrapping(2)).0
+                    self.cpu.get_r16(R::SI).wrapping_add(2)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::SI)) - Wrapping(2)).0
+                    self.cpu.get_r16(R::SI).wrapping_sub(2)
                 };
                 self.cpu.set_r16(R::SI, si);
             }
@@ -1440,16 +1440,16 @@ impl Machine {
 
                 self.cpu.set_r32(R::EAX, val);
                 let si = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::SI)) + Wrapping(4)).0
+                    self.cpu.get_r16(R::SI).wrapping_add(4)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::SI)) - Wrapping(4)).0
+                    self.cpu.get_r16(R::SI).wrapping_sub(4)
                 };
                 self.cpu.set_r16(R::SI, si);
             }
             Op::Loop => {
                 // Decrement count; jump short if count ≠ 0.
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
-                let cx = (Wrapping(self.cpu.get_r16(R::CX)) - Wrapping(1)).0;
+                let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 {
                     self.cpu.regs.ip = dst;
@@ -1458,7 +1458,7 @@ impl Machine {
             Op::Loope => {
                 // Decrement count; jump short if count ≠ 0 and ZF = 1.
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
-                let cx = (Wrapping(self.cpu.get_r16(R::CX)) - Wrapping(1)).0;
+                let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 && self.cpu.regs.flags.zero {
                     self.cpu.regs.ip = dst;
@@ -1467,7 +1467,7 @@ impl Machine {
             Op::Loopne => {
                 // Decrement count; jump short if count ≠ 0 and ZF = 0.
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
-                let cx = (Wrapping(self.cpu.get_r16(R::CX)) - Wrapping(1)).0;
+                let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 && !self.cpu.regs.flags.zero {
                     self.cpu.regs.ip = dst;
@@ -1493,18 +1493,18 @@ impl Machine {
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
                 let val = self.mmu.read_u8(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
                 let si = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::SI)) + Wrapping(1)).0
+                    self.cpu.get_r16(R::SI).wrapping_add(1)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::SI)) - Wrapping(1)).0
+                    self.cpu.get_r16(R::SI).wrapping_sub(1)
                 };
                 self.cpu.set_r16(R::SI, si);
                 let es = self.cpu.get_r16(R::ES);
                 let di = self.cpu.get_r16(R::DI);
                 self.mmu.write_u8(es, di, val);
                 let di = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::DI)) + Wrapping(1)).0
+                    self.cpu.get_r16(R::DI).wrapping_add(1)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::DI)) - Wrapping(1)).0
+                    self.cpu.get_r16(R::DI).wrapping_sub(1)
                 };
                 self.cpu.set_r16(R::DI, di);
             }
@@ -1513,18 +1513,18 @@ impl Machine {
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
                 let val = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
                 let si = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::SI)) + Wrapping(2)).0
+                    self.cpu.get_r16(R::SI).wrapping_add(2)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::SI)) - Wrapping(2)).0
+                    self.cpu.get_r16(R::SI).wrapping_sub(2)
                 };
                 self.cpu.set_r16(R::SI, si);
                 let es = self.cpu.get_r16(R::ES);
                 let di = self.cpu.get_r16(R::DI);
                 self.mmu.write_u16(es, di, val);
                 let di = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::DI)) + Wrapping(2)).0
+                    self.cpu.get_r16(R::DI).wrapping_add(2)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::DI)) - Wrapping(2)).0
+                    self.cpu.get_r16(R::DI).wrapping_sub(2)
                 };
                 self.cpu.set_r16(R::DI, di);
             }
@@ -1533,18 +1533,18 @@ impl Machine {
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
                 let val = self.mmu.read_u32(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
                 let si = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::SI)) + Wrapping(4)).0
+                    self.cpu.get_r16(R::SI).wrapping_add(4)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::SI)) - Wrapping(4)).0
+                    self.cpu.get_r16(R::SI).wrapping_sub(4)
                 };
                 self.cpu.set_r16(R::SI, si);
                 let es = self.cpu.get_r16(R::ES);
                 let di = self.cpu.get_r16(R::DI);
                 self.mmu.write_u32(es, di, val);
                 let di = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::DI)) + Wrapping(4)).0
+                    self.cpu.get_r16(R::DI).wrapping_add(4)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::DI)) - Wrapping(4)).0
+                    self.cpu.get_r16(R::DI).wrapping_sub(4)
                 };
                 self.cpu.set_r16(R::DI, di);
             }
@@ -1600,7 +1600,7 @@ impl Machine {
                 // Unsigned multiply (AX ← AL ∗ r/m8).
                 let al = self.cpu.get_r8(R::AL) as usize;
                 let arg1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let ax = (Wrapping(al) * Wrapping(arg1)).0 as u16;
+                let ax = al.wrapping_mul(arg1) as u16;
                 self.cpu.set_r16(R::AX, ax);
                 // The OF and CF flags are set to 0 if the upper half of the
                 // result is 0; otherwise, they are set to 1.
@@ -1617,7 +1617,7 @@ impl Machine {
                 // Unsigned multiply (DX:AX ← AX ∗ r/m16).
                 let src = self.cpu.get_r16(R::AX) as usize;
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let res = (Wrapping(dst) * Wrapping(src)).0;
+                let res = dst.wrapping_mul(src);
 
                 self.cpu.set_r16(R::AX, res as u16);
                 let dx = (res >> 16) as u16;
@@ -1630,7 +1630,7 @@ impl Machine {
                 // Unsigned multiply (EDX:EAX ← EAX ∗ r/m32)
                 let src = self.cpu.get_r32(R::EAX) as usize;
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let res = (Wrapping(dst) * Wrapping(src)).0;
+                let res = dst.wrapping_mul(src);
 
                 self.cpu.set_r32(R::EAX, res as u32);
                 let edx = (res >> 32) as u32;
@@ -1643,8 +1643,8 @@ impl Machine {
                 // Two's Complement Negation
                 // one argument
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let src = 0;
-                let res = (Wrapping(src) - Wrapping(dst)).0;
+                let src: u8 = 0;
+                let res = src.wrapping_sub(dst as u8) as usize;
                 self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, res as u8);
 
                 self.cpu.regs.flags.carry = dst != 0;
@@ -1652,14 +1652,14 @@ impl Machine {
                 self.cpu.regs.flags.overflow = res == 0x80;
                 self.cpu.regs.flags.set_sign_u8(res);
                 self.cpu.regs.flags.set_zero_u8(res);
-                self.cpu.regs.flags.set_adjust(res, src, dst);
+                self.cpu.regs.flags.set_adjust(res, src as usize, dst);
                 self.cpu.regs.flags.set_parity(res);
             }
             Op::Neg16 => {
                 // one argument
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let src = 0;
-                let res = (Wrapping(src) - Wrapping(dst)).0;
+                let src: u16 = 0;
+                let res = src.wrapping_sub(dst as u16) as usize;
                 self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, res as u16);
 
                 self.cpu.regs.flags.carry = dst != 0;
@@ -1667,14 +1667,14 @@ impl Machine {
                 self.cpu.regs.flags.overflow = res == 0x8000;
                 self.cpu.regs.flags.set_sign_u16(res);
                 self.cpu.regs.flags.set_zero_u16(res);
-                self.cpu.regs.flags.set_adjust(res, src, dst);
+                self.cpu.regs.flags.set_adjust(res, src as usize, dst);
                 self.cpu.regs.flags.set_parity(res);
             }
             Op::Neg32 => {
                 // one argument
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let src = 0;
-                let res = (Wrapping(src) - Wrapping(dst)).0;
+                let src: u32 = 0;
+                let res = src.wrapping_sub(dst as u32) as usize;
                 self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, res as u32);
 
                 self.cpu.regs.flags.carry = dst != 0;
@@ -1682,7 +1682,7 @@ impl Machine {
                 self.cpu.regs.flags.overflow = res == 0x8000_0000;
                 self.cpu.regs.flags.set_sign_u32(res);
                 self.cpu.regs.flags.set_zero_u32(res);
-                self.cpu.regs.flags.set_adjust(res, src, dst);
+                self.cpu.regs.flags.set_adjust(res, src as usize, dst);
                 self.cpu.regs.flags.set_parity(res);
             }
             Op::Nop => {}
@@ -1747,9 +1747,9 @@ impl Machine {
                 let port = self.cpu.get_r16(R::DX);
                 self.out_u8(port, val);
                 let si = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::SI)) + Wrapping(1)).0
+                    self.cpu.get_r16(R::SI).wrapping_add(1)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::SI)) - Wrapping(1)).0
+                    self.cpu.get_r16(R::SI).wrapping_sub(1)
                 };
                 self.cpu.set_r16(R::SI, si);
             }
@@ -1760,9 +1760,9 @@ impl Machine {
                 let port = self.cpu.get_r16(R::DX);
                 self.out_u16(port, val);
                 let si = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::SI)) + Wrapping(2)).0
+                    self.cpu.get_r16(R::SI).wrapping_add(2)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::SI)) - Wrapping(2)).0
+                    self.cpu.get_r16(R::SI).wrapping_sub(2)
                 };
                 self.cpu.set_r16(R::SI, si);
             }
@@ -2184,9 +2184,9 @@ impl Machine {
                 let dst = self.mmu.read_u8(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI));
                 self.cpu.cmp8(dst as usize, src as usize);
                 let di = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::DI)) + Wrapping(1)).0
+                    self.cpu.get_r16(R::DI).wrapping_add(1)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::DI)) - Wrapping(1)).0
+                    self.cpu.get_r16(R::DI).wrapping_sub(1)
                 };
                 self.cpu.set_r16(R::DI, di);
             }
@@ -2197,9 +2197,9 @@ impl Machine {
                 let dst = self.mmu.read_u16(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI));
                 self.cpu.cmp16(dst as usize, src as usize);
                 let di = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::DI)) + Wrapping(2)).0
+                    self.cpu.get_r16(R::DI).wrapping_add(2)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::DI)) - Wrapping(2)).0
+                    self.cpu.get_r16(R::DI).wrapping_sub(2)
                 };
                 self.cpu.set_r16(R::DI, di);
             }
@@ -2427,9 +2427,9 @@ impl Machine {
                 let di = self.cpu.get_r16(R::DI);
                 self.mmu.write_u8(es, di, al);
                 let di = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::DI)) + Wrapping(1)).0
+                    self.cpu.get_r16(R::DI).wrapping_add(1)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::DI)) - Wrapping(1)).0
+                    self.cpu.get_r16(R::DI).wrapping_sub(1)
                 };
                 self.cpu.set_r16(R::DI, di);
             }
@@ -2442,9 +2442,9 @@ impl Machine {
                 let di = self.cpu.get_r16(R::DI);
                 self.mmu.write_u16(es, di, ax);
                 let di = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::DI)) + Wrapping(2)).0
+                    self.cpu.get_r16(R::DI).wrapping_add(2)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::DI)) - Wrapping(2)).0
+                    self.cpu.get_r16(R::DI).wrapping_sub(2)
                 };
                 self.cpu.set_r16(R::DI, di);
             }
@@ -2458,9 +2458,9 @@ impl Machine {
                 self.mmu.write_u32(es, di, eax);
                 // XXX adjust DI or EDI ?
                 let di = if !self.cpu.regs.flags.direction {
-                    (Wrapping(self.cpu.get_r16(R::DI)) + Wrapping(4)).0
+                    self.cpu.get_r16(R::DI).wrapping_add(4)
                 } else {
-                    (Wrapping(self.cpu.get_r16(R::DI)) - Wrapping(4)).0
+                    self.cpu.get_r16(R::DI).wrapping_sub(4)
                 };
                 self.cpu.set_r16(R::DI, di);
             }
@@ -2468,7 +2468,7 @@ impl Machine {
                 // two parameters (dst=reg)
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let res = (Wrapping(dst) - Wrapping(src)).0;
+                let res = dst.wrapping_sub(src);
 
                 // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
                 self.cpu.regs.flags.set_overflow_sub_u8(res, src, dst);
@@ -2484,7 +2484,7 @@ impl Machine {
                 // two parameters (dst=reg)
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let res = (Wrapping(dst) - Wrapping(src)).0;
+                let res = dst.wrapping_sub(src);
 
                 // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
                 self.cpu.regs.flags.set_overflow_sub_u16(res, src, dst);
@@ -2500,7 +2500,7 @@ impl Machine {
                 // two parameters (dst=reg)
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let res = (Wrapping(dst) - Wrapping(src)).0;
+                let res = dst.wrapping_sub(src);
 
                 // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
                 self.cpu.regs.flags.set_overflow_sub_u32(res, src, dst);
@@ -2623,21 +2623,21 @@ impl Machine {
 
         match op.repeat {
             RepeatMode::Rep => {
-                let cx = (Wrapping(self.cpu.get_r16(R::CX)) - Wrapping(1)).0;
+                let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 {
                     self.cpu.regs.ip = start_ip;
                 }
             }
             RepeatMode::Repe => {
-                let cx = (Wrapping(self.cpu.get_r16(R::CX)) - Wrapping(1)).0;
+                let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 && self.cpu.regs.flags.zero {
                     self.cpu.regs.ip = start_ip;
                 }
             }
             RepeatMode::Repne => {
-                let cx = (Wrapping(self.cpu.get_r16(R::CX)) - Wrapping(1)).0;
+                let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 && !self.cpu.regs.flags.zero {
                     self.cpu.regs.ip = start_ip;
