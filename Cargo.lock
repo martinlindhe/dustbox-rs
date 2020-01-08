@@ -373,6 +373,7 @@ name = "debugger"
 version = "0.1.0"
 dependencies = [
  "cairo-rs 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "dustbox 0.0.1",
  "gdk 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gdk-pixbuf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",

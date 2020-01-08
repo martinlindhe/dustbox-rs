@@ -9,6 +9,7 @@ path = "src/lib.rs"
 
 [dependencies]
 cairo-rs = "0.8"
+clap = "2.33"
 dustbox = { path = "../dustbox" }
 gdk = "0.12"
 gdk-pixbuf = "0.8"

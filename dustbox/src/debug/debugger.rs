@@ -401,9 +401,9 @@ impl Debugger {
         }
     }
 
-    /// loads a .com or .exe file
+    /// Loads a .com or .exe file
     pub fn load_executable(&mut self, name: &str) {
-        println!("Reading executable from {}", name);
+        println!("debugger: Loading executable {}", name);
         match tools::read_binary(name) {
             Ok(data) => {
                 self.machine.hard_reset();
