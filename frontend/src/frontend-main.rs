@@ -131,8 +131,6 @@ fn main() {
         {
             // resize window to current screen mode sizes
             if frame.mode.mode != last_video_mode {
-                let window = canvas.window_mut();
-
                 let (internal_scale_x, internal_scale_y) = if square_pixels {
                     (scale_factor * frame.mode.scale_x, scale_factor * frame.mode.scale_y)
                 } else {
@@ -145,10 +143,9 @@ fn main() {
 
                 println!("Resizing window for mode {:02x} to {}x{} pixels, {}x{} frame size, scale factor {}x, internal scale x:{}, y:{}",
                     frame.mode.mode, window_width, window_height, frame.mode.swidth, frame.mode.sheight, scale_factor, internal_scale_x, internal_scale_y);
-                window.set_size(window_width, window_height).unwrap();
 
-                // makes the canvas fill the whole window (no black borders)
-                canvas.set_logical_size(window_width, window_width).unwrap();
+                let window = canvas.window_mut();
+                window.set_size(window_width, window_height).unwrap();
 
                 last_video_mode = frame.mode.mode;
             }
