@@ -26,6 +26,8 @@ use crate::storage::Storage as StorageComponent;
 #[path = "./machine_test.rs"]
 mod machine_test;
 
+const HANDLE_DEBUG_INTERRUPT: bool = false;
+
 /// prints each instruction as they are executed
 const DEBUG_EXEC: bool = false;
 
@@ -339,7 +341,9 @@ impl Machine {
                 // debugger interrupt
                 // http://www.ctyme.com/intr/int-03.htm
                 println!("INT 3 - debugger interrupt. AX={:04X}", self.cpu.get_r16(R::AX));
-                self.cpu.fatal_error = true; // stops execution
+                if HANDLE_DEBUG_INTERRUPT {
+                    self.cpu.fatal_error = true; // stops execution
+                }
             }
             0x20 => {
                 // DOS 1+ - TERMINATE PROGRAM

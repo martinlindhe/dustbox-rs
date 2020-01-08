@@ -230,6 +230,46 @@ pub fn handle(machine: &mut Machine) {
                      machine.cpu.get_r16(R::DS),
                      machine.cpu.get_r16(R::DX));
         }
+        0x43 => {
+            match machine.cpu.get_r8(R::AL) {
+                0x00 => {
+                    // EXTENDED MEMORY SPECIFICATION (XMS) v2+ - INSTALLATION CHECK
+                    // Return:
+                    // AL = 80h XMS driver installed
+                    // AL <> 80h no driver
+                    machine.cpu.set_r8(R::AL, 0); // signals that XMS is not installed
+                    println!("XXX DOS - XMS INSTALLATION CHECK");
+                }
+                _ => println!("int21 (dos) error: xms ah=43, al={:02X}",
+                     machine.cpu.get_r8(R::AL)),
+            }
+        }
+        0x44 => {
+            match machine.cpu.get_r8(R::AL) {
+                0x00 => {
+                    // DOS 2+ - IOCTL - GET DEVICE INFORMATION
+                    // BX = handle
+                    // Return:
+                    // CF clear if successful
+                    // DX = device information word (see #01423)
+                    // CF set on error
+                    // AX = error code (01h,05h,06h) (see #01680 at AH=59h/BX=0000h)
+                    println!("XXX DOS - IOCTL - GET DEVICE INFORMATION, handle={:04X}",  machine.cpu.get_r16(R::BX))
+                }
+                0x01 => {
+                    // DOS 2+ - IOCTL - SET DEVICE INFORMATION
+                    // BX = handle (must refer to character device)
+                    // DX = device information word (see #01423)
+                    // (DH must be zero for DOS version prior to 6.x)
+                    // Return:
+                    // CF clear if successful / set on error
+                    // AX = error code (01h,05h,06h,0Dh) (see #01680 at AH=59h/BX=0000h)
+                    println!("XXX DOS - IOCTL - SET DEVICE INFORMATION, handle={:04X}, device:{:04X}",  machine.cpu.get_r16(R::BX),  machine.cpu.get_r16(R::DX));
+                }
+                _ => println!("int21 (dos) error: ioctl ah=44, al={:02X}",
+                     machine.cpu.get_r8(R::AL)),
+            }
+        }
         0x48 => {
             // DOS 2+ - ALLOCATE MEMORY
             // BX = number of paragraphs to allocate
@@ -241,6 +281,18 @@ pub fn handle(machine: &mut Machine) {
             // BX = size of largest available block
             println!("XXX impl DOS 2+ - ALLOCATE MEMORY. bx={:04X}",
                      machine.cpu.get_r16(R::BX));
+            machine.cpu.regs.flags.carry = true; // signals ERROR !
+        }
+        0x49 => {
+            // DOS 2+ - FREE MEMORY
+            // ES = segment of block to free
+            // Return:
+            // CF clear if successful
+            // CF set on error
+            // AX = error code (07h,09h) (see #01680 at AH=59h/BX=0000h)
+            println!("XXX impl DOS 2+ - FREE MEMORY. es={:04X}",
+                     machine.cpu.get_r16(R::ES));
+            machine.cpu.regs.flags.carry = false;
         }
         0x4A => {
             // DOS 2+ - RESIZE MEMORY BLOCK
@@ -265,6 +317,23 @@ pub fn handle(machine: &mut Machine) {
             let al = machine.cpu.get_r8(R::AL);
             println!("DOS - TERMINATE WITH RETURN CODE {:02X}", al);
             machine.cpu.fatal_error = true; // XXX just to stop debugger.run() function
+        }
+        0x59 => {
+            match machine.cpu.get_r16(R::BX) {
+                0x0000 => {
+                    // DOS 3.0+ - GET EXTENDED ERROR INFORMATION
+                    // Return:
+                    // AX = extended error code (see #01680)
+                    // BH = error class (see #01682)
+                    // BL = recommended action (see #01683)
+                    // CH = error locus (see #01684)
+                    // ES:DI may be pointer (see #01681, #01680)
+                    // CL, DX, SI, BP, and DS destroyed
+                    println!("XXX DOS - GET EXTENDED ERROR INFORMATION");
+                }
+                _ => println!("int21 (dos) error: unknown ah=59, bx={:04X}",
+                     machine.cpu.get_r16(R::BX)),
+            }
         }
         _ => {
             println!("int21 (dos) error: unknown ah={:02X}, ax={:04X}",

@@ -1775,7 +1775,7 @@ impl Decoder {
 
     fn read_mod_reg_rm(&mut self, mmu: &MMU) -> ModRegRm {
         let b = mmu.read_u8(self.current_seg, self.current_offset);
-        self.current_offset += 1;
+        self.current_offset = self.current_offset.wrapping_add(1);
         let res = ModRegRm {
             md: b >> 6, // high 2 bits
             reg: (b >> 3) & 7, // mid 3 bits
