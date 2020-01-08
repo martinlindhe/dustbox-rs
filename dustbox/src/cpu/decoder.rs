@@ -7,7 +7,7 @@ use crate::cpu::register::{R, r8, r16, r32, sr};
 use crate::cpu::segment::Segment;
 use crate::memory::{MMU, MemoryAddress};
 
-/// prints decoded instructions each time they are being decoded
+/// if enabled, prints decoded instructions each time they are being decoded
 const DEBUG_DECODER: bool = false;
 
 #[cfg(test)]
@@ -79,7 +79,7 @@ impl Decoder {
         let start_offset = self.current_offset;
         let b = self.read_u8(mmu);
         if DEBUG_DECODER {
-            // println!("decode op start {}", op);
+            // println!("decode op {:04X}: {}", start_offset, op);
         }
 
         match b {
@@ -1553,7 +1553,7 @@ impl Decoder {
         // calculate instruction length
         op.length = (Wrapping(u16::from(op.length)) + Wrapping(self.current_offset) - Wrapping(start_offset)).0 as u8;
         if DEBUG_DECODER {
-            // println!("decode op end: {}", op);
+            println!("{:04X}: decoded {}", start_offset, op);
         }
     }
 

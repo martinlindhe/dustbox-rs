@@ -337,7 +337,7 @@ impl RegisterState {
             R::DS => self.sreg16[3] = val,
             R::FS => self.sreg16[4] = val,
             R::GS => self.sreg16[5] = val,
-            _ => unreachable!(),
+            _ => println!("FATAL INVALID r16 value {}", r), //unreachable!(),
           }
     }
 

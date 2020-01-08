@@ -1,5 +1,5 @@
 [package]
-name = "disassembler"
+name = "disasm"
 version = "0.1.0"
 authors = ["Martin Lindhe"]
 edition = "2018"

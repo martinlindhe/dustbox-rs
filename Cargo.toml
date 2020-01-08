@@ -2,7 +2,7 @@
 members = [
     "debugger",
     "dustbox",
-    "disassembler",
+    "disasm",
     "exeinfo",
     "frontend",
     "fuzzer",

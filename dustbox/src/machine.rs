@@ -5,24 +5,22 @@ use std::path::Path;
 use std::error::Error;
 use std::io::{BufWriter, Write};
 
-use bincode::deserialize;
-
 use crate::bios::BIOS;
 use crate::cpu::{CPU, Op, Invalid, R, RegisterState};
 use crate::cpu::{Instruction, RepeatMode, Exception};
 use crate::cpu::{Parameter};
+use crate::format::ExeFile;
 use crate::gpu::GFXMode;
+use crate::gpu::GPU as GPUComponent;
 use crate::hex::hex_bytes;
 use crate::interrupt;
-use crate::memory::{MMU, MemoryAddress};
-use crate::ndisasm::ndisasm_first_instr;
-
-use crate::storage::Storage as StorageComponent;
 use crate::keyboard::Keyboard as KeyboardComponent;
+use crate::memory::{MMU, MemoryAddress};
 use crate::mouse::Mouse as MouseComponent;
+use crate::ndisasm::ndisasm_first_instr;
 use crate::pic::PIC as PICComponent;
 use crate::pit::PIT as PITComponent;
-use crate::gpu::GPU as GPUComponent;
+use crate::storage::Storage as StorageComponent;
 
 #[cfg(test)]
 #[path = "./machine_test.rs"]
@@ -39,35 +37,6 @@ pub const DEBUG_MARK_STACK: bool = false;
 
 /// value used to taint the stack, to notice on errors or small com apps just using "retn" to exit to DOS
 pub const STACK_MARKER: u16 = 0xDEAD;
-
-#[derive(Deserialize, Debug)]
-struct ExeHeader {
-    signature: u16,             // 0x5A4D == "MZ"
-    bytes_in_last_block: u16,   // padding info for exact data size
-    blocks_in_file: u16,        // data size in 512-byte blocks
-    num_relocs: u16,            // number of relocation items
-    header_paragraphs: u16,     // header size in 16-byte paragraphs
-    min_extra_paragraphs: u16,
-    max_extra_paragraphs: u16,
-    ss: u16,
-    sp: u16,
-    checksum: u16,
-    ip: u16,
-    cs: u16,
-    reloc_table_offset: u16,
-    overlay_number: u16,
-}
-
-#[derive(Deserialize, Debug)]
-struct ExeReloc {
-    offset: u16,
-    segment: u16,
-}
-
-struct Exe {
-    header: ExeHeader,
-    relocs: Vec<ExeReloc>,
-}
 
 pub enum MachineComponent {
     Storage(StorageComponent),
@@ -228,45 +197,47 @@ impl Machine {
 
     pub fn load_executable(&mut self, data: &[u8], psp_segment: u16) {
         if data[0] == b'M' && data[1] == b'Z' {
-            self.load_exe(data, psp_segment);
+            self.load_exe(data);
         } else {
             self.load_com(data, psp_segment);
         }
     }
 
-    /// loads an exe file (TODO finish impl)
-    fn load_exe(&mut self, data: &[u8], psp_segment: u16) {
-        let hdr: ExeHeader = deserialize(data).unwrap();
-        println!("load_exe header: {:?}", hdr);
+    /// loads an exe file
+    fn load_exe(&mut self, data: &[u8]) {
+        let exe = match ExeFile::from_data(data) {
+            Ok(exe) => exe,
+            Err(e) => panic!(e),
+        };
 
-        let reloc_from = hdr.reloc_table_offset as usize;
-        let reloc_to = hdr.reloc_table_offset as usize + (hdr.num_relocs as usize * 4);
-        println!("load_exe read relocs from {:04X}-{:04X}", reloc_from, reloc_to);
+        // relative SS
+        let ss = ((self.cpu.get_r16(R::SS) as isize) + (exe.header.ss as isize)) as u16;
+        self.cpu.set_r16(R::SS, ss);
+        self.cpu.set_r16(R::SP, exe.header.sp);
 
-        // let relocs: Vec<ExeReloc> = deserialize(&data[reloc_from..reloc_to]).unwrap();  // XXX crashes
-        let relocs: ExeReloc = deserialize(&data[reloc_from..reloc_to]).unwrap(); // XXX only reads first reloc
-        println!("XXX relocs: {:?}", relocs);
+        // arbitrary numbers, some based on dosbox
+        let base_cs = 0x0810;
+        // relative CS
+        let cs = (base_cs + (exe.header.cs as isize)) as u16;
+        self.cpu.set_r16(R::CS, cs);
+        self.cpu.regs.ip = exe.header.ip;
 
-        let code_offset = hdr.header_paragraphs as usize * 16;
-        let mut code_end = hdr.blocks_in_file as usize * 512;
-        if hdr.bytes_in_last_block > 0 {
-            code_end -= 512 - hdr.bytes_in_last_block as usize;
-        }
-        println!("load exe code from {:04X}:{:04X}", code_offset, code_end);
+        self.mmu.write(base_cs as u16, exe.header.ip, &exe.program_data);
 
-        self.load_com(&data[code_offset..code_end], psp_segment);
-        self.cpu.set_r16(R::SP, hdr.sp);
-        self.cpu.set_r16(R::SS, hdr.ss); // XXX dosbox = 0923
-        
-        // at program start in dosbox-x:
-        // BP = 091C (dustbox ok)
-        // SP = 1000 (from hdr, dustbox ok)
-        // CS = 0920
-        // DS = 0910
-        // ES = 0910
-        // SS = 0923
+        let some_segment = 0x0910;
+        self.cpu.set_r16(R::DS, some_segment);
+        self.cpu.set_r16(R::ES, some_segment);
+        self.cpu.set_r16(R::BP, 0x091C);
+        self.cpu.set_r16(R::CX, 0x00FF);
+        self.cpu.set_r16(R::DX, some_segment);
+        self.cpu.set_r16(R::SI, 0x0100);
+        self.cpu.set_r16(R::DI, 0xFFFE);
+        self.cpu.regs.flags.interrupt = true;
 
-        // XXX SI and DI values
+        self.rom_base = self.cpu.get_memory_address();
+        self.rom_length = data.len();
+
+        self.mark_stack();
     }
 
     /// load .com program into CS:0100 and set IP to program start
