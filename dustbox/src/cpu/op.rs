@@ -137,18 +137,35 @@ pub enum Op {
     /// Load Status Flags into AH Register
     Lahf,
 
+    /// Load DS:r16 with far pointer from memory.
     Lds,
 
     /// Load Effective Address
+    /// Computes the effective address of the source operand and stores it in the destination operand.
     Lea16,
 
     Leave,
 
+    /// Load ES:r16 with far pointer from memory.
     Les,
 
-    Lodsb, Lodsw, Lodsd,
+    /// Load byte at address DS:(E)SI into AL.
+    Lodsb,
 
-    Loop, Loope, Loopne,
+    /// Load word at address DS:(E)SI into AX.
+    Lodsw,
+
+    /// Load dword at address DS:(E)SI into EAX.
+    Lodsd,
+
+    /// Decrement count (cx); jump short if count ≠ 0.
+    Loop,
+
+    /// Decrement count (cx); jump short if count ≠ 0 and ZF = 1.
+    Loope,
+
+    /// Decrement count (cx); jump short if count ≠ 0 and ZF = 0.
+    Loopne,
 
     Mov8, Mov16, Mov32,
     Movsb, Movsw, Movsd,

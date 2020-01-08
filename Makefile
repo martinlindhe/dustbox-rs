@@ -29,7 +29,8 @@ install-disasm:
 
 fuzz:
 	cargo run --package fuzzer -- supersafe --mutations 50 --host 172.16.72.129
-	cargo run --package fuzzer -- vmrun --mutations 50 --vmx "/Users/m/Documents/Virtual Machines.localized/Windows XP Professional.vmwarevm/Windows XP Professional.vmx" --username vmware --password vmware
+	# cargo run --package fuzzer -- dosbox-x --mutations 20
+	# cargo run --package fuzzer -- vmrun --mutations 50 --vmx "/Users/m/Documents/Virtual Machines.localized/Windows XP Professional.vmwarevm/Windows XP Professional.vmx" --username vmware --password vmware
 
 lint:
 	cargo clippy --all

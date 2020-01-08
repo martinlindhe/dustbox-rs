@@ -640,24 +640,16 @@ impl Machine {
             Op::Aad => {
                 // one parameter
                 let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+
                 let mut ax = u16::from(self.cpu.get_r8(R::AH)) * op1;
                 ax += u16::from(self.cpu.get_r8(R::AL));
                 let al = ax as u8;
-                self.cpu.set_r8(R::AL, al);
-                self.cpu.set_r8(R::AH, 0);
-                // modification of flags A,C,O is undocumented
-                self.cpu.regs.flags.carry = false;
-                self.cpu.regs.flags.overflow = false;
-                self.cpu.regs.flags.adjust = false;
-                // The SF, ZF, and PF flags are set according to the resulting binary value in the AL register
+                self.cpu.set_r16(R::AX, al as u16);
                 self.cpu.regs.flags.sign = al >= 0x80;
                 self.cpu.regs.flags.zero = al == 0;
                 self.cpu.regs.flags.set_parity(al as usize);
             }
             Op::Aam => {
-                // tempAL ← AL;
-                // AH ← tempAL / imm8; (* imm8 is set to 0AH for the AAM mnemonic *)
-                // AL ← tempAL MOD imm8;
                 let imm8 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u8;
                 if imm8 == 0 {
                     return self.cpu.exception(&Exception::DIV0, 0);
@@ -665,10 +657,6 @@ impl Machine {
                 let al = self.cpu.get_r8(R::AL);
                 self.cpu.set_r8(R::AH, al / imm8);
                 self.cpu.set_r8(R::AL, al % imm8);
-                // modification of flags A,C,O is undocumented
-                self.cpu.regs.flags.carry = false;
-                self.cpu.regs.flags.overflow = false;
-                self.cpu.regs.flags.adjust = false;
                 // The SF, ZF, and PF flags are set according to the resulting binary value in the AL register
                 let al = self.cpu.get_r8(R::AL);
                 self.cpu.regs.flags.sign = al & 0x80 != 0;
@@ -1421,7 +1409,6 @@ impl Machine {
                 self.cpu.set_r8(R::AH, val);
             }
             Op::Lds => {
-                // Load DS:r16 with far pointer from memory.
                 let (segment, offset) = self.cpu.read_segment_selector(&self.mmu, &op.params.src);
                 self.cpu.set_r16(R::DS, segment);
                 self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
@@ -1440,14 +1427,12 @@ impl Machine {
                 self.cpu.set_r16(R::BP, bp);
             }
             Op::Les => {
-                // Load ES:r16 with far pointer from memory.
                 let (segment, offset) = self.cpu.read_segment_selector(&self.mmu, &op.params.src);
                 self.cpu.set_r16(R::ES, segment);
                 self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
             }
             Op::Lodsb => {
                 // no arguments
-                // Load byte at address DS:(E)SI into AL.
                 // The DS segment may be over-ridden with a segment override prefix.
                 let val = self.mmu.read_u8(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
 
@@ -1461,7 +1446,6 @@ impl Machine {
             }
             Op::Lodsw => {
                 // no arguments
-                // Load word at address DS:(E)SI into AX.
                 // The DS segment may be over-ridden with a segment override prefix.
                 let val = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
 
@@ -1475,7 +1459,6 @@ impl Machine {
             }
             Op::Lodsd => {
                 // no arguments
-                // Load dword at address DS:(E)SI into EAX.
                 // The DS segment may be over-ridden with a segment override prefix.
                 let val = self.mmu.read_u32(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
 
@@ -1488,7 +1471,6 @@ impl Machine {
                 self.cpu.set_r16(R::SI, si);
             }
             Op::Loop => {
-                // Decrement count; jump short if count ≠ 0.
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
@@ -1497,7 +1479,6 @@ impl Machine {
                 }
             }
             Op::Loope => {
-                // Decrement count; jump short if count ≠ 0 and ZF = 1.
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
@@ -1506,7 +1487,6 @@ impl Machine {
                 }
             }
             Op::Loopne => {
-                // Decrement count; jump short if count ≠ 0 and ZF = 0.
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
@@ -2558,6 +2538,8 @@ impl Machine {
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let res = dst & src;
+                self.cpu.regs.flags.overflow = false;
+                self.cpu.regs.flags.carry = false;
                 // set SF, ZF, PF according to result.
                 self.cpu.regs.flags.set_sign_u8(res);
                 self.cpu.regs.flags.set_zero_u8(res);
@@ -2568,6 +2550,8 @@ impl Machine {
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let res = dst & src;
+                self.cpu.regs.flags.overflow = false;
+                self.cpu.regs.flags.carry = false;
                 // set SF, ZF, PF according to result.
                 self.cpu.regs.flags.set_sign_u16(res);
                 self.cpu.regs.flags.set_zero_u16(res);

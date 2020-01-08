@@ -12,10 +12,9 @@ fn main() {
     let matches = App::new("dustbox-fuzzer")
         .version("0.1")
         .arg(Arg::with_name("RUNNER")
-            .help("Code runner to use")
+            .help("Code runner to use (supersafe, vmrun, dosbox-x)")
             .required(true)
             .index(1)
-            // XXX show options
             .long("runner"))
         .arg(Arg::with_name("MUTATIONS")
             .help("Number of mutations per instruction")
@@ -62,7 +61,7 @@ fn main() {
         // SEEMS ALL OK:
         Op::Movzx16, Op::Movsx16,
         Op::Shr8, Op::Sar8, // OK !
-        Op::Div8, Op::Div16, Op::Idiv8, Op::Idiv16, // seems correct. NOTE that winxp crashes with "Divide overflow" on some input
+        //Op::Div8, Op::Div16, Op::Idiv8, Op::Idiv16, // seems correct. NOTE that winxp crashes with "Divide overflow" on some input
         Op::Bt, Op::Bsf,
         Op::Aaa, Op::Aad, Op::Aam, Op::Aas, Op::Daa, Op::Das,
 
@@ -79,10 +78,9 @@ fn main() {
         Op::Xchg8, Op::Xchg16,
         Op::Mul8, Op::Mul16, Op::Imul8, Op::Imul16,
         Op::Lahf, Op::Sahf, Op::Salc,
-        Op::Nop,
+        Op::Nop, Op::Lea16,
         Op::Clc, Op::Cld, Op::Cli, Op::Cmc, Op::Stc, Op::Std, Op::Sti,
         Op::Cbw, Op::Cwd16,
-        Op::Lea16,
         Op::Inc8, Op::Inc16, Op::Inc32,
         Op::Dec8, Op::Dec16, Op::Dec32,
         */

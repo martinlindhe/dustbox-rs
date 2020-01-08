@@ -108,11 +108,12 @@ pub fn fuzz_ops<RNG: Rng + ?Sized>(runner: &CodeRunner, ops_to_fuzz: Vec<Op>, cf
 /// Runs given binary data in dustbox and in a CodeRunner, comparing the resulting regs and flags
 /// returns false on failure
 fn fuzz(runner: &CodeRunner, data: &[u8], op_count: usize, affected_flag_mask: u16, cfg: &FuzzConfig) -> bool {
-    let affected_registers = vec!("ax", "dx");
+    let affected_registers = vec!("ax", "bx", "cx", "dx");
     let mut machine = Machine::deterministic();
 
     machine.load_executable(data, 0x085F);
     machine.execute_instructions(op_count);
+    // println!("regs: {}", machine.cpu.regs);
 
     let prober_com = Path::new("utils/prober/prober.com");
     assemble_prober(data, prober_com);
@@ -123,25 +124,26 @@ fn fuzz(runner: &CodeRunner, data: &[u8], op_count: usize, affected_flag_mask: u
         CodeRunner::DosboxX => stdout_from_dosbox(prober_com),
     };
 
-    let vm_regs = prober_reg_map(&output);
-    if vm_regs.is_empty() {
+    let runner_regs = prober_reg_map(&output);
+    if runner_regs.is_empty() {
         println!("FATAL: no vm regs from vm output: {}", output);
         return false;
     }
 
-    if compare_regs(&machine.cpu, &vm_regs, &affected_registers) {
+    if compare_regs(&machine.cpu, &runner_regs, &affected_registers) {
         println!("\n{}", "MAJOR: regs differ".red());
         return false;
     }
 
-    let vm_flags = vm_regs["flag"];
-    let vm_masked_flags = vm_flags & affected_flag_mask;
+    let runner_flags = runner_regs["flag"];
+    let runner_masked_flags = runner_flags & affected_flag_mask;
     let dustbox_flags = machine.cpu.regs.flags.u16();
     let dustbox_masked_flags = dustbox_flags & affected_flag_mask;
-    if vm_masked_flags != dustbox_masked_flags {
-        let xored = vm_masked_flags ^ dustbox_masked_flags;
+    if runner_masked_flags != dustbox_masked_flags {
+        let xored = runner_masked_flags ^ dustbox_masked_flags;
         print!("\nflag diff: vm {:04x} {:8} vs dustbox {:04x} {:8} = diff {:8}\n",
-            vm_masked_flags, bitflags_str(vm_masked_flags).green(), dustbox_masked_flags, bitflags_str(dustbox_masked_flags).red(), bitflags_str(xored).red());
+            runner_masked_flags, bitflags_str(runner_masked_flags),
+            dustbox_masked_flags, bitflags_str(dustbox_masked_flags), bitflags_str(xored).red());
         return false;
     }
     true
@@ -215,9 +217,6 @@ impl AffectedFlags {
             Op::Salc | Op::Cbw | Op::Cwd16 | Op::Lahf | Op::Lea16 | Op::Xlatb =>
                 AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // none
 
-            Op::Sahf =>
-                AffectedFlags{o:1, s:1, z:1, a:1, p:1, c:1, d:1, i:1}.mask(), // all
-
             Op::Bt | Op::Clc | Op::Cmc | Op::Stc =>
                 AffectedFlags{c:1, a:0, o:0, s:0, z:0, p:0, d:0, i:0}.mask(), // C
 
@@ -236,17 +235,20 @@ impl AffectedFlags {
             Op::Rol8 | Op::Rcl8 | Op::Ror8 | Op::Rcr8 | Op::Mul8 | Op::Mul16 | Op::Imul8 | Op::Imul16 =>
                 AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0, d:0, i:0}.mask(), // C O
 
+            Op::Aad | Op::Aam =>
+                AffectedFlags{c:0, a:0, o:0, s:1, z:1, p:1, d:0, i:0}.mask(), // S Z P
+
             Op::Add8 | Op::Add16 | Op::Adc8 | Op::Adc16 |
             Op::Sub8 | Op::Sub16 | Op::Sbb8 | Op::Sbb16 |
             Op::Cmp8 | Op::Cmp16 | Op::Neg8 | Op::Neg16 | Op::Shrd | Op::Cmpsw =>
                 AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:1, d:0, i:0}.mask(), // C A S Z P O
 
-            Op::Aad | Op::Aam | Op::Xor8 | Op::Xor16 | Op::Test8 | Op::Test16 |
+            Op::Xor8 | Op::Xor16 | Op::Test8 | Op::Test16 |
             Op::And8 | Op::And16 | Op::Or8 | Op::Or16 |
             Op::Shl8 | Op::Shl16 | Op::Shr8 | Op::Shr16 | Op::Sar8 =>
                 AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1, d:0, i:0}.mask(), // C O S Z P
 
-            Op::Daa | Op::Das =>
+            Op::Daa | Op::Das | Op::Sahf =>
                 AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:0, d:0, i:0}.mask(), // C A S Z P
 
             Op::Inc8 | Op::Inc16 | Op::Inc32 | Op::Dec8 | Op::Dec16 | Op::Dec32 | Op::Shld =>
@@ -491,8 +493,10 @@ fn read_text_file(filename: &PathBuf) -> String {
 // returns the setup code (clear registers and flags)
 fn prober_setupcode() -> Vec<Instruction> {
     vec!(
-        // clear ax,dx
+        // clear ax,bx,cx,dx
         Instruction::new2(Op::Xor16, Parameter::Reg16(R::AX), Parameter::Reg16(R::AX)),
+        Instruction::new2(Op::Xor16, Parameter::Reg16(R::BX), Parameter::Reg16(R::BX)),
+        Instruction::new2(Op::Xor16, Parameter::Reg16(R::CX), Parameter::Reg16(R::CX)),
         Instruction::new2(Op::Xor16, Parameter::Reg16(R::DX), Parameter::Reg16(R::DX)),
 
         // clear flags
@@ -587,7 +591,7 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
             // xchg r/m8, r8
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::DL), Parameter::Imm8(rng.gen())),
-            Instruction::new2(op.clone(), Parameter::Reg8(R::DL), Parameter::Reg8(R::BL)),
+            Instruction::new2(op.clone(), Parameter::Reg8(R::AL), Parameter::Reg8(R::DL)),
         )}
         Op::Lahf | Op::Salc | Op::Clc | Op::Cld | Op::Cli | Op::Cmc | Op::Stc | Op::Std | Op::Sti => { vec!(
             // mutate flags
@@ -621,9 +625,9 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
             Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
         )}
         Op::Movzx16 | Op::Movsx16 => { vec!(
-            // movzx AX, bl
-            Instruction::new2(Op::Mov8, Parameter::Reg8(R::BL), Parameter::Imm8(rng.gen())),
-            Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg8(R::BL)),
+            // movzx ax, dl
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R::DL), Parameter::Imm8(rng.gen())),
+            Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg8(R::DL)),
         )}
         Op::Inc16 | Op::Dec16 | Op::Not16 | Op::Neg16 => { vec!(
             // mutate ax: r/m16
@@ -636,7 +640,7 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
             Instruction::new1(op.clone(), Parameter::Imm8(rng.gen())),
         )}
         Op::Lea16 => { vec!(
-            // lea r16, m
+            // lea ax, [bx]
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Ptr16Amode(Segment::Default, AMode::BX)),
         )}
