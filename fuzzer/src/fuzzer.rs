@@ -84,7 +84,8 @@ pub fn fuzz_ops<RNG: Rng + ?Sized>(runner: &CodeRunner, ops_to_fuzz: Vec<Op>, cf
             if DEBUG_ENCODER {
                 println!("{}", ndisasm_bytes(&data).unwrap().join("\n"));
             }
-        
+            println!("{}", instructions_to_str(&snippet));
+            
             if !fuzz(&runner, &data, ops.len(), AffectedFlags::for_op(&op), &cfg) {
                 println!("failed:");
                 println!("{}", instructions_to_str(&snippet));
@@ -195,6 +196,7 @@ fn bitflags_str(f: u16) -> String {
     s
 }
 
+/// indicated which flags that will be affected by the execution of a cpu instruction
 pub struct AffectedFlags {
     // ____ O_I_ SZ_A _P_C
     pub c: u8, // 0: carry flag
@@ -212,9 +214,10 @@ impl AffectedFlags {
     pub fn for_op(op: &Op) -> u16 {
         match *op {
             Op::Nop | Op::Mov8 | Op::Mov16 | Op::Mov32 | Op::Movzx16 | Op::Movsx16 |
-            Op::Not8 | Op::Not16 |
+            Op::Push16 | Op::Pop16 | Op::Not8 | Op::Not16 |
             Op::Div8 | Op::Div16 | Op::Idiv8 | Op::Idiv16 | Op::Xchg8 | Op::Xchg16 |
-            Op::Salc | Op::Cbw | Op::Cwd16 | Op::Lahf | Op::Lea16 | Op::Xlatb =>
+            Op::Salc | Op::Cbw | Op::Cwd16 | Op::Lahf | Op::Lea16 | Op::Xlatb |
+            Op::Loop | Op::Loope | Op::Loopne =>
                 AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // none
 
             Op::Bt | Op::Clc | Op::Cmc | Op::Stc =>
@@ -508,6 +511,18 @@ fn prober_setupcode() -> Vec<Instruction> {
 // returns a snippet used to mutate state for op
 fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruction> {
     match *op {
+        Op::Loop => { vec!(
+            // XXX init cx, init dx. inc dx, loop -1
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::CX), Parameter::Imm16(rng.gen())),
+            Instruction::new2(Op::Mov16, Parameter::Reg16(R::DX), Parameter::Imm16(rng.gen())),
+            Instruction::new1(Op::Inc16, Parameter::Reg16(R::DX)),
+            Instruction::new1(Op::Loop, Parameter::Imm16(8)), // XXX to start of "inc dx" ???
+        )}
+        Op::Push16 => { vec!(
+            // tests push + pop
+            Instruction::new1(op.clone(), Parameter::Imm16(rng.gen())),
+            Instruction::new1(Op::Pop16, Parameter::Reg16(R::BX)),
+        )}
         Op::Mov8 => { vec!(
             Instruction::new2(op.clone(), Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
         )}

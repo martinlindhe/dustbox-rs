@@ -389,7 +389,23 @@ impl Encoder {
                     return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                 }
             }
+            Op::Pop16 => {
+                if let Parameter::Reg16(r) = op.params.dst {
+                    out.push(0x58 + r.index() as u8);
+                } else {
+                    return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
+                }
+            }
             Op::Popf => out.push(0x9D),
+            Op::Loop => {
+                if let Parameter::Imm16(_imm16) = op.params.dst {
+                    // XXX param should be untouched S8 !!!
+                    out.push(0xE2);
+                    panic!("need rel offset to encode loop");
+                } else {
+                    return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
+                }
+            }
             _ => {
                 return Err(EncodeError::UnhandledOp(op.command.clone()));
             }

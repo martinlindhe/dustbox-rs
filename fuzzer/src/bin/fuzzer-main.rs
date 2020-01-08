@@ -43,11 +43,12 @@ fn main() {
             .get_matches();
 
     let ops_to_fuzz = vec!(
+        // Op::Loop, // XXX need to keep relative offsets in decoder in order to encode back
+
         // TODO - ENCODING NOT IMPLEMENTED:
         //Op::Cmpsw,
 
         // TODO FUZZ:
-        // Pop16, by pushing word on stack in setup
         // movsb/w, stosb/w
 
         // Op::Shld, Op::Shrd,      // ERROR - regs differ vs dosbox, regs match vs winxp! - overflow flag is wrong in both:
@@ -65,6 +66,7 @@ fn main() {
         Op::Bt, Op::Bsf,
         Op::Aaa, Op::Aad, Op::Aam, Op::Aas, Op::Daa, Op::Das,
 
+        Op::Push16, // NOTE: also tests Op::Pop16
         Op::Mov8, Op::Mov16,
         Op::Cmp8, Op::Cmp16,
         Op::And8, Op::And16,
