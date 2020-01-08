@@ -209,7 +209,8 @@ impl AffectedFlags {
     /// returns a flag mask for affected flag registers by op
     pub fn for_op(op: &Op) -> u16 {
         match *op {
-            Op::Nop | Op::Mov8 | Op::Mov16 | Op::Mov32 | Op::Not8 | Op::Not16 |
+            Op::Nop | Op::Mov8 | Op::Mov16 | Op::Mov32 | Op::Movzx16 | Op::Movsx16 |
+            Op::Not8 | Op::Not16 |
             Op::Div8 | Op::Div16 | Op::Idiv8 | Op::Idiv16 | Op::Xchg8 | Op::Xchg16 |
             Op::Salc | Op::Cbw | Op::Cwd16 | Op::Lahf | Op::Lea16 | Op::Xlatb =>
                 AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // none
@@ -618,6 +619,11 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
             // TEST AX, imm16
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
+        )}
+        Op::Movzx16 | Op::Movsx16 => { vec!(
+            // movzx AX, bl
+            Instruction::new2(Op::Mov8, Parameter::Reg8(R::BL), Parameter::Imm8(rng.gen())),
+            Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg8(R::BL)),
         )}
         Op::Inc16 | Op::Dec16 | Op::Not16 | Op::Neg16 => { vec!(
             // mutate ax: r/m16

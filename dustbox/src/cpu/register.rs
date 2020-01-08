@@ -109,6 +109,10 @@ impl R {
         }
     }
 
+    pub fn u8(self) -> u8 {
+        self.index() as u8
+    }
+
     pub fn is_gpr(self) -> bool {
         match self {
             R::AL | R::CL | R::DL | R::BL | R::AH | R::CH | R::DH | R::BH |

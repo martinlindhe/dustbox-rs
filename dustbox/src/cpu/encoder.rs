@@ -215,6 +215,26 @@ impl Encoder {
                 out.push(0xAC);
                 out.extend(self.encode_rm_r_imm(&op.params));
             }
+            Op::Movsx16 => {
+               // MOVSX r16, r/m8
+               out.push(0x0F);
+               out.push(0xBE);
+               if let Parameter::Reg16(r) = op.params.dst {
+                   out.extend(self.encode_rm(&op.params.src, r.u8()));
+               } else {
+                   return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
+               }
+            }
+            Op::Movzx16 => {
+                // MOVZX r16, r/m8
+                out.push(0x0F);
+                out.push(0xB6);
+                if let Parameter::Reg16(r) = op.params.dst {
+                    out.extend(self.encode_rm(&op.params.src, r.u8()));
+                } else {
+                    return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
+                }
+            }
             Op::Mov8 => {
                 match op.params.dst {
                     Parameter::Reg8(r) => {

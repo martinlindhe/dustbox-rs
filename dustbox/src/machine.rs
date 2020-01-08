@@ -1596,7 +1596,6 @@ impl Machine {
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u8;
 
                 let mut data = u16::from(src);
-                // XXX should not work identical as Movzx16
                 if src & 0x80 != 0 {
                     data += 0xFF00;
                 }
@@ -1609,7 +1608,6 @@ impl Machine {
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u8;
 
                 let mut data = u32::from(src);
-                // XXX should not work identical as Movzx16
                 if src & 0x80 != 0 {
                     data += 0xFFFF_FF00;
                 }
@@ -1617,25 +1615,17 @@ impl Machine {
             }
             Op::Movzx16 => {
                 // 80386+
-                // moves an unsigned value into a register and zero-extends it with zero.
+                // moves an unsigned value into a register and zero-extends it.
                 // two arguments (dst=reg)
-                let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u8;
-                let mut data = u16::from(src);
-                if src & 0x80 != 0 {
-                    data += 0xFF00;
-                }
-                self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, data);
+                let val = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u16;
+                self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, val);
             }
             Op::Movzx32 => {
                 // 80386+
-                // moves an unsigned value into a register and zero-extends it with zero.
+                // moves an unsigned value into a register and zero-extends it.
                 // two arguments (dst=reg)
-                let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u8;
-                let mut data = u32::from(src);
-                if src & 0x80 != 0 {
-                    data += 0xFFFF_FF00;
-                }
-                self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, data);
+                let val = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u32;
+                self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, val);
             }
             Op::Mul8 => {
                 // Unsigned multiply (AX ← AL ∗ r/m8).
