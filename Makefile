@@ -40,3 +40,7 @@ prober:
 
 glade:
 	glade debugger/src/interface.glade
+
+coverage:
+	# XXX requires linux -jan 2020. osx support https://github.com/xd009642/tarpaulin/issues/152
+	cargo tarpaulin --out Html

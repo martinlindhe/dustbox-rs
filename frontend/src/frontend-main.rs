@@ -12,6 +12,8 @@ use clap::{Arg, App};
 use dustbox::machine::Machine;
 use dustbox::tools;
 
+const DEBUG_PERFORMANCE: bool = true;
+
 fn main() {
     let matches = App::new("dustbox-frontend")
         .version("0.1")
@@ -154,7 +156,7 @@ fn main() {
             for _ in 0..frame.mode.swidth {
                 // XXX calculate the number cycles to execute for (1/30th sec ) / scanlines
                 // XXX measure by instruction cycles
-                let num_instr = 300;
+                let num_instr = 400;
                 machine.execute_instructions(num_instr);
                 if machine.cpu.fatal_error {
                     println!("cpu fatal error occured. stopping execution");
@@ -164,7 +166,6 @@ fn main() {
             }
             let exec_time = frame_start.elapsed().unwrap();
 
-            frame_num += 1;
             frame_exec_sum += exec_time;
 
             let render_start = SystemTime::now();
@@ -193,38 +194,50 @@ fn main() {
 
             // sleep for 1/30:th of a second, minus time it took to get here
             let mut sleep_time = Duration::new(0, 1_000_000_000 / 30);
-            if sleep_time > exec_time {
+            if sleep_time >= exec_time {
                 sleep_time -= exec_time;
             } else {
                 println!("WARN: exec is slow {:#?}", exec_time);
                 sleep_time = Duration::new(0, 0);
             }
-            if sleep_time > render_time {
+            if sleep_time >= render_time {
                 sleep_time -= render_time;
             } else {
                 println!("WARN: render is slow {:#?}", render_time);
                 sleep_time = Duration::new(0, 0);
             }
-            if sleep_time > event_time {
+            if sleep_time >= event_time {
                 sleep_time -= event_time;
             } else {
                 println!("WARN: event handling is slow {:#?}", event_time);
                 sleep_time = Duration::new(0, 0);
             }
-            // println!("   sleep {:#?}, event {:#?}", sleep_time, event_time);
+
+            if DEBUG_PERFORMANCE {
+                frame_num += 1;
+                // println!("-- frame {}: sleep {:#?}, exec {:#?}, render {:#?}", frame_num, sleep_time, exec_time, render_time);
+                if frame_num >= locked_fps {
+                    frame_num = 0;
+                    let frame_tot_sum = frame_event_sum + frame_exec_sum + frame_render_sum + frame_sleep_sum;
+
+                    // in seconds
+                    let frames = (frame_tot_sum.as_millis() as f64) / 1_000.;
+                    let elapsed = (app_start.elapsed().unwrap().as_millis() as f64) / 1_000.;
+                    let event = (frame_event_sum.as_millis() as f64) / 1_000.;
+                    let exec = (frame_exec_sum.as_millis() as f64) / 1_000.;
+                    let render = (frame_render_sum.as_millis() as f64) / 1_000.;
+                    let sleep = (frame_sleep_sum.as_millis() as f64) / 1_000.;
+                    println!("{} frames in {:.2}s after {:.2}s. event {:.2}s, exec {:.2}s, render {:.2}s, sleep {:.2}s",
+                        locked_fps, frames, elapsed, event, exec, render, sleep);
+                    frame_event_sum = Duration::new(0, 0);
+                    frame_exec_sum = Duration::new(0, 0);
+                    frame_render_sum = Duration::new(0, 0);
+                    frame_sleep_sum = Duration::new(0, 0);
+                }
+            }
 
             sleep(sleep_time);
             frame_sleep_sum += sleep_time;
-
-            if frame_num >= locked_fps {
-                frame_num = 0;
-                let frame_tot_sum = frame_event_sum + frame_exec_sum + frame_render_sum + frame_sleep_sum;
-                println!("{} frames in {:#?} after {:#?}. event {:#?}, exec {:#?}, render {:#?}, sleep {:#?}", locked_fps, frame_tot_sum, app_start.elapsed().unwrap(), frame_event_sum, frame_exec_sum, frame_render_sum, frame_sleep_sum);
-                frame_event_sum = Duration::new(0, 0);
-                frame_exec_sum = Duration::new(0, 0);
-                frame_render_sum = Duration::new(0, 0);
-                frame_sleep_sum = Duration::new(0, 0);
-            }
         }
 
         canvas.copy(&texture, None, None).unwrap();

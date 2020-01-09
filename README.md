@@ -31,6 +31,14 @@ If you are looking for a more complete dos emulator, I suggest you check out [do
 
 Any help and contributions are much welcome!
 
+## Dependencies
+
+On Ubuntu, use `sudo apt install nasm libgtk-3-dev libcairo2-dev libpango1.0-dev libatk1.0-dev gdk-pixbuf2.0-dev libsdl2-dev libsdl2-gfx-dev`
+
+On Windows, use `vcpkg install sdl2 gtk` + `scoop install nasm`
+
+On macOS, use `brew install nasm sdl2 sdl2_gfx`
+
 ## Running
 
 To launch the debugger:
