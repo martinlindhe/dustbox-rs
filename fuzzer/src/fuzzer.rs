@@ -496,11 +496,11 @@ fn read_text_file(filename: &PathBuf) -> String {
 // returns the setup code (clear registers and flags)
 fn prober_setupcode() -> Vec<Instruction> {
     vec!(
-        // clear ax,bx,cx,dx
-        Instruction::new2(Op::Xor16, Parameter::Reg16(R::AX), Parameter::Reg16(R::AX)),
-        Instruction::new2(Op::Xor16, Parameter::Reg16(R::BX), Parameter::Reg16(R::BX)),
-        Instruction::new2(Op::Xor16, Parameter::Reg16(R::CX), Parameter::Reg16(R::CX)),
-        Instruction::new2(Op::Xor16, Parameter::Reg16(R::DX), Parameter::Reg16(R::DX)),
+        // clear eax,ebx,ecx,edx
+        Instruction::new2(Op::Xor32, Parameter::Reg32(R::EAX), Parameter::Reg32(R::EAX)),
+        Instruction::new2(Op::Xor32, Parameter::Reg32(R::EBX), Parameter::Reg32(R::EBX)),
+        Instruction::new2(Op::Xor32, Parameter::Reg32(R::ECX), Parameter::Reg32(R::ECX)),
+        Instruction::new2(Op::Xor32, Parameter::Reg32(R::EDX), Parameter::Reg32(R::EDX)),
 
         // clear flags
         Instruction::new1(Op::Push16, Parameter::Imm16(0)),
@@ -528,6 +528,9 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
         )}
         Op::Mov16 => { vec!(
             Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
+        )}
+        Op::Mov32 => { vec!(
+            Instruction::new2(op.clone(), Parameter::Reg32(R::EAX), Parameter::Imm32(rng.gen())),
         )}
         Op::Cmpsw => { vec!(
             // compare word at address DS:(E)SI with byte at address ES:(E)DI;

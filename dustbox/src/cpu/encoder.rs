@@ -373,6 +373,12 @@ impl Encoder {
                     Err(why) => return Err(why),
                 }
             }
+            Op::And32 | Op::Or32 | Op::Add32 | Op::Adc32 | Op::Sub32 | Op::Sbb32 | Op::Cmp32 | Op::Xor32 => {
+                match self.arith_instr32(op) {
+                    Ok(data) => out.extend(data),
+                    Err(why) => return Err(why),
+                }
+            }
             Op::Test16 | Op::Not16 | Op::Neg16 | Op::Div16 | Op::Idiv16 | Op::Mul16 | Op::Imul16 => {
                 match self.math_instr16(op) {
                     Ok(data) => out.extend(data),
@@ -543,6 +549,75 @@ impl Encoder {
                 out.extend(self.encode_rm_r(&ins.params));
                 Ok(out)
             }
+            _ => Err(EncodeError::UnhandledParameter(ins.params.dst.clone())),
+        }
+    }
+
+    fn arith_instr32(&self, ins: &Instruction) -> Result<Vec<u8>, EncodeError> {
+        let mut out = vec!();
+
+        // same encoding as 16-bit versions but with 32bit prefix
+        let idx = match ins.command {
+            Op::Add32 => 0x01,
+            Op::Or32  => 0x09,
+            Op::Adc32 => 0x11,
+            Op::Sbb32 => 0x19,
+            Op::And32 => 0x21,
+            Op::Sub32 => 0x29,
+            Op::Xor32 => 0x31,
+            Op::Cmp32 => 0x39,
+            _ => panic!("unhandled {:?}", ins.command),
+        };
+
+        out.push(0x66); // REX.W (Operand-size override prefix)
+
+        if let Parameter::Reg32(r) = ins.params.dst {
+            if r == R::EAX {
+                if let Parameter::Imm32(i) = ins.params.src {
+                    // 0x3D: CMP EAX, imm16
+                    out.push(idx + 4);
+                    out.push(i as u8);         // byte 0
+                    out.push((i >> 8) as u8);  // byte 1
+                    out.push((i >> 16) as u8); // byte 2
+                    out.push((i >> 24) as u8); // byte 3
+                    return Ok(out);
+                }
+            }
+        }
+        match ins.params.dst {
+            Parameter::Reg32(r) => {
+                if let Parameter::Imm32(i) = ins.params.src {
+                    // 0x81: <arithmetic> r/m32, imm32
+                    out.push(0x81);
+                    // md 3 = register adressing
+                    let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.arith_index(&ins.command)};
+                    out.push(mrr.u8());
+                    out.push(i as u8);         // byte 0
+                    out.push((i >> 8) as u8);  // byte 1
+                    out.push((i >> 16) as u8); // byte 2
+                    out.push((i >> 24) as u8); // byte 3
+                } else if ins.params.src.is_ptr() {
+                    // 0x3B: CMP r32, r/m32
+                    out.push(idx + 2);
+                    out.extend(self.encode_r_rm(&ins.params));
+                } else {
+                    // 0x39: CMP r/m32, r32
+                    out.push(idx);
+                    out.extend(self.encode_rm_r(&ins.params));
+                }
+                Ok(out)
+            }
+            /*
+            Parameter::Ptr16(_, _) |
+            Parameter::Ptr16Amode(_, _) |
+            Parameter::Ptr16AmodeS8(_, _, _) |
+            Parameter::Ptr16AmodeS16(_, _, _) => {
+                // 0x39: CMP r/m16, r16
+                out.push(idx);
+                out.extend(self.encode_rm_r(&ins.params));
+                Ok(out)
+            }
+            */
             _ => Err(EncodeError::UnhandledParameter(ins.params.dst.clone())),
         }
     }
@@ -751,14 +826,14 @@ impl Encoder {
 
     fn arith_index(&self, op: &Op) -> u8 {
         match *op {
-            Op::Add8 | Op::Add16 => 0,
-            Op::Or8  | Op::Or16  => 1,
-            Op::Adc8 | Op::Adc16 => 2,
-            Op::Sbb8 | Op::Sbb16 => 3,
-            Op::And8 | Op::And16 => 4,
-            Op::Sub8 | Op::Sub16 => 5,
-            Op::Xor8 | Op::Xor16 => 6,
-            Op::Cmp8 | Op::Cmp16 => 7,
+            Op::Add8 | Op::Add16 | Op::Add32 => 0,
+            Op::Or8  | Op::Or16  | Op::Or32  => 1,
+            Op::Adc8 | Op::Adc16 | Op::Adc32 => 2,
+            Op::Sbb8 | Op::Sbb16 | Op::Sbb32 => 3,
+            Op::And8 | Op::And16 | Op::And32 => 4,
+            Op::Sub8 | Op::Sub16 | Op::Sub32 => 5,
+            Op::Xor8 | Op::Xor16 | Op::Xor32 => 6,
+            Op::Cmp8 | Op::Cmp16 | Op::Cmp32 => 7,
             _ => panic!("arith_get_index {:?}", op),
         }
     }
@@ -787,7 +862,9 @@ impl Encoder {
     fn encode_rm_r(&self, params: &ParameterSet) -> Vec<u8> {
         match params.src {
             Parameter::Reg8(ref r) |
-            Parameter::Reg16(ref r) => self.encode_rm(&params.dst, r.index() as u8),
+            Parameter::Reg16(ref r) |
+            Parameter::Reg32(ref r) =>
+                self.encode_rm(&params.dst, r.index() as u8),
             _ => panic!("unexpected parameter type: {:?}", params.src),
         }
     }

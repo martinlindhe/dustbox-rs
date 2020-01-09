@@ -254,6 +254,15 @@ fn can_encode_xor8() {
 }
 
 #[test]
+fn can_encode_xor32() {
+    // AL, imm8
+    let op = Instruction::new2(Op::Xor32, Parameter::Reg32(R::EAX), Parameter::Imm32(0xFFEE_DDAA));
+    assert_encdec(&op, "xor eax,0xffeeddaa", vec!(0x66, 0x35, 0xAA, 0xDD, 0xEE, 0xFF));
+    // XXX nasm enc 66 35 imm
+    // XXX we enc 66 _129 _240 imm
+}
+
+#[test]
 fn can_encode_or8() {
     // AL, imm8
     let op = Instruction::new2(Op::Or8, Parameter::Reg8(R::AL), Parameter::Imm8(0xFF));

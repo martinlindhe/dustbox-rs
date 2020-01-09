@@ -170,8 +170,6 @@ enum GuessedDataType {
     InstrContinuation,
     MemoryByteUnset,
     MemoryWordUnset,
-    //MemoryByte(u8),
-    //MemoryWord(u16),
     UnknownBytes(Vec<u8>),
 
     /// $-terminated ascii string
@@ -472,8 +470,6 @@ impl ProgramTracer {
                     let xref = self.render_xref(ab.address);
                     res.push_str(&format!("[{}] ????             dw       ????                          {}\n", ab.address, xref));
                 }
-                //GuessedDataType::MemoryByte(val) => res.push_str(&format!("[{}] {:02X}        [BYTE] db       0x{:02X}\n", ab.address, val, val)),
-                //GuessedDataType::MemoryWord(val) => res.push_str(&format!("[{}] {:02X} {:02X} [WORD] dw       0x{:04X}\n", ab.address, val >> 8, val & 0xFF, val)), // XXX
                 GuessedDataType::UnknownBytes(v) => {
                     let tail = self.render_xref(ab.address);
                     let hex: Vec<String> = v.iter().map(|b| format!("{:02X}", b)).collect();

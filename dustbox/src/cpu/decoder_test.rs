@@ -88,3 +88,19 @@ fn can_disassemble_relative_short_jumps() {
 [085F:0106] 74FA             Jz       0x0102",
                res);
 }
+
+#[test]
+fn can_disassemble_xor32() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x66, 0x35, 0xAA, 0xDD, 0xEE, 0xFF, // xor eax,0xffeeddaa
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
+    assert_eq!("[085F:0100] 7404             Jz       0x0106
+[085F:0102] 74FE             Jz       0x0102
+[085F:0104] 7400             Jz       0x0106
+[085F:0106] 74FA             Jz       0x0102",
+               res);
+}

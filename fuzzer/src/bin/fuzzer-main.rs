@@ -43,6 +43,8 @@ fn main() {
             .get_matches();
 
     let ops_to_fuzz = vec!(
+        Op::Mov32,
+
         // Op::Loop, // XXX need to keep relative offsets in decoder in order to encode back
 
         // TODO - ENCODING NOT IMPLEMENTED:
