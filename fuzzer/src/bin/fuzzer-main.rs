@@ -43,6 +43,10 @@ fn main() {
             .get_matches();
 
     let ops_to_fuzz = vec!(
+        Op::Movsx32,
+
+        // Op::Rol32, Op::Ror32, Op::Rcl32, Op::Rcr32, Op::Shl32, Op::Shr32, Op::Sar32, // XXX encode needed
+
         //Op::Div32,  // XXX MAJOR REG DIFF
 
         // Op::Loop, // XXX need to keep relative offsets in decoder in order to encode back
@@ -65,7 +69,7 @@ fn main() {
         Op::Rcl8, Op::Rcr8, Op::Ror8, Op::Shl8, Op::Rol8,
 
         // SEEMS ALL OK:
-        Op::Movzx16, Op::Movsx16,
+        Op::Movsx16, Op::Movsx32, Op::Movzx16, Op::Movzx32,
         Op::Shr8, Op::Sar8, // OK !
         //Op::Div8, Op::Div16, Op::Idiv8, Op::Idiv16, Op::Idiv32, // seems correct. NOTE that winxp crashes with "Divide overflow" on some input
         Op::Bt, Op::Bsf,

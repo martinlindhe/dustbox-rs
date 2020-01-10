@@ -322,6 +322,16 @@ impl Decoder {
                             }
                         }
                     }
+                    0xB7 => {
+                        match op.op_size {
+                            OperandSize::_16bit => op.command = Op::Invalid(vec!(b, b2), Invalid::Op),
+                            OperandSize::_32bit => {
+                                // movzx r32, r/m16
+                                op.command = Op::Movzx32;
+                                op.params = self.r32_rm16(&mut mmu, op);
+                            }
+                        }
+                    }
                     0xBA => {
                         // bts r/m16, imm8
                         let x = self.read_mod_reg_rm(mmu);

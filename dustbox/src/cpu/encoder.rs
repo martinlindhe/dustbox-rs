@@ -138,7 +138,7 @@ impl Encoder {
                 }
             }
             Op::Dec32 | Op::Inc32 => {
-                out.push(0x66);
+                out.push(0x66); // REX.W (Operand-size override prefix)
                 if let Parameter::Reg32(ref r) = op.params.dst {
                     match op.command {
                         Op::Inc32 => out.push(0x40 | r.index() as u8), // 0x40...0x47: inc r32
@@ -216,21 +216,63 @@ impl Encoder {
                 out.extend(self.encode_rm_r_imm(&op.params));
             }
             Op::Movsx16 => {
-               // MOVSX r16, r/m8
-               out.push(0x0F);
-               out.push(0xBE);
-               if let Parameter::Reg16(r) = op.params.dst {
-                   out.extend(self.encode_rm(&op.params.src, r.u8()));
-               } else {
-                   return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
-               }
+                // MOVSX r16, r/m8
+                out.push(0x0F);
+                if let Parameter::Reg16(r) = op.params.dst {
+                    out.push(0xBE);
+                    out.extend(self.encode_rm(&op.params.src, r.u8()));
+                } else {
+                    return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
+                }
+            }
+            Op::Movsx32 => {
+                // MOVSX r32, r/m8
+                // MOVSX r32, r/m16
+                out.push(0x66); // REX.W (Operand-size override prefix)
+                out.push(0x0F);
+                if let Parameter::Reg32(r) = op.params.dst {
+                    match op.params.src {
+                        Parameter::Reg8(_) => {
+                            out.push(0xBE);
+                            out.extend(self.encode_rm(&op.params.src, r.u8()));
+                        }
+                        Parameter::Reg16(_) => {
+                            out.push(0xBF);
+                            out.extend(self.encode_rm(&op.params.src, r.u8()));
+                        }
+                        _ => return Err(EncodeError::UnhandledParameter(op.params.src.clone())),
+                    }
+                } else {
+                    return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
+                }
             }
             Op::Movzx16 => {
                 // MOVZX r16, r/m8
                 out.push(0x0F);
-                out.push(0xB6);
                 if let Parameter::Reg16(r) = op.params.dst {
+                    out.push(0xB6);
                     out.extend(self.encode_rm(&op.params.src, r.u8()));
+                } else {
+                    return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
+                }
+            }
+            Op::Movzx32 => {
+                // MOVZX r32, r/m8
+                // MOVZX r32, r/m16
+                out.push(0x66); // REX.W (Operand-size override prefix)
+                out.push(0x0F);
+                if let Parameter::Reg32(r) = op.params.dst {
+                    match op.params.src {
+                        Parameter::Reg8(_) => {
+                            out.push(0xB6);
+                            out.extend(self.encode_rm(&op.params.src, r.u8()));
+                        }
+                        Parameter::Reg16(_) => {
+                            out.push(0xB7);
+                            out.extend(self.encode_rm(&op.params.src, r.u8()));
+                        }
+                        _ => return Err(EncodeError::UnhandledParameter(op.params.src.clone())),
+                    }
                 } else {
                     return Err(EncodeError::UnhandledParameter(op.params.dst.clone()));
                 }
@@ -322,7 +364,7 @@ impl Encoder {
             }
             Op::Mov32 => {
                 // XXX TODO handle more forms
-                out.push(0x66);
+                out.push(0x66); // REX.W (Operand-size override prefix)
                 if op.params.src.is_imm() {
                     if let Parameter::Reg32(ref r) = op.params.dst {
                         //0x66 0xB8...0xBF: mov r32, u32

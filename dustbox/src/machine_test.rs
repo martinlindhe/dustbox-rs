@@ -652,8 +652,7 @@ fn can_execute_math() {
     machine.load_executable(&code, 0x085F);
 
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 1);
-    assert_eq!("[085F:0100] F6062C12FF       Test8    byte [ds:0x122C], 0xFF",
-               res);
+    assert_eq!("[085F:0100] F6062C12FF       Test8    byte [ds:0x122C], 0xFF", res);
 
     // XXX also execute
 }
@@ -672,8 +671,7 @@ fn can_execute_and() {
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 3);
     assert_eq!("[085F:0100] B0F0             Mov8     al, 0xF0
 [085F:0102] B41F             Mov8     ah, 0x1F
-[085F:0104] 20C4             And8     ah, al",
-               res);
+[085F:0104] 20C4             And8     ah, al", res);
 
     machine.execute_instruction();
     assert_eq!(0xF0, machine.cpu.get_r8(R::AL));
@@ -732,8 +730,7 @@ fn can_execute_div8() {
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 3);
     assert_eq!("[085F:0100] B84000           Mov16    ax, 0x0040
 [085F:0103] B310             Mov8     bl, 0x10
-[085F:0105] F6F3             Div8     bl",
-               res);
+[085F:0105] F6F3             Div8     bl", res);
 
     machine.execute_instruction();
     assert_eq!(0x40, machine.cpu.get_r8(R::AL));
@@ -761,8 +758,7 @@ fn can_execute_div16() {
     assert_eq!("[085F:0100] BA1000           Mov16    dx, 0x0010
 [085F:0103] B80040           Mov16    ax, 0x4000
 [085F:0106] BB0001           Mov16    bx, 0x0100
-[085F:0109] F7F3             Div16    bx",
-               res);
+[085F:0109] F7F3             Div16    bx", res);
 
     machine.execute_instruction();
     assert_eq!(0x10, machine.cpu.get_r16(R::DX));
@@ -1241,8 +1237,7 @@ fn can_execute_movzx() {
 
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
     assert_eq!("[085F:0100] B4FF             Mov8     ah, 0xFF
-[085F:0102] 0FB6DC           Movzx16  bx, ah",
-               res);
+[085F:0102] 0FB6DC           Movzx16  bx, ah", res);
 
     machine.execute_instruction();
     assert_eq!(0xFF, machine.cpu.get_r8(R::AH));
@@ -2056,12 +2051,24 @@ fn can_execute_movsx16() {
 fn can_execute_movsx32() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
-        0xB7, 0xFE,             // mov bh,0xfe
-        0x66, 0x0F, 0xBE, 0xC7, // movsx eax,bh
+        0xB7, 0xFE,                                 // mov bh,0xfe
+        0x66, 0x0F, 0xBE, 0xC7,                     // movsx eax,bh     r32, r/m8
+
+        0xC6, 0x46, 0x60, 0xFE,                     // mov byte [bp+0x60],0xfe
+        0x66, 0x0F, 0xBE, 0x46, 0x60,               // movsx eax,byte [bp+0x60]
+
+        0xBB, 0xEE, 0xFF,                           // mov bx,0xffee
+        0x66, 0x0F, 0xBF, 0xC3,                     // movsx eax,bx     r32, r/m16
     ];
     machine.load_executable(&code, 0x085F);
     machine.execute_instructions(2);
     assert_eq!(0xFFFF_FFFE, machine.cpu.get_r32(R::EAX));
+
+    machine.execute_instructions(2);
+    assert_eq!(0xFFFF_FFFE, machine.cpu.get_r32(R::EAX));
+
+    machine.execute_instructions(2);
+    assert_eq!(0xFFFF_FFEE, machine.cpu.get_r32(R::EAX));
 }
 
 #[test]
@@ -2078,7 +2085,7 @@ fn can_execute_mov_ds_addressing() {
         0x89, 0x10,         // mov [bx+si],dx
     ];
     machine.load_executable(&code, 0x085F);
-    
+
     machine.execute_instructions(6);
 
     let cs = machine.cpu.get_r16(R::CS);
@@ -2100,8 +2107,7 @@ fn can_execute_shrd() {
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 3);
     assert_eq!("[085F:0100] B8FFFF           Mov16    ax, 0xFFFF
 [085F:0103] BAFFFF           Mov16    dx, 0xFFFF
-[085F:0106] 0FACD00E         Shrd     ax, dx, 0x0E",
-                res);
+[085F:0106] 0FACD00E         Shrd     ax, dx, 0x0E", res);
 
     machine.execute_instruction();
     assert_eq!(0xFFFF, machine.cpu.get_r16(R::AX));

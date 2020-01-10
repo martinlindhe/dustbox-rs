@@ -162,7 +162,7 @@ fn can_disassemble_add32() {
         0x66, 0x01, 0xCB,                           // add ebx,ecx
         0x66, 0x81, 0xC3, 0x11, 0x22, 0x55, 0x44,   // add ebx,0x44552211
         0x66, 0x05, 0xAA, 0xDD, 0xEE, 0xFF,         // add eax,0xffeeddaa
-    ];  
+    ];
 
     machine.load_executable(&code, 0x085F);
 
@@ -363,4 +363,38 @@ fn can_disassemble_idiv() {
     let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
     assert_eq!("[085F:0100] F7FB             Idiv16   bx
 [085F:0102] 66F7FB           Idiv32   ebx", res);
+}
+
+#[test]
+fn can_disassemble_movzx() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x0F, 0xB6, 0xC3,           // movzx ax,bl
+        0x66, 0x0F, 0xB6, 0xC3,     // movzx eax,bl
+        0x66, 0x0F, 0xB7, 0xC3,     // movzx eax,bx
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 3);
+    assert_eq!("[085F:0100] 0FB6C3           Movzx16  ax, bl
+[085F:0103] 660FB6C3         Movzx32  eax, bl
+[085F:0107] 660FB7C3         Movzx32  eax, bx", res);
+}
+
+#[test]
+fn can_disassemble_movsx() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x0F, 0xBE, 0xD9,                   // movsx bx,cl
+        0x66, 0x0F, 0xBE, 0xD9,             // movsx ebx,cl
+        0x66, 0x0F, 0xBE, 0x86, 0xF1, 0x01, // movsx eax, byte [ds:bp+0x01F1]
+        0x66, 0x0F, 0xBF, 0xD9,             // movsx ebx,cx
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
+    assert_eq!("[085F:0100] 0FBED9           Movsx16  bx, cl
+[085F:0103] 660FBED9         Movsx32  ebx, cl
+[085F:0107] 660FBE86F101     Movsx32  eax, byte [ds:bp+0x01F1]
+[085F:010D] 660FBFD9         Movsx32  ebx, cx", res);
 }

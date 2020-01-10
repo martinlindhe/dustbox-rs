@@ -3,6 +3,7 @@ use std::iter::FromIterator;
 
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
+use pretty_assertions::assert_eq;
 
 use crate::cpu::encoder::Encoder;
 use crate::cpu::segment::Segment;
@@ -580,9 +581,42 @@ fn can_encode_mov32() {
 
 #[test]
 fn can_encode_movzx16() {
-    // r16, imm16
-    let op = Instruction::new2(Op::Movzx16, Parameter::Reg16(R::AX), Parameter::Reg8(R::BL));
-    assert_encdec(&op, "movzx ax,bl", vec!(0x0F, 0xB6, 0xC3));
+    // r16, r/m8
+    let op = Instruction::new2(Op::Movzx16, Parameter::Reg16(R::BX), Parameter::Reg8(R::CL));
+    assert_encdec(&op, "movzx bx,cl", vec!(0x0F, 0xB6, 0xD9));
+}
+
+#[test]
+fn can_encode_movzx32() {
+    // movzx r32, r/m8
+    let mut op = Instruction::new2(Op::Movzx32, Parameter::Reg32(R::EBX), Parameter::Reg8(R::CL));
+    op.op_size = OperandSize::_32bit;
+    assert_encdec(&op, "movzx ebx,cl", vec!(0x66, 0x0F, 0xB6, 0xD9));
+
+    // movzx r32, r/m16
+    let mut op = Instruction::new2(Op::Movzx32, Parameter::Reg32(R::EBX), Parameter::Reg16(R::CX));
+    op.op_size = OperandSize::_32bit;
+    assert_encdec(&op, "movzx ebx,cx", vec!(0x66, 0x0F, 0xB7, 0xD9));
+}
+
+#[test]
+fn can_encode_movsx16() {
+    // r16, r/m8
+    let op = Instruction::new2(Op::Movsx16, Parameter::Reg16(R::BX), Parameter::Reg8(R::CL));
+    assert_encdec(&op, "movsx bx,cl", vec!(0x0F, 0xBE, 0xD9));
+}
+
+#[test]
+fn can_encode_movsx32() {
+    // movsx r32, r/m8
+    let mut op = Instruction::new2(Op::Movsx32, Parameter::Reg32(R::EBX), Parameter::Reg8(R::CL));
+    op.op_size = OperandSize::_32bit;
+    assert_encdec(&op, "movsx ebx,cl", vec!(0x66, 0x0F, 0xBE, 0xD9));
+
+    // movsx r32, r/m16
+    let mut op = Instruction::new2(Op::Movsx32, Parameter::Reg32(R::EBX), Parameter::Reg16(R::CX));
+    op.op_size = OperandSize::_32bit;
+    assert_encdec(&op, "movsx ebx,cx", vec!(0x66, 0x0F, 0xBF, 0xD9));
 }
 
 // TODO make this into a macro to retain caller line numbers in the asserts

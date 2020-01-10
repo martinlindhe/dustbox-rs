@@ -1500,7 +1500,7 @@ impl Machine {
                 if cx != 0 && !self.cpu.regs.flags.zero {
                     self.cpu.regs.ip = dst;
                 }
-            } 
+            }
             Op::Mov8 => {
                 // two arguments (dst=reg)
                 let data = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u8;
@@ -1579,7 +1579,6 @@ impl Machine {
             Op::Movsx16 => {
                 // 80386+
                 // moves a signed value into a register and sign-extends it with 1.
-                // two arguments (dst=reg)
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u8;
 
                 let mut data = u16::from(src);
@@ -1591,26 +1590,30 @@ impl Machine {
             Op::Movsx32 => {
                 // 80386+
                 // moves a signed value into a register and sign-extends it with 1.
-                // two arguments (dst=reg)
-                let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u8;
+                let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u16;
 
                 let mut data = u32::from(src);
-                if src & 0x80 != 0 {
-                    data += 0xFFFF_FF00;
+                match op.params.src {
+                    Parameter::Reg8(_) | Parameter::Ptr8AmodeS8(_, _, _) | Parameter::Ptr8AmodeS16(_, _, _) =>
+                    if src & 0x80 != 0 {
+                        data += 0xFFFF_FF00;
+                    }
+                    Parameter::Reg16(_) => if src & 0x8000 != 0 {
+                        data += 0xFFFF_0000;
+                    }
+                    _ => panic!("unexpected Movsx32 src arg {:?}", op.params.src),
                 }
                 self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, data);
             }
             Op::Movzx16 => {
                 // 80386+
                 // moves an unsigned value into a register and zero-extends it.
-                // two arguments (dst=reg)
                 let val = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u16;
                 self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, val);
             }
             Op::Movzx32 => {
                 // 80386+
                 // moves an unsigned value into a register and zero-extends it.
-                // two arguments (dst=reg)
                 let val = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u32;
                 self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, val);
             }
@@ -2110,7 +2113,7 @@ impl Machine {
                     } else {
                         ((op1 as usize) >> count)
                     };
-                    
+
                     self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, res as u8);
                     self.cpu.regs.flags.carry = (op1 as isize >> (count - 1)) & 0x1 != 0;
                     self.cpu.regs.flags.overflow = false;
@@ -2259,7 +2262,7 @@ impl Machine {
                     self.cpu.regs.flags.set_parity(res as usize);
                     self.cpu.regs.flags.carry = cf != 0;
                     self.cpu.regs.flags.overflow = of != 0;
-                
+
                     self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, res as u8);
                 }
             }
@@ -2356,9 +2359,9 @@ impl Machine {
                     self.cpu.regs.flags.set_parity(res);
                     /*
                     The CF flag contains the value of the last bit shifted out of the destination operand;
-                    it is undefined for SHL and SHR instructions where the count is greater than or equal to the size (in bits) of the destination operand. 
+                    it is undefined for SHL and SHR instructions where the count is greater than or equal to the size (in bits) of the destination operand.
 
-                    The OF flag is affected only for 1-bit shifts (see “Description” above); otherwise, it is undefined. 
+                    The OF flag is affected only for 1-bit shifts; otherwise, it is undefined.
                     The SF, ZF, and PF flags are set according to the result. If the count is 0, the flags are not affected.
                     For a non-zero count, the AF flag is undefined.
                     */

@@ -18,6 +18,11 @@ use dustbox::cpu::{AMode, CPU, Encoder, Instruction, Op,  Parameter, R, Segment,
 use dustbox::machine::Machine;
 use dustbox::ndisasm::ndisasm_bytes;
 
+const DEBUG_ENCODER: bool = false;
+
+/// details for CodeRunner output parsing
+const DEBUG_RUNNER_RESULT: bool = false;
+
 /// Runs program code in a specific environment
 pub enum CodeRunner {
     /// uses https://github.com/martinlindhe/supersafe to connect to client over HTTP.
@@ -32,11 +37,6 @@ pub enum CodeRunner {
     /// ~2.2 s
     DosboxX,
 }
-
-const DEBUG_ENCODER: bool = false;
-
-/// details for prober.com output parsing
-const DEBUG_PROBER_RESULT: bool = false;
 
 pub struct FuzzConfig {
     /// general config
@@ -88,7 +88,7 @@ pub fn fuzz_ops<RNG: Rng + ?Sized>(runner: &CodeRunner, ops_to_fuzz: Vec<Op>, cf
                 println!("{}", ndisasm_bytes(&data).unwrap().join("\n"));
             }
             println!("{}", instructions_to_str(&snippet));
-            
+
             if !fuzz(&runner, &data, ops.len(), AffectedFlags::for_op(&op), &cfg) {
                 println!("failed:");
                 println!("{}", instructions_to_str(&snippet));
@@ -130,12 +130,12 @@ fn fuzz(runner: &CodeRunner, data: &[u8], op_count: usize, affected_flag_mask: u
 
     let runner_regs = prober_reg_map(&output);
     if runner_regs.is_empty() {
-        println!("FATAL: no vm regs from vm output: {}", output);
+        println!("FATAL: no vm regs from vm output: {}", output.red());
         return false;
     }
 
-    if compare_regs(&machine.cpu, &runner_regs, &affected_registers) {
-        println!("\n{}", "MAJOR: regs differ".red());
+    if regs_differ(&machine.cpu, &runner_regs, &affected_registers) {
+        println!("{}", "MAJOR: regs differ".red());
         return false;
     }
 
@@ -216,7 +216,7 @@ impl AffectedFlags {
     /// returns a flag mask for affected flag registers by op
     pub fn for_op(op: &Op) -> u16 {
         match *op {
-            Op::Nop | Op::Mov8 | Op::Mov16 | Op::Mov32 | Op::Movzx16 | Op::Movsx16 |
+            Op::Nop | Op::Mov8 | Op::Mov16 | Op::Mov32 | Op::Movzx16 | Op::Movzx32 | Op::Movsx16 | Op::Movsx32 |
             Op::Push16 | Op::Pop16 | Op::Not8 | Op::Not16 | Op::Not32 |
             Op::Div8 | Op::Div16 | Op::Div32 | Op::Idiv8 | Op::Idiv16 | Op::Idiv32 | Op::Xchg8 | Op::Xchg16 |
             Op::Salc | Op::Cbw | Op::Cwd16 | Op::Lahf | Op::Lea16 | Op::Xlatb |
@@ -296,26 +296,30 @@ impl AffectedFlags {
     }
 }
 
-fn compare_regs<'a>(cpu: &CPU, vm_regs: &HashMap<String, u32>, reg_names: &[&'a str]) -> bool {
+/// returns true if regs in `reg_names` don't match
+fn regs_differ<'a>(cpu: &CPU, runner_regs: &HashMap<String, u32>, reg_names: &[&'a str]) -> bool {
     let mut ret = false;
     for s in reg_names {
         let s = s.to_owned();
-        if compare_reg(s, cpu, vm_regs[s]) {
+        if reg_differ(s, cpu, runner_regs[s]) {
             ret = true;
         }
     }
     ret
 }
 
-/// returns true if 32-bit registers dont match
-fn compare_reg(reg_name: &str, cpu: &CPU, runner_val: u32) -> bool {
+/// returns true if 32-bit register don't match
+fn reg_differ(reg_name: &str, cpu: &CPU, runner_val: u32) -> bool {
     let idx = reg_str_to_index(reg_name);
     let reg = r32(idx as u8);
     let dustbox_val = cpu.get_r32(reg);
     if dustbox_val != runner_val {
-        println!("{} differs. dustbox = {:04x}, vm = {:04x}", reg_name, dustbox_val, runner_val);
+        println!("{}", format!("  {} differs. dustbox = {:08X}, runner = {:08X}", reg_name, dustbox_val, runner_val).red());
         true
     } else {
+        if DEBUG_RUNNER_RESULT {
+            println!("  {} is same. dustbox = {:08X}, runner = {:08X}", reg_name, dustbox_val, runner_val);
+        }
         false
     }
 }
@@ -381,7 +385,7 @@ fn vec_as_db_bytes(data: &[u8]) -> String {
 fn prober_reg_map(stdout: &str) -> HashMap<String, u32> {
     let mut map = HashMap::new();
     let lines: Vec<&str> = stdout.split("\r\n").collect();
-    if DEBUG_PROBER_RESULT {
+    if DEBUG_RUNNER_RESULT {
         println!("  prober_reg_map: parsing {} lines", lines.len());
     }
 
@@ -390,7 +394,7 @@ fn prober_reg_map(stdout: &str) -> HashMap<String, u32> {
             let p1 = &line[0..pos];
             let p2 = &line[pos+1..];
             let val = u32::from_str_radix(p2, 16).unwrap();
-            if DEBUG_PROBER_RESULT {
+            if DEBUG_RUNNER_RESULT {
                 println!("  - {} = {:X}", p1, val);
             }
             map.insert(p1.to_owned(), val);
@@ -634,10 +638,12 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
             // imul r/m16        EDX:EAX ← EAX ∗ r/m32.
             Instruction::new2(Op::Mov32, Parameter::Reg32(R::EAX), Parameter::Imm32(rng.gen())),
             Instruction::new2(Op::Mov32, Parameter::Reg32(R::EBX), Parameter::Imm32(rng.gen())),
-
-            Instruction::new1(op.clone(), Parameter::Reg32(R::EBX)), // 1-operand form
-            // Instruction::new2(op.clone(), Parameter::Reg32(R::EAX), Parameter::Reg32(R::EBX)), // 2-operand form
-            // Instruction::new3(op.clone(), Parameter::Reg32(R::EAX), Parameter::Reg32(R::EBX), Parameter::ImmS8(rng.gen())), // 3-operand form
+            match rng.gen_range(0, 3) {
+                0 => Instruction::new1(op.clone(), Parameter::Reg32(R::EBX)), // 1-operand form
+                1 => Instruction::new2(op.clone(), Parameter::Reg32(R::EAX), Parameter::Reg32(R::EBX)), // 2-operand form
+                2 => Instruction::new3(op.clone(), Parameter::Reg32(R::EAX), Parameter::Reg32(R::EBX), Parameter::ImmS8(rng.gen())), // 3-operand form
+                _ => unreachable!(),
+            }
         )}
         Op::Xchg8 => { vec!(
             // xchg r/m8, r8
@@ -686,6 +692,21 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::DL), Parameter::Imm8(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg8(R::DL)),
         )}
+        Op::Movzx32 | Op::Movsx32 => {
+            match rng.gen_range(0, 2) {
+                0 => { vec!(
+                    // movzx eax, dl
+                    Instruction::new2(Op::Mov8, Parameter::Reg8(R::DL), Parameter::Imm8(rng.gen())),
+                    Instruction::new2(op.clone(), Parameter::Reg32(R::EAX), Parameter::Reg8(R::DL)),
+                )}
+                1 => { vec!(
+                    // movzx eax, dx
+                    Instruction::new2(Op::Mov16, Parameter::Reg16(R::DX), Parameter::Imm16(rng.gen())),
+                    Instruction::new2(op.clone(), Parameter::Reg32(R::EAX), Parameter::Reg16(R::DX)),
+                )}
+                _ => unreachable!(),
+            }
+        }
         Op::Inc16 | Op::Dec16 | Op::Not16 | Op::Neg16 => { vec!(
             // mutate ax: r/m16
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
