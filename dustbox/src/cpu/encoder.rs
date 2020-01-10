@@ -385,6 +385,12 @@ impl Encoder {
                     Err(why) => return Err(why),
                 }
             }
+            Op::Test32 | Op::Not32 | Op::Neg32 | Op::Div32 | Op::Idiv32 | Op::Mul32 | Op::Imul32 => {
+                match self.math_instr32(op) {
+                    Ok(data) => out.extend(data),
+                    Err(why) => return Err(why),
+                }
+            }
             Op::Push16 => {
                 if let Parameter::Imm16(imm16) = op.params.dst {
                     // 0x68: push imm16
@@ -723,6 +729,62 @@ impl Encoder {
         }
     }
 
+    fn math_instr32(&self, ins: &Instruction) -> Result<Vec<u8>, EncodeError> {
+        let mut out = vec!();
+
+        out.push(0x66); // REX.W (Operand-size override prefix)
+
+        match ins.params.src2 {
+            Parameter::ImmS8(v) => {
+                // 3 operand form: 6B /r ib
+                out.push(0x6B);
+                out.extend(self.encode_r_rm(&ins.params));
+                out.push(v as u8);
+                return Ok(out);
+            }
+            _ => {}
+        }
+
+        if ins.command != Op::Test32 {
+            match ins.params.src {
+                Parameter::Reg32(_) => {
+                    // 2 operand form: 0F AF /r
+                    out.push(0x0F);
+                    out.push(0xAF);
+                    out.extend(self.encode_r_rm(&ins.params));
+                    return Ok(out);
+                }
+                _ => {}
+            }
+        }
+
+        match ins.params.dst {
+            Parameter::Reg32(r) => {
+                if ins.command == Op::Test32 {
+                    if let Parameter::Imm32(i) = ins.params.src {
+                        if r == R::EAX {
+                            out.push(0xA9); // test eAX, imm32
+                        } else {
+                            out.push(0xF7); // test r/m32, imm32
+                            out.push(ModRegRm::rm_reg(r.index() as u8, self.math_index(&ins.command)));
+                        }
+                        out.push(i as u8);
+                        out.push((i >> 8) as u8);
+                    } else {
+                        out.push(0x85); // test r/m32, r32
+                        out.extend(self.encode_rm_r(&ins.params));
+                    }
+                } else {
+                    // 1 operand form: F7 /5
+                    out.push(0xF7);
+                    out.push(ModRegRm::rm_reg(r.index() as u8, self.math_index(&ins.command)));
+                }
+                Ok(out)
+            }
+            _ => Err(EncodeError::UnexpectedDstType(ins.params.dst.clone())),
+        }
+    }
+
     /// used for 0xF6 encodings
     fn f6_index(op: &Op) -> u8 {
         match *op {
@@ -840,13 +902,13 @@ impl Encoder {
 
     fn math_index(&self, op: &Op) -> u8 {
         match *op {
-            Op::Test8 | Op::Test16 => 0,
-            Op::Not8 | Op::Not16 => 2,
-            Op::Neg8 | Op::Neg16 => 3,
-            Op::Mul8 | Op::Mul16 => 4,
-            Op::Imul8 | Op::Imul16 => 5,
-            Op::Div8 | Op::Div16 => 6,
-            Op::Idiv8 | Op::Idiv16 => 7,
+            Op::Test8 | Op::Test16 | Op::Test32 => 0,
+            Op::Not8  | Op::Not16  | Op::Not32  => 2,
+            Op::Neg8  | Op::Neg16  | Op::Neg32  => 3,
+            Op::Mul8  | Op::Mul16  | Op::Mul32  => 4,
+            Op::Imul8 | Op::Imul16 | Op::Imul32 => 5,
+            Op::Div8  | Op::Div16  | Op::Div32  => 6,
+            Op::Idiv8 | Op::Idiv16 | Op::Idiv32 => 7,
             _ => panic!("math_get_index {:?}", op),
         }
     }

@@ -13,7 +13,7 @@ use rand::Rng;
 use tera::{Tera, Context};
 use tempfile::tempdir;
 
-use dustbox::cpu::{AMode, CPU, Encoder, Instruction, Op,  Parameter, R, Segment, instructions_to_str, r16};
+use dustbox::cpu::{AMode, CPU, Encoder, Instruction, Op,  Parameter, R, Segment, instructions_to_str, r32};
 
 use dustbox::machine::Machine;
 use dustbox::ndisasm::ndisasm_bytes;
@@ -34,6 +34,9 @@ pub enum CodeRunner {
 }
 
 const DEBUG_ENCODER: bool = false;
+
+/// details for prober.com output parsing
+const DEBUG_PROBER_RESULT: bool = false;
 
 pub struct FuzzConfig {
     /// general config
@@ -109,7 +112,7 @@ pub fn fuzz_ops<RNG: Rng + ?Sized>(runner: &CodeRunner, ops_to_fuzz: Vec<Op>, cf
 /// Runs given binary data in dustbox and in a CodeRunner, comparing the resulting regs and flags
 /// returns false on failure
 fn fuzz(runner: &CodeRunner, data: &[u8], op_count: usize, affected_flag_mask: u16, cfg: &FuzzConfig) -> bool {
-    let affected_registers = vec!("ax", "bx", "cx", "dx");
+    let affected_registers = vec!("eax", "ebx", "ecx", "edx");
     let mut machine = Machine::deterministic();
 
     machine.load_executable(data, 0x085F);
@@ -137,7 +140,7 @@ fn fuzz(runner: &CodeRunner, data: &[u8], op_count: usize, affected_flag_mask: u
     }
 
     let runner_flags = runner_regs["flag"];
-    let runner_masked_flags = runner_flags & affected_flag_mask;
+    let runner_masked_flags = (runner_flags as u16) & affected_flag_mask;
     let dustbox_flags = machine.cpu.regs.flags.u16();
     let dustbox_masked_flags = dustbox_flags & affected_flag_mask;
     if runner_masked_flags != dustbox_masked_flags {
@@ -214,8 +217,8 @@ impl AffectedFlags {
     pub fn for_op(op: &Op) -> u16 {
         match *op {
             Op::Nop | Op::Mov8 | Op::Mov16 | Op::Mov32 | Op::Movzx16 | Op::Movsx16 |
-            Op::Push16 | Op::Pop16 | Op::Not8 | Op::Not16 |
-            Op::Div8 | Op::Div16 | Op::Idiv8 | Op::Idiv16 | Op::Xchg8 | Op::Xchg16 |
+            Op::Push16 | Op::Pop16 | Op::Not8 | Op::Not16 | Op::Not32 |
+            Op::Div8 | Op::Div16 | Op::Div32 | Op::Idiv8 | Op::Idiv16 | Op::Idiv32 | Op::Xchg8 | Op::Xchg16 |
             Op::Salc | Op::Cbw | Op::Cwd16 | Op::Lahf | Op::Lea16 | Op::Xlatb |
             Op::Loop | Op::Loope | Op::Loopne =>
                 AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // none
@@ -235,19 +238,21 @@ impl AffectedFlags {
             Op::Aaa | Op::Aas =>
                 AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0, d:0, i:0}.mask(), // C A
 
-            Op::Rol8 | Op::Rcl8 | Op::Ror8 | Op::Rcr8 | Op::Mul8 | Op::Mul16 | Op::Imul8 | Op::Imul16 =>
+            Op::Rol8 | Op::Rcl8 | Op::Ror8 | Op::Rcr8 |
+            Op::Mul8 | Op::Mul16 | Op::Mul32 | Op::Imul8 | Op::Imul16 | Op::Imul32 =>
                 AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0, d:0, i:0}.mask(), // C O
 
             Op::Aad | Op::Aam =>
                 AffectedFlags{c:0, a:0, o:0, s:1, z:1, p:1, d:0, i:0}.mask(), // S Z P
 
-            Op::Add8 | Op::Add16 | Op::Adc8 | Op::Adc16 |
-            Op::Sub8 | Op::Sub16 | Op::Sbb8 | Op::Sbb16 |
-            Op::Cmp8 | Op::Cmp16 | Op::Neg8 | Op::Neg16 | Op::Shrd | Op::Cmpsw =>
+            Op::Add8 | Op::Add16 | Op::Add32 | Op::Adc8 | Op::Adc16 | Op::Adc32 |
+            Op::Sub8 | Op::Sub16 | Op::Sub32 | Op::Sbb8 | Op::Sbb16 | Op::Sbb32 |
+            Op::Cmp8 | Op::Cmp16 | Op::Cmp32 | Op::Neg8 | Op::Neg16 | Op::Neg32 |
+            Op::Shrd | Op::Cmpsw =>
                 AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:1, d:0, i:0}.mask(), // C A S Z P O
 
-            Op::Xor8 | Op::Xor16 | Op::Test8 | Op::Test16 |
-            Op::And8 | Op::And16 | Op::Or8 | Op::Or16 |
+            Op::Xor8 | Op::Xor16 | Op::Xor32 | Op::Test8 | Op::Test16 | Op::Test32 |
+            Op::And8 | Op::And16 | Op::And32 | Op::Or8 | Op::Or16 | Op::Or32 |
             Op::Shl8 | Op::Shl16 | Op::Shr8 | Op::Shr16 | Op::Sar8 =>
                 AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1, d:0, i:0}.mask(), // C O S Z P
 
@@ -291,7 +296,7 @@ impl AffectedFlags {
     }
 }
 
-fn compare_regs<'a>(cpu: &CPU, vm_regs: &HashMap<String, u16>, reg_names: &[&'a str]) -> bool {
+fn compare_regs<'a>(cpu: &CPU, vm_regs: &HashMap<String, u32>, reg_names: &[&'a str]) -> bool {
     let mut ret = false;
     for s in reg_names {
         let s = s.to_owned();
@@ -302,13 +307,13 @@ fn compare_regs<'a>(cpu: &CPU, vm_regs: &HashMap<String, u16>, reg_names: &[&'a 
     ret
 }
 
-/// returns true if registers dont match
-fn compare_reg(reg_name: &str, cpu: &CPU, vm_val: u16) -> bool {
+/// returns true if 32-bit registers dont match
+fn compare_reg(reg_name: &str, cpu: &CPU, runner_val: u32) -> bool {
     let idx = reg_str_to_index(reg_name);
-    let reg = r16(idx as u8);
-    let dustbox_val = cpu.get_r16(reg);
-    if dustbox_val != vm_val {
-        println!("{} differs. dustbox {:04x}, vm {:04x}", reg_name, dustbox_val, vm_val);
+    let reg = r32(idx as u8);
+    let dustbox_val = cpu.get_r32(reg);
+    if dustbox_val != runner_val {
+        println!("{} differs. dustbox = {:04x}, vm = {:04x}", reg_name, dustbox_val, runner_val);
         true
     } else {
         false
@@ -317,14 +322,14 @@ fn compare_reg(reg_name: &str, cpu: &CPU, vm_val: u16) -> bool {
 
 fn reg_str_to_index(s: &str) -> usize {
     match s {
-        "al" | "ax" => 0,
-        "cl" | "cx" => 1,
-        "dl" | "dx" => 2,
-        "bl" | "bx" => 3,
-        "ah" | "sp" => 4,
-        "ch" | "bp" => 5,
-        "dh" | "si" => 6,
-        "bh" | "di" => 7,
+        "al" | "ax" | "eax" => 0,
+        "cl" | "cx" | "ecx" => 1,
+        "dl" | "dx" | "edx" => 2,
+        "bl" | "bx" | "ebx" => 3,
+        "ah" | "sp" | "esp" => 4,
+        "ch" | "bp" | "ebp" => 5,
+        "dh" | "si" | "esi" => 6,
+        "bh" | "di" | "edi" => 7,
         _ => panic!("{}", s),
     }
 }
@@ -373,15 +378,21 @@ fn vec_as_db_bytes(data: &[u8]) -> String {
 }
 
 /// parse prober.com output into a map
-fn prober_reg_map(stdout: &str) -> HashMap<String, u16> {
+fn prober_reg_map(stdout: &str) -> HashMap<String, u32> {
     let mut map = HashMap::new();
-    let lines: Vec<&str> = stdout.split('\n').collect();
+    let lines: Vec<&str> = stdout.split("\r\n").collect();
+    if DEBUG_PROBER_RESULT {
+        println!("  prober_reg_map: parsing {} lines", lines.len());
+    }
 
     for line in lines {
         if let Some(pos) = line.find('=') {
             let p1 = &line[0..pos];
             let p2 = &line[pos+1..];
-            let val = u16::from_str_radix(p2, 16).unwrap();
+            let val = u32::from_str_radix(p2, 16).unwrap();
+            if DEBUG_PROBER_RESULT {
+                println!("  - {} = {:X}", p1, val);
+            }
             map.insert(p1.to_owned(), val);
         }
     }
@@ -590,6 +601,14 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(rng.gen())),
             Instruction::new1(op.clone(), Parameter::Reg16(R::BX)),
         )}
+        Op::Div32 | Op::Idiv32 => { vec!(
+            // div r/m32        divide EDX:EAX by r/m32, with result stored in EAX ← Quotient, EDX ← Remainder.
+            // idiv r/m32       Signed divide EDX:EAX by r/m32, with result stored in EAX ← Quotient, EDX ← Remainder.
+            Instruction::new2(Op::Mov32, Parameter::Reg32(R::EDX), Parameter::Imm32(rng.gen())),
+            Instruction::new2(Op::Mov32, Parameter::Reg32(R::EAX), Parameter::Imm32(rng.gen())),
+            Instruction::new2(Op::Mov32, Parameter::Reg32(R::EBX), Parameter::Imm32(rng.gen())),
+            Instruction::new1(op.clone(), Parameter::Reg32(R::EBX)),
+        )}
         Op::Mul16 => { vec!(
             // mul r/m16        DX:AX ← AX ∗ r/m16
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
@@ -604,6 +623,21 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
             // Instruction::new1(op.clone(), Parameter::Reg16(R::BX)), // 1-operand form
             // Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg16(R::BX)), // 2-operand form
             Instruction::new3(op.clone(), Parameter::Reg16(R::AX), Parameter::Reg16(R::BX), Parameter::ImmS8(rng.gen())), // 3-operand form
+        )}
+        Op::Mul32 => { vec!(
+            // mul r/m32        EDX:EAX ← EAX ∗ r/m32
+            Instruction::new2(Op::Mov32, Parameter::Reg32(R::EAX), Parameter::Imm32(rng.gen())),
+            Instruction::new2(Op::Mov32, Parameter::Reg32(R::EBX), Parameter::Imm32(rng.gen())),
+            Instruction::new1(op.clone(), Parameter::Reg32(R::EBX)),
+        )}
+        Op::Imul32 => { vec!(
+            // imul r/m16        EDX:EAX ← EAX ∗ r/m32.
+            Instruction::new2(Op::Mov32, Parameter::Reg32(R::EAX), Parameter::Imm32(rng.gen())),
+            Instruction::new2(Op::Mov32, Parameter::Reg32(R::EBX), Parameter::Imm32(rng.gen())),
+
+            Instruction::new1(op.clone(), Parameter::Reg32(R::EBX)), // 1-operand form
+            // Instruction::new2(op.clone(), Parameter::Reg32(R::EAX), Parameter::Reg32(R::EBX)), // 2-operand form
+            // Instruction::new3(op.clone(), Parameter::Reg32(R::EAX), Parameter::Reg32(R::EBX), Parameter::ImmS8(rng.gen())), // 3-operand form
         )}
         Op::Xchg8 => { vec!(
             // xchg r/m8, r8
@@ -642,6 +676,11 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
         )}
+        Op::Add32 | Op::Adc32 | Op::And32 | Op::Cmp32 | Op::Sub32 | Op::Or32 | Op::Sbb32 | Op::Test32 | Op::Xor32 => { vec!(
+            // TEST EAX, imm32
+            Instruction::new2(Op::Mov32, Parameter::Reg32(R::EAX), Parameter::Imm32(rng.gen())),
+            Instruction::new2(op.clone(), Parameter::Reg32(R::EAX), Parameter::Imm32(rng.gen())),
+        )}
         Op::Movzx16 | Op::Movsx16 => { vec!(
             // movzx ax, dl
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::DL), Parameter::Imm8(rng.gen())),
@@ -662,7 +701,7 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::BX), Parameter::Imm16(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Ptr16Amode(Segment::Default, AMode::BX)),
         )}
-        Op::Inc32 | Op::Dec32 => { vec!(
+        Op::Inc32 | Op::Dec32 | Op::Not32 | Op::Neg32 => { vec!(
             // mutate eax: r/m16
             Instruction::new2(Op::Mov32, Parameter::Reg32(R::EAX), Parameter::Imm32(rng.gen())),
             Instruction::new1(op.clone(), Parameter::Reg32(R::EAX)),

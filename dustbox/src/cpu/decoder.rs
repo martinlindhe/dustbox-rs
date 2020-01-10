@@ -142,8 +142,8 @@ impl Decoder {
             }
             0x09 => {
                 // or r/m16, r16
-                op.command = Op::Or16;
-                op.params = self.rm16_r16(&mut mmu, op);
+                // or r/m32, r32
+                self.prefixed_16_32_rm_r(&mut mmu, &mut op, Op::Or16, Op::Or32)
             }
             0x0A => {
                 // or r8, r/m8
@@ -163,9 +163,19 @@ impl Decoder {
             }
             0x0D => {
                 // or AX, imm16
-                op.command = Op::Or16;
-                op.params.dst = Parameter::Reg16(R::AX);
-                op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                // or EAX, imm32
+                match op.op_size {
+                    OperandSize::_16bit => {
+                        op.command = Op::Or16;
+                        op.params.dst = Parameter::Reg16(R::AX);
+                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                    }
+                    OperandSize::_32bit => {
+                        op.command = Op::Or32;
+                        op.params.dst = Parameter::Reg32(R::EAX);
+                        op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                    }
+                }
             }
             0x0E => {
                 // push cs
@@ -358,8 +368,8 @@ impl Decoder {
             }
             0x11 => {
                 // adc r/m16, r16
-                op.command = Op::Adc16;
-                op.params = self.rm16_r16(&mut mmu, op);
+                // adc r/m32, r32
+                self.prefixed_16_32_rm_r(&mut mmu, &mut op, Op::Adc16, Op::Adc32)
             }
             0x12 => {
                 // adc r8, r/m8
@@ -379,9 +389,19 @@ impl Decoder {
             }
             0x15 => {
                 // adc ax, imm16
-                op.command = Op::Adc16;
-                op.params.dst = Parameter::Reg16(R::AX);
-                op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                // adc eax, imm32
+                match op.op_size {
+                    OperandSize::_16bit => {
+                        op.command = Op::Adc16;
+                        op.params.dst = Parameter::Reg16(R::AX);
+                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                    }
+                    OperandSize::_32bit => {
+                        op.command = Op::Adc32;
+                        op.params.dst = Parameter::Reg32(R::EAX);
+                        op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                    }
+                }
             }
             0x16 => {
                 // push ss
@@ -400,8 +420,8 @@ impl Decoder {
             }
             0x19 => {
                 // sbb r/m16, r16
-                op.command = Op::Sbb16;
-                op.params = self.rm16_r16(&mut mmu, op);
+                // sbb r/m32, r32
+                self.prefixed_16_32_rm_r(&mut mmu, &mut op, Op::Sbb16, Op::Sbb32)
             }
             0x1A => {
                 // sbb r8, r/m8
@@ -421,9 +441,19 @@ impl Decoder {
             }
             0x1D => {
                 // sbb ax, imm16
-                op.command = Op::Sbb16;
-                op.params.dst = Parameter::Reg16(R::AX);
-                op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                // sbb eax, imm32
+                match op.op_size {
+                    OperandSize::_16bit => {
+                        op.command = Op::Sbb16;
+                        op.params.dst = Parameter::Reg16(R::AX);
+                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                    }
+                    OperandSize::_32bit => {
+                        op.command = Op::Sbb32;
+                        op.params.dst = Parameter::Reg32(R::EAX);
+                        op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                    }
+                }
             }
             0x1E => {
                 // push ds
@@ -442,8 +472,8 @@ impl Decoder {
             }
             0x21 => {
                 // and r/m16, r16
-                op.command = Op::And16;
-                op.params = self.rm16_r16(&mut mmu, op);
+                // and r/m32, r32
+                self.prefixed_16_32_rm_r(&mut mmu, &mut op, Op::And16, Op::And32)
             }
             0x22 => {
                 // and r8, r/m8
@@ -463,9 +493,19 @@ impl Decoder {
             }
             0x25 => {
                 // and AX, imm16
-                op.command = Op::And16;
-                op.params.dst = Parameter::Reg16(R::AX);
-                op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                // and EAX, imm32
+                match op.op_size {
+                    OperandSize::_16bit => {
+                        op.command = Op::And16;
+                        op.params.dst = Parameter::Reg16(R::AX);
+                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                    }
+                    OperandSize::_32bit => {
+                        op.command = Op::And32;
+                        op.params.dst = Parameter::Reg32(R::EAX);
+                        op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                    }
+                }
             }
             0x26 => {
                 // es segment prefix
@@ -482,8 +522,8 @@ impl Decoder {
             }
             0x29 => {
                 // sub r/m16, r16
-                op.command = Op::Sub16;
-                op.params = self.rm16_r16(&mut mmu, op);
+                // sub r/m32, r32
+                self.prefixed_16_32_rm_r(&mut mmu, &mut op, Op::Sub16, Op::Sub32)
             }
             0x2A => {
                 // sub r8, r/m8
@@ -582,8 +622,8 @@ impl Decoder {
             }
             0x39 => {
                 // cmp r/m16, r16
-                op.command = Op::Cmp16;
-                op.params = self.rm16_r16(&mut mmu, op);
+                // cmp r/m32, r32
+                self.prefixed_16_32_rm_r(&mut mmu, &mut op, Op::Cmp16, Op::Cmp32)
             }
             0x3A => {
                 // cmp r8, r/m8
@@ -602,15 +642,15 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0x3D => {
+                // cmp AX, imm16
+                // cmp EAX, imm32
                 match op.op_size {
                     OperandSize::_16bit => {
-                        // cmp AX, imm16
                         op.command = Op::Cmp16;
                         op.params.dst = Parameter::Reg16(R::AX);
                         op.params.src = Parameter::Imm16(self.read_u16(mmu));
                     }
                     OperandSize::_32bit => {
-                        // cmp EAX, imm32
                         op.command = Op::Cmp32;
                         op.params.dst = Parameter::Reg32(R::EAX);
                         op.params.src = Parameter::Imm32(self.read_u32(mmu));
@@ -942,8 +982,9 @@ impl Decoder {
             }
             0x85 => {
                 // test r/m16, r16
+                // test r/m32, r32
                 op.command = Op::Test16;
-                op.params = self.rm16_r16(&mut mmu, op);
+                self.prefixed_16_32_rm_r(&mut mmu, &mut op, Op::Test16, Op::Test32)
             }
             0x86 => {
                 // xchg r/m8, r8
@@ -1090,9 +1131,19 @@ impl Decoder {
             }
             0xA9 => {
                 // test AX, imm16
-                op.command = Op::Test16;
-                op.params.dst = Parameter::Reg16(R::AX);
-                op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                // test EAX, imm32
+                match op.op_size {
+                    OperandSize::_16bit => {
+                        op.command = Op::Test16;
+                        op.params.dst = Parameter::Reg16(R::AX);
+                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                    }
+                    OperandSize::_32bit => {
+                        op.command = Op::Test32;
+                        op.params.dst = Parameter::Reg32(R::EAX);
+                        op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                    }
+                }
             }
             0xAA => op.command = Op::Stosb,
             0xAB => op.command = match op.op_size {
@@ -1498,9 +1549,8 @@ impl Decoder {
                         op.command = match x.reg {
                             0 | 1 => {
                                 // test r/m32, imm32
-                                op.command = Op::Test32;
                                 op.params.src = Parameter::Imm32(self.read_u32(mmu));
-                                panic!("XXX 32bit verify params: {}", op);
+                                Op::Test32
                             }
                             2 => Op::Not32,
                             3 => Op::Neg32,

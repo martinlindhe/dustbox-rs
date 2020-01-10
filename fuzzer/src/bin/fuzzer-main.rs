@@ -43,12 +43,17 @@ fn main() {
             .get_matches();
 
     let ops_to_fuzz = vec!(
-        Op::Mov32,
+
+        Op::Div32,  // XXX MAJOR REG DIFF
+        //Op::Imul32,  // XXX C and O flags diff vs winxp
 
         // Op::Loop, // XXX need to keep relative offsets in decoder in order to encode back
 
+        // TODO - EMULATION NOT IMPLEMENTED:
+        //Op::Adc32, Op::And32, Op::Or32, Op::Sbb32, Op::Test32, Op::Not32
+
         // TODO - ENCODING NOT IMPLEMENTED:
-        //Op::Cmpsw,
+        //Op::Test32, Op::Cmpsw,
 
         // TODO FUZZ:
         // movsb/w, stosb/w
@@ -64,23 +69,23 @@ fn main() {
         // SEEMS ALL OK:
         Op::Movzx16, Op::Movsx16,
         Op::Shr8, Op::Sar8, // OK !
-        //Op::Div8, Op::Div16, Op::Idiv8, Op::Idiv16, // seems correct. NOTE that winxp crashes with "Divide overflow" on some input
+        //Op::Div8, Op::Div16, Op::Idiv8, Op::Idiv16, Op::Idiv32, // seems correct. NOTE that winxp crashes with "Divide overflow" on some input
         Op::Bt, Op::Bsf,
         Op::Aaa, Op::Aad, Op::Aam, Op::Aas, Op::Daa, Op::Das,
 
         Op::Push16, // NOTE: also tests Op::Pop16
-        Op::Mov8, Op::Mov16,
-        Op::Cmp8, Op::Cmp16,
+        Op::Mov8, Op::Mov16, Op::Mov32,
+        Op::Cmp8, Op::Cmp16, Op::Cmp32,
         Op::And8, Op::And16,
-        Op::Xor8, Op::Xor16,
+        Op::Xor8, Op::Xor16, Op::Xor32,
         Op::Or8, Op::Or16,
-        Op::Add8, Op::Add16, Op::Adc8, Op::Adc16,
-        Op::Sub8, Op::Sub16, Op::Sbb8, Op::Sbb16,
+        Op::Add8, Op::Add16, Op::Add32, Op::Adc8, Op::Adc16,
+        Op::Sub8, Op::Sub16, Op::Sub32, Op::Sbb8, Op::Sbb16,
         Op::Test8, Op::Test16,
         Op::Not8, Op::Not16,
-        Op::Neg8, Op::Neg16,
+        Op::Neg8, Op::Neg16, Op::Neg32,
         Op::Xchg8, Op::Xchg16,
-        Op::Mul8, Op::Mul16, Op::Imul8, Op::Imul16,
+        Op::Mul8, Op::Mul16, Op::Mul32, Op::Imul8, Op::Imul16,
         Op::Lahf, Op::Sahf, Op::Salc,
         Op::Nop, Op::Lea16,
         Op::Clc, Op::Cld, Op::Cli, Op::Cmc, Op::Stc, Op::Std, Op::Sti,
