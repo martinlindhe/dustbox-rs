@@ -1,14 +1,14 @@
 section .text
 save_regs:
     ; save reg states after instruction executes
-    mov [_ax], ax
-    mov [_bx], bx
-    mov [_cx], cx
-    mov [_dx], dx
-    mov [_sp], sp
-    mov [_bp], bp
-    mov [_si], si
-    mov [_di], di
+    mov [_eax], eax
+    mov [_ebx], ebx
+    mov [_ecx], ecx
+    mov [_edx], edx
+    mov [_esp], esp
+    mov [_ebp], ebp
+    mov [_esi], esi
+    mov [_edi], edi
 
     mov [_es], es
     mov [_cs], cs
@@ -23,141 +23,91 @@ save_regs:
     mov [_flags], ax
     ret
 
-print_ax:
-    mov  dx, axIs
-    call print_dollar_dx
-    mov ax, [_ax]
-    call print_hex_at_ax
-    ret
-
-print_bx:
-    mov  dx, bxIs
-    call print_dollar_dx
-    mov ax, [_bx]
-    call print_hex_at_ax
-    ret
-
-print_cx:
-    mov  dx, cxIs
-    call print_dollar_dx
-    mov ax, [_cx]
-    call print_hex_at_ax
-    ret
-
-print_dx:
-    mov  dx, dxIs
-    call print_dollar_dx
-    mov ax, [_dx]
-    call print_hex_at_ax
-    ret
-
-print_bp:
-    mov  dx, bpIs
-    call print_dollar_dx
-    mov ax, [_bp]
-    call print_hex_at_ax
-    ret
-
-print_sp:
-    mov  dx, spIs
-    call print_dollar_dx
-    mov ax, [_sp]
-    call print_hex_at_ax
-    ret
-
-print_si:
-    mov  dx, siIs
-    call print_dollar_dx
-    mov ax, [_si]
-    call print_hex_at_ax
-    ret
-
-print_di:
-    mov  dx, diIs
-    call print_dollar_dx
-    mov ax, [_di]
-    call print_hex_at_ax
-    ret
-
-print_es:
-    mov  dx, esIs
-    call print_dollar_dx
-    mov ax, [_es]
-    call print_hex_at_ax
-    ret
-
-print_cs:
-    mov  dx, csIs
-    call print_dollar_dx
-    mov ax, [_cs]
-    call print_hex_at_ax
-    ret
-
-print_ss:
-    mov  dx, ssIs
-    call print_dollar_dx
-    mov ax, [_ss]
-    call print_hex_at_ax
-    ret
-
-print_ds:
-    mov  dx, dsIs
-    call print_dollar_dx
-    mov ax, [_ds]
-    call print_hex_at_ax
-    ret
-
-print_fs:
-    mov  dx, fsIs
-    call print_dollar_dx
-    mov ax, [_fs]
-    call print_hex_at_ax
-    ret
-
-print_gs:
-    mov  dx, gsIs
-    call print_dollar_dx
-    mov ax, [_gs]
-    call print_hex_at_ax
-    ret
-
 print_flags:
     mov  dx, flagsIs
     call print_dollar_dx
     mov ax, [_flags]
-    call print_hex_at_ax
+    call print_hex_u16
     ret
 
-print_regs:
-    call print_ax
-    call print_bx
-    call print_cx
-    call print_dx
-    call print_bp
-    call print_sp
-    call print_si
-    call print_di
 
-    call print_es
-    call print_cs
-    call print_ss
-    call print_ds
-    call print_fs
-    call print_gs
+
+print_regs:
+    ; -----------
+    ; 32 BIT REGS
+    ; -----------
+    mov dx, eaxIs
+    mov eax, [_eax]
+    call prefixed_print_hex_u32
+
+    mov dx, ebxIs
+    mov eax, [_ebx]
+    call prefixed_print_hex_u32
+
+    mov dx, ecxIs
+    mov eax, [_ecx]
+    call prefixed_print_hex_u32
+
+    mov dx, edxIs
+    mov eax, [_edx]
+    call prefixed_print_hex_u32
+
+    mov dx, ebpIs
+    mov eax, [_ebp]
+    call prefixed_print_hex_u32
+
+    mov dx, espIs
+    mov eax, [_esp]
+    call prefixed_print_hex_u32
+
+    mov dx, esiIs
+    mov eax, [_esi]
+    call prefixed_print_hex_u32
+
+    mov dx, ediIs
+    mov eax, [_edi]
+    call prefixed_print_hex_u32
+
+    ; -----------
+    ; 16 BIT REGS
+    ; -----------
+    mov dx, esIs
+    mov ax, [_es]
+    call prefixed_print_hex_u16
+
+    mov dx, csIs
+    mov ax, [_cs]
+    call prefixed_print_hex_u16
+
+    mov dx, ssIs
+    mov ax, [_ss]
+    call prefixed_print_hex_u16
+
+    mov dx, dsIs
+    mov ax, [_ds]
+    call prefixed_print_hex_u16
+
+    mov dx, fsIs
+    mov ax, [_fs]
+    call prefixed_print_hex_u16
+
+    mov dx, gsIs
+    mov ax, [_gs]
+    call prefixed_print_hex_u16
 
     call print_flags
     ret
 
 
 section .data
-    axIs     db 'ax=$'
-    bxIs     db 'bx=$'
-    cxIs     db 'cx=$'
-    dxIs     db 'dx=$'
-    bpIs     db 'bp=$'
-    spIs     db 'sp=$'
-    siIs     db 'si=$'
-    diIs     db 'di=$'
+    eaxIs    db 'eax=$'
+    ebxIs    db 'ebx=$'
+    ecxIs    db 'ecx=$'
+    edxIs    db 'edx=$'
+    ebpIs    db 'ebp=$'
+    espIs    db 'esp=$'
+    esiIs    db 'esi=$'
+    ediIs    db 'edi=$'
     esIs     db 'es=$'
     csIs     db 'cs=$'
     ssIs     db 'ss=$'
@@ -165,18 +115,18 @@ section .data
     fsIs     db 'fs=$'
     gsIs     db 'gs=$'
     flagsIs  db 'flag=$'
-    _ax dw 0
-    _bx dw 0
-    _cx dw 0
-    _dx dw 0
-    _sp dw 0
-    _bp dw 0
-    _si dw 0
-    _di dw 0
-    _es dw 0
-    _cs dw 0
-    _ss dw 0
-    _ds dw 0
-    _fs dw 0
-    _gs dw 0
+    _eax   dd 0
+    _ebx   dd 0
+    _ecx   dd 0
+    _edx   dd 0
+    _esp   dd 0
+    _ebp   dd 0
+    _esi   dd 0
+    _edi   dd 0
+    _es    dw 0
+    _cs    dw 0
+    _ss    dw 0
+    _ds    dw 0
+    _fs    dw 0
+    _gs    dw 0
     _flags dw 0
