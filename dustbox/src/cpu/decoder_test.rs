@@ -90,17 +90,33 @@ fn can_disassemble_relative_short_jumps() {
 }
 
 #[test]
-fn can_disassemble_xor32() {
+fn can_disassemble_xor16() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
-        0x66, 0x35, 0xAA, 0xDD, 0xEE, 0xFF, // xor eax,0xffeeddaa
+        0x31, 0xCB,                 // xor bx,cx
+        0x81, 0xF3, 0x55, 0x44,     // xor bx,0x4455
+        0x35, 0x22, 0x11,           // xor ax,0x1122
     ];
     machine.load_executable(&code, 0x085F);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
-    assert_eq!("[085F:0100] 7404             Jz       0x0106
-[085F:0102] 74FE             Jz       0x0102
-[085F:0104] 7400             Jz       0x0106
-[085F:0106] 74FA             Jz       0x0102",
-               res);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 3);
+    assert_eq!("[085F:0100] 31CB             Xor16    bx, cx
+[085F:0102] 81F35544         Xor16    bx, 0x4455
+[085F:0106] 352211           Xor16    ax, 0x1122", res);
+}
+
+#[test]
+fn can_disassemble_xor32() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x66, 0x31, 0xCB,                           // xor ebx,ecx
+        0x66, 0x81, 0xF3, 0x11, 0x22, 0x55, 0x44,   // xor ebx,0x44552211
+        0x66, 0x35, 0xAA, 0xDD, 0xEE, 0xFF,         // xor eax,0xffeeddaa
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 3);
+    assert_eq!("[085F:0100] 6631CB           Xor32    ebx, ecx
+[085F:0103] 6681F311225544   Xor32    ebx, 0x44552211
+[085F:010A] 6635AADDEEFF     Xor32    eax, 0xFFEEDDAA", res);
 }

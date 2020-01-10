@@ -553,9 +553,19 @@ impl Decoder {
             }
             0x35 => {
                 // xor AX, imm16
-                op.command = Op::Xor16;
-                op.params.dst = Parameter::Reg16(R::AX);
-                op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                // xor EAX, imm32
+                match op.op_size {
+                    OperandSize::_16bit => {
+                        op.command = Op::Xor16;
+                        op.params.dst = Parameter::Reg16(R::AX);
+                        op.params.src = Parameter::Imm16(self.read_u16(mmu));
+                    }
+                    OperandSize::_32bit => {
+                        op.command = Op::Xor32;
+                        op.params.dst = Parameter::Reg32(R::EAX);
+                        op.params.src = Parameter::Imm32(self.read_u32(mmu));
+                    }
+                }
             }
             0x36 => {
                 // ss segment prefix

@@ -4,12 +4,13 @@ use std::iter::FromIterator;
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
 
-use crate::cpu::encoder::{Encoder};
+use crate::cpu::encoder::Encoder;
 use crate::cpu::segment::Segment;
 use crate::cpu::parameter::Parameter;
 use crate::cpu::instruction::Instruction;
 use crate::cpu::op::Op;
 use crate::cpu::register::{R, AMode};
+use crate::cpu::decoder::OperandSize;
 use crate::machine::Machine;
 use crate::hex::hex_bytes;
 use crate::ndisasm::ndisasm_first_instr;
@@ -255,11 +256,13 @@ fn can_encode_xor8() {
 
 #[test]
 fn can_encode_xor32() {
-    // AL, imm8
-    let op = Instruction::new2(Op::Xor32, Parameter::Reg32(R::EAX), Parameter::Imm32(0xFFEE_DDAA));
+    let mut op = Instruction::new2(Op::Xor32, Parameter::Reg32(R::EAX), Parameter::Imm32(0xFFEE_DDAA));
+    op.op_size = OperandSize::_32bit;
     assert_encdec(&op, "xor eax,0xffeeddaa", vec!(0x66, 0x35, 0xAA, 0xDD, 0xEE, 0xFF));
-    // XXX nasm enc 66 35 imm
-    // XXX we enc 66 _129 _240 imm
+
+    let mut op = Instruction::new2(Op::Xor32, Parameter::Reg32(R::EBX), Parameter::Imm32(0xFFEE_DDAA));
+    op.op_size = OperandSize::_32bit;
+    assert_encdec(&op, "xor ebx,0xffeeddaa", vec!(0x66, 0x81, 0xF3, 0xAA, 0xDD, 0xEE, 0xFF));
 }
 
 #[test]
