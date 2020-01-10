@@ -43,9 +43,7 @@ fn main() {
             .get_matches();
 
     let ops_to_fuzz = vec!(
-
-        Op::Div32,  // XXX MAJOR REG DIFF
-        //Op::Imul32,  // XXX C and O flags diff vs winxp
+        //Op::Div32,  // XXX MAJOR REG DIFF
 
         // Op::Loop, // XXX need to keep relative offsets in decoder in order to encode back
 
@@ -85,7 +83,7 @@ fn main() {
         Op::Not8, Op::Not16,
         Op::Neg8, Op::Neg16, Op::Neg32,
         Op::Xchg8, Op::Xchg16,
-        Op::Mul8, Op::Mul16, Op::Mul32, Op::Imul8, Op::Imul16,
+        Op::Mul8, Op::Mul16, Op::Mul32, Op::Imul8, Op::Imul16, Op::Imul32,
         Op::Lahf, Op::Sahf, Op::Salc,
         Op::Nop, Op::Lea16,
         Op::Clc, Op::Cld, Op::Cli, Op::Cmc, Op::Stc, Op::Std, Op::Sti,

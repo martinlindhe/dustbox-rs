@@ -1186,11 +1186,12 @@ impl Machine {
                 }
             }
             Op::Imul32 => {
+                let tmp: isize;
                 match op.params.count() {
                     1 => {
                         // IMUL r/m32               : EDX:EAX ← EAX ∗ r/m32.
                         let a = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as i32;
-                        let tmp = (self.cpu.get_r32(R::EAX) as i32) as isize * a as isize;
+                        tmp = (self.cpu.get_r32(R::EAX) as i32) as isize * a as isize;
                         self.cpu.set_r32(R::EAX, tmp as u32);
                         self.cpu.set_r32(R::EDX, (tmp >> 32) as u32);
                     }
@@ -1198,7 +1199,7 @@ impl Machine {
                         // IMUL r32, r/m32          : doubleword register ← doubleword register ∗ r/m32.
                         let a = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                         let b = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
-                        let tmp = a as isize * b as isize;
+                        tmp = a as isize * b as isize;
                         self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, tmp as u32);
                     }
                     3 => {
@@ -1206,12 +1207,18 @@ impl Machine {
                         // IMUL r32, r/m32, imm32    : doubleword register ← r/m32 ∗ immediate doubleword.
                         let a = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                         let b = self.cpu.read_parameter_value(&self.mmu, &op.params.src2);
-                        let tmp = b as isize * a as isize;
+                        tmp = b as isize * a as isize;
                         self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, tmp as u32);
                     }
                     _ => unreachable!(),
                 }
-                // XXX flags
+                if tmp != (tmp as i32) as isize {
+                    self.cpu.regs.flags.carry = true;
+                    self.cpu.regs.flags.overflow = true;
+                } else {
+                    self.cpu.regs.flags.carry = false;
+                    self.cpu.regs.flags.overflow = false;
+                }
             }
             Op::In8 => {
                 // two parameters (dst=AL)
