@@ -6,7 +6,7 @@ edition = "2018"
 
 [[bin]]
 name = "dustbox-frontend"
-path = "src/frontend-main.rs"
+path = "src/bin/frontend-main.rs"
 
 [dependencies]
 clap = "2.33"

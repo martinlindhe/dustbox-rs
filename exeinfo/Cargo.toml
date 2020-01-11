@@ -6,7 +6,7 @@ edition = "2018"
 
 [[bin]]
 name = "dustbox-exeinfo"
-path = "src/exeinfo-main.rs"
+path = "src/bin/exeinfo-main.rs"
 
 [dependencies]
 bincode = "1.2"

@@ -6,7 +6,7 @@ edition = "2018"
 
 [[bin]]
 name = "dustbox-disasm"
-path = "src/disassembler-main.rs"
+path = "src/bin/disasm-main.rs"
 
 [dependencies]
 chrono = "0.4"

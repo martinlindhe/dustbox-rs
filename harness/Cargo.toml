@@ -4,8 +4,9 @@ version = "0.1.0"
 authors = ["Martin Lindhe"]
 edition = "2018"
 
-[lib]
-path = "src/lib.rs"
+[[bin]]
+name = "dustbox-harness"
+path = "src/bin/harness-main.rs"
 
 [dependencies]
 clap = "2.33"
