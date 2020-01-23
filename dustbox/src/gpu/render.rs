@@ -75,6 +75,10 @@ impl Component for GPU {
                 // XXX impl
             },
 
+            // PORT 03C4-03C5 - EGA/VGA - SEQUENCER REGISTERS
+            //0x03C4 => // INDEX
+            //0x03C5 => // DATA
+
             // PORT 03C6-03C9 - EGA/VGA/MCGA - DAC REGISTERS
             0x03C6 => self.dac.set_pel_mask(data),
             0x03C7 => self.dac.set_pel_read_index(data),
@@ -104,27 +108,6 @@ impl Component for GPU {
                 //  bit 0 = 0 3x8h bit3 indicates if CRT beam is on or off.
                 //            No more info available. Might conflict with EGA/VGA.
             }
-            _ => return false
-        }
-        true
-    }
-
-    fn out_u16(&mut self, port: u16, data: u16) -> bool {
-        match port {
-            // PORT 03C4-03C5 - EGA/VGA - SEQUENCER REGISTERS
-            0x03C4 => {
-                // XXX if 16bit, its first INDEX byte, then DATA byte
-                let _idx = data >> 8 as u8; // TS index register
-                let _val = data as u8; // sequencer register index
-                // println!("XXX out_u16 03C4 idx {:02X} = {:02X}", idx, val);
-            },
-
-            // PORT 03C6-03C9 - EGA/VGA/MCGA - DAC REGISTERS
-            0x03C9 => self.dac.set_pel_data(data as u8),
-
-            // PORT 03D4-03D5 - COLOR VIDEO - CRT CONTROL REGISTERS
-            0x03D4 => self.crtc.set_index(data as u8),
-            0x03D5 => self.crtc.write_current(data as u8),
             _ => return false
         }
         true
