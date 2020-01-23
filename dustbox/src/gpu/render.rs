@@ -1173,8 +1173,9 @@ impl GPU {
         let val = match row {
             0x00 => dl - 1, // row 0 = user specified in DL
             0x01 => 13,
+            0x02 => 24,
             0x03 => 42,
-            0x02 | _ => 24,
+            _    => panic!(row),
         };
         mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_NB_ROWS, val);
     }
