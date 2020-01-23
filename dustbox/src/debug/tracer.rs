@@ -286,7 +286,7 @@ impl ProgramTracer {
                 }
                 adr.inc_n(1);
                 dollars.push(val as char);
-                
+
                 if val == b'$' {
                     break;
                 }
@@ -1077,10 +1077,10 @@ impl ProgramTracer {
                 }
             }
             0x33 => { // mouse
-                let ax = self.regs.get_r16(R::AX);
-                match ax {
-                     0x0003 => String::from("mouse: get position and button status"),
-                     _ => format!("mouse: unrecognized AX = {:04X}", ax)
+                let al = self.regs.get_r8(R::AL);
+                match al {
+                     0x03 => String::from("mouse: get position and button status"),
+                     _ => format!("mouse: unrecognized AL = {:02X}", al)
                 }
             }
             _ => {

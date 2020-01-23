@@ -29,15 +29,16 @@ impl Component for Mouse {
         if int != 0x33 {
             return false;
         }
-        match cpu.get_r16(R::AX) {
-            0x0003 => {
+        // NOTE: logitech mouse extender use AH too
+        match cpu.get_r8(R::AL) {
+            0x03 => {
                 // MS MOUSE v1.0+ - RETURN POSITION AND BUTTON STATUS
                 // Return:
                 // BX = button status
                 // CX = column
                 // DX = row
                 cpu.set_r16(R::BX, self.button_status());
-                cpu.set_r16(R::CX, (self.x*2) as u16); // XXX works in mode 0x13 but why multiply
+                cpu.set_r16(R::CX, (self.x*2) as u16); // XXX works in mode 0x13 lumps.com but why multiply
                 cpu.set_r16(R::DX, self.y as u16);
 
                 // XXX Note: In text modes, all coordinates are specified as multiples of the cell size, typically 8x8 pixels
