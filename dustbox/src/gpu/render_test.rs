@@ -87,7 +87,7 @@ fn can_int10_put_pixel() {
     machine.execute_instruction(); // trigger the interrupt
     assert_eq!(0x0113, machine.cpu.regs.ip);
 
-    let frame = machine.gpu().unwrap().render_frame(&machine.mmu);
+    let frame = machine.gpu().render_frame(&machine.mmu);
     let mut img = frame.draw_image();
     let img = img.sub_image(0, 0, 6, 6).to_image();
     assert_eq!("\
@@ -121,7 +121,7 @@ let mut machine = Machine::deterministic();
     machine.execute_instruction(); // trigger the interrupt
     assert_eq!(0x0112, machine.cpu.regs.ip);
 
-    let frame = machine.gpu().unwrap().render_frame(&machine.mmu);
+    let frame = machine.gpu().render_frame(&machine.mmu);
     let mut img = frame.draw_image();
     let img = img.sub_image(0, 0, 8, 8).to_image();
     assert_eq!("\

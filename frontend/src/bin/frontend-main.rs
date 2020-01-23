@@ -111,7 +111,7 @@ fn main() {
                         // break 'main
                     }
 
-                    machine.keyboard_mut().unwrap().add_keypress(keycode, modifier);
+                    machine.keyboard_mut().add_keypress(keycode, modifier);
                 }
                 Event::MouseMotion {x, y, ..} => machine.mouse_mut().set_position(x, y),
                 Event::MouseButtonDown {mouse_btn, ..} => {
@@ -141,7 +141,7 @@ fn main() {
 
         let locked_fps = 30;
 
-        let frame = machine.gpu().unwrap().render_frame(&machine.mmu);
+        let frame = machine.gpu().render_frame(&machine.mmu);
 
         let mut texture = texture_creator.create_texture_streaming(PixelFormatEnum::RGB24, frame.mode.swidth, frame.mode.sheight).unwrap();
 
@@ -180,7 +180,7 @@ fn main() {
                     println!("cpu fatal error occured. stopping execution");
                     break 'main;
                 }
-                machine.gpu_mut().unwrap().progress_scanline();
+                machine.gpu_mut().progress_scanline();
             }
             let exec_time = frame_start.elapsed().unwrap();
 

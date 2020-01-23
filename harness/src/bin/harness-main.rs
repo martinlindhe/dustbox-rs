@@ -65,7 +65,7 @@ fn run_and_save_video_frames(set: &SetDocument) {
         let rel_path = Path::new(&bin);
         let stem = rel_path.file_stem().unwrap_or_else(|| OsStr::new(""));
         let mut filename = OsString::new(); // XXX base on dirname
-        let outname = &format!("render/{}/{:02x}_", set.name, machine.gpu_mut().unwrap().mode.mode);
+        let outname = &format!("render/{}/{:02x}_", set.name, machine.gpu_mut().mode.mode);
         filename.push(format!("docs/{}", outname));
         filename.push(stem.to_os_string());
         filename.push(".png");
@@ -107,7 +107,7 @@ fn run_and_save_video_frames(set: &SetDocument) {
 
 // returns true on success
 fn write_video_frame_to_disk(machine: &mut Machine, pngfile: &str) -> bool {
-    let frame = machine.gpu().unwrap().render_frame(&machine.mmu);
+    let frame = machine.gpu().render_frame(&machine.mmu);
     if frame.data.is_empty() {
         println!("ERROR: no frame rendered");
         return false;

@@ -498,14 +498,14 @@ fn can_execute_rep_outsb() {
     ];
     machine.load_executable(&code, 0x085F);
 
-    assert_eq!(0, machine.gpu_mut().unwrap().dac.write_index);
+    assert_eq!(0, machine.gpu_mut().dac.write_index);
 
     machine.execute_instructions(3);
     machine.execute_instruction(); // rep outsb
-    assert_eq!(0xBE, machine.gpu_mut().unwrap().dac.write_index);
+    assert_eq!(0xBE, machine.gpu_mut().dac.write_index);
 
     machine.execute_instruction(); // rep outsb
-    assert_eq!(0x00, machine.gpu_mut().unwrap().dac.write_index);
+    assert_eq!(0x00, machine.gpu_mut().dac.write_index);
 
     assert_eq!(0x0, machine.cpu.get_r16(R::CX));
 }
@@ -523,9 +523,9 @@ fn can_execute_es_outsb() {
     ];
     machine.load_executable(&code, 0x085F);
 
-    assert_eq!(0, machine.gpu_mut().unwrap().dac.write_index);
+    assert_eq!(0, machine.gpu_mut().dac.write_index);
     machine.execute_instructions(6);
-    assert_eq!(0x09, machine.gpu_mut().unwrap().dac.write_index);
+    assert_eq!(0x09, machine.gpu_mut().dac.write_index);
 }
 
 #[test]
@@ -556,9 +556,8 @@ fn can_execute_out16() {
     machine.load_executable(&code, 0x085F);
     machine.execute_instructions(3);
 
-    let gpu = machine.gpu().unwrap();
-    assert_eq!(0x11, gpu.crtc.index);
-    assert_eq!(0x2E, gpu.crtc.vertical_retrace_end);
+    assert_eq!(0x11, machine.gpu().crtc.index);
+    assert_eq!(0x2E, machine.gpu().crtc.vertical_retrace_end);
 }
 
 #[test]

@@ -90,7 +90,7 @@ impl Machine {
      // returns a non-deterministic Machine instance
     pub fn default() -> Self {
         let mut m = Self::deterministic();
-        m.pit_mut().unwrap().init();
+        m.pit_mut().init();
         m
     }
 
@@ -147,23 +147,23 @@ impl Machine {
     }
 
     /// returns a mutable reference to the PIT component
-    pub fn pit_mut(&mut self) -> Option<&mut PITComponent> {
+    pub fn pit_mut(&mut self) -> &mut PITComponent {
         for component in &mut self.components {
             if let MachineComponent::PIT(c) = component {
-                return Some(c);
+                return c;
             }
         }
-        None
+        unreachable!();
     }
 
     /// returns a mutable reference to the Keyboard component
-    pub fn keyboard_mut(&mut self) -> Option<&mut KeyboardComponent> {
+    pub fn keyboard_mut(&mut self) -> &mut KeyboardComponent {
         for component in &mut self.components {
             if let MachineComponent::Keyboard(c) = component {
-                return Some(c);
+                return c;
             }
         }
-        None
+        unreachable!();
     }
 
     /// returns a mutable reference to the Mouse component
@@ -177,23 +177,23 @@ impl Machine {
     }
 
     /// returns a mutable reference to the GPU component
-    pub fn gpu_mut(&mut self) -> Option<&mut GPUComponent> {
+    pub fn gpu_mut(&mut self) -> &mut GPUComponent {
         for component in &mut self.components {
             if let MachineComponent::GPU(c) = component {
-                return Some(c);
+                return c;
             }
         }
-        None
+        unreachable!();
     }
 
     /// returns a reference to the GPU component
-    pub fn gpu(&self) -> Option<&GPUComponent> {
+    pub fn gpu(&self) -> &GPUComponent {
         for component in &self.components {
             if let MachineComponent::GPU(c) = component {
-                return Some(c);
+                return c;
             }
         }
-        None
+        unreachable!();
     }
 
     /// reset the CPU and memory
@@ -504,7 +504,7 @@ impl Machine {
 
         if self.cpu.cycle_count % 100 == 0 {
             // XXX need instruction timing to do this properly
-            self.gpu_mut().unwrap().progress_scanline();
+            self.gpu_mut().progress_scanline();
         }
 
         // HACK: pit should be updated regularry, but in a deterministic way
