@@ -10,6 +10,7 @@ extern crate clap;
 use clap::{Arg, App};
 
 use dustbox::machine::Machine;
+use dustbox::mouse::MouseButton;
 use dustbox::tools;
 
 const DEBUG_PERFORMANCE: bool = true;
@@ -106,15 +107,29 @@ fn main() {
                 Event::Quit {..} => break 'main,
 
                 Event::KeyDown {keycode: Some(keycode), keymod: modifier, ..} => {
-                    /*
-                    if keycode == Keycode::Escape {
-                        break 'main
+                    if keycode == sdl2::keyboard::Keycode::Escape {
+                        // break 'main
                     }
-                    */
 
                     machine.keyboard_mut().unwrap().add_keypress(keycode, modifier);
                 }
-
+                Event::MouseMotion {x, y, ..} => machine.mouse_mut().set_position(x, y),
+                Event::MouseButtonDown {mouse_btn, ..} => {
+                    match mouse_btn {
+                        sdl2::mouse::MouseButton::Left => machine.mouse_mut().set_button(MouseButton::Left, true),
+                        sdl2::mouse::MouseButton::Right => machine.mouse_mut().set_button(MouseButton::Right, true),
+                        sdl2::mouse::MouseButton::Middle => machine.mouse_mut().set_button(MouseButton::Middle, true),
+                        _ => {},
+                    }
+                }
+                Event::MouseButtonUp {mouse_btn, ..} => {
+                    match mouse_btn {
+                        sdl2::mouse::MouseButton::Left => machine.mouse_mut().set_button(MouseButton::Left, false),
+                        sdl2::mouse::MouseButton::Right => machine.mouse_mut().set_button(MouseButton::Right, false),
+                        sdl2::mouse::MouseButton::Middle => machine.mouse_mut().set_button(MouseButton::Middle, false),
+                        _ => {},
+                    }
+                }
                 _ => {}
             }
         }
@@ -145,6 +160,9 @@ fn main() {
 
                 println!("Resizing window for mode {:02x} to {}x{} pixels, {}x{} frame size, scale factor {}x, internal scale x:{}, y:{}",
                     frame.mode.mode, window_width, window_height, frame.mode.swidth, frame.mode.sheight, scale_factor, internal_scale_x, internal_scale_y);
+
+                // XXX logical size is needed for correct mouse coordinates without having to divide them by scale, but it gives black top+bottom bars on win10
+                canvas.set_logical_size(frame.mode.swidth, frame.mode.sheight).unwrap();
 
                 let window = canvas.window_mut();
                 window.set_size(window_width, window_height).unwrap();

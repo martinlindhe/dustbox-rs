@@ -166,6 +166,16 @@ impl Machine {
         None
     }
 
+    /// returns a mutable reference to the Mouse component
+    pub fn mouse_mut(&mut self) -> &mut MouseComponent {
+        for component in &mut self.components {
+            if let MachineComponent::Mouse(c) = component {
+                return c;
+            }
+        }
+        unreachable!();
+    }
+
     /// returns a mutable reference to the GPU component
     pub fn gpu_mut(&mut self) -> Option<&mut GPUComponent> {
         for component in &mut self.components {
