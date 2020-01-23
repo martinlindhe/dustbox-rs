@@ -59,11 +59,6 @@ pub trait Component {
         false
     }
 
-    /// returns true if write was handled
-    fn out_u16(&mut self, _port: u16, _data: u16) -> bool {
-        false
-    }
-
     /// returns true if interrupt was handled
     fn int(&mut self, _int: u8, _cpu: &mut CPU, _mmu: &mut MMU) -> bool {
         false
@@ -606,20 +601,10 @@ impl Machine {
         if DEBUG_IO {
             println!("out_u16: write to {:04X} = {:04X}", port, data);
         }
-        for component in &mut self.components {
-            let b = match component {
-                MachineComponent::PIC(c) => c.out_u16(port, data),
-                MachineComponent::PIT(c) => c.out_u16(port, data),
-                MachineComponent::Keyboard(c) => c.out_u16(port, data),
-                MachineComponent::Mouse(c) => c.out_u16(port, data),
-                MachineComponent::Storage(c) => c.out_u16(port, data),
-                MachineComponent::GPU(c) => c.out_u16(port, data),
-            };
-            if b {
-                return;
-            }
-        }
-        println!("out_u16: unhandled port {:04X} = {:04X}", port, data);
+        let lo = data as u8;
+        let hi = (data >> 8) as u8;
+        self.out_u8(port, lo);
+        self.out_u8(port+1, hi);
     }
 
     #[cfg_attr(feature = "cargo-clippy", allow(clippy::cyclomatic_complexity))]

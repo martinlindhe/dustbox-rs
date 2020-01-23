@@ -22,10 +22,10 @@ run-release:
 	cargo run --release --package debugger
 
 disasm:
-	cargo run --release --package disassembler
+	cargo run --release --package disasm
 
 install-disasm:
-	cargo install --path disassembler --force
+	cargo install --path disasm --force
 
 fuzz:
 	cargo run --package fuzzer -- supersafe --mutations 50 --host 172.16.72.129

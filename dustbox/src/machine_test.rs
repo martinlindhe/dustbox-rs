@@ -546,6 +546,22 @@ fn can_execute_lea() {
 }
 
 #[test]
+fn can_execute_out16() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xBA, 0xD4, 0x03,           // mov dx,0x3d4
+        0xB8, 0x11, 0x2E,           // mov ax,0x2e11
+        0xEF,                       // out dx,ax
+    ];
+    machine.load_executable(&code, 0x085F);
+    machine.execute_instructions(3);
+
+    let gpu = machine.gpu().unwrap();
+    assert_eq!(0x11, gpu.crtc.index);
+    assert_eq!(0x2E, gpu.crtc.vertical_retrace_end);
+}
+
+#[test]
 fn can_execute_8bit_16bit_addressing() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
