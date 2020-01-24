@@ -1953,17 +1953,18 @@ impl Machine {
             }
             Op::Rcr32 => {
                 // two arguments
-                // rotate 9 bits right `op1` times
                 let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let count = (self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u32 & 0x1F) % 17;    // XXX
+                let count = self.cpu.read_parameter_value(&self.mmu, &op.params.src) as u32 & 0x1F;
                 if count > 0 {
                     let cf = self.cpu.regs.flags.carry_val();
-                    let res = (op1 >> count) | (cf << (32 - count)) | (op1 << (33 - count));
+                    let res = if count==1 {
+                        op1 >> 1 | cf << 31
+                    } else {
+                         (op1 >> count) | (cf << (32-count)) | (op1 << (33-count))
+                    };
                     self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, res as u32);
                     self.cpu.regs.flags.carry = (op1 >> (count - 1)) & 1 != 0;
-                    let bit15 = (res >> 15) & 1; // XXX
-                    let bit14 = (res >> 14) & 1;
-                    self.cpu.regs.flags.overflow = bit15 ^ bit14 != 0;
+                    self.cpu.regs.flags.overflow = (res ^ (res << 1)) & 0x8000_0000 != 0;
                 }
             }
             Op::Iret => {
