@@ -43,7 +43,7 @@ fn main() {
             .get_matches();
 
     let ops_to_fuzz = vec!(
-        //Op::Rcr32, Op::Sar32,// XXX MAJOR REG DIFF
+        //Op::Rcr32, // XXX MAJOR REG DIFF
 
         //Op::Ror32, // XXX carry flag diff vs WinXP
         //Op::Rol32, Op::Rcl32,  // XXX not implemented in dustbox
@@ -68,6 +68,8 @@ fn main() {
         // Op::Shld, Op::Shrd,      // ERROR - regs differ vs dosbox, regs match vs winxp! - overflow flag is wrong in both:
         // Op::Shl16,               // ERROR - overflow flag diff vs both dosbox & winxp. algo from bochs
         // Op::Shr16, Op::Shr32,    // ERROR? - identical to winxp, but overflow flag differs vs dosbox
+
+        // Op::Sar32, // reg diff if shift == 1 in WinXP
 
         /*
         // UNSURE: overflow is identical to bochs and dosbox, but differs in WinXP vm:

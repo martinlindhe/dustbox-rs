@@ -2136,7 +2136,7 @@ impl Machine {
                         count = 16;
                     }
                     let res = if (dst & 0x8000) != 0 {
-                        (dst >> count) | (0xffff << (16 - count))
+                        (dst >> count) | (0xFFFF << (16 - count))
                     } else {
                         dst >> count
                     };
@@ -2153,19 +2153,17 @@ impl Machine {
                 // Signed divide r/m8 by 2, imm8 times.
                 // two arguments
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                let count = self.cpu.read_parameter_value(&self.mmu, &op.params.src) & 0xF; // XXX
+                let count = self.cpu.read_parameter_value(&self.mmu, &op.params.src) & 0x1F; // use 5 lsb
                 if count > 0 {
-                    let res = if dst & 0x8000_0000 != 0 {
-                        let x = 0xFFFF_FFFF as usize;
-                        dst.rotate_right(count as u32) | x.rotate_left(32 - count as u32)
+                    let res = if (dst & 0x8000_0000) != 0 {
+                        (dst >> count) | (0xFFFF_FFFF << (32 - count))
                     } else {
-                        dst.rotate_right(count as u32)
+                        dst >> count
                     };
+
                     self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, res as u32);
-                    self.cpu.regs.flags.carry = (dst as u32 >> (count - 1)) & 0x1 != 0; // XXX
-                    if count == 1 {
-                        self.cpu.regs.flags.overflow = false;
-                    }
+                    self.cpu.regs.flags.carry = (dst as u32 >> (count - 1)) & 0x1 != 0;
+                    self.cpu.regs.flags.overflow = false;
                     self.cpu.regs.flags.set_sign_u32(res);
                     self.cpu.regs.flags.set_zero_u32(res);
                     self.cpu.regs.flags.set_parity(res);
