@@ -619,6 +619,18 @@ fn can_encode_movsx32() {
     assert_encdec(&op, "movsx ebx,cx", vec!(0x66, 0x0F, 0xBF, 0xD9));
 }
 
+#[test]
+fn can_encode_sar8() {
+    let op = Instruction::new2(Op::Sar8, Parameter::Reg8(R::AH), Parameter::Imm8(0x30));
+    assert_encdec(&op, "sar ah,byte 0x30", vec!(0xC0, 0xFC, 0x30));
+}
+
+#[test]
+fn can_encode_sar16() {
+    let op = Instruction::new2(Op::Sar16, Parameter::Reg16(R::BX), Parameter::Imm8(0x30));
+    assert_encdec(&op, "sar bx,byte 0x30", vec!(0xC1, 0xFB, 0x30));
+}
+
 // TODO make this into a macro to retain caller line numbers in the asserts
 fn assert_encdec(op :&Instruction, expected_ndisasm: &str, expected_bytes: Vec<u8>) {
     let encoder = Encoder::new();

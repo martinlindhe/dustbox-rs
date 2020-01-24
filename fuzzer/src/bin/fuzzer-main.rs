@@ -43,11 +43,12 @@ fn main() {
             .get_matches();
 
     let ops_to_fuzz = vec!(
+        //Op::Rcr32, Op::Sar32,// XXX MAJOR REG DIFF
+
         //Op::Ror32, // XXX carry flag diff vs WinXP
         //Op::Rol32, Op::Rcl32,  // XXX not implemented in dustbox
         //Op::Shl32, // XXX carry & overflow differs
 
-        //Op::Sar16, Op::Rcr32, Op::Sar32,// XXX MAJOR REG DIFF
         //Op::Ror16, Op::Rol16,  // XXX carry flag diff vs WinXP
         //Op::Rcl16, Op::Rcr16,  // XXX overflow flag diff vs WinXP
 
@@ -74,7 +75,7 @@ fn main() {
 
         // SEEMS ALL OK:
         Op::Movsx16, Op::Movsx32, Op::Movzx16, Op::Movzx32,
-        Op::Shr8, Op::Sar8, // OK !
+        Op::Shr8, Op::Sar8, Op::Sar16, // OK !
         //Op::Div8, Op::Div16, Op::Idiv8, Op::Idiv16, Op::Idiv32, // seems correct. NOTE that winxp crashes with "Divide overflow" on some input
         Op::Bt, Op::Bsf,
         Op::Aaa, Op::Aad, Op::Aam, Op::Aas, Op::Daa, Op::Das,
