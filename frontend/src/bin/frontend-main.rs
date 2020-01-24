@@ -177,7 +177,7 @@ fn main() {
                 let num_instr = 400;
                 machine.execute_instructions(num_instr);
                 if machine.cpu.fatal_error {
-                    println!("cpu fatal error occured. stopping execution");
+                    println!("cpu fatal error occured. stopping execution after {} instructions executed", machine.cpu.instruction_count);
                     break 'main;
                 }
                 machine.gpu_mut().progress_scanline();

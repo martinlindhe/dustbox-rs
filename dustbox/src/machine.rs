@@ -492,7 +492,6 @@ impl Machine {
                         println!("ndisasm: {}", self.external_disasm_of_bytes(cs, ip));
                     }
                 }
-                println!("{} Instructions executed", self.cpu.instruction_count);
             }
             _ => {
                 if DEBUG_EXEC {

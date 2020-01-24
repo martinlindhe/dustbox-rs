@@ -1,5 +1,4 @@
 use chrono::prelude::*;
-use std::str;
 
 use crate::cpu::R;
 use crate::codepage::cp437;
@@ -222,7 +221,8 @@ pub fn handle(machine: &mut Machine) {
             let ds = machine.cpu.get_r16(R::DS);
             let dx = machine.cpu.get_r16(R::DX);
             let data = machine.mmu.readz(ds, dx);
-            let filename = str::from_utf8(&data).unwrap();
+            let filename = cp437::to_utf8(&data);
+
             // Return:
             // CF clear if successful and AX = file handle
             // CF set on error and AX = error code (01h,02h,03h,04h,05h,0Ch,56h) (see #01680 at AH=59h)

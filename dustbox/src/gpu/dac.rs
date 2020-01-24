@@ -1,7 +1,7 @@
 use crate::gpu::palette::{ColorSpace, text_palette};
 use crate::gpu::palette::ColorSpace::RGB;
 
-const DEBUG_DAL: bool = false;
+const DEBUG_DAC: bool = true;
 
 #[derive(Clone)]
 pub struct DAC {
@@ -55,7 +55,7 @@ impl DAC {
     pub fn get_state(&mut self) -> u8 {
         self.hidac_counter = 0;
         let res = self.state.register();
-        if DEBUG_DAL {
+        if DEBUG_DAC {
             println!("read port 03C7: get_state = {:02X}", res);
         }
         res
@@ -77,7 +77,7 @@ impl DAC {
         self.write_index = val + 1;
         self.pel_index = 0;
         self.hidac_counter = 0;
-        if DEBUG_DAL {
+        if DEBUG_DAC {
             println!("write port 03C7: set_pel_read_index = {:02X}", val);
         }
     }
@@ -85,7 +85,7 @@ impl DAC {
     /// (VGA,MCGA) PEL address register (0x03C8)
     pub fn get_pel_write_index(&mut self) -> u8 {
         self.hidac_counter = 0;
-        if DEBUG_DAL {
+        if DEBUG_DAC {
             println!("read port 03C8: get_pel_write_index = {:02X}", self.write_index);
         }
         self.write_index
@@ -100,7 +100,7 @@ impl DAC {
         self.write_index = val;
         self.pel_index = 0;
         self.hidac_counter = 0;
-        if DEBUG_DAL {
+        if DEBUG_DAC {
             println!("write port 03C8: set_pel_write_index = {:02X}", val);
         }
     }
@@ -131,7 +131,7 @@ impl DAC {
             }
             _ => unreachable!(),
         };
-        if DEBUG_DAL {
+        if DEBUG_DAC {
             println!("read port 03C9: get_pel_data = {:02X}", ret);
         }
         ret
@@ -142,7 +142,7 @@ impl DAC {
     /// The internal DAC index is incremented on every 3rd access.
     pub fn set_pel_data(&mut self, mut val: u8) {
         val &= 0x3F;
-        if DEBUG_DAL {
+        if DEBUG_DAC {
             println!("write port 03C9: set_pel_data = write index {:02X}, pel index {:02X} = {:02X}", self.write_index, self.pel_index, val);
         }
         // scale 6-bit color into 8 bits

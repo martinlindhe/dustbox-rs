@@ -12,7 +12,7 @@ If you are looking for a more complete dos emulator, I suggest you check out [do
 | Component  | Status | Notes                                                    |
 | ---------- | ------ | -------------------------------------------------------- |
 | 16 bit CPU | 95%    | interrupts are incomplete                                |
-| 32 bit CPU | 10%    | some instructions supported                              |
+| 32 bit CPU | 20%    | some instructions supported                              |
 | FPU        | -      | not started                                              |
 | disk       | -      | not started                                              |
 | PIT        | 1%     |                                                          |
@@ -20,7 +20,7 @@ If you are looking for a more complete dos emulator, I suggest you check out [do
 | MS-DOS     | 5%     | simulating MS-DOS behavior (interrupts, command.com env) |
 | EMS/XMS    | -      | extended memory managers                                 |
 | Keyboard   | 1%     |                                                          |
-| Mouse      | 0%     |                                                          |
+| Mouse      | 25%    |                                                          |
 | CD-ROM     | -      | not started                                              |
 | CGA        | 5%     |                                                          |
 | EGA        | 5%     |                                                          |
