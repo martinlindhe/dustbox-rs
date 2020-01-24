@@ -1,3 +1,7 @@
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
+
 use chrono::prelude::*;
 
 use crate::cpu::R;
@@ -223,31 +227,65 @@ pub fn handle(machine: &mut Machine) {
             let data = machine.mmu.readz(ds, dx);
             let filename = cp437::to_utf8(&data);
 
-            // Return:
-            // CF clear if successful and AX = file handle
-            // CF set on error and AX = error code (01h,02h,03h,04h,05h,0Ch,56h) (see #01680 at AH=59h)
-            println!("int21 XXX DOS 2+ - OPEN - OPEN EXISTING FILE, name {}, mode {:02X}, attr {:02X}", filename, mode, attr);
-
-            machine.cpu.regs.flags.carry = true; // XXX fake failure
-            machine.cpu.set_r16(R::AX, 0x0002); // XXX 2 = "file not found"
+            // XXX need to find file match with varying case
+            let to_load = Path::new(&machine.program_path).parent().unwrap().join(filename);
+            if to_load.exists() {
+                println!("OPEN - OPEN EXISTING FILE {}, mode {:02X}, attr {:02X}", to_load.display(), mode, attr);
+                // CF clear if successful and AX = file handle
+                let handle = machine.open_existing_file(to_load);
+                machine.cpu.regs.flags.carry = false;
+                machine.cpu.set_r16(R::AX, handle);
+            } else {
+                // CF set on error and AX = error code (01h,02h,03h,04h,05h,0Ch,56h) (see #01680 at AH=59h)
+                println!("OPEN - OPEN EXISTING FILE {} - NOT FOUND", to_load.display());
+                machine.cpu.regs.flags.carry = true;
+                machine.cpu.set_r16(R::AX, 0x0002); // 2 = "file not found"
+            }
         }
         0x3E => {
             // DOS 2+ - CLOSE - CLOSE FILE
             let handle = machine.cpu.get_r16(R::BX); // file handle
-            // Return:
-            // CF clear if successful and AX destroyed
-            // CF set on error and AX = error code (06h) (see #01680 at AH=59h/BX=0000h)
-            println!("int21 XXX DOS 2+ - CLOSE - CLOSE FILE, handle {:04X}", handle);
-            machine.cpu.regs.flags.carry = false; // XXX fake success
+            if let Some(_) = machine.get_path_from_handle(handle) {
+                println!("CLOSE - CLOSE FILE, handle {:04X}", handle);
+                machine.file_handles.remove(&handle);
+                // CF clear if successful and AX destroyed
+                machine.cpu.regs.flags.carry = false;
+            } else {
+                // CF set on error and AX = error code (06h) (see #01680 at AH=59h/BX=0000h)
+                machine.cpu.regs.flags.carry = true;
+                panic!("close unknown handle {}", handle);
+            }
         }
         0x3F => {
             // DOS 2+ - READ - READ FROM FILE OR DEVICE
             let handle = machine.cpu.get_r16(R::BX); // file handle
-            let len = machine.cpu.get_r16(R::CX); // number of bytes to read
+            let len = machine.cpu.get_r16(R::CX) as usize; // number of bytes to read
             // DS:DX -> buffer for data
             let ds = machine.cpu.get_r16(R::DS);
             let dx = machine.cpu.get_r16(R::DX);
-            println!("int21 XXX DOS 2+ - READ - READ FROM FILE OR DEVICE, handle {:04X}, len {}, buffer at {:04X}:{:04X}", handle, len, ds, dx);
+            println!("READ - READ FROM FILE OR DEVICE, handle {:04X}, len {}, buffer at {:04X}:{:04X}", handle, len, ds, dx);
+
+            if let Some(path) = machine.get_path_from_handle(handle) {
+                if let Ok(f) = File::open(path) {
+                    // read up to `len` bytes
+                    let mut buf = vec![0u8; len];
+                    let mut handle = f.take(len as u64);
+                    match handle.read(&mut buf) {
+                        Ok(read_bytes) => {
+                            // XXX 3. write N bytes to DS:DX
+                            machine.mmu.write(ds, dx, &buf);
+
+                            // XXX set AX to number of bytes that was read
+                            machine.cpu.regs.flags.carry = false;
+                            machine.cpu.set_r16(R::AX, read_bytes as u16);
+                            if read_bytes != len {
+                                println!("--- wanted {} bytes, read {} bytes", len, read_bytes);
+                            }
+                        }
+                        Err(e) => panic!(e),
+                    };
+                }
+            }
         }
         0x40 => {
             // DOS 2+ - WRITE - WRITE TO FILE OR DEVICE

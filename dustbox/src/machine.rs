@@ -1,8 +1,10 @@
 use std::{mem, u8};
 use std::num::Wrapping;
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::io::{BufWriter, Write};
+use std::io;
+use std::collections::HashMap;
 
 use crate::bios::BIOS;
 use crate::cpu::{CPU, Op, Invalid, R, RegisterState};
@@ -20,6 +22,7 @@ use crate::ndisasm::ndisasm_first_instr;
 use crate::pic::PIC as PICComponent;
 use crate::pit::PIT as PITComponent;
 use crate::storage::Storage as StorageComponent;
+use crate::tools::read_binary;
 
 #[cfg(test)]
 #[path = "./machine_test.rs"]
@@ -76,6 +79,12 @@ pub struct Machine {
     /// length of loaded rom in bytes (used by disassembler)
     pub rom_length: usize,
 
+    /// full path + filename to the currently loaded DOS program
+    pub program_path: String,
+
+    /// internal file handle map
+    pub file_handles: HashMap<u16, PathBuf>,
+
     /// handlers for i/o ports and interrupts
     components: Vec<MachineComponent>,
 
@@ -105,6 +114,8 @@ impl Machine {
             bios,
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,
+            program_path: String::new(),
+            file_handles: HashMap::new(),
             trace_file: None,
             trace_count: None,
             components: Vec::new(),
@@ -112,6 +123,24 @@ impl Machine {
 
         m.register_components();
         m
+    }
+
+    /// returns a new file handle
+    pub fn open_existing_file(&mut self, path: PathBuf) -> u16 {
+        for n in 0x05..0x100 {
+            match self.file_handles.get(&n) {
+                None => {
+                    self.file_handles.insert(n, path);
+                    return n;
+                }
+                _ => {},
+            }
+        }
+        unreachable!();
+    }
+
+    pub fn get_path_from_handle(&self, handle: u16) -> Option<&PathBuf> {
+        self.file_handles.get(&handle)
     }
 
     /// Enables writing of opcode trace to file.
@@ -201,6 +230,20 @@ impl Machine {
         self.cpu = CPU::default();
     }
 
+    /// Loads a program file
+    pub fn load_executable_file(&mut self, filename: &str) -> Option<io::Error> {
+
+        match read_binary(filename) {
+            Ok(data) => self.load_executable(&data, 0x0329),
+            Err(e) => return Some(e),
+        };
+
+        self.program_path = String::from(filename);
+
+        None
+    }
+
+    /// loads a program file (.EXE or .COM) from data
     pub fn load_executable(&mut self, data: &[u8], psp_segment: u16) {
         if data[0] == b'M' && data[1] == b'Z' {
             self.load_exe(data);
@@ -209,7 +252,7 @@ impl Machine {
         }
     }
 
-    /// loads an exe file
+    /// loads a .exe file
     fn load_exe(&mut self, data: &[u8]) {
         let exe = match ExeFile::from_data(data) {
             Ok(exe) => exe,
@@ -247,7 +290,7 @@ impl Machine {
         self.mark_stack();
     }
 
-    /// load .com program into CS:0100 and set IP to program start
+    /// loads a .com program into CS:0100 and set IP to program start
     fn load_com(&mut self, data: &[u8], psp_segment: u16) {
 
         // CS,DS,ES,SS = PSP segment

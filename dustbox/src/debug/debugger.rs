@@ -5,7 +5,6 @@ use std::process::exit;
 
 use crate::machine::Machine;
 use crate::cpu::{R, RegisterState, Decoder};
-use crate::tools;
 use crate::memory::MemoryAddress;
 use crate::debug::{Breakpoints, MemoryBreakpoints};
 use crate::string::parse_number_string;
@@ -402,14 +401,10 @@ impl Debugger {
     }
 
     /// Loads a .com or .exe file
-    pub fn load_executable(&mut self, name: &str) {
-        println!("debugger: Loading executable {}", name);
-        match tools::read_binary(name) {
-            Ok(data) => {
-                self.machine.hard_reset();
-                self.machine.load_executable(&data, 0x085F);
-            }
-            Err(what) => println!("error {}", what),
+    pub fn load_executable(&mut self, filename: &str) {
+        self.machine.hard_reset();
+        if let Some(e) = self.machine.load_executable_file(filename) {
+            panic!("error {}", e);
         };
     }
 

@@ -11,7 +11,6 @@ use clap::{Arg, App};
 
 use dustbox::machine::Machine;
 use dustbox::mouse::MouseButton;
-use dustbox::tools;
 
 const DEBUG_PERFORMANCE: bool = true;
 
@@ -59,11 +58,8 @@ fn main() {
         machine.set_trace_count(value_t!(matches, "TRACECOUNT", usize).unwrap());
     }
 
-    match tools::read_binary(filename) {
-        Ok(data) => {
-            machine.load_executable(&data, 0x0329);
-        }
-        Err(what) => panic!("error {}", what),
+    if let Some(e) = machine.load_executable_file(filename) {
+        panic!("error {}", e);
     };
 
     let sdl_context = sdl2::init().unwrap();
