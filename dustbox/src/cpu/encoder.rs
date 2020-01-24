@@ -21,10 +21,10 @@ pub enum EncodeError {
 impl fmt::Display for EncodeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            EncodeError::UnhandledOp(op) => write!(f, "unhandled op: {:?}", op),
-            EncodeError::UnhandledParameter(p) => write!(f, "unhandled param: {:?}", p),
-            EncodeError::UnexpectedDstType(p) => write!(f, "unexpected dst type: {:?}", p),
-            EncodeError::Text(s) => write!(f, "text: {}", s),
+            EncodeError::UnhandledOp(op) => write!(f, "EncodeError::UnhandledOp {:?}", op),
+            EncodeError::UnhandledParameter(p) => write!(f, "EncodeError::UnhandledParameter {:?}", p),
+            EncodeError::UnexpectedDstType(p) => write!(f, "EncodeError::UnexpectedDstType {:?}", p),
+            EncodeError::Text(s) => write!(f, "EncodeError::Text {}", s),
         }
     }
 }
@@ -396,15 +396,20 @@ impl Encoder {
                     Err(why) => return Err(why),
                 }
             }
-            Op::Rol8 | Op::Ror8 | Op::Rcl8 | Op::Rcr8 |
-            Op::Shl8 | Op::Shr8 | Op::Sar8 => {
+            Op::Rol8 | Op::Ror8 | Op::Rcl8 | Op::Rcr8 | Op::Shl8 | Op::Shr8 | Op::Sar8 => {
                 match self.bitshift_instr8(op) {
                     Ok(data) => out.extend(data),
                     Err(why) => return Err(why),
                 }
             }
-            Op::Shl16 | Op::Shr16 => {
+            Op::Rol16 | Op::Ror16 | Op::Rcl16 | Op::Rcr16 | Op::Shl16 | Op::Shr16 | Op::Sar16 => {
                 match self.bitshift_instr16(op) {
+                    Ok(data) => out.extend(data),
+                    Err(why) => return Err(why),
+                }
+            }
+            Op::Rol32 | Op::Ror32 | Op::Rcl32 | Op::Rcr32 | Op::Shl32 | Op::Shr32 | Op::Sar32 => {
+                match self.bitshift_instr32(op) {
                     Ok(data) => out.extend(data),
                     Err(why) => return Err(why),
                 }
@@ -915,16 +920,46 @@ impl Encoder {
         }
     }
 
+    fn bitshift_instr32(&self, ins: &Instruction) -> Result<Vec<u8>, EncodeError> {
+        let mut out = vec!();
+        match ins.params.dst {
+            Parameter::Reg32(r) => {
+                out.push(0x66); // REX.W (Operand-size override prefix)
+                match ins.params.src {
+                    Parameter::Imm8(i) => {
+                        // md 3 = register adressing
+                        let mrr = ModRegRm{md: 3, rm: r.index() as u8, reg: self.bitshift_index(&ins.command)};
+                        if i == 1 {
+                            // 0xD1 = bit shift byte by 1
+                            out.push(0xD1);
+                            out.push(mrr.u8());
+                        } else {
+                            // 0xC1 = r/m16, byte imm8
+                            out.push(0xC1);
+                            out.push(mrr.u8());
+                            out.push(i as u8);
+                        }
+                    }
+                    _ => {
+                        panic!("bitshift_instr32 {}: {:?}", ins, ins);
+                    }
+                }
+                Ok(out)
+            }
+            _ => Err(EncodeError::UnexpectedDstType(ins.params.dst.clone())),
+        }
+    }
+
     fn bitshift_index(&self, op: &Op) -> u8 {
         match *op {
-            Op::Rol8 | Op::Rol16 => 0,
-            Op::Ror8 | Op::Ror16 => 1,
-            Op::Rcl8 | Op::Rcl16 => 2,
-            Op::Rcr8 | Op::Rcr16 => 3,
-            Op::Shl8 | Op::Shl16 => 4,
-            Op::Shr8 | Op::Shr16 => 5,
-            Op::Sar8 | Op::Sar16 => 7,
-            _ => panic!("bitshift_get_index {:?}", op),
+            Op::Rol8 | Op::Rol16 | Op::Rol32 => 0,
+            Op::Ror8 | Op::Ror16 | Op::Ror32 => 1,
+            Op::Rcl8 | Op::Rcl16 | Op::Rcl32 => 2,
+            Op::Rcr8 | Op::Rcr16 | Op::Rcr32 => 3,
+            Op::Shl8 | Op::Shl16 | Op::Shl32 => 4,
+            Op::Shr8 | Op::Shr16 | Op::Shr32 => 5,
+            Op::Sar8 | Op::Sar16 | Op::Sar32 => 7,
+            _ => panic!("bitshift_index {:?}", op),
         }
     }
 

@@ -1,4 +1,4 @@
-const DEBUG_KEYBOARD: bool = true;
+const DEBUG_CRTC: bool = false;
 
 #[derive(Clone, Default)]
 pub struct CRTC {
@@ -39,7 +39,7 @@ impl CRTC {
     // bit 5   =0: (VGA) reserved for testage
     // bit 4-0   : selects which register is to be accessed through 03D5
     pub fn set_index(&mut self, data: u8) {
-        if DEBUG_KEYBOARD {
+        if DEBUG_CRTC {
             // println!("CRTC set_index {}", data & 0x1F);
         }
         self.index = data & 0x1F;
@@ -53,7 +53,7 @@ impl CRTC {
     // registers 32h-37h see PORT 03B5h (see #P0654)
     // registers 10h-11h on CGA, EGA, VGA and 12h-14h on EGA, VGA are conflictive with MCGA (see #P0710)
     pub fn write_current(&mut self, data: u8) {
-        if DEBUG_KEYBOARD {
+        if DEBUG_CRTC {
             println!("CRTC write_current {:02X} = {:02X}", self.index, data);
         }
         match self.index {

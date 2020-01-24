@@ -238,7 +238,8 @@ impl AffectedFlags {
             Op::Aaa | Op::Aas =>
                 AffectedFlags{c:1, a:1, o:0, s:0, z:0, p:0, d:0, i:0}.mask(), // C A
 
-            Op::Rol8 | Op::Rcl8 | Op::Ror8 | Op::Rcr8 |
+            Op::Rol8 | Op::Rol16 | Op::Rol32 | Op::Rcl8 | Op::Rcl16 | Op::Rcl32 |
+            Op::Ror8 | Op::Ror16 | Op::Ror32 | Op::Rcr8 | Op::Rcr16 | Op::Rcr32 |
             Op::Mul8 | Op::Mul16 | Op::Mul32 | Op::Imul8 | Op::Imul16 | Op::Imul32 =>
                 AffectedFlags{c:1, o:1, z:0, s:0, p:0, a:0, d:0, i:0}.mask(), // C O
 
@@ -253,7 +254,7 @@ impl AffectedFlags {
 
             Op::Xor8 | Op::Xor16 | Op::Xor32 | Op::Test8 | Op::Test16 | Op::Test32 |
             Op::And8 | Op::And16 | Op::And32 | Op::Or8 | Op::Or16 | Op::Or32 |
-            Op::Shl8 | Op::Shl16 | Op::Shr8 | Op::Shr16 | Op::Sar8 =>
+            Op::Shl8 | Op::Shl16 | Op::Shl32 | Op::Shr8 | Op::Shr16 | Op::Shr32 | Op::Sar8 | Op::Sar16 | Op::Sar32 =>
                 AffectedFlags{c:1, o:1, s:1, z:1, a:0, p:1, d:0, i:0}.mask(), // C O S Z P
 
             Op::Daa | Op::Das | Op::Sahf =>
@@ -570,11 +571,17 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
             Instruction::new2(Op::Mov8, Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg8(R::AL), Parameter::Imm8(rng.gen())),
         )}
-        Op::Shl16 | Op::Shr16 => { vec!(
+        Op::Shl16 | Op::Shr16 | Op::Sar16 | Op::Ror16 | Op::Rol16 | Op::Rcl16 | Op::Rcr16 => { vec!(
             Instruction::new1(Op::Push16, Parameter::Imm16(rng.gen())),
             Instruction::new(Op::Popf),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::AX), Parameter::Imm16(rng.gen())),
             Instruction::new2(op.clone(), Parameter::Reg16(R::AX), Parameter::Imm8(rng.gen())),
+        )}
+        Op::Shl32 | Op::Shr32 | Op::Sar32 | Op::Ror32 | Op::Rol32 | Op::Rcl32 | Op::Rcr32 => { vec!(
+            Instruction::new1(Op::Push16, Parameter::Imm16(rng.gen())),
+            Instruction::new(Op::Popf),
+            Instruction::new2(Op::Mov32, Parameter::Reg32(R::EAX), Parameter::Imm32(rng.gen())),
+            Instruction::new2(op.clone(), Parameter::Reg32(R::EAX), Parameter::Imm8(rng.gen())),
         )}
         Op::Bt | Op::Bsf | Op::Xchg16 => { vec!(
             // bsf r16, r/m16

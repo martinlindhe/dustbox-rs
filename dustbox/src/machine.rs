@@ -2075,6 +2075,15 @@ impl Machine {
                 }
                 self.cpu.regs.flags.carry = bit15 != 0;
             }
+            Op::Ror32 => {
+                // Rotate 32 bits of 'dst' right for 'src' times.
+                // two arguments
+                let mut res = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
+                let count = self.cpu.read_parameter_value(&self.mmu, &op.params.src) & 0x1F;
+                res = res.rotate_right(count as u32);
+                self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, res);
+                // XXX flags
+            }
             Op::Sahf => {
                 // Loads the SF, ZF, AF, PF, and CF flags of the EFLAGS register with values
                 // from the corresponding bits in the AH register (bits 7, 6, 4, 2, and 0, respectively).

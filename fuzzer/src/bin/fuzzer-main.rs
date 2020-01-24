@@ -43,9 +43,13 @@ fn main() {
             .get_matches();
 
     let ops_to_fuzz = vec!(
-        Op::Movsx32,
+        //Op::Ror32, // XXX carry flag diff vs WinXP
+        //Op::Rol32, Op::Rcl32,  // XXX not implemented in dustbox
+        //Op::Shl32, // XXX carry & overflow differs
 
-        // Op::Rol32, Op::Ror32, Op::Rcl32, Op::Rcr32, Op::Shl32, Op::Shr32, Op::Sar32, // XXX encode needed
+        //Op::Sar16, Op::Rcr32, Op::Sar32,// XXX MAJOR REG DIFF
+        //Op::Ror16, Op::Rol16,  // XXX carry flag diff vs WinXP
+        //Op::Rcl16, Op::Rcr16,  // XXX overflow flag diff vs WinXP
 
         //Op::Div32,  // XXX MAJOR REG DIFF
 
@@ -62,7 +66,7 @@ fn main() {
 
         // Op::Shld, Op::Shrd,      // ERROR - regs differ vs dosbox, regs match vs winxp! - overflow flag is wrong in both:
         // Op::Shl16,               // ERROR - overflow flag diff vs both dosbox & winxp. algo from bochs
-        // Op::Shr16,               // ERROR? - identical to winxp, but overflow flag differs vs dosbox
+        // Op::Shr16, Op::Shr32,    // ERROR? - identical to winxp, but overflow flag differs vs dosbox
 
         /*
         // UNSURE: overflow is identical to bochs and dosbox, but differs in WinXP vm:
