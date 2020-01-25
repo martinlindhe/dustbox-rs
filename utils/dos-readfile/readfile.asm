@@ -24,12 +24,7 @@ section .text
     int 0x21
 
 
-
     int 0x20 ; EXIT TO DOS
 
 section .data
     fileDAT     db 'FILE.DAT',0
-
-
-;int21 XXX DOS 2+ - CLOSE - CLOSE FILE, handle 0002
-

@@ -19,9 +19,15 @@ pub enum MouseButton {
 pub struct Mouse {
     x: i32,
     y: i32,
+
     left: bool,
     right: bool,
     middle: bool,
+
+    min_x: u16,
+    max_x: u16,
+    min_y: u16,
+    max_y: u16,
 }
 
 impl Component for Mouse {
@@ -30,21 +36,57 @@ impl Component for Mouse {
             return false;
         }
         // NOTE: logitech mouse extender use AH too
-        match cpu.get_r8(R::AL) {
-            0x03 => {
+        match cpu.get_r16(R::AX) {
+            0x0000 => {
+                // MS MOUSE - RESET DRIVER AND READ STATUS
+                // AX = status
+                //  0000h hardware/driver not installed
+                //  FFFFh hardware/driver installed
+                // BX = number of buttons
+                //   0000h other than two
+                //   0002h two buttons (many drivers)
+                //   0003h Mouse Systems/Logitech three-button mouse
+                //   FFFFh two buttons
+                cpu.set_r16(R::AX, 0xFFFF);
+                cpu.set_r16(R::BX, 0x0003); // 3-button mouse
+            }
+            0x0003 => {
                 // MS MOUSE v1.0+ - RETURN POSITION AND BUTTON STATUS
                 // Return:
                 // BX = button status
                 // CX = column
                 // DX = row
                 cpu.set_r16(R::BX, self.button_status());
-                cpu.set_r16(R::CX, (self.x*2) as u16); // XXX works in mode 0x13 lumps.com but why multiply
+                cpu.set_r16(R::CX, self.x as u16);
                 cpu.set_r16(R::DX, self.y as u16);
-
-                // XXX Note: In text modes, all coordinates are specified as multiples of the cell size, typically 8x8 pixels
-
                 if DEBUG_MOUSE {
-                    println!("MOUSE - RETURN POSITION AND BUTTON STATUS");
+                    // println!("MOUSE - RETURN POSITION AND BUTTON STATUS");
+                }
+            }
+            0x0007 => {
+                // MS MOUSE v1.0+ - DEFINE HORIZONTAL CURSOR RANGE
+                // CX = minimum column
+                // DX = maximum column
+                // Note: In text modes, the minimum and maximum columns are truncated to the next lower multiple of the cell size, typically 8x8 pixels 
+                let cx = cpu.get_r16(R::CX);
+                let dx = cpu.get_r16(R::DX);
+                self.min_x = cx;
+                self.max_x = dx;
+                if DEBUG_MOUSE {
+                    println!("MOUSE - DEFINE HORIZONTAL CURSOR RANGE min {}, max {}", cx, dx);
+                }
+            }
+            0x0008 => {
+                // MS MOUSE v1.0+ - DEFINE VERTICAL CURSOR RANGE
+                // CX = minimum row
+                // DX = maximum row
+                // Note: In text modes, the minimum and maximum rows are truncated to the next lower multiple of the cell size, typically 8x8 pixels 
+                let cx = cpu.get_r16(R::CX);
+                let dx = cpu.get_r16(R::DX);
+                self.min_y = cx;
+                self.max_y = dx;
+                if DEBUG_MOUSE {
+                    println!("MOUSE - DEFINE VERTICAL CURSOR RANGE min {}, max {}", cx, dx);
                 }
             }
             _ => return false
@@ -61,16 +103,25 @@ impl Mouse {
             left: false,
             right: false,
             middle: false,
+            min_x: 0,
+            max_x: 640,
+            min_y: 0,
+            max_y: 200,
         }
     }
 
     /// Sets the mouse absolute position
     pub fn set_position(&mut self, x: i32, y: i32) {
         if DEBUG_MOUSE {
-            println!("mouse.set_position {}, {}", x, y);
+            // println!("mouse.set_position {}, {}", x, y);
         }
-        self.x = x;
-        self.y = y;
+        // XXX In text modes, all coordinates are specified as multiples of the cell size, typically 8x8 pixels
+
+        // XXX only works in mode 13h
+        if x >= 0 && y >= 0 {
+            self.x = ((self.min_x + x as u16) * (self.max_x / 320)) as i32;
+            self.y = ((self.min_y + y as u16) * (self.max_y / 200)) as i32;
+        }
     }
 
     /// Sets the mouse button pressed state

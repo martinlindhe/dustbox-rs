@@ -1,1 +1,3 @@
-Test that OPEN, READ and CLOSE a binary file to load it into memory
+# About
+
+MS-DOS test program that OPENs, READs binary file into memory and CLOSEs the handle.
