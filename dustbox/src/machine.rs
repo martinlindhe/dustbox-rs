@@ -2270,24 +2270,24 @@ impl Machine {
                 if count > 0 {
                     let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
 
-                    let mut of: u32 = 0;
-                    let mut cf: u32 = 0;
+                    let mut of: u16 = 0;
+                    let mut cf: u16 = 0;
                     let res = if count <= 16 {
                         let v = op1 << count;
-                        cf = (op1 >> (16 - count)) & 0x1;
-                        of = cf ^ (v >> 15); // of = cf ^ result15
+                        cf = ((op1 as u16) >> (16 - count)) & 0x1;
+                        of = cf ^ ((v as u16) >> 15);
                         v
                     } else {
                         0
                     };
 
+                    self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, res as u16);
+
                     self.cpu.regs.flags.set_sign_u16(res as usize);
                     self.cpu.regs.flags.set_zero_u16(res as usize);
                     self.cpu.regs.flags.set_parity(res as usize);
                     self.cpu.regs.flags.carry = cf != 0;
-                    self.cpu.regs.flags.overflow = of != 0;
-
-                    self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, res as u16);
+                    self.cpu.regs.flags.overflow = (of & 1) != 0;
                 }
             }
             Op::Shl32 => {

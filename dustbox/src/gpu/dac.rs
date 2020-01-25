@@ -1,7 +1,7 @@
 use crate::gpu::palette::{ColorSpace, text_palette};
 use crate::gpu::palette::ColorSpace::RGB;
 
-const DEBUG_DAC: bool = true;
+const DEBUG_DAC: bool = false;
 
 #[derive(Clone)]
 pub struct DAC {

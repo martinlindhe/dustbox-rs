@@ -48,10 +48,10 @@ fn run_and_save_video_frames(set: &SetDocument) {
 
         let mut machine = Machine::deterministic();
         let bin_path = format!("{}{}", set.root, bin);
-        match tools::read_binary(&bin_path) {
-            Ok(data) => machine.load_executable(&data, 0x0329),
-            Err(err) => panic!("failed to read {}: {}", bin, err),
-        }
+
+        if let Some(e) = machine.load_executable_file(&bin_path) {
+            panic!("error {}", e);
+        };
 
         // XXX allow per-rom override + more properties on a rom basis
         machine.execute_instructions(set.default_instructions);

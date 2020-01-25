@@ -253,7 +253,11 @@ pub enum Op {
     Setnz,
 
     /// Multiply `dst` by 2, `src` times (alias sal)
-    Shl8, Shl16, Shl32,
+    Shl8,
+    /// Multiply `dst` by 2, `src` times (alias sal)
+    Shl16,
+    /// Multiply `dst` by 2, `src` times (alias sal)
+    Shl32,
 
     /// Double Precision Shift Left
     Shld,
