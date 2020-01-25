@@ -137,6 +137,9 @@ pub enum Op {
     /// Load Status Flags into AH Register
     Lahf,
 
+    /// Load Access Rights Byte
+    Lar16,
+
     /// Load DS:r16 with far pointer from memory.
     Lds,
 

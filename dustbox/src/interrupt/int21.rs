@@ -253,7 +253,7 @@ pub fn handle(machine: &mut Machine) {
             } else {
                 // CF set on error and AX = error code (06h) (see #01680 at AH=59h/BX=0000h)
                 machine.cpu.regs.flags.carry = true;
-                panic!("close unknown handle {}", handle);
+                println!("XXX - ignoring close unknown handle {}", handle);
             }
         }
         0x3F => {
@@ -395,7 +395,7 @@ pub fn handle(machine: &mut Machine) {
             // AX = error code (07h,09h) (see #01680 at AH=59h/BX=0000h)
             println!("XXX impl DOS 2+ - FREE MEMORY. es={:04X}",
                      machine.cpu.get_r16(R::ES));
-            machine.cpu.regs.flags.carry = false;
+            machine.cpu.regs.flags.carry = false; // fake success
         }
         0x4A => {
             // DOS 2+ - RESIZE MEMORY BLOCK
@@ -409,6 +409,7 @@ pub fn handle(machine: &mut Machine) {
             println!("XXX impl DOS 2+ - RESIZE MEMORY BLOCK. bx={:04X}, es={:04X}",
                      machine.cpu.get_r16(R::BX),
                      machine.cpu.get_r16(R::ES));
+            machine.cpu.regs.flags.carry = false; // fake success
         }
         0x4B => {
             // DOS 2+ - EXEC - LOAD AND/OR EXECUTE PROGRAM

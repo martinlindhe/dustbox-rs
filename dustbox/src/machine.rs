@@ -2484,7 +2484,7 @@ impl Machine {
                 self.cpu.regs.flags.overflow = of != 0;
             }
             Op::Sldt => {
-                println!("XXX impl {:?}", op);
+                println!("XXX impl {}", op);
             }
             Op::Stc => {
                 self.cpu.regs.flags.carry = true;

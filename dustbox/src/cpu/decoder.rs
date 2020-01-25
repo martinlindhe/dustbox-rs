@@ -193,6 +193,11 @@ impl Decoder {
                             _ => Op::Invalid(vec!(b, b2), Invalid::Reg(x.reg)),
                         };
                     }
+                    0x02 => {
+                        // lar r16, r16/m16
+                        op.command = Op::Lar16;
+                        op.params = self.r16_rm16(&mut mmu, op);
+                    }
                     0x82 => {
                         // jc rel16
                         op.command = Op::Jc;
@@ -1260,7 +1265,7 @@ impl Decoder {
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
                 op.command = match x.reg {
                     0 => Op::Mov8, // mov r/m8, imm8
-                    _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
+                    _ => Op::Invalid(vec!(b, x.u8()), Invalid::Reg(x.reg)),
                 };
             }
             0xC7 => {
@@ -1271,7 +1276,7 @@ impl Decoder {
                         op.params.src = Parameter::Imm16(self.read_u16(mmu));
                         op.command = match x.reg {
                             0 => Op::Mov16, // mov r/m16, imm16
-                            _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
+                            _ => Op::Invalid(vec!(b, x.u8()), Invalid::Reg(x.reg)),
                         };
                     }
                     OperandSize::_32bit => {
@@ -1279,7 +1284,7 @@ impl Decoder {
                         op.params.src = Parameter::Imm32(self.read_u32(mmu));
                         op.command = match x.reg {
                             0 => Op::Mov32, // mov r/m32, imm32
-                            _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
+                            _ => Op::Invalid(vec!(b, x.u8()), Invalid::Reg(x.reg)),
                         };
                     }
                 }
@@ -1319,7 +1324,7 @@ impl Decoder {
                     4 => Op::Shl8,
                     5 => Op::Shr8,
                     7 => Op::Sar8,
-                    _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
+                    _ => Op::Invalid(vec!(b, x.u8()), Invalid::Reg(x.reg)),
                 };
                 op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
                 op.params.src = Parameter::Imm8(1);
