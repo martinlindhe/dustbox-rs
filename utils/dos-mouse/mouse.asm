@@ -7,6 +7,9 @@ section .text
     mov ax, 0x13
     int 0x10            ; 320x200x256 colors
 
+    mov ax, 0
+    int 33h             ; reset mouse
+
     ; set up mouse resolution (default is 640x200)
     mov ax, 7
     mov cx, 0           ; min pos

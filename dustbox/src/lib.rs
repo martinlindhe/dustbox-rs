@@ -21,8 +21,7 @@ pub mod mouse;
 pub mod ndisasm;
 pub mod pic;
 pub mod pit;
+pub mod dos;
 pub mod storage;
 pub mod string;
 pub mod tools;
-
-mod interrupt;

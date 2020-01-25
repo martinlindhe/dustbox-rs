@@ -7,7 +7,7 @@ use crate::cpu::{CPU, R};
 use crate::machine::Component;
 use crate::memory::MMU;
 
-const DEBUG_MOUSE: bool = true;
+const DEBUG_MOUSE: bool = false;
 
 #[derive(Debug)]
 pub enum MouseButton {
@@ -39,28 +39,16 @@ impl Component for Mouse {
         match cpu.get_r16(R::AX) {
             0x0000 => {
                 // MS MOUSE - RESET DRIVER AND READ STATUS
-                // AX = status
-                //  0000h hardware/driver not installed
-                //  FFFFh hardware/driver installed
-                // BX = number of buttons
-                //   0000h other than two
-                //   0002h two buttons (many drivers)
-                //   0003h Mouse Systems/Logitech three-button mouse
-                //   FFFFh two buttons
-                cpu.set_r16(R::AX, 0xFFFF);
-                cpu.set_r16(R::BX, 0x0003); // 3-button mouse
+                cpu.set_r16(R::AX, 0xFFFF); // hardware/driver installed
+                cpu.set_r16(R::BX, 0x0003); // three-button mouse
             }
             0x0003 => {
                 // MS MOUSE v1.0+ - RETURN POSITION AND BUTTON STATUS
-                // Return:
-                // BX = button status
-                // CX = column
-                // DX = row
-                cpu.set_r16(R::BX, self.button_status());
-                cpu.set_r16(R::CX, self.x as u16);
-                cpu.set_r16(R::DX, self.y as u16);
+                cpu.set_r16(R::BX, self.button_status());   // BX = button status
+                cpu.set_r16(R::CX, self.x as u16);          // CX = column
+                cpu.set_r16(R::DX, self.y as u16);          // DX = row
                 if DEBUG_MOUSE {
-                    // println!("MOUSE - RETURN POSITION AND BUTTON STATUS");
+                    println!("MOUSE - RETURN POSITION AND BUTTON STATUS");
                 }
             }
             0x0007 => {
@@ -117,10 +105,11 @@ impl Mouse {
         }
         // XXX In text modes, all coordinates are specified as multiples of the cell size, typically 8x8 pixels
 
-        // XXX only works in mode 13h
         if x >= 0 && y >= 0 {
-            self.x = ((self.min_x + x as u16) * (self.max_x / 320)) as i32;
-            self.y = ((self.min_y + y as u16) * (self.max_y / 200)) as i32;
+            let screen_w = 320; // XXX
+            let screen_h = 200;
+            self.x = ((self.min_x + x as u16) * (self.max_x / screen_w)) as i32;
+            self.y = ((self.min_y + y as u16) * (self.max_y / screen_h)) as i32;
         }
     }
 

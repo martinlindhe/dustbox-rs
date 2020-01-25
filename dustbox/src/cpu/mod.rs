@@ -109,6 +109,25 @@ impl CPU {
         self.regs.set_r32(r, val);
     }
 
+    pub fn execute_interrupt(&mut self, mmu: &mut MMU, int: u8) {
+        let flags = self.regs.flags.u16();
+        self.push16(mmu, flags);
+        mmu.flags_address = MemoryAddress::RealSegmentOffset(self.get_r16(R::SS), self.get_r16(R::SP));
+
+        self.regs.flags.interrupt = false;
+        self.regs.flags.trap = false;
+        let (cs, ip) = self.get_address_pair();
+        self.push16(mmu, cs);
+        self.push16(mmu, ip);
+        let base = 0;
+        let idx = u16::from(int) << 2;
+        let ip = mmu.read_u16(base, idx);
+        let cs = mmu.read_u16(base, idx + 2);
+        // println!("int: jumping to interrupt handler for interrupt {:02X} pos at {:04X}:{:04X} = {:04X}:{:04X}", int, base, idx, cs, ip);
+        self.regs.ip = ip;
+        self.set_r16(R::CS, cs);
+    }
+
     pub fn exception(&mut self, which: &Exception, error: usize) {
         /*
         #define CPU_INT_SOFTWARE    0x1

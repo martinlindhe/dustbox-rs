@@ -43,8 +43,8 @@ fn main() {
             .get_matches();
 
     let ops_to_fuzz = vec!(
+        Op::Rol32, // Op::Rcl32,  // XXX not implemented in dustbox
         //Op::Ror32, // XXX carry flag diff vs WinXP
-        //Op::Rol32, Op::Rcl32,  // XXX not implemented in dustbox
         //Op::Shl32, // XXX carry & overflow differs
 
         //Op::Ror16, Op::Rol16,  // XXX carry flag diff vs WinXP

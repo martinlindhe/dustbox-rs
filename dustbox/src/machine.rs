@@ -1,10 +1,9 @@
 use std::{mem, u8};
 use std::num::Wrapping;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::io::{BufWriter, Write};
 use std::io;
-use std::collections::HashMap;
 
 use crate::bios::BIOS;
 use crate::cpu::{CPU, Op, Invalid, R, RegisterState};
@@ -13,8 +12,8 @@ use crate::cpu::{Parameter};
 use crate::format::ExeFile;
 use crate::gpu::GFXMode;
 use crate::gpu::GPU as GPUComponent;
+use crate::dos::DOS;
 use crate::hex::hex_bytes;
-use crate::interrupt;
 use crate::keyboard::Keyboard as KeyboardComponent;
 use crate::memory::{MMU, MemoryAddress};
 use crate::mouse::Mouse as MouseComponent;
@@ -72,18 +71,13 @@ pub struct Machine {
     pub mmu: MMU,
     pub bios: BIOS,
     pub cpu: CPU,
+    dos: DOS,
 
     /// base offset where rom was loaded
     pub rom_base: MemoryAddress,
 
     /// length of loaded rom in bytes (used by disassembler)
     pub rom_length: usize,
-
-    /// full path + filename to the currently loaded DOS program
-    pub program_path: String,
-
-    /// internal file handle map
-    pub file_handles: HashMap<u16, PathBuf>,
 
     /// handlers for i/o ports and interrupts
     components: Vec<MachineComponent>,
@@ -112,10 +106,9 @@ impl Machine {
             cpu: CPU::deterministic(),
             mmu,
             bios,
+            dos: DOS::default(),
             rom_base: MemoryAddress::default_real(),
             rom_length: 0,
-            program_path: String::new(),
-            file_handles: HashMap::new(),
             trace_file: None,
             trace_count: None,
             components: Vec::new(),
@@ -123,24 +116,6 @@ impl Machine {
 
         m.register_components();
         m
-    }
-
-    /// returns a new file handle
-    pub fn open_existing_file(&mut self, path: PathBuf) -> u16 {
-        for n in 0x05..0x100 {
-            match self.file_handles.get(&n) {
-                None => {
-                    self.file_handles.insert(n, path);
-                    return n;
-                }
-                _ => {},
-            }
-        }
-        unreachable!();
-    }
-
-    pub fn get_path_from_handle(&self, handle: u16) -> Option<&PathBuf> {
-        self.file_handles.get(&handle)
     }
 
     /// Enables writing of opcode trace to file.
@@ -238,7 +213,7 @@ impl Machine {
             Err(e) => return Some(e),
         };
 
-        self.program_path = String::from(filename);
+        self.dos.program_path = String::from(filename);
 
         None
     }
@@ -412,13 +387,9 @@ impl Machine {
                     }
                 }
             }
-            0x20 => {
-                // DOS 1+ - TERMINATE PROGRAM
-                // NOTE: Windows overloads INT 20
-                println!("INT 20 - Terminating program");
-                self.cpu.fatal_error = true; // stops execution
-            }
-            0x21 => interrupt::int21::handle(self),
+            0x20 | 0x21 => {
+                self.dos.int(int, &mut self.cpu, &mut self.mmu);
+            },
             0x27 => {
                 // DOS 1+ - TERMINATE AND STAY RESIDENT
                 // DX = number of bytes to keep resident (max FFF0h)
@@ -436,25 +407,6 @@ impl Machine {
                         self.cpu.get_r16(R::DX));
             }
         }
-    }
-
-    pub fn execute_interrupt(&mut self, int: u8) {
-        let flags = self.cpu.regs.flags.u16();
-        self.cpu.push16(&mut self.mmu, flags);
-        self.mmu.flags_address = MemoryAddress::RealSegmentOffset(self.cpu.get_r16(R::SS), self.cpu.get_r16(R::SP));
-
-        self.cpu.regs.flags.interrupt = false;
-        self.cpu.regs.flags.trap = false;
-        let (cs, ip) = self.cpu.get_address_pair();
-        self.cpu.push16(&mut self.mmu, cs);
-        self.cpu.push16(&mut self.mmu, ip);
-        let base = 0;
-        let idx = u16::from(int) << 2;
-        let ip = self.mmu.read_u16(base, idx);
-        let cs = self.mmu.read_u16(base, idx + 2);
-        // println!("int: jumping to interrupt handler for interrupt {:02X} pos at {:04X}:{:04X} = {:04X}:{:04X}", int, base, idx, cs, ip);
-        self.cpu.regs.ip = ip;
-        self.cpu.set_r16(R::CS, cs);
     }
 
     /// executes the next CPU instruction
@@ -1326,7 +1278,7 @@ impl Machine {
             }
             Op::Int => {
                 let int = self.cpu.read_parameter_imm(&op.params.dst);
-                self.execute_interrupt(int as u8);
+                self.cpu.execute_interrupt(&mut self.mmu, int as u8);
             }
             Op::Ja => {
                 if !self.cpu.regs.flags.carry & !self.cpu.regs.flags.zero {

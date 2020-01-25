@@ -1,6 +1,5 @@
-use crate::memory::FlatMemory;
-
-use crate::memory::MemoryAddress;
+use crate::memory::{FlatMemory, MemoryAddress};
+use crate::codepage::cp437;
 
 #[cfg(test)]
 #[path = "./mmu_test.rs"]
@@ -69,7 +68,22 @@ impl MMU {
             if b == 0 {
                 break;
             }
-            res.push(b as char);
+            res.push(cp437::u8_as_char(b));
+            addr.inc_u8();
+        }
+        res
+    }
+
+    /// reads a sequence of text until a $ terminator is found
+    pub fn read_asciid(&self, seg: u16, offset: u16) -> String {
+        let mut res = String::new();
+        let mut addr = MemoryAddress::RealSegmentOffset(seg, offset);
+        loop {
+            let b = self.memory.read_u8(addr.value());
+            if b == b'$' {
+                break;
+            }
+            res.push(cp437::u8_as_char(b));
             addr.inc_u8();
         }
         res
