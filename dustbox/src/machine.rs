@@ -228,7 +228,7 @@ impl Machine {
         }
     }
 
-    /// Fills byte 0x00-0xFF of current segment with the PSP.
+    /// Writes the Program Segment Prefix (PSP) into given segment
     ///
     /// https://en.wikipedia.org/wiki/Program_Segment_Prefix
     /// http://www.delorie.com/djgpp/doc/rbinter/it/78/13.html

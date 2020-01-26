@@ -83,6 +83,10 @@ impl Component for Mouse {
     }
 }
 
+fn scale(value_in: f64, base_min: f64, base_max: f64, limit_min: f64, limit_max: f64) -> f64 {
+    ((limit_max - limit_min) * (value_in - base_min) / (base_max - base_min)) + limit_min
+}
+
 impl Mouse {
     pub fn default() -> Self {
         Self {
@@ -106,10 +110,16 @@ impl Mouse {
         // XXX In text modes, all coordinates are specified as multiples of the cell size, typically 8x8 pixels
 
         if x >= 0 && y >= 0 {
-            let screen_w = 320; // XXX
+            // XXX only works in mode 13h
+            let screen_w = 320;
             let screen_h = 200;
-            self.x = ((self.min_x + x as u16) * (self.max_x / screen_w)) as i32;
-            self.y = ((self.min_y + y as u16) * (self.max_y / screen_h)) as i32;
+
+            // XXX first scale x and y from 320 x 240 to 320 x 200
+            let exact_x = scale(x as f64, 0., 320., 0., screen_w as f64);
+            let exact_y = scale(y as f64, 0., 240., 0., screen_h as f64);
+
+            self.x = ((self.min_x + exact_x as u16) * (self.max_x / screen_w)) as i32;
+            self.y = ((self.min_y + exact_y as u16) * (self.max_y / screen_h)) as i32;
         }
     }
 

@@ -135,7 +135,7 @@ fn main() {
 
         let frame_start = SystemTime::now();
 
-        let locked_fps = 30;
+        let locked_fps = 60;
 
         let frame = machine.gpu().render_frame(&machine.mmu);
 
@@ -157,11 +157,13 @@ fn main() {
                 println!("Resizing window for mode {:02x} to {}x{} pixels, {}x{} frame size, scale factor {}x, internal scale x:{}, y:{}",
                     frame.mode.mode, window_width, window_height, frame.mode.swidth, frame.mode.sheight, scale_factor, internal_scale_x, internal_scale_y);
 
-                // XXX logical size is needed for correct mouse coordinates without having to divide them by scale, but it gives black top+bottom bars on win10
-                canvas.set_logical_size(frame.mode.swidth, frame.mode.sheight).unwrap();
-
                 let window = canvas.window_mut();
                 window.set_size(window_width, window_height).unwrap();
+
+                // XXX logical size is needed for correct mouse coordinates without having to divide them by scale, but it gives black top+bottom bars on win10
+                let logical_w = (frame.mode.swidth as f32 * frame.mode.scale_x) as u32;
+                let logical_h = (frame.mode.sheight as f32 * frame.mode.scale_y) as u32;
+                canvas.set_logical_size(logical_w, logical_h).unwrap();
 
                 last_video_mode = frame.mode.mode;
             }
@@ -206,8 +208,8 @@ fn main() {
             let render_time = render_start.elapsed().unwrap();
             frame_render_sum += render_time;
 
-            // sleep for 1/30:th of a second, minus time it took to get here
-            let mut sleep_time = Duration::new(0, 1_000_000_000 / 30);
+            // sleep for 1/60:th of a second, minus time it took to get here
+            let mut sleep_time = Duration::new(0, 1_000_000_000 / locked_fps);
             if sleep_time >= exec_time {
                 sleep_time -= exec_time;
             } else {
@@ -255,7 +257,6 @@ fn main() {
         }
 
         canvas.copy(&texture, None, None).unwrap();
-
         canvas.present();
     }
 }
