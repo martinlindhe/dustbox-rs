@@ -12,7 +12,6 @@ use tera::{Tera, Context};
 use serde::{Serialize, Deserialize};
 
 use dustbox::machine::Machine;
-use dustbox::tools;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct SetDocument {

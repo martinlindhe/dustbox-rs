@@ -20,6 +20,8 @@ pub struct DOS {
 
     /// internal file handle map
     pub file_handles: HashMap<u16, PathBuf>,
+
+    pub psp_segment: u16,
 }
 
 impl DOS {
@@ -27,6 +29,7 @@ impl DOS {
         Self {
             program_path: String::new(),
             file_handles: HashMap::new(),
+            psp_segment: 0,
         }
     }
 
@@ -206,35 +209,9 @@ impl Component for DOS {
             }
             0x30 => {
                 // DOS 2+ - GET DOS VERSION
-                // ---DOS 5+ ---
-                // AL = what to return in BH
-                // 00h OEM number (see #01394)
-                // 01h version flag
-                //
-                // Return:
-                // AL = major version number (00h if DOS 1.x)
-                // AH = minor version number
-                // BL:CX = 24-bit user serial number (most versions do not use this)
-                // ---if DOS <5 or AL=00h---
-                // BH = MS-DOS OEM number (see #01394)
-                // ---if DOS 5+ and AL=01h---
-                // BH = version flag
-                //
-                // bit 3: DOS is in ROM
-
-                // (Table 01394)
-                // Values for DOS OEM number:
-                // 00h *  IBM
-                // -  (Novell DOS, Caldera OpenDOS, DR-OpenDOS, and DR-DOS 7.02+ report IBM
-                // as their OEM)
-                // 01h *  Compaq
-                // 02h *  MS Packaged Product
-                // 04h *  AT&T
-                // 05h *  ZDS (Zenith Electronics, Zenith Electronics).
-
-                // fake MS-DOS 3.10, as needed by msdos32/APPEND.COM
-                cpu.set_r8(R::AL, 3); // AL = major version number (00h if DOS 1.x)
-                cpu.set_r8(R::AH, 10); // AH = minor version number
+                cpu.set_r8(R::AL, 5); // major version number
+                cpu.set_r8(R::AH, 0); // minor version number
+                cpu.set_r8(R::BH, 0xFF); // indicates MS-DOS
             }
             0x31 => {
                 // DOS 2+ - TERMINATE AND STAY RESIDENT

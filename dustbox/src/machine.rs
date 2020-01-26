@@ -220,37 +220,96 @@ impl Machine {
 
     /// loads a program file (.EXE or .COM) from data
     pub fn load_executable(&mut self, data: &[u8], psp_segment: u16) {
+        self.init_psp(psp_segment);
         if data[0] == b'M' && data[1] == b'Z' {
-            self.load_exe(data);
+            self.load_exe(data, psp_segment + 0x10);
         } else {
             self.load_com(data, psp_segment);
         }
     }
 
+    /// Fills byte 0x00-0xFF of current segment with the PSP.
+    ///
+    /// https://en.wikipedia.org/wiki/Program_Segment_Prefix
+    /// http://www.delorie.com/djgpp/doc/rbinter/it/78/13.html
+    fn init_psp(&mut self, segment: u16) {
+        let psp = vec![
+            0xCD, 0x20,             // int 0x20
+            0xFF, 0x9F,             // Segment of the first byte beyond the memory allocated to the program
+            0x00,                   // Reserved
+            0x9A,                   // CP/M CALL 5 service request (FAR CALL to absolute 000C0h)
+            0xF0, 0xFE,             // CP/M compatibility--size of first segment for .COM files
+            0x1D, 0xF0,             // remainder of FAR JMP at 05h
+            0x34, 0xF5, 0x00, 0xF0, // stored INT 22 termination address
+            0x00, 0x00, 0x48, 0x02, // stored INT 23 control-Break handler address
+            0x10, 0x01, 0x48, 0x02, // DOS 1.1+ stored INT 24 critical error handler address
+            0x48, 0x02,             // segment of parent PSP
+
+            // DOS 2+ Job File Table, one byte per file handle, FFh = closed
+            0x01, 0x01, 0x01, 0x00, 0x02, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF,
+
+            0xE3, 0x02,             // DOS 2+ segment of environment for process (see #01379)
+            0xDE, 0xFF, 0x29, 0x03, // DOS 2+ process's SS:SP on entry to last INT 21 call
+            0x14, 0x00,             // DOS 3+ number of entries in JFT (default 20)
+            0x18, 0x00, 0x29, 0x03, // DOS 3+ pointer to JFT (default PSP:0018h)
+            0xFF, 0xFF, 0xFF, 0xFF, // DOS 3+ pointer to previous PSP (default FFFFFFFFh in 3.x)
+            0x00,                   // DOS 4+ (DBCS) interim console flag (see AX=6301h)
+            0x00,                   // (APPEND) TrueName flag (see INT 2F/AX=B711h)
+            0x00,                   // (Novell NetWare) flag: next byte initialized if CEh
+            0x00,                   // (Novell NetWare) Novell task number if previous byte is CEh
+            0x05, 0x00,             // DOS 5+ version to return on INT 21/AH=30h
+
+            // unused by dos 0x42-0x4F
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            // DOS 2+ service request (INT 21/RETF instructions)
+            0xCD, 0x21, 0xCB,
+
+            // unused in DOS versions <= 6.00
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            // first default FCB, filled in from first commandline argument
+            0x00, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+            0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00,
+
+            // second default FCB, filled in from second commandline argument
+            0x00, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+            0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00,
+
+            // unused
+            0x00, 0x00, 0x00, 0x00,
+
+            // 80h 128 BYTEs: commandline / default DTA
+            0x00, 0x0D,
+        ];
+        self.mmu.write(segment, 0, &psp);
+        self.dos.psp_segment = segment;
+    }
+
     /// loads a .exe file
-    fn load_exe(&mut self, data: &[u8]) {
+    fn load_exe(&mut self, data: &[u8], segment: u16) {
         let exe = match ExeFile::from_data(data) {
             Ok(exe) => exe,
             Err(e) => panic!(e),
         };
-        // arbitrary numbers, some based on dosbox
-        let base_ss = 0x0339;
-        let base_cs = 0x0339;
 
         // relative SS
-        let ss = (base_ss + (exe.header.ss as isize)) as u16;
+        let ss = (segment as isize + (exe.header.ss as isize)) as u16;
         self.cpu.set_r16(R::SS, ss);
         self.cpu.set_r16(R::SP, exe.header.sp);
 
         // relative CS
-        let cs = (base_cs + (exe.header.cs as isize)) as u16;
+        let cs = (segment as isize + (exe.header.cs as isize)) as u16;
         self.cpu.set_r16(R::CS, cs);
         self.cpu.regs.ip = exe.header.ip;
 
-        self.mmu.write(base_cs as u16, 0, &exe.program_data);
+        self.mmu.write(segment, 0, &exe.program_data);
 
         let some_segment = 0x0329;
-        self.cpu.set_r16(R::DS, some_segment);
+        self.cpu.set_r16(R::DS, self.dos.psp_segment); // ds points to PSP
         self.cpu.set_r16(R::ES, some_segment);
         self.cpu.set_r16(R::BP, 0x091C);
         self.cpu.set_r16(R::CX, 0x00FF);
@@ -266,22 +325,20 @@ impl Machine {
     }
 
     /// loads a .com program into CS:0100 and set IP to program start
-    fn load_com(&mut self, data: &[u8], psp_segment: u16) {
+    fn load_com(&mut self, data: &[u8], segment: u16) {
 
-        // CS,DS,ES,SS = PSP segment
-        self.cpu.set_r16(R::CS, psp_segment);
-        self.cpu.set_r16(R::DS, psp_segment);
-        self.cpu.set_r16(R::ES, psp_segment);
-        self.cpu.set_r16(R::SS, psp_segment);
+        self.cpu.set_r16(R::CS, segment);
+        self.cpu.set_r16(R::DS, segment);
+        self.cpu.set_r16(R::ES, segment);
+        self.cpu.set_r16(R::SS, segment);
 
         // offset of last word available in first 64k segment
         self.cpu.set_r16(R::SP, 0xFFFE);
-        self.cpu.set_r16(R::BP, 0x091C); // is what dosbox used
 
-        // This is what dosbox initializes the registers to
-        // at program load
+        // arbitrary numbers, some based on dosbox
+        self.cpu.set_r16(R::BP, 0x091C);
         self.cpu.set_r16(R::CX, 0x00FF);
-        self.cpu.set_r16(R::DX, psp_segment);
+        self.cpu.set_r16(R::DX, segment);
         self.cpu.set_r16(R::SI, 0x0100);
         self.cpu.set_r16(R::DI, 0xFFFE);
 
