@@ -1,7 +1,5 @@
 org 0x100
 
-; TODO: change pixel color based on mouse LEFT/RIGHT/MIDDLE pressed
-
 section .text
 
     mov ax, 0x13

@@ -410,7 +410,11 @@ impl Component for DOS {
                 // BX = size of largest available block
                 println!("XXX impl DOS 2+ - ALLOCATE MEMORY. bx={:04X}",
                         cpu.get_r16(R::BX));
-                cpu.regs.flags.carry = true; // signals ERROR !
+
+                // SIGNAL FAILURE
+                cpu.set_r16(R::AX, 0x0008); // out of memory
+                cpu.set_r16(R::BX, 0x0000);
+                cpu.regs.flags.carry = true;
             }
             0x49 => {
                 // DOS 2+ - FREE MEMORY
