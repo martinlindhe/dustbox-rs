@@ -2089,13 +2089,13 @@ fn can_execute_movsx32() {
 #[test]
 fn can_execute_mov_ds_addressing() {
     // NOTE: this test demonstrates a emulation bug described in https://github.com/martinlindhe/dustbox-rs/issues/9#issuecomment-355609424
-    // BUG: "mov [bx+si],dx" writes to the CS segment instead of DS
+    // BUG: "mov [bx+si],dx" wrote to the CS segment instead of DS
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x68, 0x00, 0x80,   // push word 0x8000
         0x1F,               // pop ds
         0xBB, 0x10, 0x00,   // mov bx,0x10
-        0xBE, 0x01, 0x00,   // mov si,0x1
+        0xBE, 0x00, 0x02,   // mov si,0x200
         0xBA, 0x99, 0x99,   // mov dx,0x9999
         0x89, 0x10,         // mov [bx+si],dx
     ];
@@ -2105,8 +2105,8 @@ fn can_execute_mov_ds_addressing() {
 
     let cs = machine.cpu.get_r16(R::CS);
     let ds = machine.cpu.get_r16(R::DS);
-    assert_eq!(0x0000, machine.mmu.read_u16(cs, 0x10 + 0x1));
-    assert_eq!(0x9999, machine.mmu.read_u16(ds, 0x10 + 0x1));
+    assert_eq!(0x0000, machine.mmu.read_u16(cs, 0x200 + 0x10)); // past PSP and program code
+    assert_eq!(0x9999, machine.mmu.read_u16(ds, 0x200 + 0x10));
 }
 
 #[test]
