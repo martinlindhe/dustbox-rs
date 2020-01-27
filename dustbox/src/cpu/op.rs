@@ -61,7 +61,10 @@ pub enum Op {
     Das,
 
     Dec8, Dec16, Dec32,
-    Div8, Div16, Div32,
+    Div8, Div16,
+
+    /// Unsigned divide EDX:EAX by r/m32, with result stored in EAX ← Quotient, EDX ← Remainder
+    Div32,
 
     Enter,
     Hlt,

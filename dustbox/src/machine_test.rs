@@ -713,7 +713,6 @@ fn can_execute_mul8() {
 
     machine.execute_instructions(3);
     assert_eq!(0x400, machine.cpu.get_r16(R::AX));
-    // XXX flags
 }
 
 #[test]
@@ -729,7 +728,32 @@ fn can_execute_mul16() {
     machine.execute_instructions(3);
     assert_eq!(0x0002, machine.cpu.get_r16(R::DX));
     assert_eq!(0x0000, machine.cpu.get_r16(R::AX));
-    // XXX flags
+}
+
+#[test]
+fn can_execute_mul32() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+       0x66, 0xB8, 0x01, 0x00, 0x00, 0x80,  // mov eax,0x80000001
+       0x66, 0xF7, 0xE8,                    // imul eax
+       0x66, 0xB8, 0x11, 0x22, 0x33, 0x44,  // mov eax,0x44332211
+       0x66, 0xB9, 0x55, 0x66, 0x77, 0x88,  // mov ecx,0x88776655
+       0x66, 0xF7, 0xE1,                    // mul ecx
+       0x66, 0xF7, 0xF1,                    // div ecx
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    machine.execute_instructions(2); // imul eax
+    assert_eq!(0x0000_0001, machine.cpu.get_r32(R::EAX));
+    assert_eq!(0x3FFF_FFFF, machine.cpu.get_r32(R::EDX));
+
+    machine.execute_instructions(3); // mul ecx
+    assert_eq!(0xE274_15A5, machine.cpu.get_r32(R::EAX));
+    assert_eq!(0x245A_F920, machine.cpu.get_r32(R::EDX));
+
+    machine.execute_instructions(1); // div ecx
+    assert_eq!(0x4433_2211, machine.cpu.get_r32(R::EAX)); // quotient
+    assert_eq!(0x0000_0000, machine.cpu.get_r32(R::EDX)); // remainder
 }
 
 #[test]

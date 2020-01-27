@@ -479,15 +479,15 @@ impl Machine {
         let op = self.cpu.decoder.get_instruction(&mut self.mmu, cs, ip);
 
         if self.trace_file.is_some() {
-            let ax = self.cpu.get_r16(R::AX);
-            let bx = self.cpu.get_r16(R::BX);
-            let cx = self.cpu.get_r16(R::CX);
-            let dx = self.cpu.get_r16(R::DX);
+            let eax = self.cpu.get_r32(R::EAX);
+            let ebx = self.cpu.get_r32(R::EBX);
+            let ecx = self.cpu.get_r32(R::ECX);
+            let edx = self.cpu.get_r32(R::EDX);
 
-            let si = self.cpu.get_r16(R::SI);
-            let di = self.cpu.get_r16(R::DI);
-            let bp = self.cpu.get_r16(R::BP);
-            let sp = self.cpu.get_r16(R::SP);
+            let esi = self.cpu.get_r32(R::ESI);
+            let edi = self.cpu.get_r32(R::EDI);
+            let ebp = self.cpu.get_r32(R::EBP);
+            let esp = self.cpu.get_r32(R::ESP);
 
             let ds = self.cpu.get_r16(R::DS);
             let es = self.cpu.get_r16(R::ES);
@@ -506,7 +506,7 @@ impl Machine {
                 let disasm = &format!("{:30}", format!("{}", op))[..30];
                 let mut writer = BufWriter::new(file);
                 let _ = write!(&mut writer, "{:04X}:{:04X}  {}", cs, ip, disasm);
-                let _ = write!(&mut writer, " EAX:{:08X} EBX:{:08X} ECX:{:08X} EDX:{:08X} ESI:{:08X} EDI:{:08X} EBP:{:08X} ESP:{:08X}", ax, bx, cx, dx, si, di, bp, sp);
+                let _ = write!(&mut writer, " EAX:{:08X} EBX:{:08X} ECX:{:08X} EDX:{:08X} ESI:{:08X} EDI:{:08X} EBP:{:08X} ESP:{:08X}", eax, ebx, ecx, edx, esi, edi, ebp, esp);
                 let _ = write!(&mut writer, " DS:{:04X} ES:{:04X}", ds, es);
                 // let _ = write!(&mut writer, " FS:{:04X} GS:{:04X}", fs, g);
                 let _ = write!(&mut writer, " SS:{:04X}", ss);
@@ -1065,20 +1065,19 @@ impl Machine {
                 self.cpu.set_r16(R::AX, quo16);
             }
             Op::Div32 => {
-                // Unsigned divide EDX:EAX by r/m32, with result stored in EAX ← Quotient, EDX ← Remainder.
-                let num = (u64::from(self.cpu.get_r32(R::EDX)) << 32) + u64::from(self.cpu.get_r32(R::EAX)); // EDX:EAX
-                let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u64;
-                if op1 == 0 {
+                let op1 = (u64::from(self.cpu.get_r32(R::EDX)) << 32) + u64::from(self.cpu.get_r32(R::EAX)); // EDX:EAX
+                let op2 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
+                if op2 == 0 {
                     return self.cpu.exception(&Exception::DIV0, 0);
                 }
-                let remainder = (num % op1) as u32;
-                let quotient = num / op1;
-                let quo32 = (quotient & 0xFFFF) as u32;
+                let quotient = op1 / op2 as u64;
+                let remainder = (op1 % op2 as u64) as u32;
+                let quo32 = (quotient & 0xFFFFFFFF) as u32;
                 if quotient != u64::from(quo32) {
                     return self.cpu.exception(&Exception::DIV0, 0);
                 }
-                self.cpu.set_r32(R::EDX, remainder);
                 self.cpu.set_r32(R::EAX, quo32);
+                self.cpu.set_r32(R::EDX, remainder);
             }
             Op::Enter => {
                 // Make Stack Frame for Procedure Parameters

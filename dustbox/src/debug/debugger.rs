@@ -200,7 +200,7 @@ impl Debugger {
                 println!("Executed {} instructions", self.machine.cpu.instruction_count);
             }
             "reg" | "regs" | "registers" => {
-                self.print_registers();
+                println!("{}", self.pretty_registers());
             }
             "bp" | "breakpoint" => {
                 if parts.len() < 2 {
@@ -472,31 +472,31 @@ impl Debugger {
         }
     }
 
-    fn print_registers(&mut self) -> String {
+    fn pretty_registers(&mut self) -> String {
         let mut res = String::new();
 
-        res += format!("AX:{:04X}  SI:{:04X}  DS:{:04X}  IP:{:04X}  cnt:{}\n",
-                       self.machine.cpu.get_r16(R::AX),
-                       self.machine.cpu.get_r16(R::SI),
+        res += format!("EAX:{:08X}  ESI:{:08X}  DS:{:04X}  IP:{:04X}  cnt:{}\n",
+                       self.machine.cpu.get_r32(R::EAX),
+                       self.machine.cpu.get_r32(R::ESI),
                        self.machine.cpu.get_r16(R::DS),
                        self.machine.cpu.regs.ip,
                        self.machine.cpu.instruction_count)
                 .as_ref();
-        res += format!("BX:{:04X}  DI:{:04X}  CS:{:04X}  fl:{:04X}\n",
-                       self.machine.cpu.get_r16(R::BX),
-                       self.machine.cpu.get_r16(R::DI),
+        res += format!("EBX:{:08X}  EDI:{:08X}  CS:{:04X}  fl:{:04X}\n",
+                       self.machine.cpu.get_r32(R::EBX),
+                       self.machine.cpu.get_r32(R::EDI),
                        self.machine.cpu.get_r16(R::CS),
                        self.machine.cpu.regs.flags.u16())
                 .as_ref();
-        res += format!("CX:{:04X}  BP:{:04X}  ES:{:04X}  GS:{:04X}\n",
-                       self.machine.cpu.get_r16(R::CX),
-                       self.machine.cpu.get_r16(R::BP),
+        res += format!("ECX:{:08X}  EBP:{:08X}  ES:{:04X}  GS:{:04X}\n",
+                       self.machine.cpu.get_r32(R::ECX),
+                       self.machine.cpu.get_r32(R::EBP),
                        self.machine.cpu.get_r16(R::ES),
                        self.machine.cpu.get_r16(R::GS))
                 .as_ref();
-        res += format!("DX:{:04X}  SP:{:04X}  FS:{:04X}  SS:{:04X}\n",
-                       self.machine.cpu.get_r16(R::DX),
-                       self.machine.cpu.get_r16(R::SP),
+        res += format!("EDX:{:08X}  ESP:{:08X}  FS:{:04X}  SS:{:04X}\n",
+                       self.machine.cpu.get_r32(R::EDX),
+                       self.machine.cpu.get_r32(R::ESP),
                        self.machine.cpu.get_r16(R::FS),
                        self.machine.cpu.get_r16(R::SS))
                 .as_ref();
