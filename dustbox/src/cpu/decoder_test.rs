@@ -3,25 +3,21 @@ use pretty_assertions::assert_eq;
 use crate::machine::Machine;
 
 #[test]
-fn can_disassemble_basic() {
+fn can_disassemble_call() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
-        0xE8, 0x05, 0x00, // call l_0x108   ; call a later offset
-        0xBA, 0x0B, 0x01, // mov dx,0x10b
-        0xB4, 0x09,       // mov ah,0x9
-        0xCD, 0x21,       // l_0x108: int 0x21
-        0xE8, 0xFB, 0xFF, // call l_0x108   ; call an earlier offset
-        0xFF, 0x18,       // call far [bx+si]
+        0xE8, 0x05, 0x00,                   // call 0x108
+        0xE8, 0xFB, 0xFF,                   // call 0x101
+        0x66, 0xE8, 0x11, 0x00, 0x00, 0x00, // call dword 0x11d
+        0xFF, 0x18,                         // call far [bx+si]
     ];
     machine.load_executable(&code, 0x085F);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 6);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
     assert_eq!("[085F:0100] E80500           CallNear 0x0108
-[085F:0103] BA0B01           Mov16    dx, 0x010B
-[085F:0106] B409             Mov8     ah, 0x09
-[085F:0108] CD21             Int      0x21
-[085F:010A] E8FBFF           CallNear 0x0108
-[085F:010D] FF18             CallFar  word [ds:bx+si]",
+[085F:0103] E8FBFF           CallNear 0x0101
+[085F:0106] 66E811000000     CallNear 0x0000011D
+[085F:010C] FF18             CallFar  word [ds:bx+si]",
                res);
 }
 
@@ -42,16 +38,27 @@ fn can_disassemble_lea() {
 fn can_disassemble_mov() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
-        0x26, 0x88, 0x25,   // mov [es:di],ah
-        0x26, 0x8A, 0x25,   // mov ah,[es:di]
-        0x67, 0x88, 0x03,   // mov [ebx],al
+        0xBA, 0x0B, 0x01,                               // mov dx,0x10b
+        0xB4, 0x09,                                     // mov ah,0x9
+        0x26, 0x88, 0x25,                               // mov [es:di],ah
+        0x26, 0x8A, 0x25,                               // mov ah,[es:di]
+        0x67, 0x88, 0x03,                               // mov [ebx],al
+        0x67, 0x89, 0x90, 0x00, 0x00, 0x00, 0x00,       // mov [eax+0x0],dx
+        0x66, 0x89, 0x85, 0xC0, 0xFE,                   // mov [di-0x140],eax
+        //0x67, 0xC7, 0x04, 0x85, 0x00, 0x00, 0x00, 0x00, 0xDE, 0x02, // mov word [dword eax*4+0x0],0x2de
     ];
     machine.load_executable(&code, 0x085F);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 3);
-    assert_eq!("[085F:0100] 268825           Mov8     byte [es:di], ah
-[085F:0103] 268A25           Mov8     ah, byte [es:di]
-[085F:0106] 678803           Mov8     byte [ds:ebx], al", res);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 7);
+    assert_eq!("[085F:0100] BA0B01           Mov16    dx, 0x010B
+[085F:0103] B409             Mov8     ah, 0x09
+[085F:0105] 268825           Mov8     byte [es:di], ah
+[085F:0108] 268A25           Mov8     ah, byte [es:di]
+[085F:010B] 678803           Mov8     byte [ds:ebx], al
+[085F:010E] 67899000000000   Mov16    word [ds:eax+0x00000000], dx
+[085F:0115] 668985C0FE       Mov32    dword [ds:di-0x0140], eax", res);
+
+// 80386+ Operand-size override prefix
 }
 
 #[test]

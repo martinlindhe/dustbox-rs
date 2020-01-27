@@ -304,7 +304,7 @@ impl Machine {
         // relative CS
         let cs = (segment as isize + (exe.header.cs as isize)) as u16;
         self.cpu.set_r16(R::CS, cs);
-        self.cpu.regs.ip = exe.header.ip;
+        self.cpu.regs.eip = exe.header.ip as u32;
 
         self.mmu.write(segment, 0, &exe.program_data);
 
@@ -344,12 +344,12 @@ impl Machine {
 
         self.cpu.regs.flags.interrupt = true;
 
-        self.cpu.regs.ip = 0x0100;
+        self.cpu.regs.eip = 0x0100;
         self.rom_base = self.cpu.get_memory_address();
         self.rom_length = data.len();
 
         let cs = self.cpu.get_r16(R::CS);
-        self.mmu.write(cs, self.cpu.regs.ip, data);
+        self.mmu.write(cs, self.cpu.regs.eip, data);
 
         self.mark_stack();
     }
@@ -395,7 +395,7 @@ impl Machine {
     }
 
     /// returns first line of disassembly using nasm
-    fn external_disasm_of_bytes(&self, cs: u16, ip: u16) -> String {
+    fn external_disasm_of_bytes(&self, cs: u16, ip: u32) -> String {
         let bytes = self.mmu.read(cs, ip, 16);
         ndisasm_first_instr(&bytes).unwrap()
     }
@@ -469,7 +469,7 @@ impl Machine {
     /// executes the next CPU instruction
     pub fn execute_instruction(&mut self) {
         let cs = self.cpu.get_r16(R::CS);
-        let ip = self.cpu.regs.ip;
+        let ip = self.cpu.regs.eip;
         if cs == 0xF000 {
             // we are in interrupt vector code, execute high-level interrupt.
             // the default interrupt vector table has a IRET
@@ -668,12 +668,11 @@ impl Machine {
         self.out_u8(port+1, hi);
     }
 
-    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cyclomatic_complexity))]
     fn execute(&mut self, op: &Instruction) {
-        let start_ip = self.cpu.regs.ip;
-        self.cpu.regs.ip = self.cpu.regs.ip.wrapping_add(op.length as u16);
+        let start_ip = self.cpu.regs.eip;
+        self.cpu.regs.eip = self.cpu.regs.eip.wrapping_add(op.length as u32);
         self.cpu.instruction_count += 1;
-        self.cpu.cycle_count += 1; // XXX temp hack; we pretend each instruction takes 8 cycles due to lack of timing
+        self.cpu.cycle_count += 1; // HACK: we pretend each instruction takes 1 cycles due to lack of timing
         match op.command {
             Op::Aaa => {
                 let v = if self.cpu.get_r8(R::AL) > 0xf9 {
@@ -857,14 +856,24 @@ impl Machine {
                 println!("XXX impl {}", op);
             }
             Op::CallNear => {
-                let old_ip = self.cpu.regs.ip;
-                let temp_ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
-                self.cpu.push16(&mut self.mmu, old_ip);
-                self.cpu.regs.ip = temp_ip as u16;
+                match op.op_size {
+                    crate::cpu::OperandSize::_16bit => { // CALL rel16
+                        let old_ip = self.cpu.regs.eip;
+                        let temp_ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
+                        self.cpu.push16(&mut self.mmu, old_ip as u16);
+                        self.cpu.regs.eip = temp_ip;
+                    }
+                    crate::cpu::OperandSize::_32bit => { // CALL rel32
+                        let old_ip = self.cpu.regs.eip;
+                        let temp_ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
+                        self.cpu.push32(&mut self.mmu, old_ip);
+                        self.cpu.regs.eip = temp_ip;
+                    }
+                }
             }
             Op::CallFar => {
                 let old_seg = self.cpu.regs.get_r16(R::CS);
-                let old_ip = self.cpu.regs.ip;
+                let old_ip = self.cpu.regs.eip as u16;
                 self.cpu.push16(&mut self.mmu, old_seg);
                 self.cpu.push16(&mut self.mmu, old_ip);
                 let (seg, offs) = match op.params.dst {
@@ -879,7 +888,7 @@ impl Machine {
                     _ => panic!("CallFar unhandled type {:?}", op.params.dst),
                 };
                 self.cpu.regs.set_r16(R::CS, seg);
-                self.cpu.regs.ip = offs;
+                self.cpu.regs.eip = offs as u32;
             }
             Op::Cbw => {
                 let ah = if self.cpu.get_r8(R::AL) & 0x80 != 0 {
@@ -924,10 +933,10 @@ impl Machine {
             }
             Op::Cmpsb => {
                 // no parameters
-                // Compare byte at address DS:(E)SI with byte at address ES:(E)DI
+                // Compare byte at address DS:SI with byte at address ES:DI
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
-                let src = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI)) as usize;
-                let dst = self.mmu.read_u16(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI)) as usize;
+                let src = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI) as u32) as usize;
+                let dst = self.mmu.read_u16(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI) as u32) as usize;
                 self.cpu.cmp8(dst, src);
 
                 let si = if !self.cpu.regs.flags.direction {
@@ -945,10 +954,10 @@ impl Machine {
             }
             Op::Cmpsw16 => {
                 // no parameters
-                // Compare word at address DS:(E)SI with word at address ES:(E)DI
+                // Compare word at address DS:SI with word at address ES:DI
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
-                let src = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI)) as usize;
-                let dst = self.mmu.read_u16(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI)) as usize;
+                let src = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI) as u32) as usize;
+                let dst = self.mmu.read_u16(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI) as u32) as usize;
                 self.cpu.cmp16(dst, src);
 
                 let si = if !self.cpu.regs.flags.direction {
@@ -966,10 +975,10 @@ impl Machine {
             }
             Op::Cmpsw32 => {
                 // no parameters
-                // Compare word at address DS:(E)SI with word at address ES:(E)DI
+                // Compare word at address DS:ESI with word at address ES:EDI
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
-                let src = self.mmu.read_u16_32(self.cpu.segment(op.segment_prefix), self.cpu.get_r32(R::ESI)) as usize; // XXX
-                let dst = self.mmu.read_u16_32(self.cpu.get_r16(R::ES), self.cpu.get_r32(R::EDI)) as usize; // XXX
+                let src = self.mmu.read_u16_32(self.cpu.segment(op.segment_prefix), self.cpu.get_r32(R::ESI)) as usize;
+                let dst = self.mmu.read_u16_32(self.cpu.get_r16(R::ES), self.cpu.get_r32(R::EDI)) as usize;
                 self.cpu.cmp16(dst, src);
 
                 let esi = if !self.cpu.regs.flags.direction {
@@ -1116,7 +1125,7 @@ impl Machine {
                     for i in 0..nesting_level {
                         let bp = self.cpu.get_r16(R::BP) - 2;
                         self.cpu.set_r16(R::BP, bp);
-                        let val = self.mmu.read_u16(self.cpu.get_r16(R::SS), self.cpu.get_r16(R::BP));
+                        let val = self.mmu.read_u16(self.cpu.get_r16(R::SS), self.cpu.get_r32(R::EBP));
                         println!("XXX ENTER: pushing {} = {:04X}", i, val);
                         self.cpu.push16(&mut self.mmu, val);
                     }
@@ -1345,7 +1354,7 @@ impl Machine {
                 // The ES segment cannot be overridden with a segment override prefix.
                 let dx = self.cpu.get_r16(R::DX);
                 let data = self.in_u8(dx);
-                self.mmu.write_u8(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI), data);
+                self.mmu.write_u8(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI) as u32, data);
                 let di = if !self.cpu.regs.flags.direction {
                     self.cpu.get_r16(R::DI).wrapping_add(1)
                 } else {
@@ -1359,32 +1368,32 @@ impl Machine {
             }
             Op::Ja => {
                 if !self.cpu.regs.flags.carry && !self.cpu.regs.flags.zero {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jc => {
                 if self.cpu.regs.flags.carry {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jcxz => {
                 if self.cpu.get_r16(R::CX) == 0 {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jecxz => {
                 if self.cpu.get_r32(R::ECX) == 0 {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jg => {
                 if !self.cpu.regs.flags.zero && self.cpu.regs.flags.sign == self.cpu.regs.flags.overflow {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jl => {
                 if self.cpu.regs.flags.sign != self.cpu.regs.flags.overflow {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::JmpFar => {
@@ -1400,69 +1409,69 @@ impl Machine {
                     _ => panic!("[{}] JmpFar unhandled type {:?}",  self.cpu.get_memory_address(), op.params.dst),
                 };
                 self.cpu.set_r16(R::CS, seg);
-                self.cpu.regs.ip = offs;
+                self.cpu.regs.eip = offs as u32;
             }
             Op::JmpNear | Op::JmpShort => {
-                self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
             }
             Op::Jna => {
                 if self.cpu.regs.flags.carry || self.cpu.regs.flags.zero {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jnc => {
                 if !self.cpu.regs.flags.carry {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jng => {
                 if self.cpu.regs.flags.zero || self.cpu.regs.flags.sign != self.cpu.regs.flags.overflow {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jnl => {
                 if self.cpu.regs.flags.sign == self.cpu.regs.flags.overflow {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jno => {
                 if !self.cpu.regs.flags.overflow {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jns => {
                 if !self.cpu.regs.flags.sign {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jnz => {
                 if !self.cpu.regs.flags.zero {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jo => {
                 if self.cpu.regs.flags.overflow {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jpe => {
                 if self.cpu.regs.flags.parity {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jpo => {
                  if !self.cpu.regs.flags.parity {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Js => {
                 if self.cpu.regs.flags.sign {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Jz => {
                 if self.cpu.regs.flags.zero {
-                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                    self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 }
             }
             Op::Lahf => {
@@ -1512,7 +1521,7 @@ impl Machine {
             Op::Lodsb => {
                 // no arguments
                 // The DS segment may be over-ridden with a segment override prefix.
-                let val = self.mmu.read_u8(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
+                let val = self.mmu.read_u8(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI) as u32);
 
                 self.cpu.set_r8(R::AL, val);
                 let si = if !self.cpu.regs.flags.direction {
@@ -1525,7 +1534,7 @@ impl Machine {
             Op::Lodsw => {
                 // no arguments
                 // The DS segment may be over-ridden with a segment override prefix.
-                let val = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
+                let val = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI) as u32);
 
                 self.cpu.set_r16(R::AX, val);
                 let si = if !self.cpu.regs.flags.direction {
@@ -1538,7 +1547,7 @@ impl Machine {
             Op::Lodsd => {
                 // no arguments
                 // The DS segment may be over-ridden with a segment override prefix.
-                let val = self.mmu.read_u32(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
+                let val = self.mmu.read_u32(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI) as u32);
 
                 self.cpu.set_r32(R::EAX, val);
                 let si = if !self.cpu.regs.flags.direction {
@@ -1549,51 +1558,51 @@ impl Machine {
                 self.cpu.set_r16(R::SI, si);
             }
             Op::Loop16 => {
-                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 {
-                    self.cpu.regs.ip = dst;
+                    self.cpu.regs.eip = dst;
                 }
             }
             Op::Loop32 => {
-                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 let ecx = self.cpu.get_r32(R::ECX).wrapping_sub(1);
                 self.cpu.set_r32(R::ECX, ecx);
                 if ecx != 0 {
-                    self.cpu.regs.ip = dst;
+                    self.cpu.regs.eip = dst;
                 }
             }
             Op::Loop16e => {
-                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 && self.cpu.regs.flags.zero {
-                    self.cpu.regs.ip = dst;
+                    self.cpu.regs.eip = dst;
                 }
             }
             Op::Loop32e => {
-                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 let ecx = self.cpu.get_r32(R::ECX).wrapping_sub(1);
                 self.cpu.set_r32(R::ECX, ecx);
                 if ecx != 0 && self.cpu.regs.flags.zero {
-                    self.cpu.regs.ip = dst;
+                    self.cpu.regs.eip = dst;
                 }
             }
             Op::Loop16ne => {
-                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 && !self.cpu.regs.flags.zero {
-                    self.cpu.regs.ip = dst;
+                    self.cpu.regs.eip = dst;
                 }
             }
             Op::Loop32ne => {
-                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                 let ecx = self.cpu.get_r32(R::ECX).wrapping_sub(1);
                 self.cpu.set_r32(R::ECX, ecx);
                 if ecx != 0 && !self.cpu.regs.flags.zero {
-                    self.cpu.regs.ip = dst;
+                    self.cpu.regs.eip = dst;
                 }
             }
             Op::Mov8 => {
@@ -1614,7 +1623,7 @@ impl Machine {
             Op::Movsb => {
                 // move byte from address DS:(E)SI to ES:(E)DI.
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
-                let val = self.mmu.read_u8(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
+                let val = self.mmu.read_u8(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI) as u32);
                 let si = if !self.cpu.regs.flags.direction {
                     self.cpu.get_r16(R::SI).wrapping_add(1)
                 } else {
@@ -1623,7 +1632,7 @@ impl Machine {
                 self.cpu.set_r16(R::SI, si);
                 let es = self.cpu.get_r16(R::ES);
                 let di = self.cpu.get_r16(R::DI);
-                self.mmu.write_u8(es, di, val);
+                self.mmu.write_u8(es, di as u32, val);
                 let di = if !self.cpu.regs.flags.direction {
                     self.cpu.get_r16(R::DI).wrapping_add(1)
                 } else {
@@ -1634,7 +1643,7 @@ impl Machine {
             Op::Movsw => {
                 // move word from address DS:(E)SI to ES:(E)DI.
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
-                let val = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
+                let val = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI) as u32);
                 let si = if !self.cpu.regs.flags.direction {
                     self.cpu.get_r16(R::SI).wrapping_add(2)
                 } else {
@@ -1643,7 +1652,7 @@ impl Machine {
                 self.cpu.set_r16(R::SI, si);
                 let es = self.cpu.get_r16(R::ES);
                 let di = self.cpu.get_r16(R::DI);
-                self.mmu.write_u16(es, di, val);
+                self.mmu.write_u16(es, di as u32, val);
                 let di = if !self.cpu.regs.flags.direction {
                     self.cpu.get_r16(R::DI).wrapping_add(2)
                 } else {
@@ -1654,7 +1663,7 @@ impl Machine {
             Op::Movsd => {
                 // move dword from address DS:(E)SI to ES:(E)DI
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
-                let val = self.mmu.read_u32(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
+                let val = self.mmu.read_u32(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI) as u32);
                 let si = if !self.cpu.regs.flags.direction {
                     self.cpu.get_r16(R::SI).wrapping_add(4)
                 } else {
@@ -1663,7 +1672,7 @@ impl Machine {
                 self.cpu.set_r16(R::SI, si);
                 let es = self.cpu.get_r16(R::ES);
                 let di = self.cpu.get_r16(R::DI);
-                self.mmu.write_u32(es, di, val);
+                self.mmu.write_u32(es, di as u32, val);
                 let di = if !self.cpu.regs.flags.direction {
                     self.cpu.get_r16(R::DI).wrapping_add(4)
                 } else {
@@ -1859,7 +1868,7 @@ impl Machine {
             Op::Outsb => {
                 // Output byte from memory location specified in DS:(E)SI or RSI to I/O port specified in DX.
                 // no arguments
-                let val = self.mmu.read_u8(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
+                let val = self.mmu.read_u8(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI) as u32);
                 let port = self.cpu.get_r16(R::DX);
                 self.out_u8(port, val);
                 let si = if !self.cpu.regs.flags.direction {
@@ -1872,7 +1881,7 @@ impl Machine {
             Op::Outsw => {
                 // Output word from memory location specified in DS:(E)SI or RSI to I/O port specified in DX**.
                 // no arguments
-                let val = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI));
+                let val = self.mmu.read_u16(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::SI) as u32);
                 let port = self.cpu.get_r16(R::DX);
                 self.out_u16(port, val);
                 let si = if !self.cpu.regs.flags.direction {
@@ -2068,7 +2077,7 @@ impl Machine {
                 }
             }
             Op::Iret => {
-                self.cpu.regs.ip = self.cpu.pop16(&mut self.mmu);
+                self.cpu.regs.eip = self.cpu.pop16(&mut self.mmu) as u32;
                 let cs = self.cpu.pop16(&mut self.mmu);
                 self.cpu.set_r16(R::CS, cs);
                 let flags = self.cpu.pop16(&mut self.mmu);
@@ -2082,19 +2091,26 @@ impl Machine {
                     let sp = self.cpu.get_r16(R::SP) + imm16;
                     self.cpu.set_r16(R::SP, sp);
                 }
-                self.cpu.regs.ip = self.cpu.pop16(&mut self.mmu);
+                self.cpu.regs.eip = self.cpu.pop16(&mut self.mmu) as u32;
                 let cs = self.cpu.pop16(&mut self.mmu);
                 self.cpu.set_r16(R::CS, cs);
             }
             Op::Retn => {
-                let val = self.cpu.pop16(&mut self.mmu);
-                if DEBUG_MARK_STACK && val == STACK_MARKER {
-                    println!("[{}] WARNING: stack marker was popped after {} instr. execution ended. (can be valid where small app just return to DOS with a 'ret', but can also indicate memory corruption)",
-                        self.cpu.get_memory_address(), self.cpu.instruction_count);
-                    self.cpu.fatal_error = true;
+                match op.op_size {
+                    crate::cpu::OperandSize::_16bit => {
+                        let val = self.cpu.pop16(&mut self.mmu);
+                        if DEBUG_MARK_STACK && val == STACK_MARKER {
+                            println!("[{}] WARNING: stack marker was popped after {} instr. execution ended. (can be valid where small app just return to DOS with a 'ret', but can also indicate memory corruption)",
+                                self.cpu.get_memory_address(), self.cpu.instruction_count);
+                            self.cpu.fatal_error = true;
+                        }
+                        // println!("Retn, ip from {:04X} to {:04X}", self.cpu.regs.ip, val);
+                        self.cpu.regs.eip = val as u32;
+                    }
+                    crate::cpu::OperandSize::_32bit => {
+                        self.cpu.regs.eip = self.cpu.pop32(&mut self.mmu);
+                    }
                 }
-                // println!("Retn, ip from {:04X} to {:04X}", self.cpu.regs.ip, val);
-                self.cpu.regs.ip = val;
                 if op.params.count() == 1 {
                     // 1 argument: pop imm16 bytes from stack
                     let imm16 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
@@ -2306,7 +2322,7 @@ impl Machine {
                 // Compare AL with byte at ES:(E)DI then set status flags.
                 // ES cannot be overridden with a segment override prefix.
                 let src = self.cpu.get_r8(R::AL);
-                let dst = self.mmu.read_u8(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI));
+                let dst = self.mmu.read_u8(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI) as u32);
                 self.cpu.cmp8(dst as usize, src as usize);
                 let di = if !self.cpu.regs.flags.direction {
                     self.cpu.get_r16(R::DI).wrapping_add(1)
@@ -2319,7 +2335,7 @@ impl Machine {
                 // Compare AX with word at ES:(E)DI or RDI then set status flags.
                 // ES cannot be overridden with a segment override prefix.
                 let src = self.cpu.get_r16(R::AX);
-                let dst = self.mmu.read_u16(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI));
+                let dst = self.mmu.read_u16(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI) as u32);
                 self.cpu.cmp16(dst as usize, src as usize);
                 let di = if !self.cpu.regs.flags.direction {
                     self.cpu.get_r16(R::DI).wrapping_add(2)
@@ -2560,7 +2576,7 @@ impl Machine {
                 let al = self.cpu.get_r8(R::AL);
                 let es = self.cpu.get_r16(R::ES);
                 let di = self.cpu.get_r16(R::DI);
-                self.mmu.write_u8(es, di, al);
+                self.mmu.write_u8(es, di as u32, al);
                 let di = if !self.cpu.regs.flags.direction {
                     self.cpu.get_r16(R::DI).wrapping_add(1)
                 } else {
@@ -2575,7 +2591,7 @@ impl Machine {
                 let ax = self.cpu.get_r16(R::AX);
                 let es = self.cpu.get_r16(R::ES);
                 let di = self.cpu.get_r16(R::DI);
-                self.mmu.write_u16(es, di, ax);
+                self.mmu.write_u16(es, di as u32, ax);
                 let di = if !self.cpu.regs.flags.direction {
                     self.cpu.get_r16(R::DI).wrapping_add(2)
                 } else {
@@ -2590,7 +2606,7 @@ impl Machine {
                 let eax = self.cpu.get_r32(R::EAX);
                 let es = self.cpu.get_r16(R::ES);
                 let di = self.cpu.get_r16(R::DI);
-                self.mmu.write_u32(es, di, eax);
+                self.mmu.write_u32(es, di as u32, eax);
                 // XXX adjust DI or EDI ?
                 let di = if !self.cpu.regs.flags.direction {
                     self.cpu.get_r16(R::DI).wrapping_add(4)
@@ -2711,7 +2727,8 @@ impl Machine {
                 // no parameters
                 // Set AL to memory byte DS:[(E)BX + unsigned AL].
                 // The DS segment may be overridden with a segment override prefix.
-                let al = self.mmu.read_u8(self.cpu.segment(op.segment_prefix), self.cpu.get_r16(R::BX) + u16::from(self.cpu.get_r8(R::AL)));
+                let imm = self.cpu.get_r16(R::BX) + self.cpu.get_r8(R::AL) as u16;
+                let al = self.mmu.read_u8(self.cpu.segment(op.segment_prefix), imm as u32);
                 self.cpu.set_r8(R::AL, al);
             }
             Op::Xor8 => {
@@ -2763,12 +2780,9 @@ impl Machine {
                 self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, res as u32);
             }
             _ => {
-                let (seg, off) = self.cpu.get_address_pair();
-                println!("execute error: unhandled '{}' at {:04X}:{:04X} (flat {:06X})",
-                         op,
-                         seg,
-                         off,
-                         self.cpu.get_address());
+                let cs = self.cpu.get_r16(R::CS);
+                let ip = self.cpu.regs.eip;
+                println!("execute error: unhandled '{}' at {:04X}:{:04X}", op, cs, ip);
             }
         }
 
@@ -2777,21 +2791,21 @@ impl Machine {
                 let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 {
-                    self.cpu.regs.ip = start_ip;
+                    self.cpu.regs.eip = start_ip;
                 }
             }
             RepeatMode::Repe => {
                 let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 && self.cpu.regs.flags.zero {
-                    self.cpu.regs.ip = start_ip;
+                    self.cpu.regs.eip = start_ip;
                 }
             }
             RepeatMode::Repne => {
                 let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 && !self.cpu.regs.flags.zero {
-                    self.cpu.regs.ip = start_ip;
+                    self.cpu.regs.eip = start_ip;
                 }
             }
             RepeatMode::None => {}

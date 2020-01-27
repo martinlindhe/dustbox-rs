@@ -112,19 +112,20 @@ impl CPU {
     pub fn execute_interrupt(&mut self, mmu: &mut MMU, int: u8) {
         let flags = self.regs.flags.u16();
         self.push16(mmu, flags);
-        mmu.flags_address = MemoryAddress::RealSegmentOffset(self.get_r16(R::SS), self.get_r16(R::SP));
+        mmu.flags_address = MemoryAddress::RealSegmentOffset(self.get_r16(R::SS), self.get_r32(R::ESP));
 
         self.regs.flags.interrupt = false;
         self.regs.flags.trap = false;
-        let (cs, ip) = self.get_address_pair();
+        let cs = self.get_r16(R::CS);
+        let ip = self.regs.eip;
         self.push16(mmu, cs);
-        self.push16(mmu, ip);
+        self.push16(mmu, ip as u16);
         let base = 0;
-        let idx = u16::from(int) << 2;
-        let ip = mmu.read_u16(base, idx);
+        let idx = (int as u32) << 2;
+        let ip = mmu.read_u16(base, idx) as u32;
         let cs = mmu.read_u16(base, idx + 2);
         // println!("int: jumping to interrupt handler for interrupt {:02X} pos at {:04X}:{:04X} = {:04X}:{:04X}", int, base, idx, cs, ip);
-        self.regs.ip = ip;
+        self.regs.eip = ip;
         self.set_r16(R::CS, cs);
     }
 
@@ -177,49 +178,49 @@ impl CPU {
     }
 
     pub fn push16(&mut self, mmu: &mut MMU, data: u16) {
-        let sp = (Wrapping(self.get_r16(R::SP)) - Wrapping(2)).0;
-        self.set_r16(R::SP, sp);
+        let esp = (Wrapping(self.get_r32(R::ESP)) - Wrapping(2)).0;
+        self.set_r32(R::ESP, esp);
         let ss = self.get_r16(R::SS);
         if DEBUG_STACK {
-            println!("[{}] push16 {:04X} to {:04X}:{:04X}", self.get_memory_address(), data, ss, sp);
+            println!("[{}] push16 {:04X} to {:04X}:{:04X}", self.get_memory_address(), data, ss, esp);
         }
         if DEBUG_MARK_STACK && data == STACK_MARKER {
-            println!("[{}] push16 {:04X} to {:04X}:{:04X} STACK MARKER", self.get_memory_address(), data, ss, sp);
+            println!("[{}] push16 {:04X} to {:04X}:{:04X} STACK MARKER", self.get_memory_address(), data, ss, esp);
         }
-        mmu.write_u16(ss, sp, data);
+        mmu.write_u16(ss, esp, data);
     }
 
     pub fn push32(&mut self, mmu: &mut MMU, data: u32) {
-        let sp = (Wrapping(self.get_r16(R::SP)) - Wrapping(4)).0;
-        self.set_r16(R::SP, sp);
+        let esp = (Wrapping(self.get_r32(R::ESP)) - Wrapping(4)).0;
+        self.set_r32(R::ESP, esp);
         let ss = self.get_r16(R::SS);
         if DEBUG_STACK {
-            println!("[{}] push32 {:04X} to {:04X}:{:04X}", self.get_memory_address(), data, ss, sp);
+            println!("[{}] push32 {:04X} to {:04X}:{:04X}", self.get_memory_address(), data, ss, esp);
         }
-        mmu.write_u32(ss, sp, data);
+        mmu.write_u32(ss, esp, data);
     }
 
     pub fn pop16(&mut self, mmu: &mut MMU) -> u16 {
         let ss = self.get_r16(R::SS);
-        let sp = self.get_r16(R::SP);
-        let data = mmu.read_u16(ss, self.get_r16(R::SP));
+        let esp = self.get_r32(R::ESP);
+        let data = mmu.read_u16(ss, esp);
         if DEBUG_STACK {
-            println!("[{}] pop16 {:04X} from {:04X}:{:04X}", self.get_memory_address(), data, ss, sp);
+            println!("[{}] pop16 {:04X} from {:04X}:{:04X}", self.get_memory_address(), data, ss, esp);
         }
-        let sp = (Wrapping(sp) + Wrapping(2)).0;
-        self.set_r16(R::SP, sp);
+        let esp = (Wrapping(esp) + Wrapping(2)).0;
+        self.set_r32(R::ESP, esp);
         data
     }
 
     pub fn pop32(&mut self, mmu: &mut MMU) -> u32 {
         let ss = self.get_r16(R::SS);
-        let sp = self.get_r16(R::SP);
-        let data = mmu.read_u32(ss, sp);
+        let esp = self.get_r32(R::ESP);
+        let data = mmu.read_u32(ss, esp);
         if DEBUG_STACK {
-            println!("[{}] pop32 {:04X} from {:04X}:{:04X}", self.get_memory_address(), data, ss, sp);
+            println!("[{}] pop32 {:04X} from {:04X}:{:04X}", self.get_memory_address(), data, ss, esp);
         }
-        let sp = (Wrapping(sp) + Wrapping(4)).0;
-        self.set_r16(R::SP, sp);
+        let esp = (Wrapping(esp) + Wrapping(4)).0;
+        self.set_r32(R::ESP, esp);
         data
     }
 
@@ -228,20 +229,15 @@ impl CPU {
         self.get_memory_address().value()
     }
 
-    /// returns cs, ip
-    pub fn get_address_pair(&self) -> (u16, u16) {
-        (self.get_r16(R::CS), self.regs.ip)
-    }
-
     /// returns the address of CS:IP as a MemoryAddress::RealSegmentOffset
     pub fn get_memory_address(&self) -> MemoryAddress {
-        MemoryAddress::RealSegmentOffset(self.get_r16(R::CS), self.regs.ip)
+        MemoryAddress::RealSegmentOffset(self.get_r16(R::CS), self.regs.eip)
     }
 
     fn read_u8(&mut self, mmu: &MMU) -> u8 {
-        let (seg, off) = self.get_address_pair();
-        let b = mmu.read_u8(seg, off);
-        self.regs.ip += 1;
+        let cs = self.get_r16(R::CS);
+        let b = mmu.read_u8(cs, self.regs.eip);
+        self.regs.eip += 1;
         b
     }
 
@@ -261,12 +257,12 @@ impl CPU {
 
     fn read_rel8(&mut self, mmu: &MMU) -> u16 {
         let val = self.read_u8(mmu) as i8;
-        (self.regs.ip as i16 + i16::from(val)) as u16
+        (self.regs.eip as i16 + i16::from(val)) as u16
     }
 
     fn read_rel16(&mut self, mmu: &MMU) -> u16 {
         let val = self.read_u16(mmu) as i16;
-        (self.regs.ip as i16 + val) as u16
+        (self.regs.eip as i16 + val) as u16
     }
 
     /// returns "segment, offset" pair
@@ -302,6 +298,7 @@ impl CPU {
             _ => panic!("unhandled parameter {:?}", p),
         };
 
+        let offset = offset as u32;
         let o_val = mmu.read_u16(segment, offset);
         let s_val = mmu.read_u16(segment, offset + 2);
         (s_val, o_val)
@@ -337,52 +334,53 @@ impl CPU {
             Parameter::Reg16(r) => self.get_r16(r) as usize,
             Parameter::Reg32(r) => self.get_r32(r) as usize,
             Parameter::SReg16(sr) => self.get_r16(sr) as usize,
-            Parameter::Ptr8(seg, imm) => mmu.read_u8(self.segment(seg), imm) as usize,
+            Parameter::Ptr8(seg, imm) => mmu.read_u8(self.segment(seg), imm as u32) as usize,
             Parameter::Ptr8Amode(seg, ref amode) => {
                 let seg = self.segment(seg);
-                let offset = self.amode(amode) as u16;
-                mmu.read_u8(seg, offset) as usize
+                let imm = self.amode(amode) as u32;
+                mmu.read_u8(seg, imm) as usize
             }
             Parameter::Ptr8AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let offset = (Wrapping(self.amode(amode) as u16) + Wrapping(imm as u16)).0;
-                mmu.read_u8(seg, offset) as usize
+                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                mmu.read_u8(seg, imm) as usize
             }
             Parameter::Ptr8AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let offset = (Wrapping(self.amode(amode) as u16) + Wrapping(imm as u16)).0;
-                mmu.read_u8(seg, offset) as usize
+                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                mmu.read_u8(seg, imm) as usize
             }
-            Parameter::Ptr16(seg, imm) => mmu.read_u16(self.segment(seg), imm) as usize,
+            Parameter::Ptr16(seg, imm) => mmu.read_u16(self.segment(seg), imm as u32) as usize,
             Parameter::Ptr16Amode(seg, ref amode) => {
                 let seg = self.segment(seg);
-                let offset = self.amode(amode) as u16;
-                mmu.read_u16(seg, offset) as usize
+                let imm = self.amode(amode) as u32;
+                mmu.read_u16(seg, imm) as usize
             }
             Parameter::Ptr16AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let offset = (Wrapping(self.amode(amode) as u16) + Wrapping(imm as u16)).0;
-                mmu.read_u16(seg, offset) as usize
+                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                mmu.read_u16(seg, imm) as usize
             }
             Parameter::Ptr16AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let offset = (Wrapping(self.amode(amode) as u16) + Wrapping(imm as u16)).0;
-                mmu.read_u16(seg, offset) as usize
+                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                mmu.read_u16(seg, imm) as usize
             }
-            Parameter::Ptr32(seg, offset) => mmu.read_u32(self.segment(seg), offset) as usize,
+            Parameter::Ptr32(seg, imm) => mmu.read_u32(self.segment(seg), imm as u32) as usize,
             Parameter::Ptr32Amode(seg, ref amode) => {
                 let seg = self.segment(seg);
-                let offset = self.amode(amode) as u16;
-                mmu.read_u32(seg, offset) as usize
+                let imm = self.amode(amode) as u32;
+                mmu.read_u32(seg, imm) as usize
             }
             Parameter::Ptr32AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let offset = (Wrapping(self.amode(amode) as u16) + Wrapping(imm as u16)).0;
-                mmu.read_u32(seg, offset) as usize
+                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                mmu.read_u32(seg, imm) as usize
             }
             _ => {
-                let (seg, off) = self.get_address_pair();
-                panic!("unhandled parameter: {:?} at {:04X}:{:04X} ({:06X} flat)", p, seg, off, self.get_address());
+                let cs = self.get_r16(R::CS);
+                let ip = self.regs.eip;
+                panic!("unhandled parameter: {:?} at {:04X}:{:04X}", p, cs, ip);
             },
         }
     }
@@ -390,28 +388,28 @@ impl CPU {
     pub fn write_parameter_u8(&mut self, mmu: &mut MMU, p: &Parameter, data: u8) {
         match *p {
             Parameter::Reg8(r) => self.set_r8(r, data),
-            Parameter::Ptr8(seg, offset) => {
+            Parameter::Ptr8(seg, imm) => {
                 let seg = self.segment(seg);
-                self.debug_write_u8(seg, offset, data);
-                mmu.write_u8(seg, offset, data);
+                self.debug_write_u8(seg, imm as u32, data);
+                mmu.write_u8(seg, imm as u32, data);
             }
             Parameter::Ptr8Amode(seg, ref amode) => {
                 let seg = self.segment(seg);
-                let offset = self.amode(amode) as u16;
-                self.debug_write_u8(seg, offset, data);
-                mmu.write_u8(seg, offset, data);
+                let imm = self.amode(amode) as u32;
+                self.debug_write_u8(seg, imm, data);
+                mmu.write_u8(seg, imm, data);
             }
             Parameter::Ptr8AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let offset = (Wrapping(self.amode(amode) as u16) + Wrapping(imm as u16)).0;
-                self.debug_write_u8(seg, offset, data);
-                mmu.write_u8(seg, offset, data);
+                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                self.debug_write_u8(seg, imm, data);
+                mmu.write_u8(seg, imm, data);
             }
             Parameter::Ptr8AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let offset = (Wrapping(self.amode(amode) as u16) + Wrapping(imm as u16)).0;
-                self.debug_write_u8(seg, offset, data);
-                mmu.write_u8(seg, offset, data);
+                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                self.debug_write_u8(seg, imm, data);
+                mmu.write_u8(seg, imm, data);
             }
             _ => panic!("write_parameter_u8 unhandled type {:?} at {:06X}", p, self.get_address()),
         }
@@ -423,31 +421,31 @@ impl CPU {
             Parameter::SReg16(r) => self.set_r16(r, data),
             Parameter::Imm16(imm) => {
                 let seg = self.segment(segment);
-                self.debug_write_u16(seg, imm, data);
-                mmu.write_u16(seg, imm, data);
+                self.debug_write_u16(seg, imm as u32, data);
+                mmu.write_u16(seg, imm as u32, data);
             }
-            Parameter::Ptr16(seg, offset) => {
+            Parameter::Ptr16(seg, imm) => {
                 let seg = self.segment(seg);
-                self.debug_write_u16(seg, offset, data);
-                mmu.write_u16(seg, offset, data);
+                self.debug_write_u16(seg, imm as u32, data);
+                mmu.write_u16(seg, imm as u32, data);
             }
             Parameter::Ptr16Amode(seg, ref amode) => {
                 let seg = self.segment(seg);
-                let offset = self.amode(amode) as u16;
-                self.debug_write_u16(seg, offset, data);
-                mmu.write_u16(seg, offset, data);
+                let imm = self.amode(amode) as u32;
+                self.debug_write_u16(seg, imm, data);
+                mmu.write_u16(seg, imm, data);
             }
             Parameter::Ptr16AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let offset = (Wrapping(self.amode(amode) as u16) + Wrapping(imm as u16)).0;
-                self.debug_write_u16(seg, offset, data);
-                mmu.write_u16(seg, offset, data);
+                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                self.debug_write_u16(seg, imm, data);
+                mmu.write_u16(seg, imm, data);
             }
             Parameter::Ptr16AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let offset = (Wrapping(self.amode(amode) as u16) + Wrapping(imm as u16)).0;
-                self.debug_write_u16(seg, offset, data);
-                mmu.write_u16(seg, offset, data);
+                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                self.debug_write_u16(seg, imm, data);
+                mmu.write_u16(seg, imm, data);
             }
             _ => panic!("unhandled type {:?} at {:06X}", p, self.get_address()),
         }
@@ -456,72 +454,72 @@ impl CPU {
     pub fn write_parameter_u32(&mut self, mmu: &mut MMU, _segment: Segment, p: &Parameter, data: u32) {
         match *p {
             Parameter::Reg32(r) => self.set_r32(r, data),
-            Parameter::Ptr32(seg, offset) => {
+            Parameter::Ptr32(seg, imm) => {
                 let seg = self.segment(seg);
-                self.debug_write_u32(seg, offset, data);
-                mmu.write_u32(seg, offset, data);
+                self.debug_write_u32(seg, imm as u32, data);
+                mmu.write_u32(seg, imm as u32, data);
             }
             Parameter::Ptr32Amode(seg, ref amode) => {
                 let seg = self.segment(seg);
-                let offset = self.amode(amode);
-                self.debug_write_u32(seg, offset as u16, data);
-                mmu.write_u32(seg, offset as u16, data);
+                let imm = self.amode(amode) as u32;
+                self.debug_write_u32(seg, imm, data);
+                mmu.write_u32(seg, imm, data);
             }
             Parameter::Ptr32AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let offset = (Wrapping(self.amode(amode) as u16) + Wrapping(imm as u16)).0;
-                self.debug_write_u32(seg, offset as u16, data);
-                mmu.write_u32(seg, offset, data);
+                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                self.debug_write_u32(seg, imm, data);
+                mmu.write_u32(seg, imm, data);
             }
             Parameter::Ptr32AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let offset = (Wrapping(self.amode(amode) as u16) + Wrapping(imm as u16)).0;
-                self.debug_write_u32(seg, offset as u16, data);
-                mmu.write_u32(seg, offset, data);
+                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                self.debug_write_u32(seg, imm, data);
+                mmu.write_u32(seg, imm, data);
             }
             _ => panic!("unhandled type {:?} at {:06X}", p, self.get_address()),
         }
     }
 
-    fn debug_write_u8(&self, seg: u16, off: u16, data: u8) {
+    fn debug_write_u8(&self, seg: u16, imm: u32, data: u8) {
         if !DEBUG_PARAMS_TOUCHING_STACK {
             return;
         }
-        let pos = MemoryAddress::RealSegmentOffset(seg, off).value() as isize;
-        let stack = MemoryAddress::RealSegmentOffset(self.get_r16(R::SS), self.get_r16(R::SP));
-        let code = MemoryAddress::RealSegmentOffset(self.get_r16(R::CS), self.get_r16(R::IP));
+        let pos = MemoryAddress::RealSegmentOffset(seg, imm).value() as isize;
+        let stack = MemoryAddress::RealSegmentOffset(self.get_r16(R::SS), self.get_r32(R::ESP));
+        let code = MemoryAddress::RealSegmentOffset(self.get_r16(R::CS), self.get_r32(R::EIP));
         let dist = (pos - stack.value() as isize).abs();
         if dist < 256 {
             // XXX points to the instruction AFTER the one to blame
-            println!("[{}] debug_write_u8 {:04X}:{:04X} = {:02X} ... stack {} (dist {})", code, seg, off, data, stack, dist);
+            println!("[{}] debug_write_u8 {:04X}:{:04X} = {:02X} ... stack {} (dist {})", code, seg, imm, data, stack, dist);
         }
     }
 
-    fn debug_write_u16(&self, seg: u16, off: u16, data: u16) {
+    fn debug_write_u16(&self, seg: u16, imm: u32, data: u16) {
         if !DEBUG_PARAMS_TOUCHING_STACK {
             return;
         }
-        let pos = MemoryAddress::RealSegmentOffset(seg, off).value() as isize;
-        let stack = MemoryAddress::RealSegmentOffset(self.get_r16(R::SS), self.get_r16(R::SP));
-        let code = MemoryAddress::RealSegmentOffset(self.get_r16(R::CS), self.get_r16(R::IP));
+        let pos = MemoryAddress::RealSegmentOffset(seg, imm).value() as isize;
+        let stack = MemoryAddress::RealSegmentOffset(self.get_r16(R::SS), self.get_r32(R::ESP));
+        let code = MemoryAddress::RealSegmentOffset(self.get_r16(R::CS), self.get_r32(R::EIP));
         let dist = (pos - stack.value() as isize).abs();
         if dist < 256 {
             // XXX points to the instruction AFTER the one to blame
-            println!("[{}] debug_write_u16 {:04X}:{:04X} = {:04X} ... stack {} (dist {})", code, seg, off, data, stack, dist);
+            println!("[{}] debug_write_u16 {:04X}:{:04X} = {:04X} ... stack {} (dist {})", code, seg, imm, data, stack, dist);
         }
     }
 
-    fn debug_write_u32(&self, seg: u16, off: u16, data: u32) {
+    fn debug_write_u32(&self, seg: u16, imm: u32, data: u32) {
         if !DEBUG_PARAMS_TOUCHING_STACK {
             return;
         }
-        let pos = MemoryAddress::RealSegmentOffset(seg, off).value() as isize;
-        let stack = MemoryAddress::RealSegmentOffset(self.get_r16(R::SS), self.get_r16(R::SP));
-        let code = MemoryAddress::RealSegmentOffset(self.get_r16(R::CS), self.get_r16(R::IP));
+        let pos = MemoryAddress::RealSegmentOffset(seg, imm).value() as isize;
+        let stack = MemoryAddress::RealSegmentOffset(self.get_r16(R::SS), self.get_r32(R::ESP));
+        let code = MemoryAddress::RealSegmentOffset(self.get_r16(R::CS), self.get_r32(R::EIP));
         let dist = (pos - stack.value() as isize).abs();
         if dist < 256 {
              // XXX points to the instruction AFTER the one to blame
-            println!("[{}] debug_write_u32 {:04X}:{:04X} = {:08X} ... stack {} (dist {})", code, seg, off, data, stack, dist);
+            println!("[{}] debug_write_u32 {:04X}:{:04X} = {:08X} ... stack {} (dist {})", code, seg, imm, data, stack, dist);
         }
     }
 

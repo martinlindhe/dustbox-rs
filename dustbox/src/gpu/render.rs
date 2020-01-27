@@ -360,16 +360,16 @@ impl Component for GPU {
                         let bh = cpu.get_r8(R::BH);
                         match bh { // BH = pointer specifier
                             0x00 => { // INT 1Fh pointer
-                                let (seg, off) = mmu.read_vec(0x1F);
+                                let (seg, imm) = mmu.read_vec(0x1F);
                                 cpu.set_r16(R::ES, seg);
-                                cpu.set_r16(R::BP, off);
+                                cpu.set_r16(R::BP, imm as u16);
                             }
                             // 01h INT 43h pointer
                             0x02 => {
                                 // ROM 8x14 character font pointer
-                                if let MemoryAddress::RealSegmentOffset(seg, off) = self.font_14 {
+                                if let MemoryAddress::RealSegmentOffset(seg, imm) = self.font_14 {
                                     cpu.set_r16(R::ES, seg);
-                                    cpu.set_r16(R::BP, off);
+                                    cpu.set_r16(R::BP, imm as u16);
                                 }
                             }
                             // 03h ROM 8x8 double dot font pointer
@@ -378,9 +378,9 @@ impl Component for GPU {
                             0x06 => {
                                 // ROM 8x16 font (MCGA, VGA)
                                 if self.card.is_vga() {
-                                    if let MemoryAddress::RealSegmentOffset(seg, off) = self.font_16 {
+                                    if let MemoryAddress::RealSegmentOffset(seg, imm) = self.font_16 {
                                         cpu.set_r16(R::ES, seg);
-                                        cpu.set_r16(R::BP, off);
+                                        cpu.set_r16(R::BP, imm as u16);
                                     }
                                 }
                             }
@@ -870,7 +870,7 @@ impl GPU {
             println!("error: set_cursor_pos page {}", page);
         }
         // BIOS cursor pos
-        let cursor_ofs = u16::from(page) * 2;
+        let cursor_ofs = (page as u32) * 2;
         mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + cursor_ofs, col);
         mmu.write_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + cursor_ofs + 1, row);
 
@@ -1019,11 +1019,11 @@ impl GPU {
                     chr -= 0x80;
                     mmu.read_vec(0x1F)
                 };
-                (seg, off + (chr * u16::from(cheight)))
+                (seg, off + (chr as u32 * (cheight as u32)))
             }
             _ => {
                 let (seg, off) = mmu.read_vec(0x43);
-                (seg, off + (chr * u16::from(cheight)))
+                (seg, off + (chr as u32 * (cheight as u32)))
             }
         };
 
@@ -1093,18 +1093,18 @@ impl GPU {
             GFXMode::CGA4 => {
                 if mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURRENT_MODE) <= 5 {
                     // this is a 16k mode
-                    let mut off = ((y >> 1) * 80 + (x >> 2)) as u16;
+                    let mut imm = ((y >> 1) * 80 + (x >> 2)) as u32;
                     if y & 1 != 0 {
-                        off += 8 * 1024;
+                        imm += 8 * 1024;
                     }
-                    let mut old = mmu.read_u8(0xB800, off);
+                    let mut old = mmu.read_u8(0xB800, imm);
                     if color & 0x80 != 0 {
                         color &= 3;
                         old ^= color << (2 * (3 - (x & 3)));
                     } else {
                         old = (old & CGA_MASKS[x as usize & 3]) | ((color & 3) << (2 * (3 - (x & 3))));
                     }
-                    mmu.write_u8(0xB800, off, old);
+                    mmu.write_u8(0xB800, imm, old);
                 } else {
                     let seg: u16 = if self.card.is_pc_jr() {
                         // a 32k mode: PCJr special case (see M_TANDY16)
@@ -1113,10 +1113,10 @@ impl GPU {
                     } else {
                         0xB800
                     };
-                    let mut off = ((y >> 2) * 160 + ((x >> 2) & (!1))) as u16;
-                    off += (8 * 1024) * (y & 3);
+                    let mut imm = ((y >> 2) * 160 + ((x >> 2) & (!1))) as u32;
+                    imm += (8 * 1024) * (y as u32 & 3);
 
-                    let mut old = mmu.read_u16(seg, off);
+                    let mut old = mmu.read_u16(seg, imm);
                     if color & 0x80 != 0 {
                         old ^=  (u16::from(color) & 1)       <<  (7 - (x & 7));
                         old ^= ((u16::from(color) & 2) >> 1) << ((7 - (x & 7)) + 8);
@@ -1125,17 +1125,17 @@ impl GPU {
                              ((u16::from(color) & 1)       <<  (7 - (x & 7))) |
                             (((u16::from(color) & 2) >> 1) << ((7 - (x & 7)) + 8));
                     }
-                    mmu.write_u16(seg, off, old);
+                    mmu.write_u16(seg, imm, old);
                 }
             }
-            GFXMode::VGA => mmu.write_u8(0xA000, y * 320 + x, color),
+            GFXMode::VGA => mmu.write_u8(0xA000, (y * 320 + x) as u32, color),
             _ => println!("ERROR put_pixel TODO unimplemented for mode {:?}", self.mode.kind),
         }
     }
 
     /// int 10h, ax = 1017h
     /// READ BLOCK OF DAC REGISTERS (VGA/MCGA)
-    pub fn read_dac_block(&mut self, mmu: &mut MMU, index: u16, mut count: u16, seg: u16, mut off: u16) {
+    pub fn read_dac_block(&mut self, mmu: &mut MMU, index: u16, mut count: u16, seg: u16, imm: u16) {
         if DEBUG_INTERRUPTS {
             println!("int 10h, ax = 1017h: read_dac_block");
         }
@@ -1143,14 +1143,12 @@ impl GPU {
         // count = number of palette registers to read
         // seg:off -> buffer (3 * CX bytes in size) (see also AX=1012h)
         // Return: buffer filled with CX red, green and blue triples
+        let mut imm = imm as u32;
         self.dac.set_pel_read_index(index as u8);
         while count > 0 {
-            mmu.write_u8(seg, off, self.dac.get_pel_data());
-            off += 1;
-            mmu.write_u8(seg, off, self.dac.get_pel_data());
-            off += 1;
-            mmu.write_u8(seg, off, self.dac.get_pel_data());
-            off += 1;
+            mmu.write_u8(seg, imm, self.dac.get_pel_data()); imm += 1;
+            mmu.write_u8(seg, imm, self.dac.get_pel_data()); imm += 1;
+            mmu.write_u8(seg, imm, self.dac.get_pel_data()); imm += 1;
             count -= 1;
         }
     }
@@ -1191,10 +1189,10 @@ impl GPU {
         }
         self.set_cursor_pos(mmu, row, col, page);
         while count > 0 {
-            let chr = mmu.read_u8(str_seg, str_off);
+            let chr = mmu.read_u8(str_seg, str_off as u32);
             str_off += 1;
             if flag & 2 != 0 {
-                attr = mmu.read_u8(str_seg, str_off);
+                attr = mmu.read_u8(str_seg, str_off as u32);
                 str_off += 1;
             };
             self.teletype_output_attr(mmu, chr, attr, page, true);
@@ -1256,9 +1254,9 @@ impl GPU {
 
     /// int 10, ax = 1012h
     /// SET BLOCK OF DAC REGISTERS (VGA/MCGA)
-    pub fn set_dac_block(&mut self, mmu: &mut MMU, index: u16, mut count: u16, seg: u16, mut off: u16) {
+    pub fn set_dac_block(&mut self, mmu: &mut MMU, index: u16, mut count: u16, seg: u16, imm: u16) {
         if DEBUG_INTERRUPTS {
-            println!("int 10h, ax = 1012h: set_dac_block: index {:04X}, count {} at {:04X}:{:04X}", index, count, seg, off);
+            println!("int 10h, ax = 1012h: set_dac_block: index {:04X}, count {} at {:04X}:{:04X}", index, count, seg, imm);
         }
         // index = starting color register
         // count = number of registers to set
@@ -1266,23 +1264,24 @@ impl GPU {
 
         self.dac.set_pel_write_index(index as u8);
 
+        let mut imm = imm as u32;
         if (mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_MODESET_CTL) & 0x06) == 0 {
             while count > 0 {
-                let r = mmu.read_u8(seg, off); off += 1;
+                let r = mmu.read_u8(seg, imm); imm += 1;
                 self.dac.set_pel_data(r);
 
-                let g = mmu.read_u8(seg, off); off += 1;
+                let g = mmu.read_u8(seg, imm); imm += 1;
                 self.dac.set_pel_data(g);
 
-                let b = mmu.read_u8(seg, off); off += 1;
+                let b = mmu.read_u8(seg, imm); imm += 1;
                 self.dac.set_pel_data(b);
                 count -= 1;
             }
         } else {
             while count > 0 {
-                let r = mmu.read_u8(seg, off); off += 1;
-                let g = mmu.read_u8(seg, off); off += 1;
-                let b = mmu.read_u8(seg, off); off += 1;
+                let r = mmu.read_u8(seg, imm); imm += 1;
+                let g = mmu.read_u8(seg, imm); imm += 1;
+                let b = mmu.read_u8(seg, imm); imm += 1;
 
                 // calculate clamped intensity, taken from VGABIOS
                 let i = (( 77 * u32::from(r) + 151 * u32::from(g) + 28 * u32::from(b) ) + 0x80) >> 8;
@@ -1372,13 +1371,13 @@ impl GPU {
         let base = addr.offset();
         if self.card.is_vga() {
             for (i, b) in video_parameters::TABLE_VGA.iter().enumerate() {
-                addr.set_offset(base + i as u16);
+                addr.set_offset(base + i as u32);
                 mmu.write_u8(addr.segment(), addr.offset(), *b);
             }
             return video_parameters::TABLE_VGA.len() as u16;
         }
         for (i, b) in video_parameters::TABLE_EGA.iter().enumerate() {
-            addr.set_offset(base + i as u16);
+            addr.set_offset(base + i as u32);
             mmu.write_u8(addr.segment(), addr.offset(), *b);
         }
 
@@ -1533,10 +1532,10 @@ impl GPU {
 
 /// get the cursor x position
 fn cursor_pos_col(mmu: &MMU, page: u8) -> u8 {
-    mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + u16::from(page) * 2)
+    mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + (page as u32) * 2)
 }
 
 /// get the cursor y position
 fn cursor_pos_row(mmu: &MMU, page: u8) -> u8 {
-    mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + (u16::from(page) * 2) + 1)
+    mmu.read_u8(BIOS::DATA_SEG, BIOS::DATA_CURSOR_POS + ((page as u32) * 2) + 1)
 }

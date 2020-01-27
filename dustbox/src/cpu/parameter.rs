@@ -56,6 +56,7 @@ pub enum Parameter {
     Ptr16Amode(Segment, AMode),         // word [amode], like "word [bx]"
     Ptr16AmodeS8(Segment, AMode, i8),   // word [amode+s8], like "word [bp-0x20]"
     Ptr16AmodeS16(Segment, AMode, i16), // word [amode+s16], like "word [bp-0x2020]"
+    Ptr16AmodeS32(Segment, AMode, i32), // word [amode+s32], like "dword [bp-0x20204040]"
 
     Ptr32(Segment, u16),                // dword [u16], like "dword [0x4040]"
     Ptr32Amode(Segment, AMode),         // dword [amode], like "dword [bx]"
@@ -130,6 +131,18 @@ impl fmt::Display for Parameter {
             Parameter::Ptr16AmodeS16(seg, ref amode, imm) => write!(
                 f,
                 "word [{}:{}{}0x{:04X}]",
+                seg,
+                amode,
+                if imm < 0 { "-" } else { "+" },
+                if imm < 0 {
+                    (Wrapping(0) - Wrapping(imm)).0
+                } else {
+                    imm
+                }
+            ),
+            Parameter::Ptr16AmodeS32(seg, ref amode, imm) => write!(
+                f,
+                "word [{}:{}{}0x{:08X}]",
                 seg,
                 amode,
                 if imm < 0 { "-" } else { "+" },

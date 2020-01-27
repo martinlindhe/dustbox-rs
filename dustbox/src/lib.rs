@@ -1,4 +1,7 @@
 #![allow(dead_code)]
+#![allow(clippy::single_match)]
+#![allow(clippy::verbose_bit_mask)]
+#![allow(clippy::cognitive_complexity)]
 
 #[macro_use]
 extern crate serde_derive;

@@ -9,29 +9,30 @@ pub struct BIOS {
 
 impl BIOS {
     pub const DATA_SEG: u16           = 0x0040; // bios data segment, 256 byte at 000400 to 0004FF
+    pub const ROM_SEG: u16            = 0xF000; // bios rom segment, 64k at F_0000 to F_FFFF
 
-    pub const DATA_INITIAL_MODE: u16  = 0x0010;
-    pub const DATA_CURRENT_MODE: u16  = 0x0049;
-    pub const DATA_NB_COLS: u16       = 0x004A;
-    pub const DATA_PAGE_SIZE: u16     = 0x004C;
-    pub const DATA_CURRENT_START: u16 = 0x004E;
-    pub const DATA_CURSOR_POS: u16    = 0x0050;
-    pub const DATA_CURSOR_TYPE: u16   = 0x0060;
-    pub const DATA_CURRENT_PAGE: u16  = 0x0062;
-    pub const DATA_CRTC_ADDRESS: u16  = 0x0063;
-    pub const DATA_CURRENT_MSR: u16   = 0x0065;
-    pub const DATA_CURRENT_PAL: u16   = 0x0066;
-    pub const DATA_NB_ROWS: u16       = 0x0084;
-    pub const DATA_CHAR_HEIGHT: u16   = 0x0085;
-    pub const DATA_VIDEO_CTL: u16     = 0x0087;
-    pub const DATA_SWITCHES: u16      = 0x0088;
-    pub const DATA_MODESET_CTL: u16   = 0x0089;
-    pub const DATA_DCC_INDEX: u16     = 0x008A;
-    pub const DATA_CRTCPU_PAGE: u16   = 0x008A;
-    pub const DATA_VS_POINTER: u16    = 0x00A8;
+    // offsets
+    pub const DATA_INITIAL_MODE: u32  = 0x0010;
+    pub const DATA_CURRENT_MODE: u32  = 0x0049;
+    pub const DATA_NB_COLS: u32       = 0x004A;
+    pub const DATA_PAGE_SIZE: u32     = 0x004C;
+    pub const DATA_CURRENT_START: u32 = 0x004E;
+    pub const DATA_CURSOR_POS: u32    = 0x0050;
+    pub const DATA_CURSOR_TYPE: u32   = 0x0060;
+    pub const DATA_CURRENT_PAGE: u32  = 0x0062;
+    pub const DATA_CRTC_ADDRESS: u32  = 0x0063;
+    pub const DATA_CURRENT_MSR: u32   = 0x0065;
+    pub const DATA_CURRENT_PAL: u32   = 0x0066;
+    pub const DATA_NB_ROWS: u32       = 0x0084;
+    pub const DATA_CHAR_HEIGHT: u32   = 0x0085;
+    pub const DATA_VIDEO_CTL: u32     = 0x0087;
+    pub const DATA_SWITCHES: u32      = 0x0088;
+    pub const DATA_MODESET_CTL: u32   = 0x0089;
+    pub const DATA_DCC_INDEX: u32     = 0x008A;
+    pub const DATA_CRTCPU_PAGE: u32   = 0x008A;
+    pub const DATA_VS_POINTER: u32    = 0x00A8;
 
-    const ROM_SEG: u16                = 0xF000; // bios rom segment, 64k at F_0000 to F_FFFF
-    const ROM_EQUIPMENT_WORD: u16     = 0x0410;
+    pub const ROM_EQUIPMENT_WORD: u32 = 0x0410;
 
     pub fn default() -> Self {
         BIOS {
@@ -46,14 +47,14 @@ impl BIOS {
     fn init_ivt(&mut self, mmu: &mut MMU) {
         const IRET: u8 = 0xCF;
         for irq in 0..0xFF {
-            self.write_ivt_entry(mmu, irq, BIOS::ROM_SEG, u16::from(irq));
-            mmu.write_u8(BIOS::ROM_SEG, u16::from(irq), IRET);
+            self.write_ivt_entry(mmu, irq, BIOS::ROM_SEG, irq as u16);
+            mmu.write_u8(BIOS::ROM_SEG, irq as u32, IRET);
         }
     }
 
     fn write_ivt_entry(&self, mmu: &mut MMU, number: u8, seg: u16, offset: u16) {
         let _seg = 0;
-        let _offset = u16::from(number) * 4;
+        let _offset = (number as u32) * 4;
         mmu.write_u16(_seg, _offset, offset);
         mmu.write_u16(_seg, _offset + 2, seg);
     }

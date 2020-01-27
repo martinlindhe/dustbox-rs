@@ -52,12 +52,11 @@ impl GPR {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum R {
-    AL, CL, DL, BL, AH, CH, DH, BH,         // 8-bit gpr
-    AX, CX, DX, BX, SP, BP, SI, DI,         // 16-bit gpr
-    ES, CS, SS, DS, FS, GS,                 // sr
-    IP,                                     // 16-bit ip
-    EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, // 32-bit gpr
-    ST0, ST1, ST2, ST3, ST4, ST5, ST6, ST7, // 80-bit fpu registers
+    AL, CL, DL, BL, AH, CH, DH, BH,                 // 8-bit gpr
+    AX, CX, DX, BX, SP, BP, SI, DI, IP,             // 16-bit gpr
+    ES, CS, SS, DS, FS, GS,                         // segment registers
+    EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, EIP,    // 32-bit gpr
+    ST0, ST1, ST2, ST3, ST4, ST5, ST6, ST7,         // 80-bit fpu registers
 }
 
 impl fmt::Display for R {
@@ -96,6 +95,7 @@ impl fmt::Display for R {
             R::EBP => "ebp",
             R::ESI => "esi",
             R::EDI => "edi",
+            R::EIP => "eip",
 
             R::ST0 => "st0",
             R::ST1 => "st1",
@@ -299,7 +299,7 @@ impl AddressSize {
 
 #[derive(Clone, Default)]
 pub struct RegisterState {
-    pub ip: u16,
+    pub eip: u32,
     pub gpr: [GPR; 8 + 6 + 1],   // 8 general purpose registers, 6 segment registers, 1 ip
     pub sreg16: [u16; 6],        // segment registers
     pub flags: Flags,
@@ -344,13 +344,13 @@ impl RegisterState {
             R::BP => self.gpr[5].val as u16,
             R::SI => self.gpr[6].val as u16,
             R::DI => self.gpr[7].val as u16,
+            R::IP => self.eip as u16,
             R::ES => self.sreg16[0],
             R::CS => self.sreg16[1],
             R::SS => self.sreg16[2],
             R::DS => self.sreg16[3],
             R::FS => self.sreg16[4],
             R::GS => self.sreg16[5],
-            R::IP => self.ip,
             _ => unreachable!(),
         }
     }
@@ -385,6 +385,7 @@ impl RegisterState {
             R::EBP => self.gpr[5].val,
             R::ESI => self.gpr[6].val,
             R::EDI => self.gpr[7].val,
+            R::EIP => self.eip,
             _ => unreachable!(),
         }
     }

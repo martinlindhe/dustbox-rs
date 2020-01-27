@@ -33,43 +33,43 @@ pub struct Decoder {
     current_seg: u16,
 
     /// starting instruction decoding offset
-    current_offset: u16,
+    current_offset: u32,
 }
 
 impl Decoder {
     /// decodes given seg::offset into Vec with `n` InstructionInfo's
-    pub fn decode_to_block(&mut self, mut mmu: &mut MMU, seg: u16, offset: u16, n: usize) -> Vec<InstructionInfo> {
+    pub fn decode_to_block(&mut self, mut mmu: &mut MMU, seg: u16, offset: u32, n: usize) -> Vec<InstructionInfo> {
         let mut ops: Vec<InstructionInfo> = Vec::new();
         let mut inst_offset = 0;
         for _ in 0..n {
             let op = self.get_instruction_info(&mut mmu, seg, offset+inst_offset);
-            inst_offset += op.bytes.len() as u16;
+            inst_offset += op.bytes.len() as u32;
             ops.push(op);
         }
         ops
     }
 
-    pub fn disassemble_block_to_str(&mut self, mut mmu: &mut MMU, seg: u16, offset: u16, n: usize) -> String {
+    pub fn disassemble_block_to_str(&mut self, mut mmu: &mut MMU, seg: u16, offset: u32, n: usize) -> String {
         let ops = self.decode_to_block(&mut mmu, seg, offset, n);
         instruction_info_to_str(&ops)
     }
 
     /// decodes op at seg:offset into a InstructionInfo
-    pub fn get_instruction_info(&mut self, mut mmu: &mut MMU, seg: u16, offset: u16) -> InstructionInfo {
-        let instr = self.get_instruction(&mut mmu, seg, offset);
+    pub fn get_instruction_info(&mut self, mut mmu: &mut MMU, seg: u16, imm: u32) -> InstructionInfo {
+        let instr = self.get_instruction(&mut mmu, seg, imm);
         if DEBUG_DECODER {
-            println!("get_instruction_info at {}: {}", MemoryAddress::RealSegmentOffset(seg, offset), instr);
+            println!("get_instruction_info at {}: {}", MemoryAddress::RealSegmentOffset(seg, imm), instr);
         }
         InstructionInfo {
-            segment: seg as usize,
-            offset: offset as usize,
-            bytes: mmu.read(seg, offset, instr.length as usize),
+            segment: seg,
+            offset: imm,
+            bytes: mmu.read(seg, imm, instr.length as usize),
             instruction: instr,
         }
     }
 
     /// decodes op at seg:offset into a Instruction
-    pub fn get_instruction(&mut self, mut mmu: &mut MMU, segment: u16, offset: u16) -> Instruction {
+    pub fn get_instruction(&mut self, mut mmu: &mut MMU, segment: u16, offset: u32) -> Instruction {
         self.current_seg = segment;
         self.current_offset = offset;
         let mut op = Instruction::new(Op::Uninitialized);
@@ -78,7 +78,6 @@ impl Decoder {
     }
 
     /// decodes the next instruction
-    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cyclomatic_complexity))]
     fn decode(&mut self, mut mmu: &mut MMU, mut op: &mut Instruction) {
         let start_offset = self.current_offset;
         let b = self.read_u8(mmu);
@@ -1767,7 +1766,11 @@ impl Decoder {
             0xE8 => {
                 // call near s16
                 op.command = Op::CallNear;
-                op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
+                // 80386+ Operand-size override prefix
+                op.params.dst = match op.op_size {
+                    OperandSize::_16bit => Parameter::Imm16(self.read_rel16(mmu)),  // CALL rel16
+                    OperandSize::_32bit => Parameter::Imm32(self.read_rel32(mmu)),  // CALL rel32
+                }
             }
             0xE9 => {
                 // jmp near rel16
@@ -1961,7 +1964,7 @@ impl Decoder {
             }
         }
         // calculate instruction length
-        op.length = (Wrapping(u16::from(op.length)) + Wrapping(self.current_offset) - Wrapping(start_offset)).0 as u8;
+        op.length = (Wrapping(op.length as u32) + Wrapping(self.current_offset) - Wrapping(start_offset)).0 as u8;
         if DEBUG_DECODER {
             println!("{:04X}: decoded {}", start_offset, op);
         }
@@ -1995,15 +1998,12 @@ impl Decoder {
 
     /// decode rm8
     fn rm8(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
+        //println!("rm8: rm {}, md {}: {:?}", rm, md, op);
         match md {
-            0 => {
-                if rm == 6 {
-                    // [u16]
-                    Parameter::Ptr8(op.segment_prefix, self.read_u16(mmu))
-                } else {
-                    // [amode]
-                    Parameter::Ptr8Amode(op.segment_prefix, op.address_size.amode_from(rm))
-                }
+            0 => if rm == 6 { // [u16]
+                Parameter::Ptr8(op.segment_prefix, self.read_u16(mmu))
+            } else { // [amode]
+                Parameter::Ptr8Amode(op.segment_prefix, op.address_size.amode_from(rm))
             }
             // [amode+s8]
             1 => Parameter::Ptr8AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
@@ -2017,37 +2017,46 @@ impl Decoder {
 
     /// decode rm16
     fn rm16(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
-        match md {
-            0 => {
-                if rm == 6 {
-                    // [u16]
+        //println!("rm16: rm {}, md {}: {:?}", rm, md, op);
+        match op.address_size {
+            AddressSize::_16bit => match md {
+                0 => if rm == 6 { // [u16]
                     Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu))
-                } else {
-                    // [amode]
+                } else { // [amode]
                     Parameter::Ptr16Amode(op.segment_prefix, op.address_size.amode_from(rm))
                 }
+                // [amode+s8]
+                1 => Parameter::Ptr16AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
+                // [amode+s16]
+                2 => Parameter::Ptr16AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
+                // [reg]
+                3 => Parameter::Reg16(r16(rm)),
+                _ => unreachable!(),
             }
-            // [amode+s8]
-            1 => Parameter::Ptr16AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
-            // [amode+s16]
-            2 => Parameter::Ptr16AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
-            // [reg]
-            3 => Parameter::Reg16(r16(rm)),
-            _ => unreachable!(),
+            AddressSize::_32bit => match md {
+                0 => if rm == 6 { // [u16]
+                    Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu))
+                } else { // [amode]
+                    Parameter::Ptr16Amode(op.segment_prefix, op.address_size.amode_from(rm))
+                }
+                // [amode+s32]
+                2 => Parameter::Ptr16AmodeS32(op.segment_prefix, op.address_size.amode_from(rm), self.read_s32(mmu)),
+                _ => {
+                    panic!("XXX rm16 adrsize32 unhandled md {}, rm {}, op {:?}", md, rm, op);
+                    Parameter::None
+                }
+            }
         }
     }
 
     /// decode rm32
     fn rm32(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
+        //println!("rm32: rm {}, md {}: {:?}", rm, md, op);
         match md {
-            0 => {
-                if rm == 6 {
-                    // [u16]
-                    Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu))
-                } else {
-                    // [amode]
-                    Parameter::Ptr32Amode(op.segment_prefix, op.address_size.amode_from(rm))
-                }
+            0 => if rm == 6 { // [u16]
+                Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu))
+            } else { // [amode]
+                Parameter::Ptr32Amode(op.segment_prefix, op.address_size.amode_from(rm))
             }
             // [amode+s8]
             1 => Parameter::Ptr32AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
@@ -2062,36 +2071,34 @@ impl Decoder {
     /// decode rm as 16-bit fpu op argument
     fn rmf16(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
         match md {
-            0 => {
-                if rm == 6 {
-                    // [u16]
-                    Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu))
-                } else {
-                    // [amode]
-                    Parameter::Ptr16Amode(op.segment_prefix, op.address_size.amode_from(rm))
-                }
+            0 => if rm == 6 { // [u16]
+                Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu))
+            } else { // [amode]
+                Parameter::Ptr16Amode(op.segment_prefix, op.address_size.amode_from(rm))
             }
+            /*
             // [amode+s8]
             1 => Parameter::Ptr16AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
             // [amode+s16]
             2 => Parameter::Ptr16AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
+            */
             // [reg]
             3 => Parameter::FPR80(fpr(rm)),
-            _ => unreachable!(),
+            //_ => unreachable!(),
+            _ => {
+                panic!("XXX rmf16 unhandled md {}, rm {}", md, rm);
+                Parameter::None
+            }
         }
     }
 
     /// decode rm as 32-bit fpu op argument
     fn rmf32(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
         match md {
-            0 => {
-                if rm == 6 {
-                    // [u16]
-                    Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu))
-                } else {
-                    // [amode]
-                    Parameter::Ptr32Amode(op.segment_prefix, op.address_size.amode_from(rm))
-                }
+            0 => if rm == 6 { // [u16]
+                Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu))
+            } else { // [amode]
+                Parameter::Ptr32Amode(op.segment_prefix, op.address_size.amode_from(rm))
             }
             // [amode+s8]
             1 => Parameter::Ptr32AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
@@ -2250,6 +2257,11 @@ impl Decoder {
         (self.current_offset as isize + val as isize) as u16
     }
 
+    fn read_rel32(&mut self, mmu: &MMU) -> u32 {
+        let val = self.read_s32(mmu);
+        (self.current_offset as isize + val as isize) as u32
+    }
+
     fn read_u8(&mut self, mmu: &MMU) -> u8 {
         let b = mmu.read_u8(self.current_seg, self.current_offset);
         self.current_offset = (Wrapping(self.current_offset) + Wrapping(1)).0;
@@ -2274,6 +2286,10 @@ impl Decoder {
 
     fn read_s16(&mut self, mmu: &MMU) -> i16 {
         self.read_u16(mmu) as i16
+    }
+
+    fn read_s32(&mut self, mmu: &MMU) -> i32 {
+        self.read_u32(mmu) as i32
     }
 
     /// returns the flat starting offset of the instruction being decoded

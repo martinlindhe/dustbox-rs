@@ -142,8 +142,8 @@ impl Instruction {
 
 #[derive(Debug, PartialEq)]
 pub struct InstructionInfo {
-    pub segment: usize,
-    pub offset: usize,
+    pub segment: u16,
+    pub offset: u32,
     pub bytes: Vec<u8>,
     pub instruction: Instruction,
 }

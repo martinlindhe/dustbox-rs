@@ -214,11 +214,11 @@ fn can_execute_mov_r8_rm8() {
     machine.load_executable(&code, 0x085F);
 
     machine.execute_instruction();
-    assert_eq!(0x103, machine.cpu.regs.ip);
+    assert_eq!(0x103, machine.cpu.regs.eip);
     assert_eq!(0x105, machine.cpu.get_r16(R::BX));
 
     machine.execute_instruction();
-    assert_eq!(0x105, machine.cpu.regs.ip);
+    assert_eq!(0x105, machine.cpu.regs.eip);
     assert_eq!(0x99, machine.cpu.get_r8(R::AH));
 }
 
@@ -232,11 +232,11 @@ fn can_execute_mv_r16() {
     machine.load_executable(&code, 0x085F);
 
     machine.execute_instruction();
-    assert_eq!(0x103, machine.cpu.regs.ip);
+    assert_eq!(0x103, machine.cpu.regs.eip);
     assert_eq!(0x123, machine.cpu.get_r16(R::AX));
 
     machine.execute_instruction();
-    assert_eq!(0x105, machine.cpu.regs.ip);
+    assert_eq!(0x105, machine.cpu.regs.eip);
     assert_eq!(0x123, machine.cpu.get_r16(R::SP));
 }
 
@@ -250,11 +250,11 @@ fn can_execute_mov_r16_rm16() {
     machine.load_executable(&code, 0x085F);
 
     machine.execute_instruction();
-    assert_eq!(0x103, machine.cpu.regs.ip);
+    assert_eq!(0x103, machine.cpu.regs.eip);
     assert_eq!(0x123, machine.cpu.get_r16(R::CX));
 
     machine.execute_instruction();
-    assert_eq!(0x105, machine.cpu.regs.ip);
+    assert_eq!(0x105, machine.cpu.regs.eip);
     assert_eq!(0x123, machine.cpu.get_r16(R::ES));
 }
 
@@ -269,15 +269,15 @@ fn can_execute_mov_rm16_sreg() {
     machine.load_executable(&code, 0x085F);
 
     machine.execute_instruction();
-    assert_eq!(0x103, machine.cpu.regs.ip);
+    assert_eq!(0x103, machine.cpu.regs.eip);
     assert_eq!(0x1234, machine.cpu.get_r16(R::BX));
 
     machine.execute_instruction();
-    assert_eq!(0x105, machine.cpu.regs.ip);
+    assert_eq!(0x105, machine.cpu.regs.eip);
     assert_eq!(0x1234, machine.cpu.get_r16(R::ES));
 
     machine.execute_instruction();
-    assert_eq!(0x109, machine.cpu.regs.ip);
+    assert_eq!(0x109, machine.cpu.regs.eip);
     let cs = machine.cpu.get_r16(R::CS);
     assert_eq!(0x1234, machine.mmu.read_u16(cs, 0x0109));
 }
@@ -291,7 +291,7 @@ fn can_execute_mov_data() {
     machine.load_executable(&code, 0x085F);
 
     machine.execute_instruction();
-    assert_eq!(0x105, machine.cpu.regs.ip);
+    assert_eq!(0x105, machine.cpu.regs.eip);
     let cs = machine.cpu.get_r16(R::CS);
     assert_eq!(0x38, machine.mmu.read_u8(cs, 0x1031));
 }
@@ -319,7 +319,7 @@ fn can_execute_mov_es_segment() {
     machine.execute_instructions(4);
 
     let es = machine.cpu.get_r16(R::ES);
-    let di = machine.cpu.get_r16(R::DI);
+    let di = machine.cpu.get_r16(R::DI) as u32;
     machine.execute_instruction(); // mov [es:di],ah
     assert_eq!(0x88, machine.mmu.read_u8(es, di));
 
@@ -355,7 +355,7 @@ fn can_execute_mov_fs_segment() {
 
     machine.load_executable(&code, 0x085F);
     machine.execute_instructions(5); // mov [fs:di],al
-    assert_eq!(0xFF, machine.mmu.read_u8(machine.cpu.get_r16(R::FS), machine.cpu.get_r16(R::DI)));
+    assert_eq!(0xFF, machine.mmu.read_u8(machine.cpu.get_r16(R::FS), machine.cpu.get_r16(R::DI) as u32));
 }
 
 #[test]
@@ -370,15 +370,15 @@ fn can_execute_imms8() {
     machine.load_executable(&code, 0x085F);
 
     machine.execute_instruction();
-    assert_eq!(0x103, machine.cpu.regs.ip);
+    assert_eq!(0x103, machine.cpu.regs.eip);
     assert_eq!(0x0100, machine.cpu.get_r16(R::DI));
 
     machine.execute_instruction();
-    assert_eq!(0x106, machine.cpu.regs.ip);
+    assert_eq!(0x106, machine.cpu.regs.eip);
     assert_eq!(0x013A, machine.cpu.get_r16(R::DI));
 
     machine.execute_instruction();
-    assert_eq!(0x109, machine.cpu.regs.ip);
+    assert_eq!(0x109, machine.cpu.regs.eip);
     assert_eq!(0x0100, machine.cpu.get_r16(R::DI));
 }
 
@@ -393,7 +393,7 @@ fn can_execute_with_flags() {
     machine.load_executable(&code, 0x085F);
 
     machine.execute_instruction();
-    assert_eq!(0x102, machine.cpu.regs.ip);
+    assert_eq!(0x102, machine.cpu.regs.eip);
     assert_eq!(0xFE, machine.cpu.get_r8(R::AH));
     assert_eq!(false, machine.cpu.regs.flags.carry);
     assert_eq!(false, machine.cpu.regs.flags.zero);
@@ -403,7 +403,7 @@ fn can_execute_with_flags() {
     assert_eq!(false, machine.cpu.regs.flags.parity);
 
     machine.execute_instruction();
-    assert_eq!(0x105, machine.cpu.regs.ip);
+    assert_eq!(0x105, machine.cpu.regs.eip);
     assert_eq!(0x00, machine.cpu.get_r8(R::AH));
     assert_eq!(true, machine.cpu.regs.flags.carry);
     assert_eq!(true, machine.cpu.regs.flags.zero);
@@ -426,15 +426,15 @@ fn can_execute_cmp() {
     machine.load_executable(&code, 0x085F);
 
     machine.execute_instruction();
-    assert_eq!(0x103, machine.cpu.regs.ip);
+    assert_eq!(0x103, machine.cpu.regs.eip);
     assert_eq!(0, machine.cpu.get_r16(R::BX));
 
     machine.execute_instruction();
-    assert_eq!(0x105, machine.cpu.regs.ip);
+    assert_eq!(0x105, machine.cpu.regs.eip);
     assert_eq!(0, machine.cpu.get_r16(R::DI));
 
     machine.execute_instruction();
-    assert_eq!(0x109, machine.cpu.regs.ip);
+    assert_eq!(0x109, machine.cpu.regs.eip);
 
     assert_eq!(true, machine.cpu.regs.flags.carry);
     assert_eq!(false, machine.cpu.regs.flags.zero);
@@ -561,6 +561,23 @@ fn can_execute_out16() {
 }
 
 #[test]
+fn can_execute_xxxxx() { // XXX move into can_execute_8bit_16bit_addressing
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x8A, 0x87, 0x44, 0xC8,     // mov al,[bx-0x37bc]
+    ];
+
+
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 1);
+    assert_eq!("[085F:0100] 8A8744C8         Mov8     al, byte [ds:bx-0x37BC]", res);
+
+    machine.execute_instruction();
+    //assert_eq!(0x200, machine.cpu.get_r16(R::BX));
+}
+
+#[test]
 fn can_execute_8bit_16bit_addressing() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
@@ -607,13 +624,12 @@ fn can_execute_8bit_16bit_addressing() {
 
     machine.execute_instruction();
     // should have written ax to [di]
-    let di = machine.cpu.get_r16(R::DI);
+    let di = machine.cpu.get_r16(R::DI) as u32;
     assert_eq!(0x00FF, machine.mmu.read_u16(ds, di));
 
     machine.execute_instruction();
     // should have written byte to [di+0x06AE]
-    assert_eq!(0xFE, machine.mmu.read_u8(ds, (Wrapping(di) +
-                                     Wrapping(0x06AE)).0));
+    assert_eq!(0xFE, machine.mmu.read_u8(ds, di.wrapping_add(0x06AE)));
 
     machine.execute_instruction();
     // should have read byte from [di+0x06AE] to al
@@ -645,15 +661,15 @@ fn can_execute_32bit_addressing() {
     assert_eq!(0x0000_0200, machine.mmu.read_u32(ds, 0x250));
 
     machine.execute_instruction();
-    let di = machine.cpu.get_r16(R::DI);
+    let di = machine.cpu.get_r16(R::DI) as u32;
     assert_eq!(0x0101_0101, machine.mmu.read_u32(ds, di));
 
     machine.execute_instruction();
-    let di = machine.cpu.get_r16(R::DI);
+    let di = machine.cpu.get_r16(R::DI) as u32;
     assert_eq!(0x0000_0200, machine.mmu.read_u32(ds, di - 8));
 
     machine.execute_instruction();
-    let di = machine.cpu.get_r16(R::DI);
+    let di = machine.cpu.get_r16(R::DI) as u32;
     assert_eq!(0x0000_0200, machine.mmu.read_u32(ds, di - 0x140));
 }
 
@@ -1226,7 +1242,7 @@ fn can_execute_jmp_far() {
 
     machine.execute_instruction();
     assert_eq!(0x0000, machine.cpu.get_r16(R::CS));
-    assert_eq!(0x0600, machine.cpu.regs.ip);
+    assert_eq!(0x0600, machine.cpu.regs.eip);
 }
 
 #[test]
@@ -1242,7 +1258,7 @@ fn can_execute_jmp_far_mem() {
     machine.load_executable(&code, 0x085F);
 
     machine.execute_instructions(6);
-    assert_eq!(0xCCAB, machine.cpu.regs.ip);
+    assert_eq!(0xCCAB, machine.cpu.regs.eip);
     assert_eq!(0x0001, machine.cpu.get_r16(R::AX));
 }
 
@@ -1981,11 +1997,11 @@ fn can_execute_int_iret() {
     assert_eq!(0x085F, machine.cpu.get_r16(R::CS));
     machine.execute_instruction();
     assert_eq!(0xF000, machine.cpu.get_r16(R::CS));
-    assert_eq!(0x0072, machine.cpu.regs.ip);
+    assert_eq!(0x0072, machine.cpu.regs.eip);
 
     machine.execute_instruction(); // IRET
     assert_eq!(0x085F, machine.cpu.get_r16(R::CS));
-    assert_eq!(0x0102, machine.cpu.regs.ip);
+    assert_eq!(0x0102, machine.cpu.regs.eip);
 }
 
 #[test]
@@ -2176,16 +2192,16 @@ fn can_execute_ret_imm() {
     machine.load_executable(&code, 0x085F);
 
     let stack_offset = machine.cpu.get_r16(R::SP);
-    assert_eq!(0x0100, machine.cpu.regs.ip);
+    assert_eq!(0x0100, machine.cpu.regs.eip);
     assert_eq!(stack_offset, machine.cpu.get_r16(R::SP));
 
     machine.execute_instruction(); // call
-    assert_eq!(0x0106, machine.cpu.regs.ip);
+    assert_eq!(0x0106, machine.cpu.regs.eip);
     assert_eq!(stack_offset - 2, machine.cpu.get_r16(R::SP));
 
     machine.execute_instruction(); // ret 0x1
     assert_eq!(stack_offset + 1, machine.cpu.get_r16(R::SP));
-    assert_eq!(0x0103, machine.cpu.regs.ip);
+    assert_eq!(0x0103, machine.cpu.regs.eip);
 }
 
 #[test]
@@ -2198,7 +2214,7 @@ fn can_execute_call_far() {
     machine.execute_instruction(); // call
 
     assert_eq!(0x0000, machine.cpu.get_r16(R::CS));
-    assert_eq!(0x00D3, machine.cpu.regs.ip);
+    assert_eq!(0x00D3, machine.cpu.regs.eip);
 }
 
 #[test]

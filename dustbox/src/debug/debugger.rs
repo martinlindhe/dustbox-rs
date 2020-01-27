@@ -50,7 +50,7 @@ impl Debugger {
             println!(
                 "Breakpoint reached, ip = {:04X}:{:04X}",
                 self.machine.cpu.get_r16(R::CS),
-                self.machine.cpu.regs.ip
+                self.machine.cpu.regs.eip
             );
             return true;
         }
@@ -87,8 +87,8 @@ impl Debugger {
     pub fn step_over(&mut self) {
         let mut decoder = Decoder::default();
         let cs = self.machine.cpu.get_r16(R::CS);
-        let op = decoder.get_instruction_info(&mut self.machine.mmu, cs, self.machine.cpu.regs.ip);
-        let dst = MemoryAddress::RealSegmentOffset(cs, self.machine.cpu.regs.ip + op.bytes.len() as u16);
+        let op = decoder.get_instruction_info(&mut self.machine.mmu, cs, self.machine.cpu.regs.eip);
+        let dst = MemoryAddress::RealSegmentOffset(cs, self.machine.cpu.regs.eip + op.bytes.len() as u32);
         println!("Step-over running to {:04X}:{:04X}", dst.segment(), dst.offset());
 
         let mut cnt = 0;
@@ -113,7 +113,7 @@ impl Debugger {
 
     pub fn disasm_n_instructions_to_text(&mut self, n: usize) -> String {
         let mut decoder = Decoder::default();
-        decoder.disassemble_block_to_str(&mut self.machine.mmu, self.machine.cpu.get_r16(R::CS), self.machine.cpu.regs.ip, n)
+        decoder.disassemble_block_to_str(&mut self.machine.mmu, self.machine.cpu.get_r16(R::CS), self.machine.cpu.regs.eip, n)
     }
 
     pub fn dump_memory(&self, filename: &str, base: u32, len: u32) -> Result<usize, IoError> {
@@ -305,7 +305,7 @@ impl Debugger {
             }
             "d" | "disasm" => {
                 let mut decoder = Decoder::default();
-                let op = decoder.get_instruction_info(&mut self.machine.mmu, self.machine.cpu.get_r16(R::CS), self.machine.cpu.regs.ip);
+                let op = decoder.get_instruction_info(&mut self.machine.mmu, self.machine.cpu.get_r16(R::CS), self.machine.cpu.regs.eip);
                 println!("{:?}", op);
                 println!("{}", op);
             }
@@ -410,11 +410,11 @@ impl Debugger {
 
     fn show_flat_address(&mut self) {
         let offset = self.machine.cpu.get_address();
-        let rom_offset = offset - u32::from(self.machine.rom_base.offset()) + 0x100;
+        let rom_offset = offset - self.machine.rom_base.offset() + 0x100;
         println!(
             "{:04X}:{:04X} is {:06X}.  rom offset is 0000:0100, or {:06X}",
             self.machine.cpu.get_r16(R::CS),
-            self.machine.cpu.regs.ip,
+            self.machine.cpu.regs.eip,
             offset,
             rom_offset
         );
@@ -428,7 +428,7 @@ impl Debugger {
                 match self.parse_register_hex_string(&x[0..pos]) {
                     Ok(segment) => {
                         match self.parse_register_hex_string(&x[pos+1..]) {
-                            Ok(offset) => Ok(MemoryAddress::RealSegmentOffset(segment as u16, offset as u16).value()),
+                            Ok(imm) => Ok(MemoryAddress::RealSegmentOffset(segment as u16, imm as u32).value()),
                             Err(v) => Err(v),
                         }
                     },
@@ -479,7 +479,7 @@ impl Debugger {
                        self.machine.cpu.get_r32(R::EAX),
                        self.machine.cpu.get_r32(R::ESI),
                        self.machine.cpu.get_r16(R::DS),
-                       self.machine.cpu.regs.ip,
+                       self.machine.cpu.regs.eip,
                        self.machine.cpu.instruction_count)
                 .as_ref();
         res += format!("EBX:{:08X}  EDI:{:08X}  CS:{:04X}  fl:{:04X}\n",

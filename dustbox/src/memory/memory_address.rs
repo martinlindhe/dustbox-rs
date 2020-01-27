@@ -5,7 +5,7 @@ use std::fmt;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MemoryAddress {
     /// a real mode segment:offset pair (0x0_0000 - 0xF_FFFF)
-    RealSegmentOffset(u16, u16),
+    RealSegmentOffset(u16, u32),
 
     /// a long segment:offset pair (0x0000_0000 - 0xFFFF_FFFF)
     LongSegmentOffset(u16, u32),
@@ -49,8 +49,8 @@ impl MemoryAddress {
     /// translates a segment:offset pair to a physical (flat) address
     pub fn value(self) -> u32 {
         match self {
-            MemoryAddress::RealSegmentOffset(seg, off) => (u32::from(seg) << 4) + u32::from(off),
-            MemoryAddress::LongSegmentOffset(seg, off) => (u32::from(seg) << 16) + u32::from(off),
+            MemoryAddress::RealSegmentOffset(seg, imm) => ((seg as u32) << 4).wrapping_add(imm),
+            MemoryAddress::LongSegmentOffset(seg, imm) => ((seg as u32) << 16).wrapping_add(imm),
             _ => unreachable!(),
         }
     }
@@ -63,19 +63,19 @@ impl MemoryAddress {
         }
     }
 
-    pub fn offset(self) -> u16 {
+    pub fn offset(self) -> u32 {
         match self {
-            MemoryAddress::RealSegmentOffset(_, off) => off,
-            MemoryAddress::LongSegmentOffset(_, off) => off as u16, // XXX
+            MemoryAddress::RealSegmentOffset(_, off) => off as u32,
+            MemoryAddress::LongSegmentOffset(_, off) => off,
             _ => unreachable!(),
         }
     }
 
     /// set offset to `n`
-    pub fn set_offset(&mut self, n: u16) {
+    pub fn set_offset(&mut self, n: u32) {
         match *self {
             MemoryAddress::RealSegmentOffset(_, ref mut off) => *off = n,
-            MemoryAddress::LongSegmentOffset(_, ref mut off) => *off = n as u32, // XXX
+            MemoryAddress::LongSegmentOffset(_, ref mut off) => *off = n,
             _ => unreachable!(),
         }
     }
@@ -83,7 +83,7 @@ impl MemoryAddress {
     /// add `n` to offset
     pub fn add_offset(&mut self, n: u16) {
         match *self {
-            MemoryAddress::RealSegmentOffset(_, ref mut off) => *off += n,
+            MemoryAddress::RealSegmentOffset(_, ref mut off) => *off += n as u32,
             MemoryAddress::LongSegmentOffset(_, ref mut off) => *off += n as u32,
             _ => unreachable!(),
         }
@@ -119,7 +119,7 @@ impl MemoryAddress {
     /// increase offset by n
     pub fn inc_n(&mut self, n: u16) {
         match *self {
-            MemoryAddress::RealSegmentOffset(_, ref mut off) => *off += n,
+            MemoryAddress::RealSegmentOffset(_, ref mut off) => *off += n as u32,
             MemoryAddress::LongSegmentOffset(_, ref mut off) => *off += n as u32,
             _ => unreachable!(),
         }

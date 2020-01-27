@@ -85,7 +85,7 @@ fn can_int10_put_pixel() {
     machine.execute_instruction(); // trigger the interrupt
     machine.execute_instructions(6);
     machine.execute_instruction(); // trigger the interrupt
-    assert_eq!(0x0113, machine.cpu.regs.ip);
+    assert_eq!(0x0113, machine.cpu.regs.eip);
 
     let frame = machine.gpu().render_frame(&machine.mmu);
     let mut img = frame.draw_image();
@@ -119,7 +119,7 @@ let mut machine = Machine::deterministic();
     machine.execute_instruction(); // trigger the interrupt
     machine.execute_instructions(6);
     machine.execute_instruction(); // trigger the interrupt
-    assert_eq!(0x0112, machine.cpu.regs.ip);
+    assert_eq!(0x0112, machine.cpu.regs.eip);
 
     let frame = machine.gpu().render_frame(&machine.mmu);
     let mut img = frame.draw_image();

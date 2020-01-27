@@ -249,7 +249,7 @@ impl AffectedFlags {
             Op::Add8 | Op::Add16 | Op::Add32 | Op::Adc8 | Op::Adc16 | Op::Adc32 |
             Op::Sub8 | Op::Sub16 | Op::Sub32 | Op::Sbb8 | Op::Sbb16 | Op::Sbb32 |
             Op::Cmp8 | Op::Cmp16 | Op::Cmp32 | Op::Neg8 | Op::Neg16 | Op::Neg32 |
-            Op::Shrd | Op::Cmpsw =>
+            Op::Shrd | Op::Cmpsw16 | Op::Cmpsw32 =>
                 AffectedFlags{c:1, s:1, z:1, a:1, p:1, o:1, d:0, i:0}.mask(), // C A S Z P O
 
             Op::Xor8 | Op::Xor16 | Op::Xor32 | Op::Test8 | Op::Test16 | Op::Test32 |
@@ -548,8 +548,8 @@ fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruc
         Op::Mov32 => { vec!(
             Instruction::new2(op.clone(), Parameter::Reg32(R::EAX), Parameter::Imm32(rng.gen())),
         )}
-        Op::Cmpsw => { vec!(
-            // compare word at address DS:(E)SI with byte at address ES:(E)DI;
+        Op::Cmpsw16 => { vec!(
+            // compare word at address DS:SI with byte at address ES:DI
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::SI), Parameter::Imm16(0x3030)),
             Instruction::new2(Op::Mov16, Parameter::Ptr16Amode(Segment::Default, AMode::SI), Parameter::Imm16(rng.gen())),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::DI), Parameter::Imm16(0x3040)),

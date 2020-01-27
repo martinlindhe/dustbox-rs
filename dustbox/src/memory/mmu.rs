@@ -39,15 +39,15 @@ impl MMU {
     }
 
     /// reads a sequence of data from memory
-    pub fn read(&self, seg: u16, offset: u16, length: usize) -> Vec<u8> {
-        let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+    pub fn read(&self, seg: u16, imm: u32, length: usize) -> Vec<u8> {
+        let addr = MemoryAddress::RealSegmentOffset(seg, imm).value();
         Vec::from(self.memory.read(addr, length))
     }
 
     /// reads a sequence of data until a NULL byte is found
-    pub fn readz(&self, seg: u16, offset: u16) -> Vec<u8> {
+    pub fn readz(&self, seg: u16, imm: u32) -> Vec<u8> {
         let mut res = Vec::new();
-        let mut addr = MemoryAddress::RealSegmentOffset(seg, offset);
+        let mut addr = MemoryAddress::RealSegmentOffset(seg, imm);
         loop {
             let b = self.memory.read_u8(addr.value());
             if b == 0 {
@@ -60,9 +60,9 @@ impl MMU {
     }
 
     /// reads a sequence of text until a NULL byte is found
-    pub fn read_asciiz(&self, seg: u16, offset: u16) -> String {
+    pub fn read_asciiz(&self, seg: u16, imm: u32) -> String {
         let mut res = String::new();
-        let mut addr = MemoryAddress::RealSegmentOffset(seg, offset);
+        let mut addr = MemoryAddress::RealSegmentOffset(seg, imm);
         loop {
             let b = self.memory.read_u8(addr.value());
             if b == 0 {
@@ -75,9 +75,9 @@ impl MMU {
     }
 
     /// reads a sequence of text until a $ terminator is found
-    pub fn read_asciid(&self, seg: u16, offset: u16) -> String {
+    pub fn read_asciid(&self, seg: u16, imm: u32) -> String {
         let mut res = String::new();
-        let mut addr = MemoryAddress::RealSegmentOffset(seg, offset);
+        let mut addr = MemoryAddress::RealSegmentOffset(seg, imm);
         loop {
             let b = self.memory.read_u8(addr.value());
             if b == b'$' {
@@ -97,38 +97,46 @@ impl MMU {
         v
     }
 
-    pub fn read_u8(&self, seg: u16, offset: u16) -> u8 {
-        let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+    pub fn read_u8(&self, seg: u16, imm: u32) -> u8 {
+        let addr = MemoryAddress::RealSegmentOffset(seg, imm).value();
+        if addr > self.memory.data.len() as u32 {
+            panic!("read_u8 FATAL out of bounds read from {:04X}:{:04X} == {:06X}", seg, imm, addr);
+            return 0;
+        }
         let v = self.memory.read_u8(addr);
         if DEBUG_MMU {
-            println!("mmu.read_u8 from ({:04X}:{:04X} == {:06X}) = {:02X}", seg, offset, addr, v);
+            println!("mmu.read_u8 from ({:04X}:{:04X} == {:06X}) = {:02X}", seg, imm, addr, v);
         }
         v
     }
 
-    pub fn read_u16(&self, seg: u16, offset: u16) -> u16 {
-        let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+    pub fn read_u16(&self, seg: u16, imm: u32) -> u16 {
+        let addr = MemoryAddress::RealSegmentOffset(seg, imm).value();
+        if addr > self.memory.data.len() as u32 {
+            panic!("read_u8 FATAL out of bounds read from {:04X}:{:04X} == {:06X}", seg, imm, addr);
+            return 0;
+        }
         let v = self.memory.read_u16(addr);
         if DEBUG_MMU {
-            println!("mmu.read_u16 from ({:04X}:{:04X} == {:06X}) = {:04X}", seg, offset, addr, v);
+            println!("mmu.read_u16 from ({:04X}:{:04X} == {:06X}) = {:04X}", seg, imm, addr, v);
         }
         v
     }
 
     /// reads a 16-bit value from a 32-bit offset
-    pub fn read_u16_32(&self, seg: u16, offset: u32) -> u16 {
-        let addr = MemoryAddress::LongSegmentOffset(seg, offset).value();
+    pub fn read_u16_32(&self, seg: u16, imm: u32) -> u16 {
+        let addr = MemoryAddress::LongSegmentOffset(seg, imm).value();
         let v = self.memory.read_u16(addr);
         if DEBUG_MMU {
-            println!("mmu.read_u16_32 from ({:04X}:{:04X} == {:06X}) = {:04X}", seg, offset, addr, v);
+            println!("mmu.read_u16_32 from ({:04X}:{:04X} == {:06X}) = {:04X}", seg, imm, addr, v);
         }
         v
     }
 
-    pub fn write_u8(&mut self, seg: u16, offset: u16, data: u8) {
-        let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+    pub fn write_u8(&mut self, seg: u16, imm: u32, data: u8) {
+        let addr = MemoryAddress::RealSegmentOffset(seg, imm).value();
         if DEBUG_MMU {
-            println!("mmu.write_u8 to ({:04X}:{:04X} == {:06X}) = {:02X}", seg, offset, addr, data);
+            println!("mmu.write_u8 to ({:04X}:{:04X} == {:06X}) = {:02X}", seg, imm, addr, data);
         }
         self.memory.write_u8(addr, data);
     }
@@ -143,15 +151,15 @@ impl MMU {
     }
 
     /// writes a sequence of data to memory
-    pub fn write(&mut self, seg: u16, offset: u16, data: &[u8]) {
-        let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+    pub fn write(&mut self, seg: u16, imm: u32, data: &[u8]) {
+        let addr = MemoryAddress::RealSegmentOffset(seg, imm).value();
         self.memory.write(addr, data);
     }
 
-    pub fn write_u16(&mut self, seg: u16, offset: u16, data: u16) {
-        let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+    pub fn write_u16(&mut self, seg: u16, imm: u32, data: u16) {
+        let addr = MemoryAddress::RealSegmentOffset(seg, imm).value();
         if DEBUG_MMU {
-            println!("mmu.write_u16 to ({:04X}:{:04X} == {:06X}) = {:02X}", seg, offset, addr, data);
+            println!("mmu.write_u16 to ({:04X}:{:04X} == {:06X}) = {:02X}", seg, imm, addr, data);
         }
         self.memory.write_u16(addr, data);
     }
@@ -165,8 +173,8 @@ impl MMU {
         addr.inc_u16();
     }
 
-    pub fn read_u32(&self, seg: u16, offset: u16) -> u32 {
-        let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+    pub fn read_u32(&self, seg: u16, imm: u32) -> u32 {
+        let addr = MemoryAddress::RealSegmentOffset(seg, imm).value();
         let v = self.memory.read_u32(addr);
         if DEBUG_MMU {
             println!("mmu.read_u32 from {:06X} = {:04X}", addr, v);
@@ -174,9 +182,9 @@ impl MMU {
         v
     }
 
-    pub fn write_u32(&mut self, seg: u16, offset: u16, data: u32) {
+    pub fn write_u32(&mut self, seg: u16, imm: u32, data: u32) {
         // TODO take MemoryAddress parameter directly
-        let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
+        let addr = MemoryAddress::RealSegmentOffset(seg, imm).value();
         if DEBUG_MMU {
             println!("mmu.write_u32 to {:06X} = {:08X}", addr, data);
         }
@@ -193,11 +201,11 @@ impl MMU {
     }
 
     /// read interrupt vector, returns segment, offset
-    pub fn read_vec(&self, v: u16) -> (u16, u16) {
+    pub fn read_vec(&self, v: u16) -> (u16, u32) {
         // XXX better naming
-        let v_abs = u32::from(v) << 2;
+        let v_abs = (v as u32) << 2;
         let seg = self.memory.read_u16(v_abs);
-        let off = self.memory.read_u16(v_abs + 2);
+        let off = self.memory.read_u16(v_abs + 2) as u32;
         if DEBUG_VEC {
             println!("mmu.read_vec: {:04X} = {:04X}:{:04X}", v, seg, off);
         }
@@ -208,7 +216,7 @@ impl MMU {
     pub fn write_vec(&mut self, v: u16, data: MemoryAddress) {
         let v_abs = u32::from(v) << 2;
         self.memory.write_u16(v_abs, data.segment());
-        self.memory.write_u16(v_abs + 2, data.offset());
+        self.memory.write_u16(v_abs + 2, data.offset() as u16);
         if DEBUG_VEC {
             println!("mmu.write_vec: {:04X} = {:04X}:{:04X}", v, data.segment(), data.offset());
         }

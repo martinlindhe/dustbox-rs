@@ -246,7 +246,7 @@ impl ProgramTracer {
         self.trace_r16(R::SS, machine.cpu.get_r16(R::SS));
 
         // tell tracer to start at CS:IP
-        let ma = MemoryAddress::RealSegmentOffset(machine.cpu.get_r16(R::CS), machine.cpu.regs.ip);
+        let ma = MemoryAddress::RealSegmentOffset(machine.cpu.get_r16(R::CS), machine.cpu.regs.eip);
         self.seen_addresses.push(SeenAddress{ma, visited: false, sources: SeenSources::default()});
 
         println!("; starting tracing disassembly at {}", ma);
@@ -298,7 +298,7 @@ impl ProgramTracer {
         // if any bytes are not known to occupy, allows for us to show them as data
         for ma in &self.visited_addresses {
             // translate address into physical offset
-            let abs = (ma.value() - u32::from(machine.rom_base.offset())) as usize;
+            let abs = (ma.value() - machine.rom_base.offset()) as usize;
 
             let ii = decoder.get_instruction_info(&mut machine.mmu, ma.segment(), ma.offset());
 
@@ -322,7 +322,7 @@ impl ProgramTracer {
         let mut block_start = MemoryAddress::Unset;
         let mut block_last = MemoryAddress::Unset;
         for ofs in (machine.rom_base.offset() as usize)..(machine.rom_base.offset() as usize + machine.rom_length) {
-            let adr = MemoryAddress::RealSegmentOffset(machine.rom_base.segment(), ofs as u16);
+            let adr = MemoryAddress::RealSegmentOffset(machine.rom_base.segment(), ofs as u32);
 
             let mut found = false;
             for ab in &self.accounted_bytes {
@@ -338,7 +338,7 @@ impl ProgramTracer {
 
                 // determine if last byte was in this range
                 if let MemoryAddress::RealSegmentOffset(_seg, off) = block_last {
-                    if off != adr.offset().wrapping_sub(1) && !block.is_empty() {
+                    if (off as u32) != adr.offset().wrapping_sub(1) && !block.is_empty() {
                         unaccounted_bytes.push(GuessedDataAddress{kind: GuessedDataType::UnknownBytes(block.clone()), address: block_start});
                         block.clear();
                     }
@@ -418,7 +418,7 @@ impl ProgramTracer {
             }
             _ => {
                 let v: Vec<&TraceAnnotation> = self.annotations.iter()
-                    .filter(|a| a.ma == MemoryAddress::RealSegmentOffset(ii.segment as u16, ii.offset as u16))
+                    .filter(|a| a.ma == MemoryAddress::RealSegmentOffset(ii.segment as u16, ii.offset))
                     .collect();
 
                 let strs: Vec<String> = v.iter().map(|ta| ta.note.to_string()).collect();
@@ -530,19 +530,19 @@ impl ProgramTracer {
     }
 
     // learns of a new address to probe later (creates a xref)
-    fn learn_address(&mut self, seg: u16, offset: u16, src: MemoryAddress, kind: AddressUsageKind) {
-        let ma = MemoryAddress::RealSegmentOffset(seg, offset);
+    fn learn_address(&mut self, seg: u16, imm: u32, src: MemoryAddress, kind: AddressUsageKind) {
+        let ma = MemoryAddress::RealSegmentOffset(seg, imm);
         for seen in &mut self.seen_addresses {
             if seen.ma.value() == ma.value() {
                 if DEBUG_LEARN_ADDRESS {
-                    eprintln!("learn_address append {:?} [{:04X}:{:04X}]", kind, seg, offset);
+                    eprintln!("learn_address append {:?} [{:04X}:{:04X}]", kind, seg, imm);
                 }
                 seen.sources.sources.push(SeenSource{address: src, kind});
                 return;
             }
         }
         if DEBUG_LEARN_ADDRESS {
-            eprintln!("learn_address new {:?} [{:04X}:{:04X}]", kind, seg, offset);
+            eprintln!("learn_address new {:?} [{:04X}:{:04X}]", kind, seg, imm);
         }
         self.seen_addresses.push(SeenAddress{ma, visited: false, sources: SeenSources::from_source(SeenSource{address: src, kind})});
     }
@@ -700,7 +700,7 @@ impl ProgramTracer {
                 Op::Retn | Op::Retf => break,
                 Op::JmpNear | Op::JmpFar | Op::JmpShort => {
                     match ii.instruction.params.dst {
-                        Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Jump),
+                        Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm as u32, ma, AddressUsageKind::Jump),
                         Parameter::Reg16(_) => {}, // ignore "jmp bx"
                         Parameter::Ptr16(_, _) => {}, // ignore "jmp [0x4422]"
                         Parameter::Ptr16Imm(_, _) => {}, // ignore "jmp far 0xFFFF:0x0000"
@@ -716,7 +716,7 @@ impl ProgramTracer {
                 Op::Ja | Op::Jc | Op::Jcxz | Op::Jecxz | Op::Jg | Op::Jl |
                 Op::Jna | Op::Jnc | Op::Jng | Op::Jnl | Op::Jno | Op::Jns | Op::Jnz |
                 Op::Jo | Op::Jpe | Op::Jpo | Op::Js | Op::Jz => match ii.instruction.params.dst {
-                    Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Branch),
+                    Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm as u32, ma, AddressUsageKind::Branch),
                     Parameter::Reg16(_) => {}, // ignore "call bp"
                     Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
                     Parameter::Ptr16AmodeS8(_, _, _) => {}, // ignore "call [di+0x10]
@@ -724,7 +724,8 @@ impl ProgramTracer {
                     _ => eprintln!("ERROR2: unhandled dst type {:?}: {}", ii.instruction, ii.instruction),
                 }
                 Op::CallNear | Op::CallFar => match ii.instruction.params.dst {
-                    Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Call),
+                    Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm as u32, ma, AddressUsageKind::Call),
+                    Parameter::Imm32(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Call),
                     Parameter::Reg16(_) => {}, // ignore "call bp"
                     Parameter::Ptr16(_, _) => {}, // ignore "call [0x4422]"
                     Parameter::Ptr16Imm(_, _) => {} // ignore "call 0x4422:0x3050"
@@ -752,8 +753,8 @@ impl ProgramTracer {
                         self.print_register_state();
                         if let Some(ds) = self.clean_r(R::DS) {
                             if let Some(dx) = self.clean_r(R::DX) {
-                                self.learn_address(ds, dx, ma, AddressUsageKind::DollarString);
-                                self.dollar_strings.push(MemoryAddress::RealSegmentOffset(ds, dx));
+                                self.learn_address(ds, dx as u32, ma, AddressUsageKind::DollarString);
+                                self.dollar_strings.push(MemoryAddress::RealSegmentOffset(ds, dx as u32));
                             }
                         }
                     }
@@ -921,32 +922,32 @@ impl ProgramTracer {
                                 }
                             }
                         }
-                        Parameter::Ptr8(seg, offset) => {
+                        Parameter::Ptr8(seg, imm) => {
                             // mov   [cs:0x0202], al
                             if seg == Segment::CS {
-                                self.learn_address(machine.cpu.regs.get_r16(R::CS), offset, ma, AddressUsageKind::MemoryByte);
+                                self.learn_address(machine.cpu.regs.get_r16(R::CS), imm as u32, ma, AddressUsageKind::MemoryByte);
                             }
                         },
-                        Parameter::Ptr16(seg, offset) => {
+                        Parameter::Ptr16(seg, imm) => {
                             // mov   [cs:0x0202], ax
                             if seg == Segment::CS {
-                                self.learn_address(machine.cpu.regs.get_r16(R::CS), offset, ma, AddressUsageKind::MemoryWord);
+                                self.learn_address(machine.cpu.regs.get_r16(R::CS), imm as u32, ma, AddressUsageKind::MemoryWord);
                             }
                         },
                         _ => {}
                     }
 
                     match ii.instruction.params.src {
-                        Parameter::Ptr8(seg, offset) => {
+                        Parameter::Ptr8(seg, imm) => {
                             // mov   al, [cs:0x0202]
                             if seg == Segment::CS {
-                                self.learn_address(machine.cpu.regs.get_r16(R::CS), offset, ma, AddressUsageKind::MemoryByte);
+                                self.learn_address(machine.cpu.regs.get_r16(R::CS), imm as u32, ma, AddressUsageKind::MemoryByte);
                             }
                         },
-                        Parameter::Ptr16(seg, offset) => {
+                        Parameter::Ptr16(seg, imm) => {
                             // mov   ax, [cs:0x0202]
                             if seg == Segment::CS {
-                                self.learn_address(machine.cpu.regs.get_r16(R::CS), offset, ma, AddressUsageKind::MemoryWord);
+                                self.learn_address(machine.cpu.regs.get_r16(R::CS), imm as u32, ma, AddressUsageKind::MemoryWord);
                             }
                         },
                         _ => {}

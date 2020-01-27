@@ -126,7 +126,8 @@ impl Component for DOS {
                 
                 let mut count = 0;
                 loop {
-                    let b = mmu.read_u8(cpu.get_r16(R::DS), cpu.get_r16(R::DX) + count);
+                    let imm = (cpu.get_r16(R::DX) + count) as u32;
+                    let b = mmu.read_u8(cpu.get_r16(R::DS), imm);
                     count += 1;
                     if b as char == '$' {
                         break;
@@ -239,9 +240,9 @@ impl Component for DOS {
             0x35 => {
                 // DOS 2+ - GET INTERRUPT VECTOR
                 let int = cpu.get_r8(R::AL);
-                let (seg, off) = mmu.read_vec(u16::from(int));
+                let (seg, imm) = mmu.read_vec(u16::from(int));
                 cpu.set_r16(R::ES, seg);
-                cpu.set_r16(R::BX, off);
+                cpu.set_r16(R::BX, imm as u16);
             }
             0x3D => {
                 // DOS 2+ - OPEN - OPEN EXISTING FILE
@@ -250,7 +251,7 @@ impl Component for DOS {
                 // DS:DX -> ASCIZ filename
                 let ds = cpu.get_r16(R::DS);
                 let dx = cpu.get_r16(R::DX);
-                let data = mmu.readz(ds, dx);
+                let data = mmu.readz(ds, dx as u32);
                 let filename = cp437::to_utf8(&data);
 
                 // XXX need to find file match with varying case
@@ -271,7 +272,7 @@ impl Component for DOS {
             0x3E => {
                 // DOS 2+ - CLOSE - CLOSE FILE
                 let handle = cpu.get_r16(R::BX); // file handle
-                if let Some(_) = self.get_path_from_handle(handle) {
+                if self.get_path_from_handle(handle).is_some() {
                     println!("CLOSE - CLOSE FILE, handle {:04X}", handle);
                     self.file_handles.remove(&handle);
                     // CF clear if successful and AX destroyed
@@ -298,10 +299,10 @@ impl Component for DOS {
                         let mut handle = f.take(len as u64);
                         match handle.read(&mut buf) {
                             Ok(read_bytes) => {
-                                // XXX 3. write N bytes to DS:DX
-                                mmu.write(ds, dx, &buf);
+                                // write N bytes to DS:DX
+                                mmu.write(ds, dx as u32, &buf);
 
-                                // XXX set AX to number of bytes that was read
+                                // set AX to number of bytes that was read
                                 cpu.regs.flags.carry = false;
                                 cpu.set_r16(R::AX, read_bytes as u16);
                                 if read_bytes != len {
@@ -341,7 +342,7 @@ impl Component for DOS {
                         ds,
                         dx);
 
-                let data = mmu.read(ds, dx, count as usize);
+                let data = mmu.read(ds, dx as u32, count as usize);
                 println!("  -- DATA: {} {}", hex_bytes(&data), bytes_to_ascii(&data));
             }
             0x43 => {
@@ -463,7 +464,7 @@ impl Component for DOS {
                 // AX = error code (01h,02h,05h,08h,0Ah,0Bh) (see #01680 at AH=59h)
 
                 let mode = cpu.get_r8(R::AL);
-                let name = mmu.read_asciiz(cpu.get_r16(R::DS), cpu.get_r16(R::DX));
+                let name = mmu.read_asciiz(cpu.get_r16(R::DS), cpu.get_r16(R::DX) as u32);
                 println!("XXX DOS - EXEC - LOAD AND/OR EXECUTE PROGRAM {}, mode {:02X}", name, mode);
             }
             0x4C => {
