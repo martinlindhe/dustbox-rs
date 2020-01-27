@@ -168,6 +168,31 @@ fn can_execute_add16() {
 }
 
 #[test]
+fn can_execute_mov8_addressing() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xBB, 0x02, 0x00,       // mov bx,0x2
+
+        // let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32    ==
+        // mmu.read_u8 from (085F:FFFFC848 == 004E38) = 00
+
+        // let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32     ==
+        // mmu.read_u8 from (085F:C848 == 014E38) = 00          seems wrong, shold go into prev seg?
+
+        // XXX with signed calc...
+        //0x8A, 0x87, 0x46, 0xC8, // mov al,[bx-0x37ba]
+
+
+        0xC6, 0x47, 0xD0, 0xD0,     // mov byte [bx-0x30],0xd0
+        0x8A, 0x47, 0xD0,           // mov al,[bx-0x30]
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    machine.execute_instructions(3);
+    assert_eq!(0xD0, machine.cpu.get_r8(R::AL)); // XXX
+}
+
+#[test]
 fn can_execute_mov_r8() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![

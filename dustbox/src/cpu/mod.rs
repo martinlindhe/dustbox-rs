@@ -257,7 +257,7 @@ impl CPU {
 
     fn read_rel8(&mut self, mmu: &MMU) -> u16 {
         let val = self.read_u8(mmu) as i8;
-        (self.regs.eip as i16 + i16::from(val)) as u16
+        (self.regs.eip as i16 + (val as i16)) as u16
     }
 
     fn read_rel16(&mut self, mmu: &MMU) -> u16 {
@@ -342,12 +342,12 @@ impl CPU {
             }
             Parameter::Ptr8AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32;
                 mmu.read_u8(seg, imm) as usize
             }
             Parameter::Ptr8AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32;
                 mmu.read_u8(seg, imm) as usize
             }
             Parameter::Ptr16(seg, imm) => mmu.read_u16(self.segment(seg), imm as u32) as usize,
@@ -358,12 +358,12 @@ impl CPU {
             }
             Parameter::Ptr16AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32;
                 mmu.read_u16(seg, imm) as usize
             }
             Parameter::Ptr16AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32;
                 mmu.read_u16(seg, imm) as usize
             }
             Parameter::Ptr32(seg, imm) => mmu.read_u32(self.segment(seg), imm as u32) as usize,
@@ -374,7 +374,7 @@ impl CPU {
             }
             Parameter::Ptr32AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32;
                 mmu.read_u32(seg, imm) as usize
             }
             _ => {
@@ -401,13 +401,13 @@ impl CPU {
             }
             Parameter::Ptr8AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32;
                 self.debug_write_u8(seg, imm, data);
                 mmu.write_u8(seg, imm, data);
             }
             Parameter::Ptr8AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32;
                 self.debug_write_u8(seg, imm, data);
                 mmu.write_u8(seg, imm, data);
             }
@@ -437,13 +437,13 @@ impl CPU {
             }
             Parameter::Ptr16AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32;
                 self.debug_write_u16(seg, imm, data);
                 mmu.write_u16(seg, imm, data);
             }
             Parameter::Ptr16AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32;
                 self.debug_write_u16(seg, imm, data);
                 mmu.write_u16(seg, imm, data);
             }
@@ -467,13 +467,13 @@ impl CPU {
             }
             Parameter::Ptr32AmodeS8(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32;
                 self.debug_write_u32(seg, imm, data);
                 mmu.write_u32(seg, imm, data);
             }
             Parameter::Ptr32AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
-                let imm = (self.amode(amode) as i32).wrapping_add(imm as i32) as u32;
+                let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32;
                 self.debug_write_u32(seg, imm, data);
                 mmu.write_u32(seg, imm, data);
             }
