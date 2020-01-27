@@ -60,17 +60,26 @@ impl Instruction {
 
     // used to decorate tracer
     pub fn is_ret(&self) -> bool {
-        self.command == Op::Retn || self.command == Op::Retf || self.command == Op::RetImm16
+        match self.command {
+            Op::Retn | Op::Retf | Op::RetImm16 => true,
+            _ => false,
+        }
     }
 
     // used to decorate tracer
     pub fn is_loop(&self) -> bool {
-        self.command == Op::Loop || self.command == Op::Loope || self.command == Op::Loopne
+        match self.command {
+            Op::Loop16 |  Op::Loop32 | Op::Loop16e | Op::Loop32e | Op::Loop16ne | Op::Loop32ne => true,
+            _ => false,
+        }
     }
 
     // used to decorate tracer
     pub fn is_unconditional_jmp(&self) -> bool {
-        self.command == Op::JmpShort || self.command == Op::JmpNear || self.command == Op::JmpFar
+        match self.command {
+            Op::JmpShort | Op::JmpNear | Op::JmpFar => true,
+            _ => false,
+        }
     }
 
     fn op_size_from_op(op: &Op) -> OperandSize {

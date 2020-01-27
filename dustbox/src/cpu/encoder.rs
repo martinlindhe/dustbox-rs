@@ -456,7 +456,7 @@ impl Encoder {
                 }
             }
             Op::Popf => out.push(0x9D),
-            Op::Loop => {
+            Op::Loop16 => {
                 if let Parameter::Imm16(_imm16) = op.params.dst {
                     // XXX param should be untouched S8 !!!
                     out.push(0xE2);
@@ -817,6 +817,8 @@ impl Encoder {
                         }
                         out.push(i as u8);
                         out.push((i >> 8) as u8);
+                        out.push((i >> 16) as u8);
+                        out.push((i >> 24) as u8);
                     } else {
                         out.push(0x85); // test r/m32, r32
                         out.extend(self.encode_rm_r(&ins.params));

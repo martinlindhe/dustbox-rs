@@ -91,6 +91,19 @@ fn can_disassemble_relative_short_jumps() {
                res);
 }
 
+#[test]
+fn can_disassemble_loop() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xE2, 0x0E,         // loop 0x110
+        0x67, 0xE2, 0x0B,   // loop 0x110,ecx
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
+    assert_eq!("[085F:0100] E20E             Loop16   0x0110
+[085F:0102] 67E20B           Loop32   0x0110", res);
+}
 
 #[test]
 fn can_disassemble_jcxz() {

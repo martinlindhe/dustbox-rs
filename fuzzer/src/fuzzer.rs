@@ -130,7 +130,7 @@ fn fuzz(runner: &CodeRunner, data: &[u8], op_count: usize, affected_flag_mask: u
 
     let runner_regs = prober_reg_map(&output);
     if runner_regs.is_empty() {
-        println!("FATAL: no vm regs from vm output: {}", output.red());
+        println!("FATAL: no regs from runner output: {}", output.red());
         return false;
     }
 
@@ -220,7 +220,7 @@ impl AffectedFlags {
             Op::Push16 | Op::Pop16 | Op::Not8 | Op::Not16 | Op::Not32 |
             Op::Div8 | Op::Div16 | Op::Div32 | Op::Idiv8 | Op::Idiv16 | Op::Idiv32 | Op::Xchg8 | Op::Xchg16 |
             Op::Salc | Op::Cbw | Op::Cwd16 | Op::Lahf | Op::Lea16 | Op::Xlatb |
-            Op::Loop | Op::Loope | Op::Loopne =>
+            Op::Loop16 | Op::Loop16e | Op::Loop16ne =>
                 AffectedFlags{s:0, z:0, p:0, c:0, a:0, o:0, d:0, i:0}.mask(), // none
 
             Op::Bt | Op::Clc | Op::Cmc | Op::Stc =>
@@ -527,12 +527,12 @@ fn prober_setupcode() -> Vec<Instruction> {
 // returns a snippet used to mutate state for op
 fn get_mutator_snippet<RNG: Rng + ?Sized>(op: &Op, rng: &mut RNG) -> Vec<Instruction> {
     match *op {
-        Op::Loop => { vec!(
+        Op::Loop16 => { vec!(
             // XXX init cx, init dx. inc dx, loop -1
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::CX), Parameter::Imm16(rng.gen())),
             Instruction::new2(Op::Mov16, Parameter::Reg16(R::DX), Parameter::Imm16(rng.gen())),
             Instruction::new1(Op::Inc16, Parameter::Reg16(R::DX)),
-            Instruction::new1(Op::Loop, Parameter::Imm16(8)), // XXX to start of "inc dx" ???
+            Instruction::new1(op.clone(), Parameter::Imm16(8)), // XXX to start of "inc dx" ???
         )}
         Op::Push16 => { vec!(
             // tests push + pop

@@ -164,14 +164,17 @@ pub enum Op {
     /// Load dword at address DS:(E)SI into EAX.
     Lodsd,
 
-    /// Decrement count (cx); jump short if count ≠ 0.
-    Loop,
+    /// Decrement count (cx or ecx); jump short if count ≠ 0.
+    Loop16,
+    Loop32,
 
-    /// Decrement count (cx); jump short if count ≠ 0 and ZF = 1.
-    Loope,
+    /// Decrement count (cx or ecx); jump short if count ≠ 0 and ZF = 1.
+    Loop16e,
+    Loop32e,
 
-    /// Decrement count (cx); jump short if count ≠ 0 and ZF = 0.
-    Loopne,
+    /// Decrement count (cx or ecx); jump short if count ≠ 0 and ZF = 0.
+    Loop16ne,
+    Loop32ne,
 
     Mov8, Mov16, Mov32,
     Movsb, Movsw, Movsd,

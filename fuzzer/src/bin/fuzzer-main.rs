@@ -43,7 +43,7 @@ fn main() {
             .get_matches();
 
     let ops_to_fuzz = vec!(
-        Op::Shl16,
+        Op::Test32,
 
         //Op::Rol32, // Op::Rcl32,  // XXX not implemented in dustbox
         //Op::Ror32, // XXX carry flag diff vs WinXP
@@ -57,7 +57,7 @@ fn main() {
         // Op::Loop, // XXX need to keep relative offsets in decoder in order to encode back
 
         // TODO - EMULATION NOT IMPLEMENTED:
-        //Op::Adc32, Op::And32, Op::Or32, Op::Sbb32, Op::Test32, Op::Not32
+        //Op::Adc32, Op::And32, Op::Or32, Op::Sbb32, Op::Not32
 
         // TODO - ENCODING NOT IMPLEMENTED:
         //Op::Test32, Op::Cmpsw,

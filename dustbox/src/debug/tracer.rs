@@ -712,7 +712,7 @@ impl ProgramTracer {
                     // if unconditional branch, abort trace this path
                     break;
                 }
-                Op::Loop | Op::Loope | Op::Loopne |
+                Op::Loop16 | Op::Loop32 | Op::Loop16e | Op::Loop32e | Op::Loop16ne | Op::Loop32ne |
                 Op::Ja | Op::Jc | Op::Jcxz | Op::Jecxz | Op::Jg | Op::Jl |
                 Op::Jna | Op::Jnc | Op::Jng | Op::Jnl | Op::Jno | Op::Jns | Op::Jnz |
                 Op::Jo | Op::Jpe | Op::Jpo | Op::Js | Op::Jz => match ii.instruction.params.dst {

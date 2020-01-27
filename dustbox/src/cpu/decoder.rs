@@ -1708,15 +1708,24 @@ impl Decoder {
                 }
             }
             0xE0 => {
-                op.command = Op::Loopne;
+                op.command = match op.address_size {
+                    AddressSize::_16bit => Op::Loop16ne,
+                    AddressSize::_32bit => Op::Loop32ne,
+                };
                 op.params.dst = Parameter::Imm16(self.read_rel8(mmu));
             }
             0xE1 => {
-                op.command = Op::Loope;
+                op.command = match op.address_size {
+                    AddressSize::_16bit => Op::Loop16e,
+                    AddressSize::_32bit => Op::Loop32e,
+                };
                 op.params.dst = Parameter::Imm16(self.read_rel8(mmu));
             }
             0xE2 => {
-                op.command = Op::Loop;
+                op.command = match op.address_size {
+                    AddressSize::_16bit => Op::Loop16,
+                    AddressSize::_32bit => Op::Loop32,
+                };                
                 op.params.dst = Parameter::Imm16(self.read_rel8(mmu));
             }
             0xE3 => {

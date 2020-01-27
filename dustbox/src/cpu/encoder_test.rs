@@ -130,6 +130,14 @@ fn can_encode_test16() {
 }
 
 #[test]
+fn can_encode_test32() {
+    let mut op = Instruction::new2(Op::Test32, Parameter::Reg32(R::EAX), Parameter::Imm32(0x44332211));
+    op.op_size = OperandSize::_32bit;
+    assert_encdec(&op, "test eax,0x44332211", vec!(0x66, 0xA9, 0x11, 0x22, 0x33, 0x44));
+}
+
+
+#[test]
 fn can_encode_not8() {
     // r/m8
     let op = Instruction::new1(Op::Not8, Parameter::Reg8(R::BH));

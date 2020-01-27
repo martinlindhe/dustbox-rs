@@ -1528,7 +1528,7 @@ impl Machine {
                 };
                 self.cpu.set_r16(R::SI, si);
             }
-            Op::Loop => {
+            Op::Loop16 => {
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
@@ -1536,7 +1536,15 @@ impl Machine {
                     self.cpu.regs.ip = dst;
                 }
             }
-            Op::Loope => {
+            Op::Loop32 => {
+                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                let ecx = self.cpu.get_r32(R::ECX).wrapping_sub(1);
+                self.cpu.set_r32(R::ECX, ecx);
+                if ecx != 0 {
+                    self.cpu.regs.ip = dst;
+                }
+            }
+            Op::Loop16e => {
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
@@ -1544,11 +1552,27 @@ impl Machine {
                     self.cpu.regs.ip = dst;
                 }
             }
-            Op::Loopne => {
+            Op::Loop32e => {
+                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                let ecx = self.cpu.get_r32(R::ECX).wrapping_sub(1);
+                self.cpu.set_r32(R::ECX, ecx);
+                if ecx != 0 && self.cpu.regs.flags.zero {
+                    self.cpu.regs.ip = dst;
+                }
+            }
+            Op::Loop16ne => {
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 let cx = self.cpu.get_r16(R::CX).wrapping_sub(1);
                 self.cpu.set_r16(R::CX, cx);
                 if cx != 0 && !self.cpu.regs.flags.zero {
+                    self.cpu.regs.ip = dst;
+                }
+            }
+            Op::Loop32ne => {
+                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                let ecx = self.cpu.get_r32(R::ECX).wrapping_sub(1);
+                self.cpu.set_r32(R::ECX, ecx);
+                if ecx != 0 && !self.cpu.regs.flags.zero {
                     self.cpu.regs.ip = dst;
                 }
             }
@@ -2625,6 +2649,18 @@ impl Machine {
                 // set SF, ZF, PF according to result.
                 self.cpu.regs.flags.set_sign_u16(res);
                 self.cpu.regs.flags.set_zero_u16(res);
+                self.cpu.regs.flags.set_parity(res);
+            }
+            Op::Test32 => {
+                // two parameters
+                let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
+                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
+                let res = dst & src;
+                self.cpu.regs.flags.overflow = false;
+                self.cpu.regs.flags.carry = false;
+                // set SF, ZF, PF according to result.
+                self.cpu.regs.flags.set_sign_u32(res);
+                self.cpu.regs.flags.set_zero_u32(res);
                 self.cpu.regs.flags.set_parity(res);
             }
             Op::Xchg8 => {
