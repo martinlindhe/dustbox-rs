@@ -1136,7 +1136,12 @@ impl Decoder {
                 OperandSize::_32bit => Op::Movsd,
             },
             0xA6 => op.command = Op::Cmpsb,
-            0xA7 => op.command = Op::Cmpsw,
+            0xA7 => {
+                match op.address_size {
+                    AddressSize::_16bit => op.command = Op::Cmpsw16,
+                    AddressSize::_32bit => op.command = Op::Cmpsw32,
+                }
+            }
             0xA8 => {
                 // test AL, imm8
                 op.command = Op::Test8;
@@ -1835,7 +1840,7 @@ impl Decoder {
                     Op::Lodsb | Op::Lodsw | Op::Lodsd => {
                         op.repeat = RepeatMode::Rep;
                     }
-                    Op::Cmpsb | Op::Cmpsw |
+                    Op::Cmpsb | Op::Cmpsw16 | Op::Cmpsw32 |
                     Op::Scasb | Op::Scasw => {
                         op.repeat = RepeatMode::Repe;
                     }

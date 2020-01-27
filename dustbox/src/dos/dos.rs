@@ -186,7 +186,7 @@ impl Component for DOS {
                 let seg = cpu.get_r16(R::DS);
                 let off = cpu.get_r16(R::DX);
                 let int = cpu.get_r8(R::AL);
-                mmu.write_vec(u16::from(int), MemoryAddress::LongSegmentOffset(seg, off));
+                mmu.write_vec(u16::from(int), MemoryAddress::LongSegmentOffset(seg, off as u32));
             }
             0x2C => {
                 // DOS 1+ - GET SYSTEM TIME

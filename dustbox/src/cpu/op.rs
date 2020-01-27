@@ -49,7 +49,13 @@ pub enum Op {
     Cmc,
 
     Cmp8, Cmp16, Cmp32,
-    Cmpsb, Cmpsw,
+    Cmpsb,
+    
+    /// 16 bit opsize mode, 16 bit address size
+    Cmpsw16,
+
+    /// 16 bit opsize mode, 32 bit address size
+    Cmpsw32,
 
     /// Convert Word to Doubleword
     Cwd16, Cwde32,

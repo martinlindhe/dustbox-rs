@@ -100,7 +100,7 @@ impl Encoder {
             Op::Salc => out.push(0xD6),
             Op::Xlatb => out.push(0xD7),
             Op::Cmpsb => out.push(0xA6),
-            Op::Cmpsw => out.push(0xA7),
+            Op::Cmpsw16 | Op::Cmpsw32 => out.push(0xA7),
             Op::Aad => {
                 if let Parameter::Imm8(imm) = op.params.dst {
                     out.push(0xD5);

@@ -115,6 +115,16 @@ impl MMU {
         v
     }
 
+    /// reads a 16-bit value from a 32-bit offset
+    pub fn read_u16_32(&self, seg: u16, offset: u32) -> u16 {
+        let addr = MemoryAddress::LongSegmentOffset(seg, offset).value();
+        let v = self.memory.read_u16(addr);
+        if DEBUG_MMU {
+            println!("mmu.read_u16_32 from ({:04X}:{:04X} == {:06X}) = {:04X}", seg, offset, addr, v);
+        }
+        v
+    }
+
     pub fn write_u8(&mut self, seg: u16, offset: u16, data: u8) {
         let addr = MemoryAddress::RealSegmentOffset(seg, offset).value();
         if DEBUG_MMU {

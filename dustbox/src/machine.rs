@@ -943,7 +943,7 @@ impl Machine {
                 };
                 self.cpu.set_r16(R::DI, di);
             }
-            Op::Cmpsw => {
+            Op::Cmpsw16 => {
                 // no parameters
                 // Compare word at address DS:(E)SI with word at address ES:(E)DI
                 // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
@@ -963,6 +963,27 @@ impl Machine {
                     self.cpu.get_r16(R::DI).wrapping_sub(2)
                 };
                 self.cpu.set_r16(R::DI, di);
+            }
+            Op::Cmpsw32 => {
+                // no parameters
+                // Compare word at address DS:(E)SI with word at address ES:(E)DI
+                // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
+                let src = self.mmu.read_u16_32(self.cpu.segment(op.segment_prefix), self.cpu.get_r32(R::ESI)) as usize; // XXX
+                let dst = self.mmu.read_u16_32(self.cpu.get_r16(R::ES), self.cpu.get_r32(R::EDI)) as usize; // XXX
+                self.cpu.cmp16(dst, src);
+
+                let esi = if !self.cpu.regs.flags.direction {
+                    self.cpu.get_r32(R::ESI).wrapping_add(2)
+                } else {
+                    self.cpu.get_r32(R::ESI).wrapping_sub(2)
+                };
+                self.cpu.set_r32(R::ESI, esi);
+                let edi = if !self.cpu.regs.flags.direction {
+                    self.cpu.get_r32(R::EDI).wrapping_add(2)
+                } else {
+                    self.cpu.get_r32(R::EDI).wrapping_sub(2)
+                };
+                self.cpu.set_r32(R::EDI, edi);
             }
             Op::Cwd16 => {
                 // DX:AX ← sign-extend of AX.
