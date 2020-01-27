@@ -39,18 +39,19 @@ fn can_disassemble_lea() {
 }
 
 #[test]
-fn can_disassemble_segment_prefixed() {
+fn can_disassemble_mov() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
-        0x26, 0x88, 0x25, // mov [es:di],ah
-        0x26, 0x8A, 0x25, // mov ah,[es:di]
+        0x26, 0x88, 0x25,   // mov [es:di],ah
+        0x26, 0x8A, 0x25,   // mov ah,[es:di]
+        0x67, 0x88, 0x03,   // mov [ebx],al
     ];
     machine.load_executable(&code, 0x085F);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 3);
     assert_eq!("[085F:0100] 268825           Mov8     byte [es:di], ah
-[085F:0103] 268A25           Mov8     ah, byte [es:di]",
-               res);
+[085F:0103] 268A25           Mov8     ah, byte [es:di]
+[085F:0106] 678803           Mov8     byte [ds:ebx], al", res);
 }
 
 #[test]

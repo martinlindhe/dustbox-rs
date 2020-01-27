@@ -90,7 +90,7 @@ impl Decoder {
             0x00 => {
                 // add r/m8, r8
                 op.command = Op::Add8;
-                op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
+                op.params = self.rm8_r8(&mut mmu, op);
             }
             0x01 => {
                 // add r/m16, r16
@@ -100,7 +100,7 @@ impl Decoder {
             0x02 => {
                 // add r8, r/m8
                 op.command = Op::Add8;
-                op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
+                op.params = self.r8_rm8(&mut mmu, op);
             }
             0x03 => {
                 // add r16, r/m16
@@ -142,7 +142,7 @@ impl Decoder {
             0x08 => {
                 // or r/m8, r8
                 op.command = Op::Or8;
-                op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
+                op.params = self.rm8_r8(&mut mmu, op);
             }
             0x09 => {
                 // or r/m16, r16
@@ -152,7 +152,7 @@ impl Decoder {
             0x0A => {
                 // or r8, r/m8
                 op.command = Op::Or8;
-                op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
+                op.params = self.r8_rm8(&mut mmu, op);
             }
             0x0B => {
                 // or r16, r/m16
@@ -268,17 +268,17 @@ impl Decoder {
                     0x92 => { // setc r/m8
                         let x = self.read_mod_reg_rm(mmu);
                         op.command = Op::Setc;
-                        op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.dst = self.rm8(&mut mmu, &op, x.rm, x.md);
                     }
                     0x95 => { // setnz r/m8
                         let x = self.read_mod_reg_rm(mmu);
                         op.command = Op::Setnz;
-                        op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.dst = self.rm8(&mut mmu, &op, x.rm, x.md);
                     }
                     0x9F => { // setg r/m8
                         let x = self.read_mod_reg_rm(mmu);
                         op.command = Op::Setg;
-                        op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
+                        op.params.dst = self.rm8(&mut mmu, &op, x.rm, x.md);
                     }
                     0xA0 => { // push fs
                         op.command = Op::Push16;
@@ -320,12 +320,12 @@ impl Decoder {
                             OperandSize::_16bit => {
                                 // movzx r16, r/m8
                                 op.command = Op::Movzx16;
-                                op.params = self.r16_rm8(&mut mmu, op.segment_prefix);
+                                op.params = self.r16_rm8(&mut mmu, op);
                             }
                             OperandSize::_32bit => {
                                 // movzx r32, r/m8
                                 op.command = Op::Movzx32;
-                                op.params = self.r32_rm8(&mut mmu, op.segment_prefix);
+                                op.params = self.r32_rm8(&mut mmu, op);
                             }
                         }
                     }
@@ -356,12 +356,12 @@ impl Decoder {
                             OperandSize::_16bit => {
                                 // movsx r16, r/m8
                                 op.command = Op::Movsx16;
-                                op.params = self.r16_rm8(&mut mmu, op.segment_prefix);
+                                op.params = self.r16_rm8(&mut mmu, op);
                             }
                             OperandSize::_32bit => {
                                 // movsx r32, r/m8
                                 op.command = Op::Movsx32;
-                                op.params = self.r32_rm8(&mut mmu, op.segment_prefix);
+                                op.params = self.r32_rm8(&mut mmu, op);
                             }
                         }
                     }
@@ -381,7 +381,7 @@ impl Decoder {
             0x10 => {
                 // adc r/m8, r8
                 op.command = Op::Adc8;
-                op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
+                op.params = self.rm8_r8(&mut mmu, op);
             }
             0x11 => {
                 // adc r/m16, r16
@@ -391,7 +391,7 @@ impl Decoder {
             0x12 => {
                 // adc r8, r/m8
                 op.command = Op::Adc8;
-                op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
+                op.params = self.r8_rm8(&mut mmu, op);
             }
             0x13 => {
                 // adc r16, r/m16
@@ -433,7 +433,7 @@ impl Decoder {
             0x18 => {
                 // sbb r/m8, r8
                 op.command = Op::Sbb8;
-                op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
+                op.params = self.rm8_r8(&mut mmu, op);
             }
             0x19 => {
                 // sbb r/m16, r16
@@ -443,7 +443,7 @@ impl Decoder {
             0x1A => {
                 // sbb r8, r/m8
                 op.command = Op::Sbb8;
-                op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
+                op.params = self.r8_rm8(&mut mmu, op);
             }
             0x1B => {
                 // sbb r16, r/m16
@@ -485,7 +485,7 @@ impl Decoder {
             0x20 => {
                 // and r/m8, r8
                 op.command = Op::And8;
-                op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
+                op.params = self.rm8_r8(&mut mmu, op);
             }
             0x21 => {
                 // and r/m16, r16
@@ -495,7 +495,7 @@ impl Decoder {
             0x22 => {
                 // and r8, r/m8
                 op.command = Op::And8;
-                op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
+                op.params = self.r8_rm8(&mut mmu, op);
             }
             0x23 => {
                 // and r16, r/m16
@@ -535,7 +535,7 @@ impl Decoder {
             0x28 => {
                 // sub r/m8, r8
                 op.command = Op::Sub8;
-                op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
+                op.params = self.rm8_r8(&mut mmu, op);
             }
             0x29 => {
                 // sub r/m16, r16
@@ -545,7 +545,7 @@ impl Decoder {
             0x2A => {
                 // sub r8, r/m8
                 op.command = Op::Sub8;
-                op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
+                op.params = self.r8_rm8(&mut mmu, op);
             }
             0x2B => {
                 // sub r16, r/m16
@@ -585,7 +585,7 @@ impl Decoder {
             0x30 => {
                 // xor r/m8, r8
                 op.command = Op::Xor8;
-                op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
+                op.params = self.rm8_r8(&mut mmu, op);
             }
             0x31 => {
                 // xor r/m16, r16
@@ -595,7 +595,7 @@ impl Decoder {
             0x32 => {
                 // xor r8, r/m8
                 op.command = Op::Xor8;
-                op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
+                op.params = self.r8_rm8(&mut mmu, op);
             }
             0x33 => {
                 // xor r16, r/m16
@@ -635,7 +635,7 @@ impl Decoder {
             0x38 => {
                 // cmp r/m8, r8
                 op.command = Op::Cmp8;
-                op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
+                op.params = self.rm8_r8(&mut mmu, op);
             }
             0x39 => {
                 // cmp r/m16, r16
@@ -645,7 +645,7 @@ impl Decoder {
             0x3A => {
                 // cmp r8, r/m8
                 op.command = Op::Cmp8;
-                op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
+                op.params = self.r8_rm8(&mut mmu, op);
             }
             0x3B => {
                 // cmp r16, r/m16
@@ -903,7 +903,7 @@ impl Decoder {
                 // <arithmetic> r/m8, imm8
                 // 0x82 is unrecognized by objdump & ndisasm, but alias to 0x80 on pre Pentium 4:s according to ref.x86asm.net
                 let x = self.read_mod_reg_rm(mmu);
-                op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
+                op.params.dst = self.rm8(&mut mmu, &op, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
                 op.command = match x.reg {
                     0 => Op::Add8,
@@ -995,7 +995,7 @@ impl Decoder {
             0x84 => {
                 // test r/m8, r8
                 op.command = Op::Test8;
-                op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
+                op.params = self.rm8_r8(&mut mmu, op);
             }
             0x85 => {
                 // test r/m16, r16
@@ -1006,7 +1006,7 @@ impl Decoder {
             0x86 => {
                 // xchg r/m8, r8
                 op.command = Op::Xchg8;
-                op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
+                op.params = self.rm8_r8(&mut mmu, op);
             }
             0x87 => {
                 // xchg r/m16, r16
@@ -1016,7 +1016,7 @@ impl Decoder {
             0x88 => {
                 // mov r/m8, r8
                 op.command = Op::Mov8;
-                op.params = self.rm8_r8(&mut mmu, op.segment_prefix);
+                op.params = self.rm8_r8(&mut mmu, op);
             }
             0x89 => {
                 // mov r/m16, r16
@@ -1026,7 +1026,7 @@ impl Decoder {
             0x8A => {
                 // mov r8, r/m8
                 op.command = Op::Mov8;
-                op.params = self.r8_rm8(&mut mmu, op.segment_prefix);
+                op.params = self.r8_rm8(&mut mmu, op);
             }
             0x8B => {
                 // mov r16, r/m16
@@ -1204,7 +1204,7 @@ impl Decoder {
                     7 => Op::Sar8,
                     _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                 };
-                op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
+                op.params.dst = self.rm8(&mut mmu, op, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
             }
             0xC1 => {
@@ -1260,7 +1260,7 @@ impl Decoder {
             }
             0xC6 => {
                 let x = self.read_mod_reg_rm(mmu);
-                op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
+                op.params.dst = self.rm8(&mut mmu, op, x.rm, x.md);
                 op.params.src = Parameter::Imm8(self.read_u8(mmu));
                 op.command = match x.reg {
                     0 => Op::Mov8, // mov r/m8, imm8
@@ -1325,7 +1325,7 @@ impl Decoder {
                     7 => Op::Sar8,
                     _ => Op::Invalid(vec!(b, x.u8()), Invalid::Reg(x.reg)),
                 };
-                op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
+                op.params.dst = self.rm8(&mut mmu, op, x.rm, x.md);
                 op.params.src = Parameter::Imm8(1);
             }
             0xD1 => {
@@ -1357,7 +1357,7 @@ impl Decoder {
                     7 => Op::Sar8,
                     _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
                 };
-                op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
+                op.params.dst = self.rm8(&mut mmu, op, x.rm, x.md);
                 op.params.src = Parameter::Reg8(R::CL);
             }
             0xD3 => {
@@ -1848,7 +1848,7 @@ impl Decoder {
             0xF6 => {
                 // <math> r/m8
                 let x = self.read_mod_reg_rm(mmu);
-                op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
+                op.params.dst = self.rm8(&mut mmu, op, x.rm, x.md);
                 match x.reg {
                     0 | 1 => {
                         // test r/m8, imm8
@@ -1913,7 +1913,7 @@ impl Decoder {
             0xFE => {
                 // r/m8
                 let x = self.read_mod_reg_rm(mmu);
-                op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
+                op.params.dst = self.rm8(&mut mmu, op, x.rm, x.md);
                 op.command = match x.reg {
                     // NOTE: 2 is a deprecated but valid encoding, example:
                     // https://www.pouet.net/prod.php?which=65203
@@ -1989,22 +1989,21 @@ impl Decoder {
     }
 
     /// decode rm8
-    fn rm8(&mut self, mmu: &mut MMU, seg: Segment, rm: u8, md: u8) -> Parameter {
-        let adr_size = AddressSize::_16bit;
+    fn rm8(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
         match md {
             0 => {
                 if rm == 6 {
                     // [u16]
-                    Parameter::Ptr8(seg, self.read_u16(mmu))
+                    Parameter::Ptr8(op.segment_prefix, self.read_u16(mmu))
                 } else {
                     // [amode]
-                    Parameter::Ptr8Amode(seg, adr_size.amode_from(rm))
+                    Parameter::Ptr8Amode(op.segment_prefix, op.address_size.amode_from(rm))
                 }
             }
             // [amode+s8]
-            1 => Parameter::Ptr8AmodeS8(seg, adr_size.amode_from(rm), self.read_s8(mmu)),
+            1 => Parameter::Ptr8AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
             // [amode+s16]
-            2 => Parameter::Ptr8AmodeS16(seg, adr_size.amode_from(rm), self.read_s16(mmu)),
+            2 => Parameter::Ptr8AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
             // reg
             3 => Parameter::Reg8(r8(rm)),
             _ => unreachable!(),
@@ -2100,20 +2099,20 @@ impl Decoder {
     }
 
     /// decode r8, r/m8
-    fn r8_rm8(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
+    fn r8_rm8(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
             dst: Parameter::Reg8(r8(x.reg)),
-            src: self.rm8(&mut mmu, seg, x.rm, x.md),
+            src: self.rm8(&mut mmu, op, x.rm, x.md),
             src2: Parameter::None,
         }
     }
 
     /// decode r/m8, r8
-    fn rm8_r8(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
+    fn rm8_r8(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
-            dst: self.rm8(&mut mmu, seg, x.rm, x.md),
+            dst: self.rm8(&mut mmu, op, x.rm, x.md),
             src: Parameter::Reg8(r8(x.reg)),
             src2: Parameter::None,
         }
@@ -2140,21 +2139,21 @@ impl Decoder {
     }
 
     /// decode r16, r/m8 (movzx)
-    fn r16_rm8(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
+    fn r16_rm8(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
             dst: Parameter::Reg16(r16(x.reg)),
-            src: self.rm8(&mut mmu, seg, x.rm, x.md),
+            src: self.rm8(&mut mmu, op, x.rm, x.md),
             src2: Parameter::None,
         }
     }
 
     /// decode r32, r/m8 (movzx)
-    fn r32_rm8(&mut self, mut mmu: &mut MMU, seg: Segment) -> ParameterSet {
+    fn r32_rm8(&mut self, mut mmu: &mut MMU, op: &Instruction) -> ParameterSet {
         let x = self.read_mod_reg_rm(mmu);
         ParameterSet {
             dst: Parameter::Reg32(r32(x.reg)),
-            src: self.rm8(&mut mmu, seg, x.rm, x.md),
+            src: self.rm8(&mut mmu, op, x.rm, x.md),
             src2: Parameter::None,
         }
     }

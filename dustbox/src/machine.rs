@@ -1072,7 +1072,7 @@ impl Machine {
                 }
                 let quotient = op1 / op2 as u64;
                 let remainder = (op1 % op2 as u64) as u32;
-                let quo32 = (quotient & 0xFFFFFFFF) as u32;
+                let quo32 = (quotient & 0xFFFF_FFFF) as u32;
                 if quotient != u64::from(quo32) {
                     return self.cpu.exception(&Exception::DIV0, 0);
                 }
