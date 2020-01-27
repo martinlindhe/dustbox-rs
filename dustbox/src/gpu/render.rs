@@ -585,7 +585,7 @@ impl GPU {
                 //0x03 => self.render_mode03_frame(memory), // 80x25 16 color text (CGA,EGA,MCGA,VGA)
                 0x04 => self.render_mode04_frame(&mmu.memory.data),
                 // 05: 320x200 4 color graphics (CGA,EGA,MCGA,VGA)
-                //0x06 => self.render_mode06_frame(memory), // 640x200 B/W graphics (CGA,EGA,MCGA,VGA)
+                0x06 => self.render_mode06_frame(&mmu.memory.data),
                 // 07: 80x25 Monochrome text (MDA,HERC,EGA,VGA)
                 // 08: 160x200 16 color graphics (PCjr)
                 // 09: 320x200 16 color graphics (PCjr)
@@ -642,13 +642,26 @@ impl GPU {
         }
         buf
     }
-/*
-    fn render_mode06_frame(&self, memory: &[u8]) -> Vec<u8> {
+ 
+    /// 640x200 B/W graphics (CGA,EGA,MCGA,VGA)
+    fn render_mode06_frame(&self, memory: &[u8]) -> Vec<ColorSpace> {
         // 06h = G  80x25  8x8   640x200    2       .   B800 CGA,PCjr,EGA,MCGA,VGA
-        //     = G  80x25   .       .     mono      .   B000 HERCULES.COM on HGC [14]
-        // XXX impl
+        let mut buf: Vec<ColorSpace> = Vec::new();
+        let pal = palette::mono_palette();
+
+        for y in 0..self.mode.sheight {
+            let base_y = (0xB_8000 + ((y%2) * 0x2000) + (80 * (y >> 1))) as usize;
+            for x in 0..self.mode.swidth {
+                // 80 bytes per line (80 * 8 = 640), 8 pixels per byte
+                let bit = (x % 8) & 7;
+                let offset = base_y + ((x as usize) >> 3);
+                let v = ((memory[offset] & (1 << (7-bit))) >> (7-bit)) & 1; // 1 bit
+                let pal = &pal[v as usize];
+                buf.push(pal.clone());
+            }
+        }
+        buf
     }
-*/
 
     /// 640x480 B/W graphics (MCGA,VGA)
     fn render_mode11_frame(&self, memory: &[u8]) -> Vec<ColorSpace> {
