@@ -18,6 +18,7 @@ use crate::gpu::dac::DAC;
 #[path = "./render_test.rs"]
 mod render_test;
 
+const DEBUG_SET_MODE: bool = true;
 const DEBUG_FONT: bool = false;
 const DEBUG_INTERRUPTS: bool = false;
 
@@ -296,7 +297,7 @@ impl Component for GPU {
                         // BL = palette register number (00h-0Fh)
                         //    = attribute register number (undocumented) (see #00017)
                         // BH = color or attribute register value
-                        panic!("XXX VIDEO - SET SINGLE PALETTE REGISTER, bl={:02X}, bh={:02X}",
+                        println!("XXX VIDEO - SET SINGLE PALETTE REGISTER, bl={:02X}, bh={:02X}",
                                 cpu.get_r8(R::BL),
                                 cpu.get_r8(R::BH));
                     }
@@ -748,10 +749,6 @@ impl GPU {
     /// int 10h, ah = 00h
     /// SET VIDEO MODE
     pub fn set_mode(&mut self, mmu: &mut MMU, mode: u8) {
-        if DEBUG_INTERRUPTS {
-            println!("int 10h, ah = 00h: set_mode {:02X}", mode);
-        }
-
         let mut found = false;
         for block in &self.modes {
             if block.mode == u16::from(mode) {
@@ -762,6 +759,9 @@ impl GPU {
         if !found {
             println!("ERROR: set_mode {:02X}: video mode not found for card {:?}", mode, self.card);
             return;
+        }
+        if DEBUG_SET_MODE {
+            println!("int 10h, ah = 00h: set_mode {:02X} {}x{}", mode, self.mode.swidth, self.mode.sheight);
         }
 
         match self.mode.kind {

@@ -30,10 +30,16 @@ impl ParameterSet {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Parameter {
-    Reg8(R),                            // 8-bit general purpose register
-    Reg16(R),                           // 16-bit general purpose register
-    SReg16(R),                          // 16-bit segment register
-    Reg32(R),                           // 32-bit general purpose register
+    /// 8-bit general purpose register
+    Reg8(R),
+    /// 16-bit general purpose register
+    Reg16(R),
+    /// 16-bit segment register
+    SReg16(R),
+    /// 32-bit general purpose register
+    Reg32(R),
+    /// 80-bit fpu register
+    FPR80(R),
 
     Imm8(u8),                           // byte 0x80
     ImmS8(i8),                          // byte +0x3f
@@ -64,7 +70,8 @@ impl fmt::Display for Parameter {
             Parameter::Reg8(ref r) |
             Parameter::Reg16(ref r) |
             Parameter::Reg32(ref r) |
-            Parameter::SReg16(ref r) => write!(f, "{}", r),
+            Parameter::SReg16(ref r) |
+            Parameter::FPR80(ref r) => write!(f, "{}", r),
 
             Parameter::Imm8(imm) => write!(f, "0x{:02X}", imm),
             Parameter::Imm16(imm) => write!(f, "0x{:04X}", imm),

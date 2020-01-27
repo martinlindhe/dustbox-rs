@@ -8,7 +8,13 @@ use crate::cpu::decoder::AddressSize;
 #[path = "./register_test.rs"]
 mod register_test;
 
-/// 32-bit general purpose register (AL->AX->EAX)
+/// A 80-bit FPU register
+/// The FPU has eight 80-bit registers (st0, st1 etc)
+pub struct FPR80 {
+    val: u128,
+}
+
+/// A 32-bit general purpose register (AL->AX->EAX)
 #[derive(Copy, Clone, Debug, Default)]
 pub struct GPR {
     val: u32,
@@ -49,8 +55,9 @@ pub enum R {
     AL, CL, DL, BL, AH, CH, DH, BH,         // 8-bit gpr
     AX, CX, DX, BX, SP, BP, SI, DI,         // 16-bit gpr
     ES, CS, SS, DS, FS, GS,                 // sr
-    IP,                                     // ip
-    EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, //
+    IP,                                     // 16-bit ip
+    EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, // 32-bit gpr
+    ST0, ST1, ST2, ST3, ST4, ST5, ST6, ST7, // 80-bit fpu registers
 }
 
 impl fmt::Display for R {
@@ -89,6 +96,15 @@ impl fmt::Display for R {
             R::EBP => "ebp",
             R::ESI => "esi",
             R::EDI => "edi",
+
+            R::ST0 => "st0",
+            R::ST1 => "st1",
+            R::ST2 => "st2",
+            R::ST3 => "st3",
+            R::ST4 => "st4",
+            R::ST5 => "st5",
+            R::ST6 => "st6",
+            R::ST7 => "st7",
         };
         write!(f, "{}", s)
     }
@@ -180,6 +196,20 @@ pub fn sr(v: u8) -> R {
         3 => R::DS,
         4 => R::FS,
         5 => R::GS,
+        _ => unreachable!(),
+    }
+}
+
+pub fn fpr(v: u8) -> R {
+    match v {
+        0 => R::ST0,
+        1 => R::ST1,
+        2 => R::ST2,
+        3 => R::ST3,
+        4 => R::ST4,
+        5 => R::ST5,
+        6 => R::ST6,
+        7 => R::ST7,
         _ => unreachable!(),
     }
 }

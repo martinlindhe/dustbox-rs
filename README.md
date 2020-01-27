@@ -13,19 +13,19 @@ If you are looking for a more complete dos emulator, I suggest you check out [do
 | ---------- | ------ | -------------------------------------------------------- |
 | 16 bit CPU | 95%    | interrupts are incomplete                                |
 | 32 bit CPU | 20%    | some instructions supported                              |
-| FPU        | -      | not started                                              |
-| disk       | -      | not started                                              |
+| FPU        | 5%     |                                                          |
 | PIT        | 1%     |                                                          |
 | PIC        | 1%     |                                                          |
 | MS-DOS     | 5%     | simulating MS-DOS behavior (interrupts, command.com env) |
 | EMS/XMS    | -      | extended memory managers                                 |
 | Keyboard   | 1%     |                                                          |
 | Mouse      | 25%    |                                                          |
-| CD-ROM     | -      | not started                                              |
 | CGA        | 5%     |                                                          |
 | EGA        | 5%     |                                                          |
-| VGA        | 5%     |                                                          |s
+| VGA        | 5%     |                                                          |
 | Sound      | -      | not started                                              |
+| CD-ROM     | -      | not started                                              |
+| Harddrive  | -      | not started                                              |
 
 ## Contributing
 

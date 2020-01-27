@@ -3,7 +3,7 @@ use std::num::Wrapping;
 use crate::cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
 use crate::cpu::parameter::{Parameter, ParameterSet};
 use crate::cpu::op::{Op, Invalid};
-use crate::cpu::register::{R, r8, r16, r32, sr};
+use crate::cpu::register::{R, r8, r16, r32, sr, fpr};
 use crate::cpu::segment::Segment;
 use crate::memory::{MMU, MemoryAddress};
 
@@ -16,7 +16,11 @@ mod decoder_test;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum OperandSize {
-    _16bit, _32bit,
+    /// word: 0-FFFF
+    _16bit,
+
+    /// dword: 0-FFFFFFFF
+    _32bit,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1083,10 +1087,7 @@ impl Decoder {
                 let seg = self.read_u16(mmu);
                 op.params.dst = Parameter::Ptr16Imm(seg, imm);
             }
-            0x9B => {
-                // TODO fpu instructions
-                op.command = Op::Invalid(vec!(b), Invalid::FPUOp);
-            }
+            0x9B => op.command = Op::Fwait,
             0x9C => op.command = Op::Pushf,
             0x9D => op.command = Op::Popf,
             0x9E => op.command = Op::Sahf,
@@ -1388,9 +1389,325 @@ impl Decoder {
             }
             0xD6 => op.command = Op::Salc,
             0xD7 => op.command = Op::Xlatb,
-            0xD8..=0xDF => {
+            0xD8 => {
                 // fpu
-                op.command = Op::Invalid(vec!(b), Invalid::FPUOp);
+                let x = self.read_mod_reg_rm(mmu);
+                match x.reg {
+                    0 => { // D8 /0 FADD m32fp
+                        op.command = Op::Fadd;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                    }
+                    1 => { // D8 /1 FMUL m32fp
+                        op.command = Op::Fmul;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                    }
+                    3 => { // D8 /3 FCOMP m32fp
+                        op.command = Op::Fcomp;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                    }
+                    4 => { // D8 /4 FSUB m32fp
+                        op.command = Op::Fsub;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                    }
+                    5 => { // D8 /5 FSUBR m32fp
+                        op.command = Op::Fsubr;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                    }
+                    6 => { // D8 /6 FDIV m32fp
+                        op.command = Op::Fdiv;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                    }
+                    7 => { // D8 /7 FDIVR m32fp
+                        op.command = Op::Fdivr;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                    }
+                    _ => {
+                        println!("XXX unhandled D8 reg {:?}", x);
+                        op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                    }
+                }
+            }
+            0xD9 => {
+                // fpu
+                let x = self.read_mod_reg_rm(mmu);
+                match x.md {
+                    0 | 1 | 2 => match x.reg {
+                        0 => {
+                            // D9 /0 FLD m32fp
+                            op.command = Op::Fld;
+                            op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                        }
+                        2 => {
+                            // D9 /2 FST m32fp
+                            op.command = Op::Fst;
+                            op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                        }
+                        3 => {
+                            // D9 /3 FSTP m32fp
+                            // fstp dword [bx+0x6246]           { md: 2, reg: 3, rm: 7 }
+                            // fstp dword [bp-0x10]             { md: 1, reg: 3, rm: 6 }
+                            op.command = Op::Fstp;
+                            op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                        }
+                        5 => {
+                            // D9 /5 FLDCW m2byte
+                            // D928              fldcw [bx+si] { md: 0, reg: 5, rm: 0 }
+                            op.command = Op::Fldcw;
+                            op.params.dst = self.rmf16(mmu, op, x.rm, x.md);
+                        }
+                        7 => {
+                            // D9 /7 FNSTCW m2byte
+                            op.command = Op::Fnstcw;
+                            op.params.dst = self.rmf16(mmu, op, x.rm, x.md);
+                        }
+                        _ => {
+                            println!("XXX unhandled D9 md012 reg {:?}", x);
+                            op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                        }
+                    }
+                    3 => match x.reg {
+                        0 => {
+                            // fld st0: { md: 3, reg: 0, rm: 0 }
+                            op.command = Op::Fld;
+                            op.params.dst = Parameter::FPR80(fpr(x.rm));
+                        }
+                        1 => {
+                            // D9 C8+i FXCH ST(i)
+                            // D9C9              fxch st1 { md: 3, reg: 1, rm: 1 }
+                            op.command = Op::Fxch;
+                            op.params.dst = Parameter::FPR80(fpr(x.rm));
+                        }
+                        4 => match x.rm {
+                            0 => op.command = Op::Fchs, // { md: 3, reg: 4, rm: 0 }
+                            1 => op.command = Op::Fabs, // { md: 3, reg: 4, rm: 1 }
+                            4 => op.command = Op::Ftst, // { md: 3, reg: 4, rm: 4 }
+                            _ => {
+                                println!("XXX unhandled D9 md3 reg4 rm {:?}", x);
+                                op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                            }
+                        }
+                        5 => match x.rm {
+                            0 => op.command = Op::Fld1,     // { md: 3, reg: 5, rm: 0 }
+                            1 => op.command = Op::Fldl2t,   // { md: 3, reg: 5, rm: 1 }
+                            2 => op.command = Op::Fldl2e,   // { md: 3, reg: 5, rm: 2 }
+                            3 => op.command = Op::Fldpi,    // { md: 3, reg: 5, rm: 3 }
+                            6 => op.command = Op::Fldz,     // { md: 3, reg: 5, rm: 6 }
+                            _ => {
+                                println!("XXX unhandled D9 md3 reg5 rm {:?}", x);
+                                op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                            }
+                        }
+                        6 => match x.rm {
+                            3 => op.command = Op::Fpatan, // { md: 3, reg: 6, rm: 3 }
+                            _ => {
+                                println!("XXX unhandled D9 md3 reg5 rm {:?}", x);
+                                op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                            }
+                        }
+                        7 => match x.rm {
+                            2 => op.command = Op::Fsqrt,    // { md: 3, reg: 7, rm: 2 }
+                            3 => op.command = Op::Fsincos,  // { md: 3, reg: 7, rm: 3 }
+                            4 => op.command = Op::Frndint,  // { md: 3, reg: 7, rm: 4 }
+                            6 => op.command = Op::Fsin,     // { md: 3, reg: 7, rm: 6 }
+                            7 => op.command = Op::Fcos,     // { md: 3, reg: 7, rm: 7 }
+                            _ => {
+                                println!("XXX unhandled D9 md3 reg7 rm {:?}", x);
+                                op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                            }
+                        }
+                        _ => {
+                            println!("XXX unhandled D9 md3 reg {:?}", x);
+                            op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                        }
+                    }
+                    _ => {
+                        println!("XXX unhandled D9 md {:?}", x);
+                        op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                    }
+                }
+            }
+            0xDA => {
+                let x = self.read_mod_reg_rm(mmu);
+                match x.reg {
+                    3 => {
+                        // DA /3 FICOMP m32int
+                        op.command = Op::Ficomp;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                    }
+                    _ => {
+                        println!("XXX unhandled DA md {:?}", x);
+                        op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                    }
+                }
+            }
+            0xDB => {
+                let x = self.read_mod_reg_rm(mmu);
+                match x.reg {
+                    0 => {
+                        // DB /0 FILD m32int
+                        // DB05              fild dword [di]
+                        op.command = Op::Fild;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                    }
+                    1 => {
+                        // DB /1 FISTTP m32int
+                        op.command = Op::Fisttp;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                    }
+                    3 => {
+                        // DB /3 FISTP m32int
+                        op.command = Op::Fistp;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md);
+                    }
+                    4 => {
+                        if x.md == 3 && x.rm == 3 { // DB E3 FINIT
+                            op.command = Op::Finit;
+                        }
+                    }
+                    _ => {
+                        println!("XXX unhandled DB reg {:?}", x);
+                        op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                    }
+                }
+            }
+            0xDC => {
+                // DC /0    FADD m64fp
+                // DC C0+i  FADD ST(i), ST(0)
+
+                // DC /1    FMUL m64fp
+                // DC C8+i  FMUL ST(i), ST(0)
+
+                // DC /4    FSUB m64fp
+                // DC E8+i  FSUB ST(i), ST(0)
+
+                // DC /5       FSUBR m64fp
+                // DC E0+i     FSUBR ST(i), ST(0)
+
+                // DCC1              fadd to st1        dos-software-decoding/demo-fpu/kruzhok/kruzhok.com
+                // DCCB              fmul to st3        dos-software-decoding/demo-fpu/chekerz/chekerz.com
+                // DCE9              fsub to st1        dos-software-decoding/demo-fpu/glass512/glass512.com
+                // DCE5              fsubr to st5       dos-software-decoding/demo-fpu/zud/zud_final.com
+
+                let x = self.read_mod_reg_rm(mmu);
+                println!("XXX DC {:?}", x);
+
+                op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+            }
+            0xDD => {
+                // fpu
+                let x = self.read_mod_reg_rm(mmu);
+                match x.reg {
+                    0 => {
+                        // DD C0+i FFREE ST(i)
+                        op.command = Op::Ffree;
+                        op.params.dst = Parameter::FPR80(fpr(x.rm));
+                    }
+                    2 => {
+                        // DD /2 FST m64fp
+                        op.command = Op::Fst;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md); // XXX m64fp
+                    }
+                    3 => {
+                        // DD /3 FSTP m64fp
+                        op.command = Op::Fstp;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md); // XXX m64fp
+                    }
+                    _ => {
+                        println!("XXX unhandled DD reg {:?}", x);
+                        op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                    }
+                }
+            }
+            0xDE => {
+                // fpu
+                let x = self.read_mod_reg_rm(mmu);
+                match x.reg {
+                    0 => {
+                        // DEC1              faddp st1 { md: 3, reg: 0, rm: 1 }
+                        op.command = Op::Faddp;
+                        op.params.dst = Parameter::FPR80(fpr(x.rm));
+                    }
+                    1 => {
+                        op.command = Op::Fimul;
+                        op.params.dst = self.rmf16(mmu, op, x.rm, x.md);
+                    }
+                    2 => {
+                        // DE /2 FICOM m16int
+                        op.command = Op::Ficom;
+                        op.params.dst = self.rmf16(mmu, op, x.rm, x.md);
+                    }
+                    3 => {
+                        // DE /3 FICOMP m16int
+                        op.command = Op::Ficomp;
+                        op.params.dst = self.rmf16(mmu, op, x.rm, x.md);
+                    }
+                    4 => {
+                        // DE E0+i FSUBRP ST(i), ST(0)
+                        // DEE2              fsubrp st2 { md: 3, reg: 4, rm: 2 }
+                        op.command = Op::Fsubrp;
+                        op.params.dst = Parameter::FPR80(fpr(x.rm));
+                    }
+                    5 => {
+                        // DE E8+i FSUBP ST(i), ST(0)
+                        // DEEA              fsubp st2 { md: 3, reg: 5, rm: 2 }
+                        op.command = Op::Fsubp;
+                        op.params.dst = Parameter::FPR80(fpr(x.rm));
+                    }
+                    6 => {
+                        op.command = Op::Fidiv;
+                        op.params.dst = self.rmf16(mmu, op, x.rm, x.md);
+                    }
+                    7 => {
+                        op.command = Op::Fdivp;
+                        op.params.dst = self.rmf16(mmu, op, x.rm, x.md);
+                    }
+                    _ => {
+                        println!("XXX unhandled DE reg {:?}", x);
+                        op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                    }
+                }
+            }
+            0xDF => {
+                // fpu
+                let x = self.read_mod_reg_rm(mmu);
+                match x.reg {
+                    0 => {  // FILD m16int
+                        op.command = Op::Fild;
+                        op.params.dst = self.rmf16(mmu, op, x.rm, x.md);
+                    }
+                    2 => { // FIST m16int
+                        op.command = Op::Fist;
+                        op.params.dst = self.rmf16(mmu, op, x.rm, x.md);
+                    }
+                    3 => {  // FISTP m16int
+                        op.command = Op::Fistp;
+                        op.params.dst = self.rmf16(mmu, op, x.rm, x.md);
+                    }
+                    4 => {
+                        if x.md == 3 && x.rm == 0 {
+                            // DF E0 FNSTSW AX
+                            op.command = Op::Fstsw;
+                            op.params.dst = Parameter::Reg16(R::AX);
+                        } else {
+                            println!("XXX unhandled DF reg4 {:?}", x);
+                            op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                        }
+                    }
+                    5 => { // DF /5 FILD m64int
+                        // DF28              fild qword [bx+si]
+                        op.command = Op::Fild;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md); // XXX 64-bit
+                    }
+                    7 => { // DF /7 FISTP m64int
+                        // DF3D              fistp qword [di]
+                        op.command = Op::Fistp;
+                        op.params.dst = self.rmf32(mmu, op, x.rm, x.md); // XXX 64-bit
+                    }
+                    _ => {
+                        println!("XXX unhandled DF reg {:?}", x);
+                        op.command = Op::Invalid(vec!(b, x.u8()), Invalid::FPUOp);
+                    }
+                }
             }
             0xE0 => {
                 op.command = Op::Loopne;
@@ -1573,7 +1890,7 @@ impl Decoder {
                             5 => Op::Imul32,
                             6 => Op::Div32,
                             7 => Op::Idiv32,
-                            _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
+                            _ => Op::Invalid(vec!(b, x.u8()), Invalid::Reg(x.reg)),
                         };
                     }
                 }
@@ -1594,7 +1911,7 @@ impl Decoder {
                     // 00000140  FEC5              inc ch
                     0 | 2 => Op::Inc8,
                     1 => Op::Dec8,
-                    _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
+                    _ => Op::Invalid(vec!(b, x.u8()), Invalid::Reg(x.reg)),
                 };
             }
             0xFF => {
@@ -1611,7 +1928,7 @@ impl Decoder {
                             4 => Op::JmpNear,
                             5 => Op::JmpFar,
                             6 => Op::Push16,
-                            _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
+                            _ => Op::Invalid(vec!(b, x.u8()), Invalid::Reg(x.reg)),
                         };
                     }
                     OperandSize::_32bit => {
@@ -1619,7 +1936,11 @@ impl Decoder {
                         op.command = match x.reg {
                             0 => Op::Inc32,
                             1 => Op::Dec32,
-                            _ => Op::Invalid(vec!(b), Invalid::Reg(x.reg)),
+                            6 => Op::Push32,
+                            _ => {
+                                println!("XXX FF 32bit {:?}", x);
+                                Op::Invalid(vec!(b, x.u8()), Invalid::Reg(x.reg))
+                            }
                         };
                     }
                 }
@@ -1721,6 +2042,50 @@ impl Decoder {
             2 => Parameter::Ptr32AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
             // [reg]
             3 => Parameter::Reg32(r32(rm)),
+            _ => unreachable!(),
+        }
+    }
+
+    /// decode rm as 16-bit fpu op argument
+    fn rmf16(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
+        match md {
+            0 => {
+                if rm == 6 {
+                    // [u16]
+                    Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu))
+                } else {
+                    // [amode]
+                    Parameter::Ptr16Amode(op.segment_prefix, op.address_size.amode_from(rm))
+                }
+            }
+            // [amode+s8]
+            1 => Parameter::Ptr16AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
+            // [amode+s16]
+            2 => Parameter::Ptr16AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
+            // [reg]
+            3 => Parameter::FPR80(fpr(rm)),
+            _ => unreachable!(),
+        }
+    }
+
+    /// decode rm as 32-bit fpu op argument
+    fn rmf32(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
+        match md {
+            0 => {
+                if rm == 6 {
+                    // [u16]
+                    Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu))
+                } else {
+                    // [amode]
+                    Parameter::Ptr32Amode(op.segment_prefix, op.address_size.amode_from(rm))
+                }
+            }
+            // [amode+s8]
+            1 => Parameter::Ptr32AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
+            // [amode+s16]
+            2 => Parameter::Ptr32AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
+            // [reg]
+            3 => Parameter::FPR80(fpr(rm)),
             _ => unreachable!(),
         }
     }

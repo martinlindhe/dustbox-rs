@@ -398,3 +398,233 @@ fn can_disassemble_movsx() {
 [085F:0107] 660FBE86F101     Movsx32  eax, byte [ds:bp+0x01F1]
 [085F:010D] 660FBFD9         Movsx32  ebx, cx", res);
 }
+
+#[test]
+fn can_disassemble_fild() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xDF, 0x06, 0x58, 0x80, // fild word [0x8058]
+        0xDB, 0x05,             // fild dword [di]
+        //0xDF, 0x28,             // fild qword [bx+si]         XXX handle qword
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
+    assert_eq!("[085F:0100] DF065880         Fild     word [ds:0x8058]
+[085F:0104] DB05             Fild     dword [ds:di]", res);
+}
+
+#[test]
+fn can_disassemble_fmul() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xD8, 0x0E, 0xA4, 0x10, // fmul dword [0x10a4]
+        0xDE, 0x0E, 0xA8, 0x10, // fimul word [0x10a8]
+        0xDE, 0x36, 0x60, 0x80, // fidiv word [0x8060]
+        0xDE, 0xF9,             // fdivp st1
+        0xD8, 0x36, 0xF6, 0x01, // fdiv dword [0x1f6]
+        0xD8, 0x7C, 0x04,       // fdivr dword [si+0x4]
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 6);
+    assert_eq!("[085F:0100] D80EA410         Fmul     dword [ds:0x10A4]
+[085F:0104] DE0EA810         Fimul    word [ds:0x10A8]
+[085F:0108] DE366080         Fidiv    word [ds:0x8060]
+[085F:010C] DEF9             Fdivp    st1
+[085F:010E] D836F601         Fdiv     dword [ds:0x01F6]
+[085F:0112] D87C04           Fdivr    dword [ds:si+0x04]", res);
+}
+
+#[test]
+fn can_disassemble_fsin() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xD9, 0xFE,             // fsin
+        0xD9, 0xFF,             // fcos
+        0xD9, 0xFB,             // fsincos
+        0xD9, 0xFC,             // frndint
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
+    assert_eq!("[085F:0100] D9FE             Fsin
+[085F:0102] D9FF             Fcos
+[085F:0104] D9FB             Fsincos
+[085F:0106] D9FC             Frndint", res);
+}
+
+#[test]
+fn can_disassemble_fist() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xDF, 0x15,             // fist word [di]
+        0xDF, 0x19,             // fistp word [bx+di]
+        0xDB, 0x1E, 0x32, 0x05, // fistp dword [0x532]
+        0xDB, 0x0A,             // fisttp dword [bp+si]
+        //0xDF, 0x3D,             // fistp qword [di]     XXX handle qword
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
+    assert_eq!("[085F:0100] DF15             Fist     word [ds:di]
+[085F:0102] DF19             Fistp    word [ds:bx+di]
+[085F:0104] DB1E3205         Fistp    dword [ds:0x0532]
+[085F:0108] DB0A             Fisttp   dword [ds:bp+si]", res);
+}
+
+#[test]
+fn can_disassemble_fld() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xD9, 0xC0,             // fld st0
+        0xD9, 0xC1,             // fld st1
+
+        0xD9, 0xE8,             // fld1
+        0xD9, 0xEB,             // fldpi
+        0xD9, 0xE9,             // fldl2t
+        0xD9, 0xEA,             // fldl2e
+
+        0xD9, 0x06, 0xE9, 0x02, // fld dword [0x2e9]
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 7);
+    assert_eq!("[085F:0100] D9C0             Fld      st0
+[085F:0102] D9C1             Fld      st1
+[085F:0104] D9E8             Fld1
+[085F:0106] D9EB             Fldpi
+[085F:0108] D9E9             Fldl2t
+[085F:010A] D9EA             Fldl2e
+[085F:010C] D906E902         Fld      dword [ds:0x02E9]", res);
+}
+
+#[test]
+fn can_disassemble_fst() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xD9, 0x9F, 0x46, 0x62, // fstp dword [bx+0x6246]
+        0xD9, 0x97, 0x46, 0x62, // fst dword [bx+0x6246]
+        0xD9, 0x1E, 0xE9, 0x02, // fstp dword [0x2e9]
+        0xDD, 0xD9,             // fstp st1
+        0xDD, 0xD1,             // fst st1
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 5);
+    assert_eq!("[085F:0100] D99F4662         Fstp     dword [ds:bx+0x6246]
+[085F:0104] D9974662         Fst      dword [ds:bx+0x6246]
+[085F:0108] D91EE902         Fstp     dword [ds:0x02E9]
+[085F:010C] DDD9             Fstp     st1
+[085F:010E] DDD1             Fst      st1", res);
+}
+
+#[test]
+fn can_disassemble_fadd() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xD8, 0xC1,             // fadd st1
+        0xDE, 0xC1,             // faddp st1
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
+    assert_eq!("[085F:0100] D8C1             Fadd     st1
+[085F:0102] DEC1             Faddp    st1", res);
+}
+
+#[test]
+fn can_disassemble_fsub() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xDE, 0xEA,             // fsubp st2
+        0xDE, 0xE2,             // fsubrp st2
+        0xD8, 0x28,             // fsubr dword [bx+si]
+        0xD8, 0x66, 0x19,       //  fsub dword [bp+0x19]
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
+    assert_eq!("[085F:0100] DEEA             Fsubp    st2
+[085F:0102] DEE2             Fsubrp   st2
+[085F:0104] D828             Fsubr    dword [ds:bx+si]
+[085F:0106] D86619           Fsub     dword [ds:bp+0x19]", res);
+}
+
+#[test]
+fn can_disassemble_fpatan() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xD9, 0xF3,             // fpatan
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 1);
+    assert_eq!("[085F:0100] D9F3             Fpatan", res);
+}
+
+#[test]
+fn can_disassemble_ffree() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xDD, 0xC0,             // ffree st0
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 1);
+    assert_eq!("[085F:0100] DDC0             Ffree    st0", res);
+}
+
+#[test]
+fn can_disassemble_fxch() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xD9, 0xC9,             // fxch st1
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 1);
+    assert_eq!("[085F:0100] D9C9             Fxch     st1", res);
+}
+
+#[test]
+fn can_disassemble_fldcw() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xD9, 0x28,             // fldcw [bx+si]
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 1);
+    assert_eq!("[085F:0100] D928             Fldcw    word [ds:bx+si]", res);
+}
+
+#[test]
+fn can_disassemble_fcom() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xDE, 0x17,             // ficom word [bx]
+        0xDE, 0x1F,             // ficomp word [bx]
+        0xDA, 0x1F,             // ficomp dword [bx]
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 3);
+    assert_eq!("[085F:0100] DE17             Ficom    word [ds:bx]
+[085F:0102] DE1F             Ficomp   word [ds:bx]
+[085F:0104] DA1F             Ficomp   dword [ds:bx]", res);
+}
+
+#[test]
+fn can_disassemble_finit() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xDB, 0xE3,             // finit
+        0xD9, 0xE4,             // ftst
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
+    assert_eq!("[085F:0100] DBE3             Finit
+[085F:0102] D9E4             Ftst", res);
+}

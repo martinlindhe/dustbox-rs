@@ -289,7 +289,112 @@ pub enum Op {
 
     Xor8, Xor16, Xor32,
 
+    /// (FPU) Absolute Value
+    Fabs,
+
+    /// (FPU) Add
+    Fadd, Faddp,
+
+    /// (FPU) Change Sign
+    Fchs,
+
+    /// (FPU) Compare Floating Point Values
+    Fcom, Fcomp,
+
+    /// (FPU) Cosine
+    Fcos,
+
+    /// (FPU) Divide
+    Fdiv, Fdivp, Fidiv,
+
+    /// (FPU) Reverse Divide
+    Fdivr,
+
+    /// (FPU) Free Floating-Point Register
+    Ffree,
+
+    /// (FPU) Compare Integer
+    Ficom, Ficomp,
+
+    /// (FPU) Load Integer
+    Fild,
+
+    /// (FPU) Initialize Floating-Point Unit
+    Finit,
+
+    /// (FPU) Store Integer
+    Fist, Fistp,
+
+    /// (FPU) Store Integer with Truncation
+    Fisttp,
+
+    /// (FPU) Load Floating Point Value
+    Fld,
+
+    /// (FPU) Load Constant +1.0
+    Fld1,
+
+    /// (FPU) Load Constant log₂10
+    Fldl2t,
+
+    /// (FPU) Load Constant log₂e
+    Fldl2e,
+
+    /// (FPU) Load Constant +0.0
+    Fldz,
+
+    /// (FPU) Load Constant π
+    Fldpi,
+
+    /// (FPU) Load x87 FPU Control Word
+    Fldcw,
+
+    /// (FPU) Multiply
+    Fmul, Fimul,
+
+    /// (FPU) Partial Arctangent
+    Fpatan,
+
+    /// (FPU) Round to Integer
+    Frndint,
+
+    /// (FPU) Sine
+    Fsin,
+
+    /// (FPU) Sine and Cosine
+    Fsincos,
+
+    /// (FPU)
+    Fsqrt,
+
+    /// (FPU) Store Floating Point Value
+    Fst, Fstp,
+
+    /// (FPU) Store x87 FPU Status Word
+    Fstsw,
+
+    /// (FPU) Store x87 FPU Control Word
+    Fnstcw,
+
+    /// (FPU) Subtract
+    Fsub, Fsubp,
+
+    /// (FPU) Reverse Subtract
+    Fsubr, Fsubrp,
+
+    /// (FPU) Test
+    Ftst,
+
+    /// (FPU) Wait
+    Fwait,
+
+    /// (FPU) Exchange Register Contents
+    Fxch,
+
+    /// Initial state
     Uninitialized,
+
+    /// Invalid encoding. XXX also used for unhandled encodings atm
     Invalid(Vec<u8>, Invalid),
 }
 
