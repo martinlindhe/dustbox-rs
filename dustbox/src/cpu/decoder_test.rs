@@ -91,6 +91,21 @@ fn can_disassemble_relative_short_jumps() {
                res);
 }
 
+
+#[test]
+fn can_disassemble_jcxz() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xE3, 0x1F,         // jcxz 0x121
+        0x67, 0xE3, 0x1C,   // jecxz 0x121
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
+    assert_eq!("[085F:0100] E31F             Jcxz     0x0121
+[085F:0102] 67E31C           Jecxz    0x0121", res);
+}
+
 #[test]
 fn can_disassemble_xor16() {
     let mut machine = Machine::deterministic();

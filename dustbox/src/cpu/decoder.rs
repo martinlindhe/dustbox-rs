@@ -194,120 +194,118 @@ impl Decoder {
                         op.params.dst = self.rm16(&mut mmu, op, x.rm, x.md);
                         op.command = match x.reg {
                             0 => Op::Sldt, // sldt r/m16
-                            _ => Op::Invalid(vec!(b, b2), Invalid::Reg(x.reg)),
+                            _ => Op::Invalid(vec!(b, b2, x.u8()), Invalid::Reg(x.reg)),
                         };
                     }
-                    0x02 => {
-                        // lar r16, r16/m16
+                    0x02 => { // lar r16, r16/m16
                         op.command = Op::Lar16;
                         op.params = self.r16_rm16(&mut mmu, op);
                     }
-                    0x82 => {
-                        // jc rel16
+                    0x80 => { // jo rel16
+                        op.command = Op::Jo;
+                        op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
+                    }
+                    0x81 => { // jno rel16
+                        op.command = Op::Jno;
+                        op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
+                    }
+                    0x82 => { // jc rel16
                         op.command = Op::Jc;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
-                    0x83 => {
-                        // jnc rel16
+                    0x83 => { // jnc rel16
                         op.command = Op::Jnc;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
-                    0x84 => {
-                        // jz rel16
+                    0x84 => { // jz rel16
                         op.command = Op::Jz;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
-                    0x85 => {
-                        // jnz rel16
+                    0x85 => { // jnz rel16
                         op.command = Op::Jnz;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
-                    0x86 => {
-                        // jna rel16
+                    0x86 => { // jna rel16
                         op.command = Op::Jna;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
-                    0x87 => {
-                        // ja rel16
+                    0x87 => { // ja rel16
                         op.command = Op::Ja;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
-                    0x89 => {
-                        // jns rel16
+                    0x88 => { // js rel16
+                        op.command = Op::Js;
+                        op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
+                    }
+                    0x89 => { // jns rel16
                         op.command = Op::Jns;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
-                    0x8C => {
-                        // jl rel16
+                    0x8A => { // jpe rel16
+                        op.command = Op::Jpe;
+                        op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
+                    }
+                    0x8B => { // jpo rel16
+                        op.command = Op::Jpo;
+                        op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
+                    }
+                    0x8C => { // jl rel16
                         op.command = Op::Jl;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
-                    0x8D => {
-                        // jnl rel16
+                    0x8D => { // jnl rel16
                         op.command = Op::Jnl;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
-                    0x8E => {
-                        // jng rel16
+                    0x8E => { // jng rel16
                         op.command = Op::Jng;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
-                    0x8F => {
-                        // jg rel16
+                    0x8F => { // jg rel16
                         op.command = Op::Jg;
                         op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
                     }
-                    0x92 => {
-                        // setc r/m8
+                    0x92 => { // setc r/m8
                         let x = self.read_mod_reg_rm(mmu);
                         op.command = Op::Setc;
                         op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
                     }
-                    0x95 => {
-                        // setnz r/m8
+                    0x95 => { // setnz r/m8
                         let x = self.read_mod_reg_rm(mmu);
                         op.command = Op::Setnz;
                         op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
                     }
-                    0x9F => {
-                        // setg r/m8
+                    0x9F => { // setg r/m8
                         let x = self.read_mod_reg_rm(mmu);
                         op.command = Op::Setg;
                         op.params.dst = self.rm8(&mut mmu, op.segment_prefix, x.rm, x.md);
                     }
-                    0xA0 => {
-                        // push fs
+                    0xA0 => { // push fs
                         op.command = Op::Push16;
                         op.params.dst = Parameter::SReg16(R::FS);
                     }
-                    0xA1 => {
-                        // pop fs
+                    0xA1 => { // pop fs
                         op.command = Op::Pop16;
                         op.params.dst = Parameter::SReg16(R::FS);
                     }
-                    0xA3 => {
-                        // bt r/m16, r16
+                    0xA3 => { // bt r/m16, r16
                         op.command = Op::Bt;
                         op.params = self.rm16_r16(&mut mmu, op);
                     }
-                    0xA4 =>{
-                        // shld r/m16, r16, imm8
+                    0xA4 => { // shld r/m16, r16, imm8
                         op.command = Op::Shld;
                         op.params = self.rm16_r16(&mut mmu, op);
                         op.params.src2 = Parameter::Imm8(self.read_u8(mmu));
                     }
-                    0xA8 => {
-                        // push gs
+                    0xA8 => { // push gs
                         op.command = Op::Push16;
                         op.params.dst = Parameter::SReg16(R::GS);
                     }
-                    0xA9 => {
-                        // pop gs
+                    0xA9 => { // pop gs
                         op.command = Op::Pop16;
                         op.params.dst = Parameter::SReg16(R::GS);
                     }
-                    0xAC => {
-                        // shrd r/m16, r16, imm8
+                    0xAC => { // shrd r/m16, r16, imm8
                         op.command = Op::Shrd;
                         op.params = self.rm16_r16(&mut mmu, op);
                         op.params.src2 = Parameter::Imm8(self.read_u8(mmu));
@@ -1722,8 +1720,10 @@ impl Decoder {
                 op.params.dst = Parameter::Imm16(self.read_rel8(mmu));
             }
             0xE3 => {
-                // jcxz rel8
-                op.command = Op::Jcxz;
+                op.command = match op.address_size {
+                    AddressSize::_16bit => Op::Jcxz,    // jcxz rel8
+                    AddressSize::_32bit => Op::Jecxz,   // jecxz rel8
+                };
                 op.params.dst = Parameter::Imm16(self.read_rel8(mmu));
             }
             0xE4 => {

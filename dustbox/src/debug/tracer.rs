@@ -713,7 +713,7 @@ impl ProgramTracer {
                     break;
                 }
                 Op::Loop | Op::Loope | Op::Loopne |
-                Op::Ja | Op::Jc | Op::Jcxz | Op::Jg | Op::Jl |
+                Op::Ja | Op::Jc | Op::Jcxz | Op::Jecxz | Op::Jg | Op::Jl |
                 Op::Jna | Op::Jnc | Op::Jng | Op::Jnl | Op::Jno | Op::Jns | Op::Jnz |
                 Op::Jo | Op::Jpe | Op::Jpo | Op::Js | Op::Jz => match ii.instruction.params.dst {
                     Parameter::Imm16(imm) => self.learn_address(ma.segment(), imm, ma, AddressUsageKind::Branch),

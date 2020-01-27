@@ -90,6 +90,9 @@ pub enum Op {
     /// Jump if CX register is 0.
     Jcxz,
 
+    /// Jump if ECX register is 0.
+    Jecxz,
+
     /// Jump if greater (ZF=0 and SF=OF).    (alias: jnle)
     Jg,
 

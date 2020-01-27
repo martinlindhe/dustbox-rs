@@ -1108,8 +1108,8 @@ impl Machine {
                 self.cpu.set_r16(R::SP, sp);
             }
             Op::Hlt => {
-                // println!("XXX impl {}", op);
-                // self.fatal_error = true;
+                println!("XXX impl {}", op);
+                self.cpu.fatal_error = true;
             }
             Op::Idiv8 => {
                 let ax = self.cpu.get_r16(R::AX) as i16; // dividend
@@ -1338,7 +1338,7 @@ impl Machine {
                 self.cpu.execute_interrupt(&mut self.mmu, int as u8);
             }
             Op::Ja => {
-                if !self.cpu.regs.flags.carry & !self.cpu.regs.flags.zero {
+                if !self.cpu.regs.flags.carry && !self.cpu.regs.flags.zero {
                     self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 }
             }
@@ -1352,8 +1352,13 @@ impl Machine {
                     self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 }
             }
+            Op::Jecxz => {
+                if self.cpu.get_r32(R::ECX) == 0 {
+                    self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                }
+            }
             Op::Jg => {
-                if !self.cpu.regs.flags.zero & self.cpu.regs.flags.sign == self.cpu.regs.flags.overflow {
+                if !self.cpu.regs.flags.zero && self.cpu.regs.flags.sign == self.cpu.regs.flags.overflow {
                     self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 }
             }
@@ -1381,7 +1386,7 @@ impl Machine {
                 self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
             }
             Op::Jna => {
-                if self.cpu.regs.flags.carry | self.cpu.regs.flags.zero {
+                if self.cpu.regs.flags.carry || self.cpu.regs.flags.zero {
                     self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 }
             }
@@ -1391,7 +1396,7 @@ impl Machine {
                 }
             }
             Op::Jng => {
-                if self.cpu.regs.flags.zero | self.cpu.regs.flags.sign != self.cpu.regs.flags.overflow {
+                if self.cpu.regs.flags.zero || self.cpu.regs.flags.sign != self.cpu.regs.flags.overflow {
                     self.cpu.regs.ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                 }
             }

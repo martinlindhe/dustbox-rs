@@ -210,10 +210,10 @@ fn main() {
 
             // sleep for 1/60:th of a second, minus time it took to get here
             let mut sleep_time = Duration::new(0, 1_000_000_000 / locked_fps);
-            if sleep_time >= exec_time {
-                sleep_time -= exec_time;
+            if sleep_time >= event_time {
+                sleep_time -= event_time;
             } else {
-                println!("WARN: exec is slow {:#?}", exec_time);
+                println!("WARN: event handling is slow {:#?}", event_time);
                 sleep_time = Duration::new(0, 0);
             }
             if sleep_time >= render_time {
@@ -222,10 +222,10 @@ fn main() {
                 println!("WARN: render is slow {:#?}", render_time);
                 sleep_time = Duration::new(0, 0);
             }
-            if sleep_time >= event_time {
-                sleep_time -= event_time;
+            if sleep_time >= exec_time {
+                sleep_time -= exec_time;
             } else {
-                println!("WARN: event handling is slow {:#?}", event_time);
+                println!("WARN: exec is slow {:#?}", exec_time);
                 sleep_time = Duration::new(0, 0);
             }
 
