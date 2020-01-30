@@ -101,7 +101,6 @@ impl MMU {
         let addr = MemoryAddress::RealSegmentOffset(seg, imm).value();
         if addr > self.memory.data.len() as u32 {
             panic!("read_u8 FATAL out of bounds read from {:04X}:{:04X} == {:06X}", seg, imm, addr);
-            return 0;
         }
         let v = self.memory.read_u8(addr);
         if DEBUG_MMU {
@@ -114,7 +113,6 @@ impl MMU {
         let addr = MemoryAddress::RealSegmentOffset(seg, imm).value();
         if addr > self.memory.data.len() as u32 {
             panic!("read_u8 FATAL out of bounds read from {:04X}:{:04X} == {:06X}", seg, imm, addr);
-            return 0;
         }
         let v = self.memory.read_u16(addr);
         if DEBUG_MMU {

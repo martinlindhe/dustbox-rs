@@ -1729,7 +1729,7 @@ impl Decoder {
                 op.command = match op.address_size {
                     AddressSize::_16bit => Op::Loop16,
                     AddressSize::_32bit => Op::Loop32,
-                };                
+                };
                 op.params.dst = Parameter::Imm16(self.read_rel8(mmu));
             }
             0xE3 => {
@@ -2017,7 +2017,7 @@ impl Decoder {
 
     /// decode rm16
     fn rm16(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
-        //println!("rm16: rm {}, md {}: {:?}", rm, md, op);
+        println!("rm16: rm {}, md {}: {:?}", rm, md, op);
         match op.address_size {
             AddressSize::_16bit => match md {
                 0 => if rm == 6 { // [u16]
@@ -2035,52 +2035,32 @@ impl Decoder {
             }
             AddressSize::_32bit => match md {
                 0 => match rm {
-                    4 => {
-                        // SIB encoding [--][--]    XXXX
-                        let sib = self.read_sib(mmu);
-                        let scale = match sib.scale {
-                            0 => 1,
-                            1 => 2,
-                            2 => 4,
-                            3 => 8,
-                            _ => unreachable!(),
-                        };
-                        let index = match sib.index {
-                            0 => R::EAX,
-                            1 => R::ECX,
-                            2 => R::EDX,
-                            3 => R::EBX,
-                            4 => panic!("illegal encoding"),
-                            5 => R::EBP,
-                            6 => R::ESI,
-                            7 => R::EDI,
-                            _ => unreachable!(),
-                        };
-                        let base = match sib.base {
-                            0 => R::EAX,
-                            1 => R::ECX,
-                            2 => R::EDX,
-                            3 => R::EBX,
-                            4 => R::ESP,
-                            5 => panic!("XXX displacement only if mod=0, OR EBP if mod=1 or 2"),
-                            6 => R::ESI,
-                            7 => R::EDI,
-                            _ => unreachable!(),
-                        };
-                        panic!("unhandled SIB: mod {}, scale {}, index {}, base {}, {:?}", md, scale, index, base, op)
+                    4 => { // [sib]
+                        let (scale, index, base) = self.read_sib(mmu);
+                        Parameter::Ptr16SIB(op.segment_prefix, scale, index, base)
                     }
                     5 => Parameter::Ptr32(op.segment_prefix, self.read_u32(mmu)),   // [u32]
                     _ => Parameter::Ptr16Amode(op.segment_prefix, op.address_size.amode_from(rm)), // [amode]
                 }
                 // [amode+s8]
-                1 => Parameter::Ptr16AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
+                1 => match rm {
+                    4 => { // [sib + s8]
+                        let (scale, index, base) = self.read_sib(mmu);
+                        Parameter::Ptr16SIBS8(op.segment_prefix, scale, index, base, self.read_s8(mmu))
+                    }
+                    _ => Parameter::Ptr16AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
+                }
 
                 // [amode+s32]
-                2 => Parameter::Ptr16AmodeS32(op.segment_prefix, op.address_size.amode_from(rm), self.read_s32(mmu)),
-                _ => {
-                    panic!("XXX rm16 adrsize32 unhandled md {}, rm {}, op {:?}", md, rm, op);
-                    Parameter::None
+                2 => match rm {
+                    4 => { // [sib + s32]
+                        let (scale, index, base) = self.read_sib(mmu);
+                        Parameter::Ptr16SIBS32(op.segment_prefix, scale, index, base, self.read_s32(mmu))
+                    }
+                    _ => Parameter::Ptr16AmodeS32(op.segment_prefix, op.address_size.amode_from(rm), self.read_s32(mmu)),
                 }
+                3 => panic!("XXX rm16 adrsize32 unhandled md {}, rm {}, op {:?}", md, rm, op),
+                _ => unreachable!(),
             }
         }
     }
@@ -2118,6 +2098,7 @@ impl Decoder {
                 } else { // [amode]
                     Parameter::Ptr16Amode(op.segment_prefix, op.address_size.amode_from(rm))
                 }
+                1 | 2 => panic!("XXX rmf16 unhandled md {}, rm {}", md, rm),
                 /*
                 // [amode+s8]
                 1 => Parameter::Ptr16AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
@@ -2126,11 +2107,7 @@ impl Decoder {
                 */
                 // [reg]
                 3 => Parameter::FPR80(fpr(rm)),
-                //_ => unreachable!(),
-                _ => {
-                    panic!("XXX rmf16 unhandled md {}, rm {}", md, rm);
-                    Parameter::None
-                }
+                _ => unreachable!(),
             }
             AddressSize::_32bit => match md {
                 _ => panic!("unhandled rmf32 adrsize 32, md {}: {:?}", md, op),
@@ -2298,18 +2275,47 @@ impl Decoder {
         res
     }
 
-    fn read_sib(&mut self, mmu: &MMU) -> SIB {
+    fn read_sib(&mut self, mmu: &MMU) -> (u8, R, R) {
         let b = mmu.read_u8(self.current_seg, self.current_offset);
         self.current_offset = self.current_offset.wrapping_add(1);
-        let res = SIB {
+        let sib = SIB {
             scale: b >> 6, // high 2 bits
             index: (b >> 3) & 7, // mid 3 bits
             base: b & 7, // low 3 bits
         };
         if DEBUG_DECODER {
-            println!("read_sib byte {:02X} = scale {}, index {}, base {}", b, res.scale, res.index, res.base);
+            println!("read_sib byte {:02X} = scale {}, index {}, base {}", b, sib.scale, sib.index, sib.base);
         }
-        res
+        let scale = match sib.scale {
+            0 => 1,
+            1 => 2,
+            2 => 4,
+            3 => 8,
+            _ => unreachable!(),
+        };
+        let index = match sib.index {
+            0 => R::EAX,
+            1 => R::ECX,
+            2 => R::EDX,
+            3 => R::EBX,
+            4 => panic!("illegal encoding"),
+            5 => R::EBP,
+            6 => R::ESI,
+            7 => R::EDI,
+            _ => unreachable!(),
+        };
+        let base = match sib.base {
+            0 => R::EAX,
+            1 => R::ECX,
+            2 => R::EDX,
+            3 => R::EBX,
+            4 => R::ESP,
+            5 => panic!("XXX displacement only if mod=0, OR EBP if mod=1 or 2"),
+            6 => R::ESI,
+            7 => R::EDI,
+            _ => unreachable!(),
+        };
+        (scale, index, base)
     }
 
     fn read_rel8(&mut self, mmu: &MMU) -> u16 {

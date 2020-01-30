@@ -74,10 +74,110 @@ fn can_disassemble_addressing_mod0_adrsize() {
 [085F:0103] 678909           Mov16    word [ds:ecx], cx
 [085F:0106] 67890A           Mov16    word [ds:edx], cx
 [085F:0109] 67890B           Mov16    word [ds:ebx], cx
-[085F:010C] 67890C00         Mov16    word [ds:eax + eax], cx
-[085F:010C] 67890D04030201   Mov16    dword [ds:0x1020304], cx
-[085F:0113] 67890E           Mov16    word [ds:esi], cx
-[085F:0116] 67890F           Mov16    word [ds:edi], cx", res);
+[085F:010C] 67890C00         Mov16    word [ds:eax+eax], cx
+[085F:0110] 67890D04030201   Mov16    dword [ds:0x1020304], cx
+[085F:0117] 67890E           Mov16    word [ds:esi], cx
+[085F:011A] 67890F           Mov16    word [ds:edi], cx", res);
+}
+
+#[test]
+fn can_disassemble_addressing_mod0_sib_scale1() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        // adress-size override
+        0x67, 0x89, 0x0C, 0x00, // mov [dword eax+eax],cx
+        0x67, 0x89, 0x0C, 0x08, // mov [dword eax+ecx],cx
+        0x67, 0x89, 0x0C, 0x10, // mov [dword eax+edx],cx
+        0x67, 0x89, 0x0C, 0x18, // mov [dword eax+ebx],cx
+        // invalid
+        0x67, 0x89, 0x0C, 0x28, // mov [dword eax+ebp],cx
+        0x67, 0x89, 0x0C, 0x30, // mov [dword eax+esi],cx
+        0x67, 0x89, 0x0C, 0x38, // mov [dword eax+edi],cx
+    ];
+    machine.load_executable(&code, 0x085F);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 7);
+    assert_eq!("[085F:0100] 67890C00         Mov16    word [ds:eax+eax], cx
+[085F:0104] 67890C08         Mov16    word [ds:eax+ecx], cx
+[085F:0108] 67890C10         Mov16    word [ds:eax+edx], cx
+[085F:010C] 67890C18         Mov16    word [ds:eax+ebx], cx
+[085F:0110] 67890C28         Mov16    word [ds:eax+ebp], cx
+[085F:0114] 67890C30         Mov16    word [ds:eax+esi], cx
+[085F:0118] 67890C38         Mov16    word [ds:eax+edi], cx", res);
+}
+
+#[test]
+fn can_disassemble_addressing_mod0_sib_scale2() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        // adress-size override
+        0x67, 0x89, 0x0C, 0x40, // mov [dword eax+eax*2],cx
+        0x67, 0x89, 0x0C, 0x48, // mov [dword eax+ecx*2],cx
+        0x67, 0x89, 0x0C, 0x50, // mov [dword eax+edx*2],cx
+        0x67, 0x89, 0x0C, 0x58, // mov [dword eax+ebx*2],cx
+        // invalid
+        0x67, 0x89, 0x0C, 0x68, // mov [dword eax+ebp*2],cx
+        0x67, 0x89, 0x0C, 0x70, // mov [dword eax+esi*2],cx
+        0x67, 0x89, 0x0C, 0x78, // mov [dword eax+edi*2],cx
+    ];
+    machine.load_executable(&code, 0x085F);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 7);
+    assert_eq!("[085F:0100] 67890C40         Mov16    word [ds:eax+eax*2], cx
+[085F:0104] 67890C48         Mov16    word [ds:eax+ecx*2], cx
+[085F:0108] 67890C50         Mov16    word [ds:eax+edx*2], cx
+[085F:010C] 67890C58         Mov16    word [ds:eax+ebx*2], cx
+[085F:0110] 67890C68         Mov16    word [ds:eax+ebp*2], cx
+[085F:0114] 67890C70         Mov16    word [ds:eax+esi*2], cx
+[085F:0118] 67890C78         Mov16    word [ds:eax+edi*2], cx", res);
+}
+
+#[test]
+fn can_disassemble_addressing_mod0_sib_scale4() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        // adress-size override
+        0x67, 0x89, 0x0C, 0x80, // mov [dword eax+eax*4],cx
+        0x67, 0x89, 0x0C, 0x88, // mov [dword eax+ecx*4],cx
+        0x67, 0x89, 0x0C, 0x90, // mov [dword eax+edx*4],cx
+        0x67, 0x89, 0x0C, 0x98, // mov [dword eax+ebx*4],cx
+        // invalid
+        0x67, 0x89, 0x0C, 0xA8, // mov [dword eax+ebp*4],cx
+        0x67, 0x89, 0x0C, 0xB0, // mov [dword eax+esi*4],cx
+        0x67, 0x89, 0x0C, 0xB8, // mov [dword eax+edi*4],cx
+    ];
+    machine.load_executable(&code, 0x085F);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 7);
+    assert_eq!("[085F:0100] 67890C80         Mov16    word [ds:eax+eax*4], cx
+[085F:0104] 67890C88         Mov16    word [ds:eax+ecx*4], cx
+[085F:0108] 67890C90         Mov16    word [ds:eax+edx*4], cx
+[085F:010C] 67890C98         Mov16    word [ds:eax+ebx*4], cx
+[085F:0110] 67890CA8         Mov16    word [ds:eax+ebp*4], cx
+[085F:0114] 67890CB0         Mov16    word [ds:eax+esi*4], cx
+[085F:0118] 67890CB8         Mov16    word [ds:eax+edi*4], cx", res);
+}
+
+#[test]
+fn can_disassemble_addressing_mod0_sib_scale8() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        // adress-size override
+        0x67, 0x89, 0x0C, 0xC0, // mov [dword eax+eax*8],cx
+        0x67, 0x89, 0x0C, 0xC8, // mov [dword eax+ecx*8],cx
+        0x67, 0x89, 0x0C, 0xD0, // mov [dword eax+edx*8],cx
+        0x67, 0x89, 0x0C, 0xD8, // mov [dword eax+ebx*8],cx
+        // invalid
+        0x67, 0x89, 0x0C, 0xE8, // mov [dword eax+ebp*8],cx
+        0x67, 0x89, 0x0C, 0xF0, // mov [dword eax+esi*8],cx
+        0x67, 0x89, 0x0C, 0xF8, // mov [dword eax+edi*8],cx
+    ];
+    machine.load_executable(&code, 0x085F);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 7);
+    assert_eq!("[085F:0100] 67890CC0         Mov16    word [ds:eax+eax*8], cx
+[085F:0104] 67890CC8         Mov16    word [ds:eax+ecx*8], cx
+[085F:0108] 67890CD0         Mov16    word [ds:eax+edx*8], cx
+[085F:010C] 67890CD8         Mov16    word [ds:eax+ebx*8], cx
+[085F:0110] 67890CE8         Mov16    word [ds:eax+ebp*8], cx
+[085F:0114] 67890CF0         Mov16    word [ds:eax+esi*8], cx
+[085F:0118] 67890CF8         Mov16    word [ds:eax+edi*8], cx", res);
 }
 
 #[test]
@@ -136,24 +236,25 @@ fn can_disassemble_addressing_mod1_adrsize() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         // address-size override
-        0x67, 0x89, 0x48, 0xF6, // mov [eax-0xa],cx
-        0x67, 0x89, 0x49, 0xF6, // mov [ecx-0xa],cx
-        0x67, 0x89, 0x4A, 0xF6, // mov [edx-0xa],cx
-        0x67, 0x89, 0x4B, 0xF6, // mov [ebx-0xa],cx
-        // XXX    SIB byte
-        0x67, 0x89, 0x4D, 0xF6, // mov [ebp-0xa],cx
-        0x67, 0x89, 0x4E, 0xF6, // mov [esi-0xa],cx
-        0x67, 0x89, 0x4F, 0xF6, // mov [edi-0xa],cx
+        0x67, 0x89, 0x48, 0xF6,         // mov [eax-0xa],cx
+        0x67, 0x89, 0x49, 0xF6,         // mov [ecx-0xa],cx
+        0x67, 0x89, 0x4A, 0xF6,         // mov [edx-0xa],cx
+        0x67, 0x89, 0x4B, 0xF6,         // mov [ebx-0xa],cx
+        0x67, 0x89, 0x4C, 0x00, 0x0A,   // mov [dword eax+eax+0xa],cx       SIB encoding
+        0x67, 0x89, 0x4D, 0xF6,         // mov [ebp-0xa],cx
+        0x67, 0x89, 0x4E, 0xF6,         // mov [esi-0xa],cx
+        0x67, 0x89, 0x4F, 0xF6,         // mov [edi-0xa],cx
     ];
     machine.load_executable(&code, 0x085F);
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 7);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 8);
     assert_eq!("[085F:0100] 678948F6         Mov16    word [ds:eax-0x0A], cx
 [085F:0104] 678949F6         Mov16    word [ds:ecx-0x0A], cx
 [085F:0108] 67894AF6         Mov16    word [ds:edx-0x0A], cx
 [085F:010C] 67894BF6         Mov16    word [ds:ebx-0x0A], cx
-[085F:0110] 67894DF6         Mov16    word [ds:ebp-0x0A], cx
-[085F:0114] 67894EF6         Mov16    word [ds:esi-0x0A], cx
-[085F:0118] 67894FF6         Mov16    word [ds:edi-0x0A], cx", res);
+[085F:0110] 67894C000A       Mov16    word [ds:eax+eax+0x0A], cx
+[085F:0115] 67894DF6         Mov16    word [ds:ebp-0x0A], cx
+[085F:0119] 67894EF6         Mov16    word [ds:esi-0x0A], cx
+[085F:011D] 67894FF6         Mov16    word [ds:edi-0x0A], cx", res);
 }
 
 #[test]
@@ -212,24 +313,25 @@ fn can_disassemble_addressing_mod2_adrsize() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         // address-size override
-        0x67, 0x89, 0x88, 0x88, 0x13, 0x00, 0x00, // mov [eax+0x1388],cx
-        0x67, 0x89, 0x89, 0x88, 0x13, 0x00, 0x00, // mov [ecx+0x1388],cx
-        0x67, 0x89, 0x8A, 0x88, 0x13, 0x00, 0x00, // mov [edx+0x1388],cx
-        0x67, 0x89, 0x8B, 0x88, 0x13, 0x00, 0x00, // mov [ebx+0x1388],cx
-        // XXX [--][--]+disp32
-        0x67, 0x89, 0x8D, 0x88, 0x13, 0x00, 0x00, // mov [ebp+0x1388],cx
-        0x67, 0x89, 0x8E, 0x88, 0x13, 0x00, 0x00, // mov [esi+0x1388],cx
-        0x67, 0x89, 0x8F, 0x88, 0x13, 0x00, 0x00, // mov [edi+0x1388],cx
+        0x67, 0x89, 0x88, 0x88, 0x13, 0x00, 0x00,       // mov [eax+0x1388],cx
+        0x67, 0x89, 0x89, 0x88, 0x13, 0x00, 0x00,       // mov [ecx+0x1388],cx
+        0x67, 0x89, 0x8A, 0x88, 0x13, 0x00, 0x00,       // mov [edx+0x1388],cx
+        0x67, 0x89, 0x8B, 0x88, 0x13, 0x00, 0x00,       // mov [ebx+0x1388],cx
+        0x67, 0x89, 0x8C, 0x00, 0x88, 0x13, 0x00, 0x00, // mov [dword eax+eax+0x1388],cx    SIB encoding
+        0x67, 0x89, 0x8D, 0x88, 0x13, 0x00, 0x00,       // mov [ebp+0x1388],cx
+        0x67, 0x89, 0x8E, 0x88, 0x13, 0x00, 0x00,       // mov [esi+0x1388],cx
+        0x67, 0x89, 0x8F, 0x88, 0x13, 0x00, 0x00,       // mov [edi+0x1388],cx
     ];
     machine.load_executable(&code, 0x085F);
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 7);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 8);
     assert_eq!("[085F:0100] 67898888130000   Mov16    word [ds:eax+0x00001388], cx
 [085F:0107] 67898988130000   Mov16    word [ds:ecx+0x00001388], cx
 [085F:010E] 67898A88130000   Mov16    word [ds:edx+0x00001388], cx
 [085F:0115] 67898B88130000   Mov16    word [ds:ebx+0x00001388], cx
-[085F:011C] 67898D88130000   Mov16    word [ds:ebp+0x00001388], cx
-[085F:0123] 67898E88130000   Mov16    word [ds:esi+0x00001388], cx
-[085F:012A] 67898F88130000   Mov16    word [ds:edi+0x00001388], cx", res);
+[085F:011C] 67898C0088130000 Mov16    word [ds:eax+eax+0x1388], cx
+[085F:0124] 67898D88130000   Mov16    word [ds:ebp+0x00001388], cx
+[085F:012B] 67898E88130000   Mov16    word [ds:esi+0x00001388], cx
+[085F:0132] 67898F88130000   Mov16    word [ds:edi+0x00001388], cx", res);
 }
 
 #[test]

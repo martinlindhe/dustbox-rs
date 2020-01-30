@@ -1,5 +1,3 @@
-use std::num::Wrapping;
-
 use crate::machine::Machine;
 use crate::cpu::R;
 

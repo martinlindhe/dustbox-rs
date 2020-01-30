@@ -62,6 +62,11 @@ pub enum Parameter {
     Ptr32Amode(Segment, AMode),         // dword [amode], like "dword [bx]"
     Ptr32AmodeS8(Segment, AMode, i8),   // dword [amode+s8], like "dword [bp-0x20]"
     Ptr32AmodeS16(Segment, AMode, i16), // dword [amode+s16], like "dword [bp-0x2020]"
+
+    /// Scaled Index Base
+    Ptr16SIB(Segment, u8, R, R),
+    Ptr16SIBS8(Segment, u8, R, R, i8),
+    Ptr16SIBS32(Segment, u8, R, R, i32),
     None,
 }
 
@@ -173,11 +178,50 @@ impl fmt::Display for Parameter {
                 amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
-                    (Wrapping(0) - Wrapping(imm)).0
+                    (0i16).wrapping_sub(imm)
                 } else {
                     imm
                 }
             ),
+            Parameter::Ptr16SIB(seg, scale, index, base) => {
+                if scale == 1 {
+                    write!(f, "word [{}:{}+{}]", seg, base, index)
+                } else {
+                    write!(f, "word [{}:{}+{}*{}]", seg, base, index, scale)
+                }
+            }
+            Parameter::Ptr16SIBS8(seg, scale, index, base, imm) => {
+                if scale == 1 {
+                    write!(f, "word [{}:{}+{}{}0x{:02X}]", seg, base, index,
+                        if imm < 0 { "-" } else { "+" },
+                        if imm < 0 {
+                            (0i8).wrapping_sub(imm)
+                        } else {
+                            imm
+                        },
+                    )
+                } else {
+                    // XXX all wrong
+                    //write!(f, "word [{}:{} + {} * {}]", seg, base, index, scale)
+                    panic!("fixme")
+                }
+            }
+            Parameter::Ptr16SIBS32(seg, scale, index, base, imm) => {
+                if scale == 1 {
+                    write!(f, "word [{}:{}+{}{}0x{:02X}]", seg, base, index,
+                        if imm < 0 { "-" } else { "+" },
+                        if imm < 0 {
+                            (0i32).wrapping_sub(imm)
+                        } else {
+                            imm
+                        },
+                    )
+                } else {
+                    // XXX all wrong
+                    //write!(f, "word [{}:{} + {} * {}]", seg, base, index, scale)
+                    panic!("fixme")
+                }
+            }
             Parameter::None => write!(f, ""),
         }
     }
