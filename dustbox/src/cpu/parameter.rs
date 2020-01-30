@@ -1,5 +1,4 @@
 use std::fmt;
-use std::num::Wrapping;
 
 use crate::cpu::segment::Segment;
 use crate::cpu::register::{R, AMode};
@@ -87,7 +86,7 @@ impl fmt::Display for Parameter {
                 "byte {}0x{:02X}",
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
-                    (Wrapping(0) - Wrapping(imm)).0
+                    (0i8).wrapping_sub(imm)
                 } else {
                     imm
                 }
@@ -102,7 +101,7 @@ impl fmt::Display for Parameter {
                 amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
-                    (Wrapping(0) - Wrapping(imm)).0
+                    (0i8).wrapping_sub(imm)
                 } else {
                     imm
                 }
@@ -114,7 +113,7 @@ impl fmt::Display for Parameter {
                 amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
-                    (Wrapping(0) - Wrapping(imm)).0
+                    (0i16).wrapping_sub(imm)
                 } else {
                     imm
                 }
@@ -128,7 +127,7 @@ impl fmt::Display for Parameter {
                 amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
-                    (Wrapping(0) - Wrapping(imm)).0
+                    (0i8).wrapping_sub(imm)
                 } else {
                     imm
                 }
@@ -140,7 +139,7 @@ impl fmt::Display for Parameter {
                 amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
-                    (Wrapping(0) - Wrapping(imm)).0
+                    (0i16).wrapping_sub(imm)
                 } else {
                     imm
                 }
@@ -152,7 +151,7 @@ impl fmt::Display for Parameter {
                 amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
-                    (Wrapping(0) - Wrapping(imm)).0
+                    (0i32).wrapping_sub(imm)
                 } else {
                     imm
                 }
@@ -166,7 +165,7 @@ impl fmt::Display for Parameter {
                 amode,
                 if imm < 0 { "-" } else { "+" },
                 if imm < 0 {
-                    (Wrapping(0) - Wrapping(imm)).0
+                    (0i8).wrapping_sub(imm)
                 } else {
                     imm
                 }

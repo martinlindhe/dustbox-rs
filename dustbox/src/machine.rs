@@ -1,5 +1,4 @@
 use std::{mem, u8};
-use std::num::Wrapping;
 use std::fs::File;
 use std::path::Path;
 use std::io::{BufWriter, Write};
@@ -721,7 +720,7 @@ impl Machine {
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let carry = if self.cpu.regs.flags.carry { 1 } else { 0 };
-                let res = (Wrapping(dst) + Wrapping(src) + Wrapping(carry)).0;
+                let res = dst.wrapping_add(src).wrapping_add(carry);
                 self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, (res & 0xFF) as u8);
 
                 // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
@@ -737,7 +736,7 @@ impl Machine {
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let carry = if self.cpu.regs.flags.carry { 1 } else { 0 };
-                let res = (Wrapping(dst) + Wrapping(src) + Wrapping(carry)).0;
+                let res = dst.wrapping_add(src).wrapping_add(carry);
                 self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, (res & 0xFFFF) as u16);
 
                 // The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
@@ -2290,7 +2289,7 @@ impl Machine {
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let cf = if self.cpu.regs.flags.carry { 1 } else { 0 };
-                let res = (Wrapping(dst) - (Wrapping(src) + Wrapping(cf))).0;
+                let res = dst.wrapping_sub(src).wrapping_add(cf);
 
                 // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
                 self.cpu.regs.flags.set_overflow_sub_u8(res, src, dst);
@@ -2306,7 +2305,7 @@ impl Machine {
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 let cf = if self.cpu.regs.flags.carry { 1 } else { 0 };
-                let res = (Wrapping(dst) - (Wrapping(src) + Wrapping(cf))).0;
+                let res = dst.wrapping_sub(src).wrapping_add(cf);
 
                 // The OF, SF, ZF, AF, PF, and CF flags are set according to the result.
                 self.cpu.regs.flags.set_overflow_sub_u16(res, src, dst);

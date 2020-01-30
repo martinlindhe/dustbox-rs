@@ -25,7 +25,6 @@ pub use self::encoder::*;
 mod encoder;
 
 use std::u8;
-use std::num::Wrapping;
 
 use crate::machine::{DEBUG_MARK_STACK, STACK_MARKER};
 use crate::memory::{MMU, MemoryAddress};
@@ -142,7 +141,7 @@ impl CPU {
     }
 
     pub fn cmp8(&mut self, dst: usize, src: usize) {
-        let res = (Wrapping(dst) - Wrapping(src)).0;
+        let res = dst.wrapping_sub(src);
 
         // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
         self.regs.flags.set_carry_u8(res);
@@ -154,7 +153,7 @@ impl CPU {
     }
 
     pub fn cmp16(&mut self, dst: usize, src: usize) {
-        let res = (Wrapping(dst) - Wrapping(src)).0;
+        let res = dst.wrapping_sub(src);
 
         // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
         self.regs.flags.set_carry_u16(res);
@@ -166,7 +165,7 @@ impl CPU {
     }
 
     pub fn cmp32(&mut self, dst: usize, src: usize) {
-        let res = (Wrapping(dst) - Wrapping(src)).0;
+        let res = dst.wrapping_sub(src);
 
         // The CF, OF, SF, ZF, AF, and PF flags are set according to the result.
         self.regs.flags.set_carry_u32(res);
@@ -178,7 +177,7 @@ impl CPU {
     }
 
     pub fn push16(&mut self, mmu: &mut MMU, data: u16) {
-        let esp = (Wrapping(self.get_r32(R::ESP)) - Wrapping(2)).0;
+        let esp = self.get_r32(R::ESP).wrapping_sub(2);
         self.set_r32(R::ESP, esp);
         let ss = self.get_r16(R::SS);
         if DEBUG_STACK {
@@ -191,7 +190,7 @@ impl CPU {
     }
 
     pub fn push32(&mut self, mmu: &mut MMU, data: u32) {
-        let esp = (Wrapping(self.get_r32(R::ESP)) - Wrapping(4)).0;
+        let esp = self.get_r32(R::ESP).wrapping_sub(4);
         self.set_r32(R::ESP, esp);
         let ss = self.get_r16(R::SS);
         if DEBUG_STACK {
@@ -207,7 +206,7 @@ impl CPU {
         if DEBUG_STACK {
             println!("[{}] pop16 {:04X} from {:04X}:{:04X}", self.get_memory_address(), data, ss, esp);
         }
-        let esp = (Wrapping(esp) + Wrapping(2)).0;
+        let esp = esp.wrapping_add(2);
         self.set_r32(R::ESP, esp);
         data
     }
@@ -219,7 +218,7 @@ impl CPU {
         if DEBUG_STACK {
             println!("[{}] pop32 {:04X} from {:04X}:{:04X}", self.get_memory_address(), data, ss, esp);
         }
-        let esp = (Wrapping(esp) + Wrapping(4)).0;
+        let esp = esp.wrapping_add(4);
         self.set_r32(R::ESP, esp);
         data
     }
@@ -308,8 +307,8 @@ impl CPU {
     pub fn read_parameter_address(&mut self, p: &Parameter) -> usize {
         match *p {
             Parameter::Ptr16Amode(_, ref amode) => self.amode(amode),
-            Parameter::Ptr16AmodeS8(_, ref amode, imm) => (Wrapping(self.amode(amode)) + Wrapping(imm as usize)).0,
-            Parameter::Ptr16AmodeS16(_, ref amode, imm) => (Wrapping(self.amode(amode)) + Wrapping(imm as usize)).0,
+            Parameter::Ptr16AmodeS8(_, ref amode, imm) => self.amode(amode).wrapping_add(imm as usize),
+            Parameter::Ptr16AmodeS16(_, ref amode, imm) => self.amode(amode).wrapping_add(imm as usize),
             Parameter::Ptr16(_, imm) => imm as usize,
             _ => panic!("unhandled parameter: {:?} at {:06X}", p, self.get_address()),
         }
@@ -530,15 +529,17 @@ impl CPU {
 
     pub fn amode(&self, amode: &AMode) -> usize {
         match *amode {
-            AMode::BXSI => (Wrapping(self.get_r16(R::BX)) + Wrapping(self.get_r16(R::SI))).0 as usize,
-            AMode::BXDI => (Wrapping(self.get_r16(R::BX)) + Wrapping(self.get_r16(R::DI))).0 as usize,
-            AMode::BPSI => (Wrapping(self.get_r16(R::BP)) + Wrapping(self.get_r16(R::SI))).0 as usize,
-            AMode::BPDI => (Wrapping(self.get_r16(R::BP)) + Wrapping(self.get_r16(R::DI))).0 as usize,
+            // 16-bit
+            AMode::BXSI => self.get_r16(R::BX).wrapping_add(self.get_r16(R::SI)) as usize,
+            AMode::BXDI => self.get_r16(R::BX).wrapping_add(self.get_r16(R::DI)) as usize,
+            AMode::BPSI => self.get_r16(R::BP).wrapping_add(self.get_r16(R::SI)) as usize,
+            AMode::BPDI => self.get_r16(R::BP).wrapping_add(self.get_r16(R::DI)) as usize,
             AMode::SI => self.get_r16(R::SI) as usize,
             AMode::DI => self.get_r16(R::DI) as usize,
             AMode::BP => self.get_r16(R::BP) as usize,
             AMode::BX => self.get_r16(R::BX) as usize,
 
+            // 32-bit
             AMode::EAX => self.get_r32(R::EAX) as usize,
             AMode::ECX => self.get_r32(R::ECX) as usize,
             AMode::EDX => self.get_r32(R::EDX) as usize,

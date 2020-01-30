@@ -1,5 +1,3 @@
-use std::num::Wrapping;
-
 use crate::cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode, SIB};
 use crate::cpu::parameter::{Parameter, ParameterSet};
 use crate::cpu::op::{Op, Invalid};
@@ -1964,7 +1962,7 @@ impl Decoder {
             }
         }
         // calculate instruction length
-        op.length = (Wrapping(op.length as u32) + Wrapping(self.current_offset) - Wrapping(start_offset)).0 as u8;
+        op.length = (op.length as u32).wrapping_add(self.current_offset).wrapping_sub(start_offset) as u8;
         if DEBUG_DECODER {
             println!("{:04X}: decoded {}", start_offset, op);
         }
@@ -2335,7 +2333,7 @@ impl Decoder {
 
     fn read_u8(&mut self, mmu: &MMU) -> u8 {
         let b = mmu.read_u8(self.current_seg, self.current_offset);
-        self.current_offset = (Wrapping(self.current_offset) + Wrapping(1)).0;
+        self.current_offset = self.current_offset.wrapping_add(1);
         b
     }
 
