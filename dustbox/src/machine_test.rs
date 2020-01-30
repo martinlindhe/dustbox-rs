@@ -586,7 +586,7 @@ fn can_execute_out16() {
 }
 
 #[test]
-fn can_execute_xxxxx() { // XXX move into can_execute_8bit_16bit_addressing
+fn can_execute_addressing_16bit_xxxxx() { // XXX move into can_execute_addressing_16bit
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x8A, 0x87, 0x44, 0xC8,     // mov al,[bx-0x37bc]
@@ -603,7 +603,7 @@ fn can_execute_xxxxx() { // XXX move into can_execute_8bit_16bit_addressing
 }
 
 #[test]
-fn can_execute_8bit_16bit_addressing() {
+fn can_execute_addressing_16bit() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x00, 0x02,             // mov bx,0x200

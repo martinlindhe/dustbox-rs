@@ -58,7 +58,7 @@ pub enum Parameter {
     Ptr16AmodeS16(Segment, AMode, i16), // word [amode+s16], like "word [bp-0x2020]"
     Ptr16AmodeS32(Segment, AMode, i32), // word [amode+s32], like "dword [bp-0x20204040]"
 
-    Ptr32(Segment, u16),                // dword [u16], like "dword [0x4040]"
+    Ptr32(Segment, u32),                // dword [u32], like "dword [0x40404040]"
     Ptr32Amode(Segment, AMode),         // dword [amode], like "dword [bx]"
     Ptr32AmodeS8(Segment, AMode, i8),   // dword [amode+s8], like "dword [bp-0x20]"
     Ptr32AmodeS16(Segment, AMode, i16), // dword [amode+s16], like "dword [bp-0x2020]"

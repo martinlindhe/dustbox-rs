@@ -180,10 +180,28 @@ impl RepeatMode {
     }
 }
 
+/// Instruction encoding layout for Scale/Index/Base byte
+#[derive(Debug)]
+pub struct SIB {
+    /// High 2 bits
+    pub scale: u8,
+    /// Mid 3 bits
+    pub index: u8,
+    /// Low 3 bits
+    pub base: u8,
+}
+
+/// Instruction encoding layout for Mod/Reg/RM byte
 #[derive(Debug)]
 pub struct ModRegRm {
-    pub md: u8,  /// "mod" is correct name, but is reserved keyword
+    /// "mod" is correct name, but is reserved keyword
+    /// High 2 bits
+    pub md: u8,
+
+    /// mid 3 bits
     pub reg: u8,
+
+    /// low 3 bits
     pub rm: u8,
 }
 

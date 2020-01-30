@@ -1,6 +1,6 @@
 use std::num::Wrapping;
 
-use crate::cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode};
+use crate::cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode, SIB};
 use crate::cpu::parameter::{Parameter, ParameterSet};
 use crate::cpu::op::{Op, Invalid};
 use crate::cpu::register::{R, r8, r16, r32, sr, fpr};
@@ -1106,7 +1106,7 @@ impl Decoder {
                     // mov EAX, [moffs32]
                     op.command = Op::Mov32;
                     op.params.dst = Parameter::Reg32(R::EAX);
-                    op.params.src = Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu));
+                    op.params.src = Parameter::Ptr32(op.segment_prefix, self.read_u32(mmu));
                 }
             },
             0xA2 => {
@@ -1125,7 +1125,7 @@ impl Decoder {
                 OperandSize::_32bit => {
                     // mov [moffs32], EAX
                     op.command = Op::Mov32;
-                    op.params.dst = Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu));
+                    op.params.dst = Parameter::Ptr32(op.segment_prefix, self.read_u32(mmu));
                     op.params.src = Parameter::Reg32(R::EAX);
                 }
             },
@@ -2034,11 +2034,47 @@ impl Decoder {
                 _ => unreachable!(),
             }
             AddressSize::_32bit => match md {
-                0 => if rm == 6 { // [u16]
-                    Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu))
-                } else { // [amode]
-                    Parameter::Ptr16Amode(op.segment_prefix, op.address_size.amode_from(rm))
+                0 => match rm {
+                    4 => {
+                        // SIB encoding [--][--]    XXXX
+                        let sib = self.read_sib(mmu);
+                        let scale = match sib.scale {
+                            0 => 1,
+                            1 => 2,
+                            2 => 4,
+                            3 => 8,
+                            _ => unreachable!(),
+                        };
+                        let index = match sib.index {
+                            0 => R::EAX,
+                            1 => R::ECX,
+                            2 => R::EDX,
+                            3 => R::EBX,
+                            4 => panic!("illegal encoding"),
+                            5 => R::EBP,
+                            6 => R::ESI,
+                            7 => R::EDI,
+                            _ => unreachable!(),
+                        };
+                        let base = match sib.base {
+                            0 => R::EAX,
+                            1 => R::ECX,
+                            2 => R::EDX,
+                            3 => R::EBX,
+                            4 => R::ESP,
+                            5 => panic!("XXX displacement only if mod=0, OR EBP if mod=1 or 2"),
+                            6 => R::ESI,
+                            7 => R::EDI,
+                            _ => unreachable!(),
+                        };
+                        panic!("unhandled SIB: mod {}, scale {}, index {}, base {}, {:?}", md, scale, index, base, op)
+                    }
+                    5 => Parameter::Ptr32(op.segment_prefix, self.read_u32(mmu)),   // [u32]
+                    _ => Parameter::Ptr16Amode(op.segment_prefix, op.address_size.amode_from(rm)), // [amode]
                 }
+                // [amode+s8]
+                1 => Parameter::Ptr16AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
+
                 // [amode+s32]
                 2 => Parameter::Ptr16AmodeS32(op.segment_prefix, op.address_size.amode_from(rm), self.read_s32(mmu)),
                 _ => {
@@ -2052,61 +2088,76 @@ impl Decoder {
     /// decode rm32
     fn rm32(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
         //println!("rm32: rm {}, md {}: {:?}", rm, md, op);
-        match md {
-            0 => if rm == 6 { // [u16]
-                Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu))
-            } else { // [amode]
-                Parameter::Ptr32Amode(op.segment_prefix, op.address_size.amode_from(rm))
+        match op.address_size {
+            AddressSize::_16bit => match md {
+                0 => if rm == 6 { // [u16]
+                    Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu) as u32)
+                } else { // [amode]
+                    Parameter::Ptr32Amode(op.segment_prefix, op.address_size.amode_from(rm))
+                }
+                // [amode+s8]
+                1 => Parameter::Ptr32AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
+                // [amode+s16]
+                2 => Parameter::Ptr32AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
+                // [reg]
+                3 => Parameter::Reg32(r32(rm)),
+                _ => unreachable!(),
             }
-            // [amode+s8]
-            1 => Parameter::Ptr32AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
-            // [amode+s16]
-            2 => Parameter::Ptr32AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
-            // [reg]
-            3 => Parameter::Reg32(r32(rm)),
-            _ => unreachable!(),
+            AddressSize::_32bit => match md {
+                _ => panic!("unhandled rm32 adrsize 32, md {}: {:?}", md, op),
+            }
         }
     }
 
     /// decode rm as 16-bit fpu op argument
     fn rmf16(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
-        match md {
-            0 => if rm == 6 { // [u16]
-                Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu))
-            } else { // [amode]
-                Parameter::Ptr16Amode(op.segment_prefix, op.address_size.amode_from(rm))
+        match op.address_size {
+            AddressSize::_16bit => match md {
+                0 => if rm == 6 { // [u16]
+                    Parameter::Ptr16(op.segment_prefix, self.read_u16(mmu))
+                } else { // [amode]
+                    Parameter::Ptr16Amode(op.segment_prefix, op.address_size.amode_from(rm))
+                }
+                /*
+                // [amode+s8]
+                1 => Parameter::Ptr16AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
+                // [amode+s16]
+                2 => Parameter::Ptr16AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
+                */
+                // [reg]
+                3 => Parameter::FPR80(fpr(rm)),
+                //_ => unreachable!(),
+                _ => {
+                    panic!("XXX rmf16 unhandled md {}, rm {}", md, rm);
+                    Parameter::None
+                }
             }
-            /*
-            // [amode+s8]
-            1 => Parameter::Ptr16AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
-            // [amode+s16]
-            2 => Parameter::Ptr16AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
-            */
-            // [reg]
-            3 => Parameter::FPR80(fpr(rm)),
-            //_ => unreachable!(),
-            _ => {
-                panic!("XXX rmf16 unhandled md {}, rm {}", md, rm);
-                Parameter::None
+            AddressSize::_32bit => match md {
+                _ => panic!("unhandled rmf32 adrsize 32, md {}: {:?}", md, op),
             }
         }
     }
 
     /// decode rm as 32-bit fpu op argument
     fn rmf32(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
-        match md {
-            0 => if rm == 6 { // [u16]
-                Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu))
-            } else { // [amode]
-                Parameter::Ptr32Amode(op.segment_prefix, op.address_size.amode_from(rm))
+        match op.address_size {
+            AddressSize::_16bit => match md {
+                0 => if rm == 6 { // [u16]
+                    Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu) as u32)
+                } else { // [amode]
+                    Parameter::Ptr32Amode(op.segment_prefix, op.address_size.amode_from(rm))
+                }
+                // [amode+s8]
+                1 => Parameter::Ptr32AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
+                // [amode+s16]
+                2 => Parameter::Ptr32AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
+                // [reg]
+                3 => Parameter::FPR80(fpr(rm)),
+                _ => unreachable!(),
             }
-            // [amode+s8]
-            1 => Parameter::Ptr32AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
-            // [amode+s16]
-            2 => Parameter::Ptr32AmodeS16(op.segment_prefix, op.address_size.amode_from(rm), self.read_s16(mmu)),
-            // [reg]
-            3 => Parameter::FPR80(fpr(rm)),
-            _ => unreachable!(),
+            AddressSize::_32bit => match md {
+                _ => panic!("unhandled rmf32 adrsize 32, md {}: {:?}", md, op),
+            }
         }
     }
 
@@ -2243,6 +2294,20 @@ impl Decoder {
         };
         if DEBUG_DECODER {
             // println!("read_mod_reg_rm byte {:02X} = mod {}, reg {}, rm {}", b, res.md, res.reg, res.rm);
+        }
+        res
+    }
+
+    fn read_sib(&mut self, mmu: &MMU) -> SIB {
+        let b = mmu.read_u8(self.current_seg, self.current_offset);
+        self.current_offset = self.current_offset.wrapping_add(1);
+        let res = SIB {
+            scale: b >> 6, // high 2 bits
+            index: (b >> 3) & 7, // mid 3 bits
+            base: b & 7, // low 3 bits
+        };
+        if DEBUG_DECODER {
+            println!("read_sib byte {:02X} = scale {}, index {}, base {}", b, res.scale, res.index, res.base);
         }
         res
     }
