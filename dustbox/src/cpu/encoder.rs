@@ -1,10 +1,10 @@
 use std::fmt;
 
-use crate::cpu::instruction::{Instruction, ModRegRm};
-use crate::cpu::parameter::{Parameter, ParameterSet};
-use crate::cpu::segment::Segment;
+use crate::cpu::instruction::Instruction;
+use crate::cpu::op::Op;
+use crate::cpu::parameter::{Parameter, ParameterSet, ModRegRm};
 use crate::cpu::register::R;
-use crate::cpu::op::{Op};
+use crate::cpu::segment::Segment;
 
 #[cfg(test)]
 #[path = "./encoder_test.rs"]

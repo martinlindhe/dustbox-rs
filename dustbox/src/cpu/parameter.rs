@@ -63,9 +63,9 @@ pub enum Parameter {
     Ptr32AmodeS16(Segment, AMode, i16), // dword [amode+s16], like "dword [bp-0x2020]"
 
     /// Scaled Index Base
-    Ptr16SIB(Segment, u8, R, R),
-    Ptr16SIBS8(Segment, u8, R, R, i8),
-    Ptr16SIBS32(Segment, u8, R, R, i32),
+    Ptr16SIB(Segment, SIBDisp, u8, R, SIBBase),
+    Ptr16SIBS8(Segment, SIBDisp, u8, R, SIBBase, i8),
+    Ptr16SIBS32(Segment, SIBDisp, u8, R, SIBBase, i32),
     None,
 }
 
@@ -182,22 +182,23 @@ impl fmt::Display for Parameter {
                     imm
                 }
             ),
-            Parameter::Ptr16SIB(seg, scale, index, base) => {
+            Parameter::Ptr16SIB(seg, disp, scale, index, base) => {
                 if scale == 1 {
-                    write!(f, "word [{}:{}+{}]", seg, base, index)
+                    write!(f, "word [{}:{}+{}{}]", seg, base, index, disp)
                 } else {
-                    write!(f, "word [{}:{}+{}*{}]", seg, base, index, scale)
+                    write!(f, "word [{}:{}+{}*{}{}]", seg, base, index, scale, disp)
                 }
             }
-            Parameter::Ptr16SIBS8(seg, scale, index, base, imm) => {
+            Parameter::Ptr16SIBS8(seg, disp, scale, index, base, imm) => {
                 if scale == 1 {
-                    write!(f, "word [{}:{}+{}{}0x{:02X}]", seg, base, index,
+                    write!(f, "word [{}:{}+{}{}0x{:02X}{}]", seg, base, index,
                         if imm < 0 { "-" } else { "+" },
                         if imm < 0 {
                             (0i8).wrapping_sub(imm)
                         } else {
                             imm
                         },
+                        disp
                     )
                 } else {
                     // XXX all wrong
@@ -205,15 +206,16 @@ impl fmt::Display for Parameter {
                     panic!("fixme")
                 }
             }
-            Parameter::Ptr16SIBS32(seg, scale, index, base, imm) => {
+            Parameter::Ptr16SIBS32(seg, disp, scale, index, base, imm) => {
                 if scale == 1 {
-                    write!(f, "word [{}:{}+{}{}0x{:02X}]", seg, base, index,
+                    write!(f, "word [{}:{}+{}{}0x{:02X}{}]", seg, base, index,
                         if imm < 0 { "-" } else { "+" },
                         if imm < 0 {
                             (0i32).wrapping_sub(imm)
                         } else {
                             imm
                         },
+                        disp
                     )
                 } else {
                     // XXX all wrong
@@ -264,5 +266,104 @@ impl Parameter {
 
     pub fn is_none(&self) -> bool {
         *self == Parameter::None
+    }
+}
+
+/// Instruction encoding layout for Scale/Index/Base byte
+#[derive(Debug)]
+pub struct SIB {
+    /// High 2 bits
+    pub scale: u8,
+    /// Mid 3 bits
+    pub index: u8,
+    /// Low 3 bits
+    pub base: u8,
+}
+
+/// Instruction encoding layout for the SIB Base
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum SIBBase {
+    Register(R),
+    Empty,
+}
+
+impl fmt::Display for SIBBase {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            SIBBase::Register(r) => write!(f, "{}", r),
+            SIBBase::Empty => write!(f, ""),
+        }
+    }
+}
+
+/// Instruction encoding layout for the SIB Displacement
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum SIBDisp {
+    Empty,
+    Disp32(i32),
+    Disp8EBP(i8),
+    Disp32EBP(i32),
+}
+
+impl fmt::Display for SIBDisp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            SIBDisp::Empty => write!(f, ""),
+            SIBDisp::Disp32(imm) => write!(
+                f, "{}0x{:08X}",
+                if imm < 0 { "-" } else { "+" },
+                if imm < 0 {
+                    (0i32).wrapping_sub(imm)
+                } else {
+                    imm
+                }
+            ),
+            SIBDisp::Disp8EBP(imm) => write!(
+                f, "{}0x{:02X}+EBP",
+                if imm < 0 { "-" } else { "+" },
+                if imm < 0 {
+                    (0i8).wrapping_sub(imm)
+                } else {
+                    imm
+                }
+            ),
+            SIBDisp::Disp32EBP(imm) => write!(
+                f, "{}0x{:08X}+EBP",
+                if imm < 0 { "-" } else { "+" },
+                if imm < 0 {
+                    (0i32).wrapping_sub(imm)
+                } else {
+                    imm
+                }
+            ),
+        }
+    }
+}
+
+/// Instruction encoding layout for Mod/Reg/RM byte
+#[derive(Debug)]
+pub struct ModRegRm {
+    /// "mod" is correct name, but is reserved keyword
+    /// High 2 bits
+    pub md: u8,
+
+    /// mid 3 bits
+    pub reg: u8,
+
+    /// low 3 bits
+    pub rm: u8,
+}
+
+impl ModRegRm {
+    pub fn u8(&self) -> u8 {
+        (self.md << 6) |  // high 2 bits
+        (self.reg << 3) | // mid 3 bits
+        self.rm           // low 3 bits
+    }
+
+    pub fn rm_reg(rm: u8, reg: u8) -> u8 {
+        // md 3 = register adressing
+        // XXX ModRegRm.rm really should use enum AMode, not like AMode is now. naming there is wrong
+        ModRegRm{md: 3, rm, reg}.u8()
     }
 }

@@ -1,5 +1,5 @@
-use crate::cpu::instruction::{Instruction, InstructionInfo, ModRegRm, RepeatMode, SIB};
-use crate::cpu::parameter::{Parameter, ParameterSet};
+use crate::cpu::instruction::{Instruction, InstructionInfo, RepeatMode};
+use crate::cpu::parameter::{Parameter, ParameterSet, ModRegRm, SIB, SIBBase, SIBDisp};
 use crate::cpu::op::{Op, Invalid};
 use crate::cpu::register::{R, r8, r16, r32, sr, fpr};
 use crate::cpu::segment::Segment;
@@ -2015,7 +2015,7 @@ impl Decoder {
 
     /// decode rm16
     fn rm16(&mut self, mmu: &mut MMU, op: &Instruction, rm: u8, md: u8) -> Parameter {
-        println!("rm16: rm {}, md {}: {:?}", rm, md, op);
+        //println!("rm16: rm {}, md {}: {:?}", rm, md, op);
         match op.address_size {
             AddressSize::_16bit => match md {
                 0 => if rm == 6 { // [u16]
@@ -2033,33 +2033,84 @@ impl Decoder {
             }
             AddressSize::_32bit => match md {
                 0 => match rm {
-                    4 => { // [sib]
-                        let (scale, index, base) = self.read_sib(mmu);
-                        Parameter::Ptr16SIB(op.segment_prefix, scale, index, base)
-                    }
+                    4 => self.sib(mmu, op.segment_prefix, md), // [sib]
                     5 => Parameter::Ptr32(op.segment_prefix, self.read_u32(mmu)),   // [u32]
                     _ => Parameter::Ptr16Amode(op.segment_prefix, op.address_size.amode_from(rm)), // [amode]
                 }
                 // [amode+s8]
                 1 => match rm {
-                    4 => { // [sib + s8]
-                        let (scale, index, base) = self.read_sib(mmu);
-                        Parameter::Ptr16SIBS8(op.segment_prefix, scale, index, base, self.read_s8(mmu))
-                    }
+                    4 => self.sib(mmu, op.segment_prefix, md), // [sib+s8]
                     _ => Parameter::Ptr16AmodeS8(op.segment_prefix, op.address_size.amode_from(rm), self.read_s8(mmu)),
                 }
 
                 // [amode+s32]
                 2 => match rm {
-                    4 => { // [sib + s32]
-                        let (scale, index, base) = self.read_sib(mmu);
-                        Parameter::Ptr16SIBS32(op.segment_prefix, scale, index, base, self.read_s32(mmu))
-                    }
+                    4 => self.sib(mmu, op.segment_prefix, md), // [sib+s32]
                     _ => Parameter::Ptr16AmodeS32(op.segment_prefix, op.address_size.amode_from(rm), self.read_s32(mmu)),
                 }
                 3 => panic!("XXX rm16 adrsize32 unhandled md {}, rm {}, op {:?}", md, rm, op),
                 _ => unreachable!(),
             }
+        }
+    }
+
+    fn sib(&mut self, mmu: &mut MMU, seg: Segment, md: u8) -> Parameter {
+        let b = mmu.read_u8(self.current_seg, self.current_offset);
+        self.current_offset = self.current_offset.wrapping_add(1);
+        let sib = SIB {
+            scale: b >> 6, // high 2 bits
+            index: (b >> 3) & 7, // mid 3 bits
+            base: b & 7, // low 3 bits
+        };
+        if DEBUG_DECODER {
+            println!("read_sib byte: mod {}, scale {}, index {}, base {}", md, sib.scale, sib.index, sib.base);
+        }
+        let scale = match sib.scale {
+            0 => 1,
+            1 => 2,
+            2 => 4,
+            3 => 8,
+            _ => unreachable!(),
+        };
+        let index = match sib.index {
+            0 => R::EAX,
+            1 => R::ECX,
+            2 => R::EDX,
+            3 => R::EBX,
+            4 => panic!("illegal encoding"),
+            5 => R::EBP,
+            6 => R::ESI,
+            7 => R::EDI,
+            _ => unreachable!(),
+        };
+        let base = match sib.base {
+            0 => SIBBase::Register(R::EAX),
+            1 => SIBBase::Register(R::ECX),
+            2 => SIBBase::Register(R::EDX),
+            3 => SIBBase::Register(R::EBX),
+            4 => SIBBase::Register(R::ESP),
+            5 => SIBBase::Empty,
+            6 => SIBBase::Register(R::ESI),
+            7 => SIBBase::Register(R::EDI),
+            _ => unreachable!(),
+        };
+        let disp = if sib.base == 5 {
+            match md {
+                // XXX displacement is not BASE! its disp SUFFIX WITHOUT A BASE!
+                0 => SIBDisp::Disp32(self.read_s32(mmu)),    // [scaled index] + disp32
+                1 => SIBDisp::Disp8EBP(self.read_s8(mmu)),   // [scaled index] + disp8 + [EBP]
+                2 => SIBDisp::Disp32EBP(self.read_s32(mmu)), // [scaled index] + disp32 + [EBP]
+                _ => unreachable!(),
+            }
+        } else {
+            SIBDisp::Empty
+        };
+
+        match md {
+            0 => Parameter::Ptr16SIB(seg, disp, scale, index, base),
+            1 => Parameter::Ptr16SIBS8(seg, disp, scale, index, base, self.read_s8(mmu)),
+            2 => Parameter::Ptr16SIBS32(seg, disp, scale, index, base, self.read_s32(mmu)),
+            _ => unreachable!(),
         }
     }
 
@@ -2271,49 +2322,6 @@ impl Decoder {
             // println!("read_mod_reg_rm byte {:02X} = mod {}, reg {}, rm {}", b, res.md, res.reg, res.rm);
         }
         res
-    }
-
-    fn read_sib(&mut self, mmu: &MMU) -> (u8, R, R) {
-        let b = mmu.read_u8(self.current_seg, self.current_offset);
-        self.current_offset = self.current_offset.wrapping_add(1);
-        let sib = SIB {
-            scale: b >> 6, // high 2 bits
-            index: (b >> 3) & 7, // mid 3 bits
-            base: b & 7, // low 3 bits
-        };
-        if DEBUG_DECODER {
-            println!("read_sib byte {:02X} = scale {}, index {}, base {}", b, sib.scale, sib.index, sib.base);
-        }
-        let scale = match sib.scale {
-            0 => 1,
-            1 => 2,
-            2 => 4,
-            3 => 8,
-            _ => unreachable!(),
-        };
-        let index = match sib.index {
-            0 => R::EAX,
-            1 => R::ECX,
-            2 => R::EDX,
-            3 => R::EBX,
-            4 => panic!("illegal encoding"),
-            5 => R::EBP,
-            6 => R::ESI,
-            7 => R::EDI,
-            _ => unreachable!(),
-        };
-        let base = match sib.base {
-            0 => R::EAX,
-            1 => R::ECX,
-            2 => R::EDX,
-            3 => R::EBX,
-            4 => R::ESP,
-            5 => panic!("XXX displacement only if mod=0, OR EBP if mod=1 or 2"),
-            6 => R::ESI,
-            7 => R::EDI,
-            _ => unreachable!(),
-        };
-        (scale, index, base)
     }
 
     fn read_rel8(&mut self, mmu: &MMU) -> u16 {

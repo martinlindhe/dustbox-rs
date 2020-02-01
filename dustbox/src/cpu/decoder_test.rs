@@ -181,6 +181,21 @@ fn can_disassemble_addressing_mod0_sib_scale8() {
 }
 
 #[test]
+fn can_disassemble_addressing_mod0_sib_xxx() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        // adress-size override
+        // sib displacement encoding
+        0x67, 0xC7, 0x04, 0x85, 0x00, 0x00, 0x00, 0x00, 0x4B, 0xD5, // mov word [dword eax*4+0x0],0xd54b
+        0x67, 0xC7, 0x04, 0x85, 0xC0, 0xFF, 0xFF, 0xFF, 0x4B, 0xD5, // mov word [dword eax*4-0x40],0xd54b
+    ];
+    machine.load_executable(&code, 0x085F);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
+    assert_eq!("[085F:0100] 67C70485000000004BD5 Mov16    word [ds:+eax*4+0x00000000], 0xD54B
+[085F:010A] 67C70485C0FFFFFF4BD5 Mov16    word [ds:+eax*4-0x00000040], 0xD54B", res);
+}
+
+#[test]
 fn can_disassemble_addressing_mod1_noprefix() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
