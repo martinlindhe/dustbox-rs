@@ -1001,14 +1001,22 @@ impl Decoder {
                 self.prefixed_16_32_rm_r(&mut mmu, &mut op, Op::Test16, Op::Test32)
             }
             0x86 => {
-                // xchg r/m8, r8
+                // xchg r8, r/m8
                 op.command = Op::Xchg8;
-                op.params = self.rm8_r8(&mut mmu, op);
+                op.params = self.r8_rm8(&mut mmu, op);
             }
             0x87 => {
-                // xchg r/m16, r16
-                op.command = Op::Xchg16;
-                op.params = self.rm16_r16(&mut mmu, op);
+                // xchg r16, r/m16
+                match op.op_size {
+                    OperandSize::_16bit => {
+                        op.command = Op::Xchg16;
+                        op.params = self.r16_rm16(&mut mmu, op);
+                    }
+                    OperandSize::_32bit => {
+                        op.command = Op::Xchg32;
+                        op.params = self.r32_rm32(&mut mmu, op);
+                    }
+                }
             }
             0x88 => {
                 // mov r/m8, r8

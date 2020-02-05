@@ -848,6 +848,26 @@ fn can_disassemble_scas() {
 [085F:0102] 66AF             Scasd", res);
 }
 
+#[test]
+fn can_disassemble_xchg() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x86, 0xCA,         // xchg cl,dl
+        0x87, 0xCA,         // xchg cx,dx
+        0x66, 0x87, 0xCA,   // xchg ecx,edx
+
+        0x93,               // xchg ax,bx
+        0x66, 0x93,         // xchg eax,ebx
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 5);
+    assert_eq!("[085F:0100] 86CA             Xchg8    cl, dl
+[085F:0102] 87CA             Xchg16   cx, dx
+[085F:0104] 6687CA           Xchg32   ecx, edx
+[085F:0107] 93               Xchg16   ax, bx
+[085F:0108] 6693             Xchg32   eax, ebx", res);
+}
 
 #[test]
 fn can_disassemble_fild() {
