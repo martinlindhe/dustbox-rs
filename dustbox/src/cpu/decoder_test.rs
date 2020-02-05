@@ -836,16 +836,32 @@ fn can_disassemble_movsx() {
 fn can_disassemble_scas() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
-        0xAE,           // scasb
-        0xAF,           // scasw
-        0x66, 0xAF,     // scasd
+        0xAE,               // scasb
+        0xAF,               // scasw
+        0x66, 0xAF,         // scasd
+        0xF3, 0x66, 0xAF,   // repe scasd
     ];
     machine.load_executable(&code, 0x085F);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 3);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
     assert_eq!("[085F:0100] AE               Scasb
 [085F:0101] AF               Scasw
-[085F:0102] 66AF             Scasd", res);
+[085F:0102] 66AF             Scasd
+[085F:0104] F366AF           Repe     Scasd", res);
+}
+
+#[test]
+fn can_disassemble_cmps() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x66, 0xA7,                 // cmpsd
+        0xF3, 0x66, 0xA7,           // repe cmpsd
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
+    assert_eq!("[085F:0100] 66A7             Cmpsd16
+[085F:0102] F366A7           Repe     Cmpsd16", res);
 }
 
 #[test]

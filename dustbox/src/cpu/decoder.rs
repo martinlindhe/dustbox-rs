@@ -1858,8 +1858,8 @@ impl Decoder {
                     Op::Lodsb | Op::Lodsw | Op::Lodsd => {
                         op.repeat = RepeatMode::Rep;
                     }
-                    Op::Cmpsb | Op::Cmpsw16 | Op::Cmpsw32 |
-                    Op::Scasb | Op::Scasw => {
+                    Op::Cmpsb | Op::Cmpsw16 | Op::Cmpsw32 | Op::Cmpsd16 | Op::Cmpsd32 |
+                    Op::Scasb | Op::Scasw | Op::Scasd => {
                         op.repeat = RepeatMode::Repe;
                     }
                     _ => op.command = Op::Invalid(vec!(b), Invalid::Op), // XXX should encode the instruction bytes after 0xf3 prefix
