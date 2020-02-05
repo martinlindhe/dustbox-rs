@@ -833,6 +833,23 @@ fn can_disassemble_movsx() {
 }
 
 #[test]
+fn can_disassemble_scas() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xAE,           // scasb
+        0xAF,           // scasw
+        0x66, 0xAF,     // scasd
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 3);
+    assert_eq!("[085F:0100] AE               Scasb
+[085F:0101] AF               Scasw
+[085F:0102] 66AF             Scasd", res);
+}
+
+
+#[test]
 fn can_disassemble_fild() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![

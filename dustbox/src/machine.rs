@@ -2384,6 +2384,19 @@ impl Machine {
                 };
                 self.cpu.set_r16(R::DI, di);
             }
+            Op::Scasd => {
+                // Compare EAX with dword at ES:(E)DI or RDI then set status flags.
+                // ES cannot be overridden with a segment override prefix.
+                let src = self.cpu.get_r32(R::EAX);
+                let dst = self.mmu.read_u32(self.cpu.get_r16(R::ES), self.cpu.get_r16(R::DI) as u32);
+                self.cpu.cmp32(dst as usize, src as usize);
+                let di = if !self.cpu.regs.flags.direction {
+                    self.cpu.get_r16(R::DI).wrapping_add(4)
+                } else {
+                    self.cpu.get_r16(R::DI).wrapping_sub(4)
+                };
+                self.cpu.set_r16(R::DI, di);
+            }
             Op::Setc => {
                 let val = if self.cpu.regs.flags.carry {
                     1

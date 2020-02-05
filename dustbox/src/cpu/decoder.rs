@@ -1178,7 +1178,10 @@ impl Decoder {
                 OperandSize::_32bit => Op::Lodsd,
             },
             0xAE => op.command = Op::Scasb,
-            0xAF => op.command = Op::Scasw,
+            0xAF => match op.op_size {
+                OperandSize::_16bit => op.command = Op::Scasw,
+                OperandSize::_32bit => op.command = Op::Scasd,
+            }
             0xB0..=0xB7 => {
                 // mov r8, u8
                 op.command = Op::Mov8;

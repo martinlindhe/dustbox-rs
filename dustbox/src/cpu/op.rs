@@ -261,7 +261,7 @@ pub enum Op {
     /// Integer Subtraction with Borrow
     Sbb8, Sbb16, Sbb32,
 
-    Scasb, Scasw,
+    Scasb, Scasw, Scasd,
 
     /// setc: Set byte if carry (CF=1).
     /// alias setb: Set byte if below (CF=1).
