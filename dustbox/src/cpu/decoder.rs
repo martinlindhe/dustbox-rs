@@ -1134,9 +1134,15 @@ impl Decoder {
             },
             0xA6 => op.command = Op::Cmpsb,
             0xA7 => {
-                match op.address_size {
-                    AddressSize::_16bit => op.command = Op::Cmpsw16,
-                    AddressSize::_32bit => op.command = Op::Cmpsw32,
+                match op.op_size {
+                    OperandSize::_16bit => match op.address_size {
+                        AddressSize::_16bit => op.command = Op::Cmpsw16,
+                        AddressSize::_32bit => op.command = Op::Cmpsw32,
+                    }
+                    OperandSize::_32bit => match op.address_size {
+                        AddressSize::_16bit => op.command = Op::Cmpsd16,
+                        AddressSize::_32bit => op.command = Op::Cmpsd32,
+                    }
                 }
             }
             0xA8 => {
@@ -2133,6 +2139,11 @@ impl Decoder {
                 _ => unreachable!(),
             }
             AddressSize::_32bit => match md {
+                0 => match rm {
+                    4 => panic!("rm 4"), //self.sib(mmu, op.segment_prefix, md), // [sib]
+                    5 => panic!("rm 5"), //Parameter::Ptr32(op.segment_prefix, self.read_u32(mmu)),   // [u32]
+                    _ => Parameter::Ptr32Amode(op.segment_prefix, op.address_size.amode_from(rm)), // [amode]
+                }
                 _ => panic!("unhandled rm32 adrsize 32, md {}: {:?}", md, op),
             }
         }

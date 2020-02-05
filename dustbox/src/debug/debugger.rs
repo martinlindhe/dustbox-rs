@@ -403,7 +403,7 @@ impl Debugger {
     /// Loads a .com or .exe file
     pub fn load_executable(&mut self, filename: &str) {
         self.machine.hard_reset();
-        if let Some(e) = self.machine.load_executable_file(filename) {
+        if let Some(e) = self.machine.load_executable_file(filename, 0x0329) {
             panic!("error {}", e);
         };
     }

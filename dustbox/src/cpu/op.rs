@@ -49,13 +49,21 @@ pub enum Op {
     Cmc,
 
     Cmp8, Cmp16, Cmp32,
+
+    /// Compare String Operands
     Cmpsb,
-    
+
     /// 16 bit opsize mode, 16 bit address size
     Cmpsw16,
 
     /// 16 bit opsize mode, 32 bit address size
     Cmpsw32,
+
+    /// 32 bit opsize mode, 16 bit address size
+    Cmpsd16,
+
+    /// 32 bit opsize mode, 32 bit address size
+    Cmpsd32,
 
     /// Convert Word to Doubleword
     Cwd16, Cwde32,
@@ -227,10 +235,10 @@ pub enum Op {
 
     /// Rotate 9 bits (CF, r/m8) right
     Rcr8,
-    
+
     /// Rotate 17 bits (CF, r/m16) right
     Rcr16,
-    
+
     /// Rotate 33 bits (CF, r/m32) right
     Rcr32,
 

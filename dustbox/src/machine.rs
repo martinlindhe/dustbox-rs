@@ -205,10 +205,10 @@ impl Machine {
     }
 
     /// Loads a program file
-    pub fn load_executable_file(&mut self, filename: &str) -> Option<io::Error> {
+    pub fn load_executable_file(&mut self, filename: &str, psp_segment: u16) -> Option<io::Error> {
 
         match read_binary(filename) {
-            Ok(data) => self.load_executable(&data, 0x0329),
+            Ok(data) => self.load_executable(&data, psp_segment),
             Err(e) => return Some(e),
         };
 
@@ -502,9 +502,11 @@ impl Machine {
 
             // format similar to dosbox LOGS output
             if let Some(file) = &self.trace_file {
-                let disasm = &format!("{:30}", format!("{}", op))[..30];
+                // pads ops to 30 chars, but does not crop longer ops
+                let disasm = &format!("{:<30}", format!("{}", op));
+
                 let mut writer = BufWriter::new(file);
-                let _ = write!(&mut writer, "{:04X}:{:04X}  {}", cs, ip, disasm);
+                let _ = write!(&mut writer, "{:04X}:{:04X}  {}", cs, ip, &disasm);
                 let _ = write!(&mut writer, " EAX:{:08X} EBX:{:08X} ECX:{:08X} EDX:{:08X} ESI:{:08X} EDI:{:08X} EBP:{:08X} ESP:{:08X}", eax, ebx, ecx, edx, esi, edi, ebp, esp);
                 let _ = write!(&mut writer, " DS:{:04X} ES:{:04X}", ds, es);
                 // let _ = write!(&mut writer, " FS:{:04X} GS:{:04X}", fs, g);
@@ -911,21 +913,18 @@ impl Machine {
             }
             Op::Cmp8 => {
                 // two parameters
-                // Modify status flags in the same manner as the SUB instruction
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 self.cpu.cmp8(dst, src);
             }
             Op::Cmp16 => {
                 // two parameters
-                // Modify status flags in the same manner as the SUB instruction
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 self.cpu.cmp16(dst, src);
             }
             Op::Cmp32 => {
                 // two parameters
-                // Modify status flags in the same manner as the SUB instruction
                 let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
                 let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
                 self.cpu.cmp32(dst, src);
@@ -990,6 +989,48 @@ impl Machine {
                     self.cpu.get_r32(R::EDI).wrapping_add(2)
                 } else {
                     self.cpu.get_r32(R::EDI).wrapping_sub(2)
+                };
+                self.cpu.set_r32(R::EDI, edi);
+            }
+            Op::Cmpsd16 => {
+                // no parameters
+                // Compare word at address DS:ESI with dword at address ES:EDI
+                // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
+                let src = self.mmu.read_u32(self.cpu.segment(op.segment_prefix), self.cpu.get_r32(R::ESI)) as usize;
+                let dst = self.mmu.read_u32(self.cpu.get_r16(R::ES), self.cpu.get_r32(R::EDI)) as usize;
+                self.cpu.cmp32(dst, src);
+
+                let si = if !self.cpu.regs.flags.direction {
+                    self.cpu.get_r16(R::SI).wrapping_add(4)
+                } else {
+                    self.cpu.get_r16(R::SI).wrapping_sub(4)
+                };
+                self.cpu.set_r16(R::SI, si);
+                let di = if !self.cpu.regs.flags.direction {
+                    self.cpu.get_r16(R::DI).wrapping_add(4)
+                } else {
+                    self.cpu.get_r16(R::DI).wrapping_sub(4)
+                };
+                self.cpu.set_r16(R::DI, di);
+            }
+            Op::Cmpsd32 => {
+                // no parameters
+                // Compare word at address DS:ESI with dword at address ES:EDI
+                // The DS segment may be overridden with a segment override prefix, but the ES segment cannot be overridden.
+                let src = self.mmu.read_u32(self.cpu.segment(op.segment_prefix), self.cpu.get_r32(R::ESI)) as usize;
+                let dst = self.mmu.read_u32(self.cpu.get_r16(R::ES), self.cpu.get_r32(R::EDI)) as usize;
+                self.cpu.cmp32(dst, src);
+
+                let esi = if !self.cpu.regs.flags.direction {
+                    self.cpu.get_r32(R::ESI).wrapping_add(4)
+                } else {
+                    self.cpu.get_r32(R::ESI).wrapping_sub(4)
+                };
+                self.cpu.set_r32(R::ESI, esi);
+                let edi = if !self.cpu.regs.flags.direction {
+                    self.cpu.get_r32(R::EDI).wrapping_add(4)
+                } else {
+                    self.cpu.get_r32(R::EDI).wrapping_sub(4)
                 };
                 self.cpu.set_r32(R::EDI, edi);
             }

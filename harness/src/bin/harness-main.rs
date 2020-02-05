@@ -48,7 +48,7 @@ fn run_and_save_video_frames(set: &SetDocument) {
         let mut machine = Machine::deterministic();
         let bin_path = format!("{}{}", set.root, bin);
 
-        if let Some(e) = machine.load_executable_file(&bin_path) {
+        if let Some(e) = machine.load_executable_file(&bin_path, 0x0329) {
             panic!("error {}", e);
         };
 

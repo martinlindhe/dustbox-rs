@@ -31,6 +31,10 @@ fn main() {
         .arg(Arg::with_name("DETERMINISTIC")
             .help("Enables deterministic mode (debugging)")
             .long("deterministic"))
+        .arg(Arg::with_name("SEGMENT")
+            .help("Segment to load program into")
+            .takes_value(true)
+            .long("segment"))
         .arg(Arg::with_name("TRACEFILE")
             .help("Output a instruction trace similar to dosbox LOGS (debugging)")
             .takes_value(true)
@@ -58,7 +62,16 @@ fn main() {
         machine.set_trace_count(value_t!(matches, "TRACECOUNT", usize).unwrap());
     }
 
-    if let Some(e) = machine.load_executable_file(filename) {
+    let segment = if matches.is_present("SEGMENT") {
+        // XXX parse "0x" hex segment
+        value_t!(matches, "SEGMENT", u16).unwrap()
+    } else {
+        0x0329
+    };
+
+    println!("loading program into segment {:04X}", segment);
+
+    if let Some(e) = machine.load_executable_file(filename, segment) {
         panic!("error {}", e);
     };
 

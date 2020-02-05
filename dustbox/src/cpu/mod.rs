@@ -29,6 +29,9 @@ use std::u8;
 use crate::machine::{DEBUG_MARK_STACK, STACK_MARKER};
 use crate::memory::{MMU, MemoryAddress};
 
+/// debug SIB instruction decoding
+const DEBUG_SIB: bool = true;
+
 /// prints diagnostics if writes to memory close to SS:SP occurs
 const DEBUG_PARAMS_TOUCHING_STACK: bool = false;
 
@@ -443,6 +446,28 @@ impl CPU {
             Parameter::Ptr16AmodeS16(seg, ref amode, imm) => {
                 let seg = self.segment(seg);
                 let imm = (self.amode(amode) as u16).wrapping_add(imm as u16) as u32;
+                self.debug_write_u16(seg, imm, data);
+                mmu.write_u16(seg, imm, data);
+            }
+            Parameter::Ptr16SIB(seg, disp, scale, index, base) => {
+                let seg = self.segment(seg);
+                let mut imm = 0;
+                if let SIBBase::Register(r) = base {
+                    imm += self.get_r32(r);
+                }
+                imm += self.get_r32(index) * scale as u32;
+
+                match disp {
+                    SIBDisp::Disp32(v) => imm = ((imm as i32) + v) as u32,
+                    SIBDisp::Disp8EBP(v) => imm = ((imm as i32) + v as i32 + self.get_r32(R::EBP) as i32) as u32,
+                    SIBDisp::Disp32EBP(v) => imm = ((imm as i32) + v + self.get_r32(R::EBP) as i32) as u32,
+                    SIBDisp::Empty => {}
+                }
+
+                if DEBUG_SIB {
+                    println!("Ptr16SIB: disp {}, scale {}, index {}, base {} = imm {:04X}", disp, scale, index, base, imm);
+                }
+
                 self.debug_write_u16(seg, imm, data);
                 mmu.write_u16(seg, imm, data);
             }
