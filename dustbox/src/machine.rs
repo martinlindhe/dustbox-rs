@@ -903,10 +903,20 @@ impl Machine {
                         (seg, offs as u32),
                     Parameter::Ptr16(seg, offs) =>
                         (self.cpu.segment(seg), offs as u32),
-                    Parameter::Ptr16Amode(seg, ref amode) =>
-                        (self.cpu.segment(seg), self.cpu.amode(amode) as u32),
-                    Parameter::Ptr16AmodeS8(seg, ref amode, imm) =>
-                        (self.cpu.segment(seg), (self.cpu.amode(amode) as isize + imm as isize) as u32),
+                    Parameter::Ptr16Amode(seg, ref amode) => {
+                        let seg = self.cpu.segment(seg);
+                        let imm = self.cpu.amode(amode) as u32;
+                        let fimm = self.mmu.read_u16(seg, imm) as u32;
+                        let fseg = self.mmu.read_u16(seg, imm + 2);
+                        (fseg, fimm)
+                    }
+                    Parameter::Ptr32Amode(seg, ref amode) => {
+                        let seg = self.cpu.segment(seg);
+                        let imm = self.cpu.amode(amode) as u32;
+                        let fimm = self.mmu.read_u32(seg, imm);
+                        let fseg = self.mmu.read_u16(seg, imm + 4);
+                        (fseg, fimm)
+                    }
                     _ => panic!("CallFar unhandled type {:?}", op.params.dst),
                 };
                 self.cpu.regs.set_r16(R::CS, seg);

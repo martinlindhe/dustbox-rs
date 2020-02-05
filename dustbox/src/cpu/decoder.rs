@@ -1987,6 +1987,7 @@ impl Decoder {
                             0 => Op::Inc32,
                             1 => Op::Dec32,
                             2 => Op::CallNear,
+                            3 => Op::CallFar,
                             6 => Op::Push32,
                             _ => {
                                 println!("XXX FF 32bit {:?}", x);

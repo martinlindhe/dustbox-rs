@@ -51,16 +51,25 @@ pub enum Parameter {
     Ptr8AmodeS8(Segment, AMode, i8),    // byte [amode+s8], like "byte [bp-0x20]"
     Ptr8AmodeS16(Segment, AMode, i16),  // byte [amode+s16], like "byte [bp-0x2020]"
 
-    Ptr16(Segment, u16),                // word [u16], like "word [0x4040]"
-    Ptr16Amode(Segment, AMode),         // word [amode], like "word [bx]"
-    Ptr16AmodeS8(Segment, AMode, i8),   // word [amode+s8], like "word [bp-0x20]"
-    Ptr16AmodeS16(Segment, AMode, i16), // word [amode+s16], like "word [bp-0x2020]"
-    Ptr16AmodeS32(Segment, AMode, i32), // word [amode+s32], like "dword [bp-0x20204040]"
+    /// word [u16], like "word [0x4040]"
+    Ptr16(Segment, u16),
+    /// word [amode], like "word [bx]"
+    Ptr16Amode(Segment, AMode),
+    /// word [amode+s8], like "word [bp-0x20]"
+    Ptr16AmodeS8(Segment, AMode, i8),
+    /// word [amode+s16], like "word [bp-0x2020]"
+    Ptr16AmodeS16(Segment, AMode, i16),
+    /// word [amode+s32], like "dword [bp-0x20204040]"
+    Ptr16AmodeS32(Segment, AMode, i32),
 
-    Ptr32(Segment, u32),                // dword [u32], like "dword [0x40404040]"
-    Ptr32Amode(Segment, AMode),         // dword [amode], like "dword [bx]"
-    Ptr32AmodeS8(Segment, AMode, i8),   // dword [amode+s8], like "dword [bp-0x20]"
-    Ptr32AmodeS16(Segment, AMode, i16), // dword [amode+s16], like "dword [bp-0x2020]"
+    /// dword [u32], like "dword [0x40404040]"
+    Ptr32(Segment, u32),
+    /// dword [amode], like "dword [bx]"
+    Ptr32Amode(Segment, AMode),
+    /// dword [amode+s8], like "dword [bp-0x20]"
+    Ptr32AmodeS8(Segment, AMode, i8),
+    /// dword [amode+s16], like "dword [bp-0x2020]"
+    Ptr32AmodeS16(Segment, AMode, i16),
 
     /// Scaled Index Base
     Ptr16SIB(Segment, SIBDisp, u8, R, SIBBase),

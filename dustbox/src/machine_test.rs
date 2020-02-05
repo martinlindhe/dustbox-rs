@@ -2229,7 +2229,7 @@ fn can_execute_ret_imm() {
 }
 
 #[test]
-fn can_execute_call_far() {
+fn can_execute_call_far_imm() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0x9A, 0xD3, 0x00, 0x00, 0x00,   // call 0x0:0xd3
@@ -2239,6 +2239,21 @@ fn can_execute_call_far() {
 
     assert_eq!(0x0000, machine.cpu.get_r16(R::CS));
     assert_eq!(0x00D3, machine.cpu.regs.eip);
+}
+
+#[test]
+fn can_execute_call_far_reg() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x3E, 0xC7, 0x04, 0xF4, 0x00,       // mov word [ds:si],0xf4
+        0x3E, 0xC7, 0x44, 0x02, 0x00, 0xF0, // mov word [ds:si+0x2],0xf000
+        0x3E, 0xFF, 0x1C,                   // call far [ds:si]
+    ];
+    machine.load_executable(&code, 0x085F);
+    machine.execute_instructions(3);
+
+    assert_eq!(0xF000, machine.cpu.get_r16(R::CS));
+    assert_eq!(0x00F4, machine.cpu.regs.eip);
 }
 
 #[test]
