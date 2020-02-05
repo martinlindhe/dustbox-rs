@@ -6,7 +6,7 @@ use std::io;
 
 use crate::bios::BIOS;
 use crate::cpu::{CPU, Op, Invalid, R, RegisterState};
-use crate::cpu::{Instruction, RepeatMode, Exception};
+use crate::cpu::{Instruction, RepeatMode, Exception, OperandSize};
 use crate::cpu::{Parameter};
 use crate::format::ExeFile;
 use crate::gpu::GFXMode;
@@ -28,8 +28,8 @@ mod machine_test;
 
 const HANDLE_DEBUG_INTERRUPT: bool = false;
 
-/// prints each instruction as they are executed
-const DEBUG_EXEC: bool = false;
+/// prints each instruction & reg values as they are executed
+const DEBUG_EXEC: bool = true;
 
 /// prints access to I/O ports
 const DEBUG_IO: bool = false;
@@ -347,10 +347,12 @@ impl Machine {
         self.rom_base = self.cpu.get_memory_address();
         self.rom_length = data.len();
 
-        let cs = self.cpu.get_r16(R::CS);
-        self.mmu.write(cs, self.cpu.regs.eip, data);
-
+        self.load_raw(segment, self.cpu.regs.eip, data);
         self.mark_stack();
+    }
+
+    pub fn load_raw(&mut self, segment: u16, offset: u32, data: &[u8]) {
+        self.mmu.write(segment, offset, data);
     }
 
     /// (for debugging): marks the stack with a magic value so we can detect when last "ret" exits the application
@@ -384,13 +386,15 @@ impl Machine {
     }
 
     /// executes n instructions of the cpu
-    pub fn execute_instructions(&mut self, count: usize) {
+    /// returns true if cpu.fatal_error was raised
+    pub fn execute_instructions(&mut self, count: usize) -> bool {
         for _ in 0..count {
             self.execute_instruction();
             if self.cpu.fatal_error {
-                break;
+                return true;
             }
         }
+        false
     }
 
     /// returns first line of disassembly using nasm
@@ -465,28 +469,36 @@ impl Machine {
         }
     }
 
+    fn trace_regs(&self) -> String {
+        let eax = self.cpu.get_r32(R::EAX);
+        let ebx = self.cpu.get_r32(R::EBX);
+        let ecx = self.cpu.get_r32(R::ECX);
+        let edx = self.cpu.get_r32(R::EDX);
+
+        let esi = self.cpu.get_r32(R::ESI);
+        let edi = self.cpu.get_r32(R::EDI);
+        let ebp = self.cpu.get_r32(R::EBP);
+        let esp = self.cpu.get_r32(R::ESP);
+
+        format!("EAX:{:08X} EBX:{:08X} ECX:{:08X} EDX:{:08X} ESI:{:08X} EDI:{:08X} EBP:{:08X} ESP:{:08X}", eax, ebx, ecx, edx, esi, edi, ebp, esp)
+    }
+
     /// executes the next CPU instruction
     pub fn execute_instruction(&mut self) {
         let cs = self.cpu.get_r16(R::CS);
         let ip = self.cpu.regs.eip;
+        /*
         if cs == 0xF000 {
             // we are in interrupt vector code, execute high-level interrupt.
             // the default interrupt vector table has a IRET
             self.handle_interrupt(ip as u8);
         }
+        */
 
         let op = self.cpu.decoder.get_instruction(&mut self.mmu, cs, ip);
 
         if self.trace_file.is_some() {
-            let eax = self.cpu.get_r32(R::EAX);
-            let ebx = self.cpu.get_r32(R::EBX);
-            let ecx = self.cpu.get_r32(R::ECX);
-            let edx = self.cpu.get_r32(R::EDX);
-
-            let esi = self.cpu.get_r32(R::ESI);
-            let edi = self.cpu.get_r32(R::EDI);
-            let ebp = self.cpu.get_r32(R::EBP);
-            let esp = self.cpu.get_r32(R::ESP);
+            let regs = self.trace_regs();
 
             let ds = self.cpu.get_r16(R::DS);
             let es = self.cpu.get_r16(R::ES);
@@ -507,7 +519,7 @@ impl Machine {
 
                 let mut writer = BufWriter::new(file);
                 let _ = write!(&mut writer, "{:04X}:{:04X}  {}", cs, ip, &disasm);
-                let _ = write!(&mut writer, " EAX:{:08X} EBX:{:08X} ECX:{:08X} EDX:{:08X} ESI:{:08X} EDI:{:08X} EBP:{:08X} ESP:{:08X}", eax, ebx, ecx, edx, esi, edi, ebp, esp);
+                let _ = write!(&mut writer, " {}", regs);
                 let _ = write!(&mut writer, " DS:{:04X} ES:{:04X}", ds, es);
                 // let _ = write!(&mut writer, " FS:{:04X} GS:{:04X}", fs, g);
                 let _ = write!(&mut writer, " SS:{:04X}", ss);
@@ -548,8 +560,9 @@ impl Machine {
             }
             _ => {
                 if DEBUG_EXEC {
-                    println!("[{:04X}:{:04X}] {}", cs, ip, op);
+                    println!("[{:04X}:{:04X}] {:<40} {}", cs, ip, format!("{}", op), self.trace_regs());
                 }
+
                 self.execute(&op);
             },
         }
@@ -858,13 +871,13 @@ impl Machine {
             }
             Op::CallNear => {
                 match op.op_size {
-                    crate::cpu::OperandSize::_16bit => { // CALL rel16
+                    OperandSize::_16bit => { // CALL rel16
                         let old_ip = self.cpu.regs.eip;
                         let temp_ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                         self.cpu.push16(&mut self.mmu, old_ip as u16);
                         self.cpu.regs.eip = temp_ip;
                     }
-                    crate::cpu::OperandSize::_32bit => { // CALL rel32
+                    OperandSize::_32bit => { // CALL rel32
                         let old_ip = self.cpu.regs.eip;
                         let temp_ip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
                         self.cpu.push32(&mut self.mmu, old_ip);
@@ -873,23 +886,31 @@ impl Machine {
                 }
             }
             Op::CallFar => {
-                let old_seg = self.cpu.regs.get_r16(R::CS);
-                let old_ip = self.cpu.regs.eip as u16;
-                self.cpu.push16(&mut self.mmu, old_seg);
-                self.cpu.push16(&mut self.mmu, old_ip);
+                // XXX if long addressing, push 4 + 4 bytes
+                match op.op_size {
+                    OperandSize::_16bit => {
+                        self.cpu.push16(&mut self.mmu, self.cpu.regs.get_r16(R::CS));
+                        self.cpu.push16(&mut self.mmu, self.cpu.regs.eip as u16);
+                    }
+                    OperandSize::_32bit => {
+                        self.cpu.push32(&mut self.mmu, self.cpu.regs.get_r16(R::CS) as u32); // XXX ?
+                        self.cpu.push32(&mut self.mmu, self.cpu.regs.eip);
+                    }
+                }
+
                 let (seg, offs) = match op.params.dst {
                     Parameter::Ptr16Imm(seg, offs) =>
-                        (seg, offs),
+                        (seg, offs as u32),
                     Parameter::Ptr16(seg, offs) =>
-                        (self.cpu.segment(seg), offs),
+                        (self.cpu.segment(seg), offs as u32),
                     Parameter::Ptr16Amode(seg, ref amode) =>
-                        (self.cpu.segment(seg), self.cpu.amode(amode) as u16),
+                        (self.cpu.segment(seg), self.cpu.amode(amode) as u32),
                     Parameter::Ptr16AmodeS8(seg, ref amode, imm) =>
-                        (self.cpu.segment(seg), (self.cpu.amode(amode) as isize + imm as isize) as u16),
+                        (self.cpu.segment(seg), (self.cpu.amode(amode) as isize + imm as isize) as u32),
                     _ => panic!("CallFar unhandled type {:?}", op.params.dst),
                 };
                 self.cpu.regs.set_r16(R::CS, seg);
-                self.cpu.regs.eip = offs as u32;
+                self.cpu.regs.eip = offs;
             }
             Op::Cbw => {
                 let ah = if self.cpu.get_r8(R::AL) & 0x80 != 0 {
@@ -1439,17 +1460,17 @@ impl Machine {
             Op::JmpFar => {
                 let (seg, offs) = match op.params.dst {
                     Parameter::Ptr16(seg, imm) =>
-                        (self.cpu.segment(seg), imm),
+                        (self.cpu.segment(seg), imm as u32),
                     Parameter::Ptr16Imm(seg, imm) =>
-                        (seg, imm),
+                        (seg, imm as u32),
                     Parameter::Ptr16Amode(seg, ref amode) =>
-                        (self.cpu.segment(seg), self.cpu.amode(amode) as u16),
+                        (self.cpu.segment(seg), self.cpu.amode(amode) as u32),
                     Parameter::Ptr16AmodeS8(seg, ref amode, imm) =>
-                        (self.cpu.segment(seg), (self.cpu.amode(amode) as isize + imm as isize) as u16),
+                        (self.cpu.segment(seg), (self.cpu.amode(amode) as isize + imm as isize) as u32),
                     _ => panic!("[{}] JmpFar unhandled type {:?}",  self.cpu.get_memory_address(), op.params.dst),
                 };
                 self.cpu.set_r16(R::CS, seg);
-                self.cpu.regs.eip = offs as u32;
+                self.cpu.regs.eip = offs;
             }
             Op::JmpNear | Op::JmpShort => {
                 self.cpu.regs.eip = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u32;
@@ -2124,20 +2145,27 @@ impl Machine {
                 self.cpu.regs.flags.set_u16(flags);
                 self.mmu.flags_address = MemoryAddress::Unset;
             }
-            Op::Retf => {
-                if op.params.count() == 1 {
-                    // 1 argument: pop imm16 bytes from stack
-                    let imm16 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
-                    let sp = self.cpu.get_r16(R::SP) + imm16;
-                    self.cpu.set_r16(R::SP, sp);
+            Op::Retf => match op.op_size {
+                OperandSize::_16bit => {
+                    if op.params.count() == 1 {
+                        // 1 argument: pop imm16 bytes from stack
+                        let imm16 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
+                        let sp = self.cpu.get_r16(R::SP) + imm16;
+                        self.cpu.set_r16(R::SP, sp);
+                    }
+                    self.cpu.regs.eip = self.cpu.pop16(&mut self.mmu) as u32;
+                    let cs = self.cpu.pop16(&mut self.mmu);
+                    self.cpu.set_r16(R::CS, cs);
                 }
-                self.cpu.regs.eip = self.cpu.pop16(&mut self.mmu) as u32;
-                let cs = self.cpu.pop16(&mut self.mmu);
-                self.cpu.set_r16(R::CS, cs);
+                OperandSize::_32bit => {
+                    self.cpu.regs.eip = self.cpu.pop32(&mut self.mmu);
+                    let cs = self.cpu.pop32(&mut self.mmu);
+                    self.cpu.set_r16(R::CS, cs as u16); // XXX ?
+                }
             }
             Op::Retn => {
                 match op.op_size {
-                    crate::cpu::OperandSize::_16bit => {
+                    OperandSize::_16bit => {
                         let val = self.cpu.pop16(&mut self.mmu);
                         if DEBUG_MARK_STACK && val == STACK_MARKER {
                             println!("[{}] WARNING: stack marker was popped after {} instr. execution ended. (can be valid where small app just return to DOS with a 'ret', but can also indicate memory corruption)",
@@ -2147,7 +2175,7 @@ impl Machine {
                         // println!("Retn, ip from {:04X} to {:04X}", self.cpu.regs.ip, val);
                         self.cpu.regs.eip = val as u32;
                     }
-                    crate::cpu::OperandSize::_32bit => {
+                    OperandSize::_32bit => {
                         self.cpu.regs.eip = self.cpu.pop32(&mut self.mmu);
                     }
                 }

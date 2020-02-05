@@ -1,5 +1,6 @@
 use crate::machine::Machine;
 use crate::cpu::R;
+use crate::tools::read_binary;
 
 // TODO TEST retn, retf, retn imm16
 // TODO lds, les - write tests and fix implementation - it is wrong?!
@@ -2288,6 +2289,25 @@ fn can_execute_operand_and_address_prefix() {
 
     machine.execute_instructions(3);
     assert_eq!(0x88334422, machine.cpu.get_r32(R::EAX));
+}
+
+
+#[test]
+fn can_run_test386() {
+    let mut machine = Machine::deterministic();
+
+    match read_binary("C:/Users/m/dev/rs/test386.asm/test386.bin") {
+        Ok(data) => machine.load_raw(0xF000, 0x0000, &data),
+        // XXX The binary assembled file must be installed at physical address 0xf0000 and aliased at physical address 0xffff0000.
+        Err(e) => panic!(e),
+    };
+
+    // XXX The jump at resetVector should align with the CPU reset address 0xfffffff0, which will transfer control to f000:0045.
+    machine.cpu.set_r16(R::CS, 0xF000);
+    machine.cpu.regs.eip = 0x0045;
+
+    // XXX reaches 51 atm
+    assert_eq!(false, machine.execute_instructions(6500_000)); // XXX reach 51 at 800k
 }
 
 #[test]

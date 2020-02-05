@@ -1083,12 +1083,21 @@ impl Decoder {
                 };
             }
             0x99 => op.command = Op::Cwd16,
-            0x9A => {
-                // call ptr16:16
-                op.command = Op::CallFar;
-                let imm = self.read_u16(mmu);
-                let seg = self.read_u16(mmu);
-                op.params.dst = Parameter::Ptr16Imm(seg, imm);
+            0x9A => match op.op_size {
+                OperandSize::_16bit => {
+                    // call ptr16:16
+                    op.command = Op::CallFar;
+                    let imm = self.read_u16(mmu);
+                    let seg = self.read_u16(mmu);
+                    op.params.dst = Parameter::Ptr16Imm(seg, imm as u32);
+                }
+                OperandSize::_32bit => {
+                    // call ptr16:32
+                    op.command = Op::CallFar;
+                    let imm = self.read_u32(mmu);
+                    let seg = self.read_u16(mmu);
+                    op.params.dst = Parameter::Ptr16Imm(seg, imm);
+                }
             }
             0x9B => op.command = Op::Fwait,
             0x9C => op.command = Op::Pushf,
@@ -1792,12 +1801,21 @@ impl Decoder {
                 op.command = Op::JmpNear;
                 op.params.dst = Parameter::Imm16(self.read_rel16(mmu));
             }
-            0xEA => {
-                // jmp far ptr16:16
-                op.command = Op::JmpFar;
-                let imm = self.read_u16(mmu);
-                let seg = self.read_u16(mmu);
-                op.params.dst = Parameter::Ptr16Imm(seg, imm);
+            0xEA => match op.op_size {
+                OperandSize::_16bit => {
+                    // jmp far ptr16:16
+                    op.command = Op::JmpFar;
+                    let imm = self.read_u16(mmu);
+                    let seg = self.read_u16(mmu);
+                    op.params.dst = Parameter::Ptr16Imm(seg, imm as u32);
+                }
+                OperandSize::_32bit => {
+                    // jmp far ptr16:32
+                    op.command = Op::JmpFar;
+                    let imm = self.read_u32(mmu);
+                    let seg = self.read_u16(mmu);
+                    op.params.dst = Parameter::Ptr16Imm(seg, imm);
+                }
             }
             0xEB => {
                 // jmp short rel8
@@ -1968,6 +1986,7 @@ impl Decoder {
                         op.command = match x.reg {
                             0 => Op::Inc32,
                             1 => Op::Dec32,
+                            2 => Op::CallNear,
                             6 => Op::Push32,
                             _ => {
                                 println!("XXX FF 32bit {:?}", x);

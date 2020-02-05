@@ -44,7 +44,7 @@ pub enum Parameter {
     ImmS8(i8),                          // byte +0x3f
     Imm16(u16),                         // word 0x8000
     Imm32(u32),                         // dword 0x8000_0000
-    Ptr16Imm(u16, u16),                 // jmp far u16:u16
+    Ptr16Imm(u16, u32),                 // jmp far u16:u16 or u16:u32
 
     Ptr8(Segment, u16),                 // byte [u16], like "byte [0x4040]"
     Ptr8Amode(Segment, AMode),          // byte [amode], like "byte [bx]"

@@ -406,19 +406,41 @@ fn can_disassemble_addressing_mod3_opsize() {
 fn can_disassemble_call() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
-        0xE8, 0x05, 0x00,                   // call 0x108
-        0xE8, 0xFB, 0xFF,                   // call 0x101
-        0x66, 0xE8, 0x11, 0x00, 0x00, 0x00, // call dword 0x11d
-        0xFF, 0x18,                         // call far [bx+si]
+        0xE8, 0x05, 0x00,                               // call 0x108
+        0xE8, 0xFB, 0xFF,                               // call 0x101
+        0x66, 0xE8, 0x11, 0x00, 0x00, 0x00,             // call dword 0x11d
+        0x9A, 0xF4, 0x00, 0x00, 0xF0,                   // call 0xf000:0xf4
+        0x66, 0x9A, 0x44, 0x33, 0x22, 0x11, 0xEE, 0xFF, // call dword 0xffee:0x11223344
+        0xFF, 0x18,                                     // call far [bx+si]
+        0xFF, 0xD3,                                     // call bx
+        0x66, 0xFF, 0xD3,                               // call ebx
     ];
     machine.load_executable(&code, 0x085F);
 
-    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 8);
     assert_eq!("[085F:0100] E80500           CallNear 0x0108
 [085F:0103] E8FBFF           CallNear 0x0101
 [085F:0106] 66E811000000     CallNear 0x0000011D
-[085F:010C] FF18             CallFar  word [ds:bx+si]",
-               res);
+[085F:010C] 9AF40000F0       CallFar  F000:00F4
+[085F:0111] 669A44332211EEFF CallFar  FFEE:11223344
+[085F:0119] FF18             CallFar  word [ds:bx+si]
+[085F:011B] FFD3             CallNear bx
+[085F:011D] 66FFD3           CallNear ebx", res);
+}
+
+#[test]
+fn can_disassemble_jmp() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xEA, 0xF4, 0x00, 0x00, 0xF0,                   // jmp 0xf000:0xf4
+        0x66, 0xEA, 0x44, 0x33, 0x22, 0x11, 0xEE, 0xFF, // jmp dword 0xffee:0x11223344
+
+        ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 2);
+    assert_eq!("[085F:0100] EAF40000F0       JmpFar   F000:00F4
+[085F:0105] 66EA44332211EEFF JmpFar   FFEE:11223344", res);
 }
 
 #[test]
