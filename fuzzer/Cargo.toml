@@ -6,6 +6,13 @@ edition = "2018"
 
 [lib]
 path = "src/lib.rs"
+test = false
+doctest = false
+
+[[bin]]
+name = "dustbox-fuzzer"
+path = "src/bin/fuzzer-main.rs"
+test = false
 
 [dependencies]
 clap = "2.33"

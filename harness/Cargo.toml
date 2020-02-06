@@ -7,6 +7,7 @@ edition = "2018"
 [[bin]]
 name = "dustbox-harness"
 path = "src/bin/harness-main.rs"
+test = false
 
 [dependencies]
 clap = "2.33"

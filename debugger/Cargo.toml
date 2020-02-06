@@ -6,6 +6,12 @@ edition = "2018"
 
 [lib]
 path = "src/lib.rs"
+doctest = false
+
+[[bin]]
+name = "dustbox-debugger"
+path = "src/bin/debugger-main.rs"
+test = false
 
 [dependencies]
 cairo-rs = "0.8"

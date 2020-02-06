@@ -17,6 +17,7 @@ travis-ci = { repository = "martinlindhe/dustbox-rs" }
 
 [lib]
 path = "src/lib.rs"
+doctest = false
 
 [dependencies]
 bincode = "1.2"
