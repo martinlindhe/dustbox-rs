@@ -1148,7 +1148,7 @@ impl Decoder {
                     // mov EAX, [moffs32]
                     op.command = Op::Mov32;
                     op.params.dst = Parameter::Reg32(R::EAX);
-                    op.params.src = Parameter::Ptr32(op.segment_prefix, self.read_u32(mmu));
+                    op.params.src = Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu) as u32);
                 }
             },
             0xA2 => {
@@ -1167,7 +1167,7 @@ impl Decoder {
                 OperandSize::_32bit => {
                     // mov [moffs32], EAX
                     op.command = Op::Mov32;
-                    op.params.dst = Parameter::Ptr32(op.segment_prefix, self.read_u32(mmu));
+                    op.params.dst = Parameter::Ptr32(op.segment_prefix, self.read_u16(mmu) as u32);
                     op.params.src = Parameter::Reg32(R::EAX);
                 }
             },

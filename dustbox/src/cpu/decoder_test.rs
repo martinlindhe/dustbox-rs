@@ -3,6 +3,23 @@ use pretty_assertions::assert_eq;
 use crate::machine::Machine;
 
 #[test]
+fn can_disassemble_addressing_a1_a3() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xA3, 0x36, 0x02,           // mov [0x236],ax
+        0x66, 0xA3, 0x36, 0x02,     // mov [0x236],eax
+        0xA1, 0x36, 0x02,           // mov ax,[0x236]
+        0x66, 0xA1, 0x36, 0x02,     // mov eax,[0x236]
+    ];
+    machine.load_executable(&code, 0x085F);
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
+    assert_eq!("[085F:0100] A33602           Mov16    word [ds:0x0236], ax
+[085F:0103] 66A33602         Mov32    dword [ds:0x0236], eax
+[085F:0107] A13602           Mov16    ax, word [ds:0x0236]
+[085F:010A] 66A13602         Mov32    eax, dword [ds:0x0236]", res);
+}
+
+#[test]
 fn can_disassemble_addressing_mod0_noprefix() {
     // tests all forms of mod=0 addressing
     let mut machine = Machine::deterministic();

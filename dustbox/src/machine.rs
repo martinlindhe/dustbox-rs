@@ -495,13 +495,11 @@ impl Machine {
     pub fn execute_instruction(&mut self) {
         let cs = self.cpu.get_r16(R::CS);
         let ip = self.cpu.regs.eip;
-        /*
         if cs == 0xF000 {
             // we are in interrupt vector code, execute high-level interrupt.
             // the default interrupt vector table has a IRET
             self.handle_interrupt(ip as u8);
         }
-        */
 
         let op = self.cpu.decoder.get_instruction(&mut self.mmu, cs, ip);
 
@@ -928,7 +926,8 @@ impl Machine {
                     }
                     Parameter::Ptr16AmodeS16(seg, ref amode, imm1) => {
                         let seg = self.cpu.segment(seg);
-                        let imm = ((self.cpu.amode(amode) as i32).wrapping_add(imm1 as i32) as u16) as u32;
+                        let imm = (self.cpu.amode(amode) as u16).wrapping_add(imm1 as u16) as u32;
+                        println!("{}: Ptr16AmodeS16: amode {:04X}, imm {:04X} = {:04X}", op, self.cpu.amode(amode), imm1, imm);
                         let fimm = self.mmu.read_u16(seg, imm) as u32;
                         let fseg = self.mmu.read_u16(seg, imm + 2);
                         (fseg, fimm)
