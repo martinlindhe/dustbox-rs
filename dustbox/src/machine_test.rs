@@ -2317,6 +2317,24 @@ fn can_execute_call_far_reg() {
 }
 
 #[test]
+fn can_execute_call_far_amodes16() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x3E, 0xC7, 0x84, 0xDE, 0xBB, 0xF4, 0x00,   // mov word [ds:si-0x4422],0xf4
+        0x3E, 0xC7, 0x84, 0xE0, 0xBB, 0x00, 0xF0,   // mov word [ds:si-0x4420],0xf000
+        0x3E, 0xFF, 0x9C, 0xDE, 0xBB,               // call far [ds:si-0x4422]
+    ];
+    machine.load_executable(&code, 0x085F);
+    machine.execute_instructions(3);
+
+    assert_eq!(0xF000, machine.mmu.read_u16(machine.cpu.get_r16(R::DS), machine.cpu.get_r16(R::SI).wrapping_sub(0x4420) as u32));
+    assert_eq!(0x00F4, machine.mmu.read_u16(machine.cpu.get_r16(R::DS), machine.cpu.get_r16(R::SI).wrapping_sub(0x4422) as u32));
+
+    assert_eq!(0xF000, machine.cpu.get_r16(R::CS));
+    assert_eq!(0x00F4, machine.cpu.regs.eip);
+}
+
+#[test]
 fn can_execute_sldt() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![

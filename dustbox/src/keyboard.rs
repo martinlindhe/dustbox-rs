@@ -34,7 +34,9 @@ impl Component for Keyboard {
             0x0061 => {
                 // keyboard controller port b control register
                 let val = 0 as u8; // XXX
-                println!("XXX impl -- keyboard: read keyboard controller port b control register (current {:02X})", val);
+                if DEBUG_KEYBOARD {
+                    println!("XXX impl -- keyboard: read keyboard controller port b control register (current {:02X})", val);
+                }
                 Some(val)
             }
             0x0064 => {
@@ -49,7 +51,9 @@ impl Component for Keyboard {
         match port {
             0x0061 => {
                 // keyboard controller port b OR ppi programmable periphial interface (XT only) - which mode are we in?
-                println!("XXX impl -- keyboard: write keyboard controller port b {:02X}", data);
+                if DEBUG_KEYBOARD {
+                    println!("XXX impl -- keyboard: write keyboard controller port b {:02X}", data);
+                }
             }
             _ => return false
         }

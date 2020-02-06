@@ -926,6 +926,13 @@ impl Machine {
                         let fseg = self.mmu.read_u16(seg, imm + 2);
                         (fseg, fimm)
                     }
+                    Parameter::Ptr16AmodeS16(seg, ref amode, imm1) => {
+                        let seg = self.cpu.segment(seg);
+                        let imm = ((self.cpu.amode(amode) as i32).wrapping_add(imm1 as i32) as u16) as u32;
+                        let fimm = self.mmu.read_u16(seg, imm) as u32;
+                        let fseg = self.mmu.read_u16(seg, imm + 2);
+                        (fseg, fimm)
+                    }
                     Parameter::Ptr32Amode(seg, ref amode) => {
                         let seg = self.cpu.segment(seg);
                         let imm = self.cpu.amode(amode) as u32;
