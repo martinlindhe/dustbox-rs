@@ -85,7 +85,7 @@ fn main() {
         Op::Push16, // NOTE: also tests Op::Pop16
         Op::Mov8, Op::Mov16, Op::Mov32,
         Op::Cmp8, Op::Cmp16, Op::Cmp32,
-        Op::And8, Op::And16,
+        Op::And8, Op::And16, Op::And32,
         Op::Xor8, Op::Xor16, Op::Xor32,
         Op::Or8, Op::Or16,
         Op::Add8, Op::Add16, Op::Add32, Op::Adc8, Op::Adc16,

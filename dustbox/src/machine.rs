@@ -560,7 +560,8 @@ impl Machine {
             }
             _ => {
                 if DEBUG_EXEC {
-                    println!("[{:04X}:{:04X}] {:<40} {}", cs, ip, format!("{}", op), self.trace_regs());
+                    let bytes = self.mmu.read(cs, ip, op.length as usize);
+                    println!("[{:04X}:{:04X}] {:<26} {:<40} {}", cs, ip, format!("{:X?}", &bytes), format!("{}", op), self.trace_regs());
                 }
 
                 self.execute(&op);

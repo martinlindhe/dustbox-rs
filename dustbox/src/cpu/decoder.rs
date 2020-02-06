@@ -194,6 +194,21 @@ impl Decoder {
                             _ => Op::Invalid(vec!(b, b2, x.u8()), Invalid::Reg(x.reg)),
                         };
                     }
+                    0x01 => {
+                        let x = self.read_mod_reg_rm(mmu);
+                        op.params.dst = self.rm16(&mut mmu, op, x.rm, x.md);
+                        op.command = match x.reg {
+                            2 => match op.op_size {
+                                OperandSize::_16bit => Op::Lgdt16,
+                                OperandSize::_32bit => Op::Lgdt32,
+                            }
+                            3 => match op.op_size {
+                                OperandSize::_16bit => Op::Lidt16,
+                                OperandSize::_32bit => Op::Lidt32,
+                            }
+                            _ => panic!("XXX {:?}", x),
+                        };
+                    }
                     0x02 => { // lar r16, r16/m16
                         op.command = Op::Lar16;
                         op.params = self.r16_rm16(&mut mmu, op);

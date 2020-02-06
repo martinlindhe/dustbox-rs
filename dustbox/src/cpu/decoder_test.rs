@@ -460,6 +460,24 @@ fn can_disassemble_lss() {
 }
 
 #[test]
+fn can_disassemble_lidt() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x2E, 0x0F, 0x01, 0x1E, 0x33, 0x44,         // lidt [cs:0x4433]
+        0x2E, 0x66, 0x0F, 0x01, 0x1E, 0x33, 0x44,   // o32 lidt [cs:0x4433]
+        0x2E, 0x0F, 0x01, 0x16, 0x33, 0x44,         // lgdt [cs:0x4433]
+        0x2E, 0x66, 0x0F, 0x01, 0x16, 0x33, 0x44,   // o32 lgdt [cs:0x4433]
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 4);
+    assert_eq!("[085F:0100] 2E0F011E3344     cs Lidt16   word [cs:0x4433]
+[085F:0106] 2E660F011E3344   cs Lidt32   word [cs:0x4433]
+[085F:010D] 2E0F01163344     cs Lgdt16   word [cs:0x4433]
+[085F:0113] 2E660F01163344   cs Lgdt32   word [cs:0x4433]", res);
+}
+
+#[test]
 fn can_disassemble_lea() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![

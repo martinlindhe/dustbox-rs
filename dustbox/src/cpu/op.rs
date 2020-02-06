@@ -143,6 +143,14 @@ pub enum Op {
     /// Load Access Rights Byte
     Lar16,
 
+    /// Load Interrupt Descriptor Table Register
+    Lidt16,
+    Lidt32,
+
+    /// Load Global Descriptor Table Register
+    Lgdt16,
+    Lgdt32,
+
     /// Load DS:r16 with far pointer from memory.
     Lds16,
     /// Load DS:r32 with far pointer from memory.
