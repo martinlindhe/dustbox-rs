@@ -98,61 +98,44 @@ pub enum Op {
     Into,
     Iret,
 
-    /// Jump if above (CF=0 and ZF=0).    (alias: jnbe)
-    Ja,
-
-    /// Jump if carry (CF=1).    (alias: jb, jnae)
-    Jc,
-
-    /// Jump if CX register is 0.
-    Jcxz,
-
-    /// Jump if ECX register is 0.
-    Jecxz,
-
-    /// Jump if greater (ZF=0 and SF=OF).    (alias: jnle)
-    Jg,
-
-    /// Jump if less (SF ≠ OF).    (alias: jnge)
-    Jl,
-
     JmpShort, JmpNear, JmpFar,
 
+    /// Jump if above (CF=0 and ZF=0).    (alias: jnbe)
+    Ja,
+    /// Jump if carry (CF=1).    (alias: jb, jnae)
+    Jc,
+    /// Jump if greater (ZF=0 and SF=OF).    (alias: jnle)
+    Jg,
+    /// Jump if less (SF ≠ OF).    (alias: jnge)
+    Jl,
     /// Jump if not above (CF=1 or ZF=1).    (alias: jbe)
     Jna,
-
     /// Jump if not carry (CF=0).    (alias: jae, jnb)
     Jnc,
-
     /// Jump if not greater (ZF=1 or SF ≠ OF).    (alias: jle)
     Jng,
-
     /// Jump if not less (SF=OF).    (alias: jge)
     Jnl,
-
     /// Jump if not overflow (OF=0).
     Jno,
-
     /// Jump if not sign (SF=0).
     Jns,
-
     /// Jump if not zero (ZF=0).    (alias: jne)
     Jnz,
-
     /// Jump if overflow (OF=1).
     Jo,
-
     /// Jump short if parity even (PF=1)
     Jpe,
-
     /// Jump short if parity odd (PF=0).
     Jpo,
-
     /// Jump if sign (SF=1).
     Js,
-
     /// Jump if zero (ZF ← 1).    (alias: je)
     Jz,
+    /// Jump if CX register is 0.
+    Jcxz,
+    /// Jump if ECX register is 0.
+    Jecxz,
 
     /// Load Status Flags into AH Register
     Lahf,
@@ -161,7 +144,29 @@ pub enum Op {
     Lar16,
 
     /// Load DS:r16 with far pointer from memory.
-    Lds,
+    Lds16,
+    /// Load DS:r32 with far pointer from memory.
+    Lds32,
+
+    /// Load ES:r16 with far pointer from memory.
+    Les16,
+    /// Load ES:r32 with far pointer from memory.
+    Les32,
+
+    /// Load FS:r16 with far pointer from memory.
+    Lfs16,
+    /// Load FS:r32 with far pointer from memory.
+    Lfs32,
+
+    /// Load GS:r16 with far pointer from memory.
+    Lgs16,
+    /// Load GS:r32 with far pointer from memory.
+    Lgs32,
+
+    /// Load SS:r16 with far pointer from memory.
+    Lss16,
+    /// Load SS:r32 with far pointer from memory.
+    Lss32,
 
     /// Load Effective Address
     /// Computes the effective address of the source operand and stores it in the destination operand.
@@ -169,15 +174,10 @@ pub enum Op {
 
     Leave,
 
-    /// Load ES:r16 with far pointer from memory.
-    Les,
-
     /// Load byte at address DS:(E)SI into AL.
     Lodsb,
-
     /// Load word at address DS:(E)SI into AX.
     Lodsw,
-
     /// Load dword at address DS:(E)SI into EAX.
     Lodsd,
 

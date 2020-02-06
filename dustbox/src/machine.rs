@@ -29,7 +29,7 @@ mod machine_test;
 const HANDLE_DEBUG_INTERRUPT: bool = false;
 
 /// prints each instruction & reg values as they are executed
-const DEBUG_EXEC: bool = true;
+const DEBUG_EXEC: bool = false;
 
 /// prints access to I/O ports
 const DEBUG_IO: bool = false;
@@ -480,7 +480,15 @@ impl Machine {
         let ebp = self.cpu.get_r32(R::EBP);
         let esp = self.cpu.get_r32(R::ESP);
 
-        format!("EAX:{:08X} EBX:{:08X} ECX:{:08X} EDX:{:08X} ESI:{:08X} EDI:{:08X} EBP:{:08X} ESP:{:08X}", eax, ebx, ecx, edx, esi, edi, ebp, esp)
+
+        let ds = self.cpu.get_r16(R::DS);
+        let es = self.cpu.get_r16(R::ES);
+        //let fs = self.cpu.get_r16(R::FS);
+        //let gs = self.cpu.get_r16(R::GS);
+        let ss = self.cpu.get_r16(R::SS);
+
+        format!("EAX:{:08X} EBX:{:08X} ECX:{:08X} EDX:{:08X} ESI:{:08X} EDI:{:08X} EBP:{:08X} ESP:{:08X} DS:{:04X} ES:{:04X} SS:{:04X}",
+            eax, ebx, ecx, edx, esi, edi, ebp, esp, ds, es, ss)
     }
 
     /// executes the next CPU instruction
@@ -500,12 +508,6 @@ impl Machine {
         if self.trace_file.is_some() {
             let regs = self.trace_regs();
 
-            let ds = self.cpu.get_r16(R::DS);
-            let es = self.cpu.get_r16(R::ES);
-            //let fs = self.cpu.get_r16(R::FS);
-            //let gs = self.cpu.get_r16(R::GS);
-            let ss = self.cpu.get_r16(R::SS);
-
             let cf = self.cpu.regs.flags.carry_numeric();
             let zf = self.cpu.regs.flags.zero_numeric();
             let sf = self.cpu.regs.flags.sign_numeric();
@@ -520,9 +522,7 @@ impl Machine {
                 let mut writer = BufWriter::new(file);
                 let _ = write!(&mut writer, "{:04X}:{:04X}  {}", cs, ip, &disasm);
                 let _ = write!(&mut writer, " {}", regs);
-                let _ = write!(&mut writer, " DS:{:04X} ES:{:04X}", ds, es);
-                // let _ = write!(&mut writer, " FS:{:04X} GS:{:04X}", fs, g);
-                let _ = write!(&mut writer, " SS:{:04X}", ss);
+
                 let _ = writeln!(&mut writer, " C{} Z{} S{} O{} I{}", cf, zf, sf, of, iflag);
             }
         }
@@ -830,6 +830,21 @@ impl Machine {
                 self.cpu.regs.flags.set_zero_u16(res);
                 self.cpu.regs.flags.set_parity(res);
                 self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, res as u16);
+            }
+            Op::And32 => {
+                // two parameters (dst=reg)
+                let src = self.cpu.read_parameter_value(&self.mmu, &op.params.src);
+                let dst = self.cpu.read_parameter_value(&self.mmu, &op.params.dst);
+                let res = dst & src;
+
+                // The OF and CF flags are cleared; the SF, ZF, and PF flags
+                // are set according to the result.
+                self.cpu.regs.flags.overflow = false;
+                self.cpu.regs.flags.carry = false;
+                self.cpu.regs.flags.set_sign_u32(res);
+                self.cpu.regs.flags.set_zero_u32(res);
+                self.cpu.regs.flags.set_parity(res);
+                self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, res as u32);
             }
             Op::Arpl => {
                 println!("XXX impl {}", op);
@@ -1566,10 +1581,55 @@ impl Machine {
                 }
                 self.cpu.set_r8(R::AH, val);
             }
-            Op::Lds => {
-                let (segment, offset) = self.cpu.read_segment_selector(&self.mmu, &op.params.src);
+            Op::Lds16 => {
+                let (segment, offset) = self.cpu.read_segment_selector16(&self.mmu, &op.params.src);
                 self.cpu.set_r16(R::DS, segment);
                 self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
+            }
+            Op::Lds32 => {
+                let (segment, offset) = self.cpu.read_segment_selector32(&self.mmu, &op.params.src);
+                self.cpu.set_r16(R::DS, segment);
+                self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
+            }
+            Op::Les16 => {
+                let (segment, offset) = self.cpu.read_segment_selector16(&self.mmu, &op.params.src);
+                self.cpu.set_r16(R::ES, segment);
+                self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
+            }
+            Op::Les32 => {
+                let (segment, offset) = self.cpu.read_segment_selector32(&self.mmu, &op.params.src);
+                self.cpu.set_r16(R::ES, segment);
+                self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
+            }
+            Op::Lfs16 => {
+                let (segment, offset) = self.cpu.read_segment_selector16(&self.mmu, &op.params.src);
+                self.cpu.set_r16(R::FS, segment);
+                self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
+            }
+            Op::Lfs32 => {
+                let (segment, offset) = self.cpu.read_segment_selector32(&self.mmu, &op.params.src);
+                self.cpu.set_r16(R::FS, segment);
+                self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
+            }
+            Op::Lgs16 => {
+                let (segment, offset) = self.cpu.read_segment_selector16(&self.mmu, &op.params.src);
+                self.cpu.set_r16(R::GS, segment);
+                self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
+            }
+            Op::Lgs32 => {
+                let (segment, offset) = self.cpu.read_segment_selector32(&self.mmu, &op.params.src);
+                self.cpu.set_r16(R::GS, segment);
+                self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
+            }
+            Op::Lss16 => {
+                let (segment, offset) = self.cpu.read_segment_selector16(&self.mmu, &op.params.src);
+                self.cpu.set_r16(R::SS, segment);
+                self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
+            }
+            Op::Lss32 => {
+                let (segment, offset) = self.cpu.read_segment_selector32(&self.mmu, &op.params.src);
+                self.cpu.set_r16(R::SS, segment);
+                self.cpu.write_parameter_u32(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
             }
             Op::Lea16 => {
                 let src = self.cpu.read_parameter_address(&op.params.src) as u16;
@@ -1583,11 +1643,6 @@ impl Machine {
                 self.cpu.set_r16(R::SP, bp);
                 let bp = self.cpu.pop16(&mut self.mmu);
                 self.cpu.set_r16(R::BP, bp);
-            }
-            Op::Les => {
-                let (segment, offset) = self.cpu.read_segment_selector(&self.mmu, &op.params.src);
-                self.cpu.set_r16(R::ES, segment);
-                self.cpu.write_parameter_u16(&mut self.mmu, op.segment_prefix, &op.params.dst, offset);
             }
             Op::Lodsb => {
                 // no arguments

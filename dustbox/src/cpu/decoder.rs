@@ -312,6 +312,18 @@ impl Decoder {
                         // imul r32, r/m32
                         self.prefixed_16_32_r_rm(&mut mmu, &mut op, Op::Imul16, Op::Imul32)
                     }
+                    0xB2 => {
+                        // lss r16,m16:16
+                        self.prefixed_16_32_r_rm(&mut mmu, &mut op, Op::Lss16, Op::Lss32)
+                    }
+                    0xB4 => {
+                        // lfs r16,m16:16
+                        self.prefixed_16_32_r_rm(&mut mmu, &mut op, Op::Lfs16, Op::Lfs32)
+                    }
+                    0xB5 => {
+                        // lgs r16,m16:16
+                        self.prefixed_16_32_r_rm(&mut mmu, &mut op, Op::Lgs16, Op::Lgs32)
+                    }
                     0xB6 => {
                         match op.op_size {
                             OperandSize::_16bit => {
@@ -1278,13 +1290,11 @@ impl Decoder {
             0xC3 => op.command = Op::Retn, // ret [near]
             0xC4 => {
                 // les r16, m16
-                op.command = Op::Les;
-                op.params = self.r16_m16(&mut mmu, op);
+                self.prefixed_16_32_r_rm(&mut mmu, &mut op, Op::Les16, Op::Les32)
             }
             0xC5 => {
                 // lds r16, m16
-                op.command = Op::Lds;
-                op.params = self.r16_m16(&mut mmu, op);
+                self.prefixed_16_32_r_rm(&mut mmu, &mut op, Op::Lds16, Op::Lds32)
             }
             0xC6 => {
                 let x = self.read_mod_reg_rm(mmu);

@@ -444,6 +444,22 @@ fn can_disassemble_jmp() {
 }
 
 #[test]
+fn can_disassemble_lss() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x0F, 0xB2, 0x14,       // lss dx,[si]
+        0x66, 0x0F, 0xB2, 0x14, // lss edx,[si]
+        0x26, 0x0F, 0xB4, 0x1D, // lfs bx,[es:di]
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    let res = machine.cpu.decoder.disassemble_block_to_str(&mut machine.mmu, 0x85F, 0x100, 3);
+    assert_eq!("[085F:0100] 0FB214           Lss16    dx, word [ds:si]
+[085F:0103] 660FB214         Lss32    edx, dword [ds:si]
+[085F:0107] 260FB41D         es Lfs16    bx, word [es:di]", res);
+}
+
+#[test]
 fn can_disassemble_lea() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![

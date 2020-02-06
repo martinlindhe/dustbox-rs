@@ -267,29 +267,42 @@ impl CPU {
         (self.regs.eip as i16 + val) as u16
     }
 
-    /// returns "segment, offset" pair
-    fn get_amode_addr(&self, amode: &AMode) -> (u16, u16) {
-        match *amode {
-            AMode::BX  => (self.get_r16(R::DS), self.get_r16(R::BX)),
-            AMode::BP  => (self.get_r16(R::SS), self.get_r16(R::BP)),
-            AMode::SI  => (self.get_r16(R::DS), self.get_r16(R::SI)),
-            AMode::DI  => (self.get_r16(R::DS), self.get_r16(R::DI)),
-            AMode::BXSI => (self.get_r16(R::DS), self.get_r16(R::BX).wrapping_add(self.get_r16(R::SI))),
-            AMode::BXDI => (self.get_r16(R::DS), self.get_r16(R::BX).wrapping_add(self.get_r16(R::DI))),
-            AMode::BPSI => (self.get_r16(R::SS), self.get_r16(R::BP).wrapping_add(self.get_r16(R::SI))),
-            AMode::BPDI => (self.get_r16(R::SS), self.get_r16(R::BP).wrapping_add(self.get_r16(R::DI))),
+    /// returns "segment, offset" pair. ONLY used by read_segment_selector()
+    fn get_amode_addr(&self, seg: Segment, amode: &AMode) -> (u16, u32) {
+        let (sreg, imm) = match *amode {
+            AMode::BX  => (R::DS, self.get_r16(R::BX)),
+            AMode::BP  => (R::SS, self.get_r16(R::BP)),
+            AMode::SI  => (R::DS, self.get_r16(R::SI)),
+            AMode::DI  => (R::DS, self.get_r16(R::DI)),
+            AMode::BXSI => (R::DS, self.get_r16(R::BX).wrapping_add(self.get_r16(R::SI))),
+            AMode::BXDI => (R::DS, self.get_r16(R::BX).wrapping_add(self.get_r16(R::DI))),
+            AMode::BPSI => (R::SS, self.get_r16(R::BP).wrapping_add(self.get_r16(R::SI))),
+            AMode::BPDI => (R::SS, self.get_r16(R::BP).wrapping_add(self.get_r16(R::DI))),
             _ => panic!("xxx"),
-        }
+        };
+
+        let sreg = match seg {
+            Segment::Default => sreg,
+            Segment::CS => R::CS,
+            Segment::DS => R::DS,
+            Segment::ES => R::ES,
+            Segment::FS => R::FS,
+            Segment::GS => R::GS,
+            Segment::SS => R::SS,
+        };
+
+        (self.get_r16(sreg), imm as u32)
     }
 
-    /// used by lds, les
-    pub fn read_segment_selector(&self, mmu: &MMU, p: &Parameter) -> (u16, u16) {
+    /// used by lds, les, lss
+    /// returns (segment, offset)
+    pub fn read_segment_selector16(&self, mmu: &MMU, p: &Parameter) -> (u16, u16) {
         let (segment, offset) = match *p {
-            Parameter::Ptr16(seg, imm) => (self.segment(seg), imm),
-            Parameter::Ptr16Amode(_, ref amode) => self.get_amode_addr(amode),
-            Parameter::Ptr16AmodeS8(_, ref amode, imms) => {
-                let (seg, off) = self.get_amode_addr(amode);
-                (seg, (i32::from(off) + i32::from(imms)) as u16)
+            Parameter::Ptr16(seg, imm) => (self.segment(seg), imm as u32),
+            Parameter::Ptr16Amode(seg, ref amode) => self.get_amode_addr(seg, amode),
+            Parameter::Ptr16AmodeS8(seg, ref amode, imms) => {
+                let (seg, off) = self.get_amode_addr(seg, amode);
+                (seg, ((off as i32) + (imms as i32)) as u32)
             }
             /*
             Parameter::Ptr16AmodeS16(_, ref amode, imms) => {
@@ -300,9 +313,25 @@ impl CPU {
             _ => panic!("unhandled parameter {:?}", p),
         };
 
-        let offset = offset as u32;
         let o_val = mmu.read_u16(segment, offset);
         let s_val = mmu.read_u16(segment, offset + 2);
+        println!("read_segment_selector {:04X}:{:04X} from {:04X}:{:04X}", s_val, o_val, segment, offset);
+        (s_val, o_val)
+    }
+
+    /// used by lds, les, lss
+    /// returns (segment, offset)
+    pub fn read_segment_selector32(&self, mmu: &MMU, p: &Parameter) -> (u16, u32) {
+        let (segment, offset) = match *p {
+            Parameter::Ptr32(seg, imm) => (self.segment(seg), imm),
+            Parameter::Ptr32Amode(seg, ref amode) => self.get_amode_addr(seg, amode),
+            _ => panic!("unhandled parameter {:?}", p),
+        };
+
+        let offset = offset as u32;
+        let o_val = mmu.read_u32(segment, offset);
+        let s_val = mmu.read_u16(segment, offset + 4);
+        println!("read_segment_selector {:04X}:{:08X} from {:04X}:{:04X}", s_val, o_val, segment, offset);
         (s_val, o_val)
     }
 

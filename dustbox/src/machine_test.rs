@@ -1,3 +1,5 @@
+use pretty_assertions::assert_eq;
+
 use crate::machine::Machine;
 use crate::cpu::R;
 use crate::tools::read_binary;
@@ -2203,6 +2205,64 @@ fn can_execute_shrd() {
     assert_eq!(false, machine.cpu.regs.flags.overflow);
     assert_eq!(false, machine.cpu.regs.flags.adjust);
     assert_eq!(true, machine.cpu.regs.flags.parity);
+}
+
+
+#[test]
+fn can_execute_lss16() {
+    // based on testLoadPtr ss from test386.asm
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xBF, 0x00, 0x00,                               // mov di,0x0
+        0xB9, 0x00, 0x10,                               // mov cx,0x1000
+        0x8E, 0xD1,                                     // mov ss,cx
+        0xBA, 0x00, 0x60,                               // mov dx,0x6000
+        0x8E, 0xC2,                                     // mov es,dx
+        0x26, 0xC7, 0x05, 0x34, 0x12,                   // mov word [es:di],0x1234
+        0x26, 0xC7, 0x45, 0x02, 0xCD, 0xAB,             // mov word [es:di+0x2],0xabcd
+        0x26, 0x0F, 0xB2, 0x1D,                         // lss bx,[es:di]
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    machine.execute_instructions(7);
+    assert_eq!(0x1000, machine.cpu.get_r16(R::SS));
+    assert_eq!(0x6000, machine.cpu.get_r16(R::ES));
+
+    assert_eq!(0x1234, machine.mmu.read_u16(machine.cpu.get_r16(R::ES), machine.cpu.get_r16(R::DI) as u32));
+    assert_eq!(0xABCD, machine.mmu.read_u16(machine.cpu.get_r16(R::ES), (machine.cpu.get_r16(R::DI) + 2) as u32));
+
+    machine.execute_instructions(1); // lss
+    assert_eq!(0xABCD, machine.cpu.get_r16(R::SS));
+    assert_eq!(0x1234, machine.cpu.get_r16(R::BX));
+}
+
+#[test]
+fn can_execute_lss32() {
+    // based on testLoadPtr ss from test386.asm
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0xBF, 0x00, 0x00,                               // mov di,0x0
+        0xB9, 0x00, 0x10,                               // mov cx,0x1000
+        0x8E, 0xD1,                                     // mov ss,cx
+        0xBA, 0x00, 0x60,                               // mov dx,0x6000
+        0x8E, 0xC2,                                     // mov es,dx
+        0x26, 0x66, 0xC7, 0x05, 0x78, 0x56, 0x34, 0x12, // mov dword [es:di],0x12345678
+        0x26, 0xC7, 0x45, 0x04, 0xDE, 0xBC,             // mov word [es:di+0x4],0xbcde
+        0x26, 0x66, 0x0F, 0xB2, 0x1D,                   // lss ebx,[es:di]
+
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    machine.execute_instructions(7);
+    assert_eq!(0x1000, machine.cpu.get_r16(R::SS));
+    assert_eq!(0x6000, machine.cpu.get_r16(R::ES));
+
+    assert_eq!(0x12345678, machine.mmu.read_u32(machine.cpu.get_r16(R::ES), machine.cpu.get_r16(R::DI) as u32));
+    assert_eq!(0xBCDE, machine.mmu.read_u16(machine.cpu.get_r16(R::ES), (machine.cpu.get_r16(R::DI) + 4) as u32));
+
+    machine.execute_instructions(1); // lss
+    assert_eq!(0xBCDE, machine.cpu.get_r16(R::SS));
+    assert_eq!(0x12345678, machine.cpu.get_r32(R::EBX));
 }
 
 #[test]

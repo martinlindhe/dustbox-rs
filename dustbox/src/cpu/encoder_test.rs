@@ -75,19 +75,16 @@ fn can_encode_random_seq() {
 fn can_encode_xchg8() {
     // 86 /r           XCHG r/m8, r8
     // 86 /r           XCHG r8, r/m8
-
-    // NOTE: nasm encode operands in the reverse so we create an instruction in the same way for test to succeed
-    let op = Instruction::new2(Op::Xchg8, Parameter::Reg8(R::BH), Parameter::Reg8(R::DL));
-    assert_encdec(&op, "xchg dl,bh", vec!(0x86, 0xD7));
+    let op = Instruction::new2(Op::Xchg8, Parameter::Reg8(R::BL), Parameter::Reg8(R::CL));
+    assert_encdec(&op, "xchg bl,cl", vec!(0x86, 0xD9));
 }
 
 #[test]
 fn can_encode_xchg16() {
     // 87 /r           XCHG r/m16, r16
     // 87 /r           XCHG r16, r/m16
-    // NOTE: nasm encode operands in the reverse so we create an instruction in the same way for test to succeed
-    let op = Instruction::new2(Op::Xchg16, Parameter::Reg16(R::BX), Parameter::Reg16(R::DX));
-    assert_encdec(&op, "xchg dx,bx", vec!(0x87, 0xD3));
+    let op = Instruction::new2(Op::Xchg16, Parameter::Reg16(R::BX), Parameter::Reg16(R::CX));
+    assert_encdec(&op, "xchg bx,cx", vec!(0x87, 0xD9));
 
     // 90+rw           XCHG AX, r16
     // 90+rw           XCHG r16, AX
@@ -100,7 +97,7 @@ fn can_encode_test8() {
     // AL, imm8
     let op = Instruction::new2(Op::Test8, Parameter::Reg8(R::AL), Parameter::Imm8(0xFF));
     assert_encdec(&op, "test al,0xff", vec!(0xA8, 0xFF));
-    
+
     // r8, imm8
     let op = Instruction::new2(Op::Test8, Parameter::Reg8(R::BH), Parameter::Imm8(0xFF));
     assert_encdec(&op, "test bh,0xff", vec!(0xF6, 0xC7, 0xFF));
@@ -446,7 +443,7 @@ fn can_encode_inc() {
 
     let op = Instruction::new1(Op::Inc8, Parameter::Ptr8AmodeS8(Segment::Default, AMode::BP, 0x10));
     assert_encdec(&op, "inc byte [bp+0x10]", vec!(0xFE, 0x46, 0x10));
-    
+
     let op = Instruction::new1(Op::Inc16, Parameter::Reg16(R::BX));
     assert_encdec(&op, "inc bx", vec!(0x43));
 

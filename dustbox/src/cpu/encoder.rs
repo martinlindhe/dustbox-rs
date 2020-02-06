@@ -177,9 +177,9 @@ impl Encoder {
             }
             */
             Op::Xchg8 => {
-                // 86 /r           XCHG r/m8, r8
+                // 86 /r           XCHG r8, r/m8
                 out.push(0x86);
-                out.extend(self.encode_rm_r(&op.params));
+                out.extend(self.encode_r_rm(&op.params));
             }
             Op::Xchg16 => {
                 // XXX if both are registers and one is AX, use 1-byte encoding
@@ -195,9 +195,9 @@ impl Encoder {
                     }
                 }
 
-                // 87 /r           XCHG r/m16, r16
+                // 87 /r           XCHG r16, r/m16
                 out.push(0x87);
-                out.extend(self.encode_rm_r(&op.params));
+                out.extend(self.encode_r_rm(&op.params));
             }
             Op::Lea16 => {
                  out.push(0x8D);
