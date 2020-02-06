@@ -336,12 +336,39 @@ impl CPU {
     }
 
     /// returns the address of pointer, used by LEA
-    pub fn read_parameter_address(&mut self, p: &Parameter) -> usize {
+    pub fn read_parameter_address(&mut self, p: &Parameter) -> u32 {
         match *p {
             Parameter::Ptr16Amode(_, ref amode) => self.amode(amode),
-            Parameter::Ptr16AmodeS8(_, ref amode, imm) => self.amode(amode).wrapping_add(imm as usize),
-            Parameter::Ptr16AmodeS16(_, ref amode, imm) => self.amode(amode).wrapping_add(imm as usize),
-            Parameter::Ptr16(_, imm) => imm as usize,
+            Parameter::Ptr16AmodeS8(_, ref amode, imm) => self.amode(amode).wrapping_add(imm as u32),
+            Parameter::Ptr16AmodeS16(_, ref amode, imm) => self.amode(amode).wrapping_add(imm as u32),
+            Parameter::Ptr16(_, imm) => imm as u32,
+            Parameter::Ptr16SIB(_, disp, scale, index, base) => {
+                let mut v = 0;
+                if let SIBBase::Register(r) = base {
+                    v += self.get_r32(r);
+                }
+                v += self.get_r32(index) * scale as u32;
+                match disp {
+                    SIBDisp::Disp32(i) => ((v as i32) + i) as u32,
+                    SIBDisp::Disp8EBP(i) => ((v as i32) + i as i32 + self.get_r32(R::EBP) as i32) as u32,
+                    SIBDisp::Disp32EBP(i) => ((v as i32) + i + self.get_r32(R::EBP) as i32) as u32,
+                    SIBDisp::Empty => v,
+                }
+            }
+            Parameter::Ptr16SIBS32(_, disp, scale, index, base, imm) => {
+                let mut v = 0;
+                if let SIBBase::Register(r) = base {
+                    v += self.get_r32(r);
+                }
+                v += self.get_r32(index) * scale as u32;
+                v = match disp {
+                    SIBDisp::Disp32(i) => ((v as i32) + i) as u32,
+                    SIBDisp::Disp8EBP(i) => ((v as i32) + i as i32 + self.get_r32(R::EBP) as i32) as u32,
+                    SIBDisp::Disp32EBP(i) => ((v as i32) + i + self.get_r32(R::EBP) as i32) as u32,
+                    SIBDisp::Empty => v,
+                };
+                v.wrapping_add(imm as u32)
+            }
             _ => panic!("unhandled parameter: {:?} at {:06X}", p, self.get_address()),
         }
     }
@@ -480,25 +507,25 @@ impl CPU {
             }
             Parameter::Ptr16SIB(seg, disp, scale, index, base) => {
                 let seg = self.segment(seg);
-                let mut imm = 0;
+                let mut v = 0;
                 if let SIBBase::Register(r) = base {
-                    imm += self.get_r32(r);
+                    v += self.get_r32(r);
                 }
-                imm += self.get_r32(index) * scale as u32;
+                v += self.get_r32(index) * scale as u32;
 
-                match disp {
-                    SIBDisp::Disp32(v) => imm = ((imm as i32) + v) as u32,
-                    SIBDisp::Disp8EBP(v) => imm = ((imm as i32) + v as i32 + self.get_r32(R::EBP) as i32) as u32,
-                    SIBDisp::Disp32EBP(v) => imm = ((imm as i32) + v + self.get_r32(R::EBP) as i32) as u32,
-                    SIBDisp::Empty => {}
-                }
+                v = match disp {
+                    SIBDisp::Disp32(i) => ((v as i32) + i) as u32,
+                    SIBDisp::Disp8EBP(i) => ((v as i32) + i as i32 + self.get_r32(R::EBP) as i32) as u32,
+                    SIBDisp::Disp32EBP(i) => ((v as i32) + i + self.get_r32(R::EBP) as i32) as u32,
+                    SIBDisp::Empty => v,
+                };
 
                 if DEBUG_SIB {
-                    println!("Ptr16SIB: disp {}, scale {}, index {}, base {} = imm {:04X}", disp, scale, index, base, imm);
+                    println!("Ptr16SIB: disp {}, scale {}, index {}, base {} = v {:04X}", disp, scale, index, base, v);
                 }
 
-                self.debug_write_u16(seg, imm, data);
-                mmu.write_u16(seg, imm, data);
+                self.debug_write_u16(seg, v, data);
+                mmu.write_u16(seg, v, data);
             }
             _ => panic!("unhandled type {:?} at {:06X}", p, self.get_address()),
         }
@@ -581,27 +608,27 @@ impl CPU {
         self.get_r16(seg.as_register())
     }
 
-    pub fn amode(&self, amode: &AMode) -> usize {
+    pub fn amode(&self, amode: &AMode) -> u32 {
         match *amode {
             // 16-bit
-            AMode::BXSI => self.get_r16(R::BX).wrapping_add(self.get_r16(R::SI)) as usize,
-            AMode::BXDI => self.get_r16(R::BX).wrapping_add(self.get_r16(R::DI)) as usize,
-            AMode::BPSI => self.get_r16(R::BP).wrapping_add(self.get_r16(R::SI)) as usize,
-            AMode::BPDI => self.get_r16(R::BP).wrapping_add(self.get_r16(R::DI)) as usize,
-            AMode::SI => self.get_r16(R::SI) as usize,
-            AMode::DI => self.get_r16(R::DI) as usize,
-            AMode::BP => self.get_r16(R::BP) as usize,
-            AMode::BX => self.get_r16(R::BX) as usize,
+            AMode::BXSI => self.get_r16(R::BX).wrapping_add(self.get_r16(R::SI)) as u32,
+            AMode::BXDI => self.get_r16(R::BX).wrapping_add(self.get_r16(R::DI)) as u32,
+            AMode::BPSI => self.get_r16(R::BP).wrapping_add(self.get_r16(R::SI)) as u32,
+            AMode::BPDI => self.get_r16(R::BP).wrapping_add(self.get_r16(R::DI)) as u32,
+            AMode::SI => self.get_r16(R::SI) as u32,
+            AMode::DI => self.get_r16(R::DI) as u32,
+            AMode::BP => self.get_r16(R::BP) as u32,
+            AMode::BX => self.get_r16(R::BX) as u32,
 
             // 32-bit
-            AMode::EAX => self.get_r32(R::EAX) as usize,
-            AMode::ECX => self.get_r32(R::ECX) as usize,
-            AMode::EDX => self.get_r32(R::EDX) as usize,
-            AMode::EBX => self.get_r32(R::EBX) as usize,
-            AMode::ESP => self.get_r32(R::ESP) as usize,
-            AMode::EBP => self.get_r32(R::EBP) as usize,
-            AMode::ESI => self.get_r32(R::ESI) as usize,
-            AMode::EDI => self.get_r32(R::EDI) as usize,
+            AMode::EAX => self.get_r32(R::EAX) as u32,
+            AMode::ECX => self.get_r32(R::ECX) as u32,
+            AMode::EDX => self.get_r32(R::EDX) as u32,
+            AMode::EBX => self.get_r32(R::EBX) as u32,
+            AMode::ESP => self.get_r32(R::ESP) as u32,
+            AMode::EBP => self.get_r32(R::EBP) as u32,
+            AMode::ESI => self.get_r32(R::ESI) as u32,
+            AMode::EDI => self.get_r32(R::EDI) as u32,
         }
     }
 

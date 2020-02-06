@@ -555,7 +555,7 @@ fn can_execute_es_outsb() {
 }
 
 #[test]
-fn can_execute_lea() {
+fn can_execute_lea_16bit() {
     let mut machine = Machine::deterministic();
     let code: Vec<u8> = vec![
         0xBB, 0x44, 0x44,           // mov bx,0x4444
@@ -569,6 +569,22 @@ fn can_execute_lea() {
 
     machine.execute_instruction();
     assert_eq!(0x2233, machine.cpu.get_r16(R::SI));
+}
+
+#[test]
+fn can_execute_lea_32bit() {
+    let mut machine = Machine::deterministic();
+    let code: Vec<u8> = vec![
+        0x66, 0xBA, 0x05, 0x00, 0x00, 0x00,             // mov edx,0x5
+        0x67, 0x8D, 0xBC, 0x92, 0x00, 0x00, 0x00, 0x00, // lea di,[dword edx+edx*4+0x0]
+        0x67, 0x8D, 0x3C, 0x92,                         // lea di,[dword edx+edx*4]
+    ];
+    machine.load_executable(&code, 0x085F);
+
+    machine.execute_instructions(2);
+    assert_eq!(25, machine.cpu.get_r16(R::DI));
+    machine.execute_instructions(1);
+    assert_eq!(25, machine.cpu.get_r16(R::DI));
 }
 
 #[test]

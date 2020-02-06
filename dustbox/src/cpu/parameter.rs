@@ -74,6 +74,8 @@ pub enum Parameter {
     /// Scaled Index Base
     Ptr16SIB(Segment, SIBDisp, u8, R, SIBBase),
     Ptr16SIBS8(Segment, SIBDisp, u8, R, SIBBase, i8),
+
+    /// Scaled Index Base: seg, disp, scale, index, base, imm
     Ptr16SIBS32(Segment, SIBDisp, u8, R, SIBBase, i32),
     None,
 }
