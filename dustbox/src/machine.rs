@@ -1231,7 +1231,7 @@ impl Machine {
             }
             Op::Hlt => {
                 println!("XXX impl {}", op);
-                self.cpu.fatal_error = true;
+                //self.cpu.fatal_error = true;
             }
             Op::Idiv8 => {
                 let ax = self.cpu.get_r16(R::AX) as i16; // dividend

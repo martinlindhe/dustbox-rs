@@ -1,20 +1,16 @@
 #![allow(unused_imports)]
 
-use std;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::io::prelude::*;
 use std::time::Duration;
 use std::thread;
 
-use gtk;
 use gtk::prelude::*;
 use gtk::{Button, Image, Label, Window, WindowType};
 use gdk::RGBA;
 use gdk::enums::key;
 use gdk::prelude::*;
-use gdk_pixbuf;
-use cairo;
 
 use dustbox::cpu::{CPU, R};
 use dustbox::gpu::VideoModeBlock;
