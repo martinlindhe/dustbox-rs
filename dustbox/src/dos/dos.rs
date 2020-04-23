@@ -253,9 +253,14 @@ impl Component for DOS {
                 let dx = cpu.get_r16(R::DX);
                 let data = mmu.readz(ds, dx as u32);
                 let filename = cp437::to_utf8(&data);
+                if filename.len() == 0 {
+                    println!("XXX OPEN EXISTING FILE WITH EMPTY FILENAME!");
+                    return true;
+                }
 
                 // XXX need to find file match with varying case
                 let to_load = Path::new(&self.program_path).parent().unwrap().join(filename);
+
                 if to_load.exists() {
                     println!("OPEN - OPEN EXISTING FILE {}, mode {:02X}, attr {:02X}", to_load.display(), mode, attr);
                     // CF clear if successful and AX = file handle
@@ -344,6 +349,24 @@ impl Component for DOS {
 
                 let data = mmu.read(ds, dx as u32, count as usize);
                 println!("  -- DATA: {} {}", hex_bytes(&data), bytes_to_ascii(&data));
+            }
+            0x42 => {
+                // DOS 2+ - LSEEK - SET CURRENT FILE POSITION
+                // AL = origin of move
+                //   00h start of file
+                //   01h current file position
+                //   02h end of file
+                // BX = file handle
+                // CX:DX = (signed) offset from origin of new file position
+
+                let cx = cpu.get_r16(R::CX);
+                let dx = cpu.get_r16(R::DX);
+                let al = cpu.get_r8(R::AL);
+                println!("XXX DOS - SET CURRENT FILE POSITION, handle={:04X}, AL={:02X}, CX:DX={:04X}:{:04X}",
+                        cpu.get_r16(R::BX),
+                        al,
+                        cx,
+                        dx);
             }
             0x43 => {
                 match cpu.get_r8(R::AL) {
