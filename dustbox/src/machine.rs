@@ -2132,9 +2132,9 @@ impl Machine {
                     let cf = self.cpu.regs.flags.carry_val() as u16;
                     let op1 = self.cpu.read_parameter_value(&self.mmu, &op.params.dst) as u16;
                     let res = if count == 1 {
-                        ((op1 << 1) | cf)
+                        (op1 << 1) | cf
                     } else {
-                        ((op1 << count) | (cf << (count - 1)) | (op1 >> (9 - count)))
+                        (op1 << count) | (cf << (count - 1)) | (op1 >> (9 - count))
                     } as u8;
                     self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, res);
                     let cf = (op1 >> (8 - count)) & 1;
@@ -2372,7 +2372,7 @@ impl Machine {
                     let res = if op1 & 0x80 != 0 {
                         ((op1 as usize) >> count) | (0xFF << (8 - count))
                     } else {
-                        ((op1 as usize) >> count)
+                        (op1 as usize) >> count
                     };
 
                     self.cpu.write_parameter_u8(&mut self.mmu, &op.params.dst, res as u8);
