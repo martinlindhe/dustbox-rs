@@ -305,9 +305,12 @@ impl Machine {
         self.cpu.set_r16(R::CS, cs);
         self.cpu.regs.eip = exe.header.ip as u32;
 
-        self.mmu.write(segment, 0, &exe.program_data);
+        self.mmu.write(segment, 0, &exe.data[exe.header.header_size()..exe.data.len()]);
 
+        // IMPORTANT: Old EXEPACK programs crash with "Packed file is corrupt" if loaded below
+        // 64k mem ( segment < F000), see http://www.os2museum.com/wp/exepack-and-the-a20-gate/
         let some_segment = 0x0329;
+
         self.cpu.set_r16(R::DS, self.dos.psp_segment); // ds points to PSP
         self.cpu.set_r16(R::ES, some_segment);
         self.cpu.set_r16(R::BP, 0x091C);

@@ -8,10 +8,11 @@ use bincode::deserialize;
 pub struct ExeFile {
     pub header: ExeHeader,
     pub relocs: Vec<ExeRelocation>,
-    pub program_data: Vec<u8>,
 
-    /// total .EXE file size
-    exe_size: usize,
+    /// raw file data
+    pub data: Vec<u8>,
+
+    file_size: usize,
 }
 
 pub enum ParseError {
@@ -34,21 +35,20 @@ impl ExeFile {
         if header.exe_data_end_offset() > data.len() {
             println!("WARNING: program end = {:04X} but data len = {:04X}", header.exe_data_end_offset(), data.len());
         }
-        let program_start = header.exe_data_start_offset();
-        let program_data = data[program_start..data.len()].to_vec();
+        let program_start = header.header_size();
         let relocs = header.parse_relocations(data);
         println!("  program start in exe: {:04X}", program_start);
 
         Ok(ExeFile {
             header,
             relocs,
-            program_data,
-            exe_size: data.len(),
+            data: data.to_vec(),
+            file_size: data.len(),
         })
     }
 
     pub fn print_details(&self) {
-        println!("exe file size: {} bytes", self.exe_size);
+        println!("exe file size: {} bytes", self.file_size);
         self.header.print_details();
 
         if self.header.relocations > 0 {
@@ -57,8 +57,35 @@ impl ExeFile {
                 println!("  {}: {}", i, reloc);
             }
         }
+
+        if self.header.ip == 16 {
+            panic!("TODO recognize 16-byte EXEPACK header");
+        }
+        if self.header.ip == 18 {
+            let exepack_header = self.header.header_size() + ((self.header.cs as usize) * 16);
+
+            let h: EXEPACKHeader18 = deserialize(&self.data[exepack_header..exepack_header+18]).unwrap();
+            if h.signature[0] == b'R' && h.signature[1] == b'B' {
+                println!("EXEPACK-18 HEADER at {:08X}: {:#?}", exepack_header, h);
+            }
+        }
     }
 }
+
+
+#[derive(Deserialize, Debug)]
+struct EXEPACKHeader18 {
+    real_ip: u16,
+    real_cs: u16,
+    mem_start: u16,
+    exepack_size: u16,
+    real_sp: u16,
+    real_ss: u16,
+    dest_len: u16,
+    skip_len: u16,
+    signature: [u8; 2], // "RB"
+}
+
 
 #[derive(Deserialize, Debug)]
 pub struct ExeHeader {
@@ -118,14 +145,13 @@ impl ExeHeader {
     }
 
     /// Returns the header size in bytes.
-    fn header_size(&self) -> usize {
+    pub fn header_size(&self) -> usize {
         // a header paragraph is 16 bytes wide
         (self.header_paragraphs as usize) * 16
     }
 
-    /// Returns the starting offset of the program code inside the EXE file.
+    /// Returns the starting offset of the program data inside the EXE file.
     fn exe_data_start_offset(&self) -> usize {
-        // XXX note this is not the start of CODE!
         self.header_size()
     }
 

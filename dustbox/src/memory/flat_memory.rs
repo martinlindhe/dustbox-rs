@@ -9,15 +9,14 @@ const DEBUG_MEMORY: bool = false;
 
 impl FlatMemory {
     pub fn new() -> Self {
-        FlatMemory { data: vec![0u8; 0x1_0000 * 64] }
+        FlatMemory { data: vec![0u8; 0x40_0000] }
     }
 
     pub fn read_u8(&self, addr: u32) -> u8 {
-        let val = self.data[addr as usize];
         if DEBUG_MEMORY {
-            println!("read_u8 from {:06x} = {:02x}", addr, val);
+            println!("read_u8 from {:06x}", addr);
         }
-        val
+        self.data[addr as usize]
     }
 
     pub fn read_u16(&self, addr: u32) -> u16 {
