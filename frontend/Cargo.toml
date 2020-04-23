@@ -13,4 +13,4 @@ test = false
 clap = "2.33"
 dustbox = { path = "../dustbox" }
 sdl2 = { version = "0.33", default-features = false, features = [ "gfx" ] }
-image = { version = "0.22", default-features = false, features = [ "png" ] }
+image = { version = "0.23", default-features = false, features = [ "png" ] }

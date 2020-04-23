@@ -22,7 +22,7 @@ doctest = false
 [dependencies]
 bincode = "1.2"
 chrono = "0.4"
-image = { version = "0.22", default-features = false, features = [ "png" ] }
+image = { version = "0.23", default-features = false, features = [ "png" ] }
 rand = "0.7"
 rand_xorshift = "0.2"
 sdl2 = { version = "0.33", default-features = false, features = [ "gfx" ] }
