@@ -46,6 +46,8 @@ pub static STATIC_FUNCTIONALITY: [u8; 0x10] = [
  /* f */ 0x00,  // reserved
 ];
 
+/// For now defaults to a vga gfx card
+/// XXX should be refactored into one EGA and one VGA component
 impl Component for GPU {
     fn in_u8(&mut self, port: u16) -> Option<u8> {
         match port {
@@ -62,6 +64,7 @@ impl Component for GPU {
         }
     }
 
+    /// http://bochs.sourceforge.net/techspec/PORTS.LST
     fn out_u8(&mut self, port: u16, data: u8) -> bool {
         match port {
             // 02C6-02C9 - VGA/MCGA - DAC REGISTERS (alternate address)
@@ -71,20 +74,44 @@ impl Component for GPU {
             0x03B5 => self.crtc.write_current(data),
 
             // PORT 03C2-03CF - EGA/VGA - MISCELLANEOUS REGISTERS
-            0x03C2 => {
+            //0x03C2 => {
                 // -W  miscellaneous output register (see #P0669)
                 // XXX impl
-            },
+            //},
 
             // PORT 03C4-03C5 - EGA/VGA - SEQUENCER REGISTERS
-            //0x03C4 => // INDEX
-            //0x03C5 => // DATA
+            // 03C4	w	EGA	TS index register
+	        //      r/w	VGA	sequencer index register
+            0x03C4 => self.sequencer_index = data & 0x7, // low 3 bits
+            // 03C5	w	EGA	TS data register
+	        //      r/w	VGA	sequencer data register
+            0x03C5 => {
+                // DATA
+                match self.sequencer_index {
+                    0x02 => {
+                        // Map Mask Register
+                        self.sequencer_mapmask = data;
+                        // println!("sequencer_mapmask = {:02}", data);
+                    }
+                    0x04 => {
+                        // Memory Mode Register
+                        // XXX this register should be initialized on mode switch, see https://wiki.osdev.org/VGA_Hardware#The_Sequencer
+                        self.sequencer_memorymode = data;
+                        println!("sequencer_memorymode = {:02}", data);
+                    }
+                    _ => panic!("0x03C5 data write with unknown index {:02X}", self.sequencer_index),
+                }
+            }
 
             // PORT 03C6-03C9 - EGA/VGA/MCGA - DAC REGISTERS
             0x03C6 => self.dac.set_pel_mask(data),
             0x03C7 => self.dac.set_pel_read_index(data),
             0x03C8 => self.dac.set_pel_write_index(data),
             0x03C9 => self.dac.set_pel_data(data),
+
+            // 03CA	w	EGA	graphics 2 position register
+            //      r	VGA	feature control register
+            0x03CA => self.vga_feature_control = data,
 
             // PORT 03D4-03D5 - COLOR VIDEO - CRT CONTROL REGISTERS
             0x03D4 => self.crtc.set_index(data),
@@ -530,6 +557,17 @@ pub struct GPU {
     pub card: GraphicCard,
     pub mode: VideoModeBlock,
     modes: Vec<VideoModeBlock>,
+
+    // XXX move this stuff to implementations VGA and EGA of GPU
+
+    /// ega/vga 03c4
+    sequencer_index: u8,
+    /// ega/vga 03c5 address 04
+    sequencer_memorymode: u8,
+    /// ega/vga 03c5 address 02
+    sequencer_mapmask: u8,
+
+    vga_feature_control: u8,
 }
 
 pub struct VideoFrame {
@@ -573,11 +611,15 @@ impl GPU {
             card: generation,
             mode,
             modes,
+            sequencer_index: 0,
+            sequencer_memorymode: 0,
+            sequencer_mapmask: 0,
+            vga_feature_control: 0,
         }
     }
 
     pub fn render_frame(&self, mmu: &MMU) -> VideoFrame {
-        VideoFrame{
+        VideoFrame {
             data: match self.mode.mode {
                 // 00: 40x25 Black and White text (CGA,EGA,MCGA,VGA)
                 // 01: 40x25 16 color text (CGA,EGA,MCGA,VGA)
@@ -642,7 +684,7 @@ impl GPU {
         }
         buf
     }
- 
+
     /// 640x200 B/W graphics (CGA,EGA,MCGA,VGA)
     fn render_mode06_frame(&self, memory: &[u8]) -> Vec<ColorSpace> {
         // 06h = G  80x25  8x8   640x200    2       .   B800 CGA,PCjr,EGA,MCGA,VGA
