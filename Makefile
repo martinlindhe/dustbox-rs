@@ -1,3 +1,5 @@
+.PHONY: disasm
+
 test:
 	cargo test --all -- --color always --nocapture
 
