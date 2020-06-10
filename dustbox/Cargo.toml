@@ -25,7 +25,7 @@ chrono = "0.4"
 image = { version = "0.23", default-features = false, features = [ "png" ] }
 rand = "0.7"
 rand_xorshift = "0.2"
-sdl2 = { version = "0.33", default-features = false, features = [ "gfx" ] }
+sdl2 = { version = "0.34", default-features = false, features = [ "gfx" ] }
 serde = "1.0"
 serde_derive = "1.0"
 tempfile = "3.1"
