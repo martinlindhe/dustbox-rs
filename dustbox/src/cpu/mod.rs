@@ -52,7 +52,9 @@ pub enum Exception {
 }
 
 pub struct CPU {
+    /// number of instructions executed since instance creation
     pub instruction_count: usize,
+
     pub cycle_count: usize,
 
     /// general purpose registers, segment registers, ip

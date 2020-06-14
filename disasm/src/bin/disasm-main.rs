@@ -25,7 +25,6 @@ fn main() {
     let filename = matches.value_of("INPUT").unwrap();
     println!("; Source {}", filename);
     if matches.is_present("timestamp") {
-        // disabled by default for reproducibility
         println!("; Generated {}", Local::now().to_rfc2822());
     }
     println!();

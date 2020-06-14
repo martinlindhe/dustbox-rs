@@ -1,24 +1,24 @@
 name: demo_com_32bit
-default_instructions: 7000000
+default_instructions: 5000000
 root: ../dos-software-decoding/demo-com-32bit/
 
 set:
   - 200h/200h.com
   - anding/anding.com
-  - blobsf/blobsf.com
+  - blobsf/blobsf.com,7000000
   - bt7/bt7.com
   - distant/distant.com
-  - ems/ems.com
+  - ems/ems.com,50000000
   - enchante/enchante.com
   - entry2/entry2.com
   - fire!/fire!.com
   - fire3d/fire3d.com
   - fireline/fireline.com
-  - flame/flame.com
+  - flame/flame.com,15000000
   - fountain_of_sparks/fountain_of_sparks.com
   - fractal/fractal.com
   - frcmirez/frcmirez.com
-  - glasenapy/glasenapy.com
+  - glasenapy/glasenapy.com,15000000
   - gob4k/gob4k.com
   - juls/juls.com
   - mbl/mbl.com
@@ -30,5 +30,5 @@ set:
   - suka/suka.com
   - textaroo/textaroo.com
   - voronoy/voronoy.com
-  - wtrfall/wtrfall.com
-  - xwater/xwater.com
+  - wtrfall/wtrfall.com,10000000
+  - xwater/xwater.com,10000000

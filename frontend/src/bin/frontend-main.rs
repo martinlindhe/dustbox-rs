@@ -113,8 +113,10 @@ fn main() {
         let event_start = SystemTime::now();
         for event in events.poll_iter() {
             match event {
-                Event::Quit {..} => break 'main,
-
+                Event::Quit {..} => {
+                    println!("Exiting after {} instructions executed.", machine.cpu.instruction_count);
+                    break 'main;
+                }
                 Event::KeyDown {keycode: Some(keycode), keymod: modifier, ..} => {
                     if keycode == sdl2::keyboard::Keycode::Escape {
                         // break 'main
@@ -185,12 +187,13 @@ fn main() {
             for _ in 0..frame.mode.swidth {
                 // XXX calculate the number cycles to execute for (1/30th sec ) / scanlines
                 // XXX measure by instruction cycles
-                let num_instr = 400;
+                let num_instr = 1000;
                 machine.execute_instructions(num_instr);
                 if machine.cpu.fatal_error {
                     println!("cpu fatal error occured. stopping execution after {} instructions executed", machine.cpu.instruction_count);
                     break 'main;
                 }
+                // XXX this should happen in the gpu
                 machine.gpu_mut().progress_scanline();
             }
             let exec_time = frame_start.elapsed().unwrap();

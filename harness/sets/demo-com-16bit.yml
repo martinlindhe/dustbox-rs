@@ -1,9 +1,9 @@
 name: demo_com_16bit
-default_instructions: 7000000
+default_instructions: 5000000
 root: ../dos-software-decoding/demo-com-16bit/
 
 set:
-  - 1/1.com
+  - 1/1.com,9000000
   - 165plasm/165plasm.com
   - 244b/244b.com
   - 4sum/4sum.com
@@ -14,7 +14,7 @@ set:
   - blaze/blaze5.com
   - bmatch/bmatch.com
   - bob/bob.com
-  - chaos/chaos.com
+  - chaos/chaos.com,1600000
   - conf/conf.com
   - dreamers_bbs/dreamer.com
   - ectotrax/ectotrax.com
@@ -34,22 +34,22 @@ set:
   - leaf/leaf.com
   - legend/legend.com
   - lkccmini/lkccmini.com
-  - luminous/luminous.com
+  - luminous/luminous.com,50000000
   - lumps/lumps.com
   - madness/madness.com
   - microsoft_golf_cracktro/mgc.com
   - miracle/miracle.com
-  - mistake/mistake.com
+  - mistake/mistake.com,40000000
   - morales/morales.com
   - nicefire/nicefire.com
   - optimize/optimize.com
-  - pack/pack.com
-  - phong/phong.com
+  - pack/pack.com,2500000
+  - phong/phong.com,7000000
   - pikku/pikku.com
   - pixelize/pixelize.com
   - plasma/plasma.com
   - plasmalr/plasmalr.com
-  - plasmexp/plasmexp.com
+  - plasmexp/plasmexp.com,2500000
   - platinum/platinum.com
   - proto256/proto256.com
   - riddle/riddle.com
@@ -57,15 +57,15 @@ set:
   - skylight/skylight.com
   - snow/snow.com
   - specifi/specifi.com
-  - spline/spline.com
+  - spline/spline.com,10000000
   - sqwerz3/sqwerz3.com
   - static/static.com
   - tiled/tiled.com
   - unknown/unknown.com
-  - wamma/wamma.com
-  - water/water.com
+  - wamma/wamma.com,30000000
+  - water/water.com,9000000
   - waves/waves.com
   - wd95/wd95.com
-  - wetwet/wetwet.com
+  - wetwet/wetwet.com,9000000
   - x/x.com
   - zork/zork.com

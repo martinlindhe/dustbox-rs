@@ -1,5 +1,5 @@
 name: games_com
-default_instructions: 7000000
+default_instructions: 5000000
 root: ../dos-software-decoding/games-com-commercial/
 
 set:

@@ -18,6 +18,8 @@ struct SetDocument {
     name: String,
     default_instructions: usize,
     root: String,
+
+    /// filename or filename,instructions
     set: Vec<String>,
 }
 
@@ -38,25 +40,34 @@ fn main() {
     run_and_save_video_frames(&set);
 }
 
-fn run_and_save_video_frames(set: &SetDocument) {
+fn run_and_save_video_frames(doc: &SetDocument) {
 
     let mut out_images = vec![];
 
-    for bin in &set.set {
-        println!("{}: {}", set.name.white(), bin.yellow());
+    for bin in &doc.set {
+        // if comma, split in path & instructions
+        let parts: Vec<&str> = bin.split(",").collect();
+
+        let bin = parts[0];
+
+        let mut execute_instrs = doc.default_instructions;
+        if parts.len() > 1 {
+            execute_instrs = parts[1].parse::<usize>().unwrap();
+        }
+    
+        println!("{}: {}", doc.name.white(), bin.yellow());
 
         let mut machine = Machine::deterministic();
-        let bin_path = format!("{}{}", set.root, bin);
+        let bin_path = format!("{}{}", doc.root, bin);
 
         if let Some(e) = machine.load_executable_file(&bin_path, 0x0329) {
-            panic!("error {}", e);
+            panic!("error {}: {}", e, bin_path);
         };
 
-        // XXX allow per-rom override + more properties on a rom basis
-        machine.execute_instructions(set.default_instructions);
+        machine.execute_instructions(execute_instrs);
 
-        if !Path::new(&format!("docs/render/{}", set.name)).exists() {
-            if let Err(e) = fs::create_dir(&format!("docs/render/{}", set.name)) {
+        if !Path::new(&format!("docs/render/{}", doc.name)).exists() {
+            if let Err(e) = fs::create_dir(&format!("docs/render/{}", doc.name)) {
                 panic!("create_dir failed {}", e);
             }
         }
@@ -64,7 +75,7 @@ fn run_and_save_video_frames(set: &SetDocument) {
         let rel_path = Path::new(&bin);
         let stem = rel_path.file_stem().unwrap_or_else(|| OsStr::new(""));
         let mut filename = OsString::new(); // XXX base on dirname
-        let outname = &format!("render/{}/{:02x}_", set.name, machine.gpu_mut().mode.mode);
+        let outname = &format!("render/{}/{:02x}_", doc.name, machine.gpu_mut().mode.mode);
         filename.push(format!("docs/{}", outname));
         filename.push(stem.to_os_string());
         filename.push(".png");
@@ -97,7 +108,7 @@ fn run_and_save_video_frames(set: &SetDocument) {
     // add stuff to context
     match tera.render("test_category.tpl.html", &context) {
         Ok(res) => {
-            let mut f = File::create(format!("docs/{}.html", set.name)).expect("Unable to create file");
+            let mut f = File::create(format!("docs/{}.html", doc.name)).expect("Unable to create file");
             f.write_all(res.as_bytes()).expect("Unable to write data");
         }
         Err(why) => panic!(format!("{}", why)),
@@ -118,4 +129,3 @@ fn write_video_frame_to_disk(machine: &mut Machine, pngfile: &str) -> bool {
     }
     true
 }
-
