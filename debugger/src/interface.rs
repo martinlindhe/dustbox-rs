@@ -9,7 +9,7 @@ use std::thread;
 use gtk::prelude::*;
 use gtk::{Button, Image, Label, Window, WindowType};
 use gdk::RGBA;
-use gdk::enums::key;
+use gdk::keys::constants as key;
 use gdk::prelude::*;
 
 use dustbox::cpu::{CPU, R};
@@ -30,7 +30,7 @@ impl Interface {
 
         Self {
             app,
-            builder: Rc::new(RefCell::new(gtk::Builder::new_from_string(
+            builder: Rc::new(RefCell::new(gtk::Builder::from_string(
                 include_str!("interface.glade"),
             ))),
         }
@@ -119,7 +119,6 @@ impl Interface {
                 p.set_copyright(Some("MIT license"));
                 p.set_transient_for(Some(&window));
                 p.run();
-                p.destroy();
             });
         }
 
@@ -251,8 +250,8 @@ impl Interface {
             let builder = Rc::clone(&self.builder);
 
             window.connect_key_press_event(move |_, key| {
-                if let key::Return = key.get_keyval() as u32 {
-                    let search_word = input_command.get_text().unwrap();
+                if key.get_keyval() == key::Return {
+                    let search_word = input_command.get_text();
                     let mut app = app.borrow_mut();
                     app.exec_command(&search_word);
                     input_command.set_text("");
@@ -298,7 +297,7 @@ fn draw_canvas(c: &cairo::Context, buf: Vec<ColorSpace>, mode: &VideoModeBlock) 
         }
     }
 
-    let pixbuf = gdk_pixbuf::Pixbuf::new_from_mut_slice(
+    let pixbuf = gdk_pixbuf::Pixbuf::from_mut_slice(
         bytes_buf,
         gdk_pixbuf::Colorspace::Rgb,
         false,
