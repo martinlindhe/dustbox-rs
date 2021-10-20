@@ -14,9 +14,9 @@ path = "src/bin/debugger-main.rs"
 test = false
 
 [dependencies]
-cairo-rs = "0.9"
+cairo-rs = "0.14"
 clap = "2.33"
 dustbox = { path = "../dustbox" }
-gdk = "0.13"
-gdk-pixbuf = "0.9"
-gtk = { version = "0.9", features = [ "v3_16" ] }
+gdk = "0.14"
+gdk-pixbuf = "0.14"
+gtk = "0.14"

@@ -12,5 +12,5 @@ test = false
 [dependencies]
 clap = "2.33"
 dustbox = { path = "../dustbox" }
-sdl2 = { version = "0.34", default-features = false, features = [ "gfx" ] }
+sdl2 = { version = "0.35", default-features = false, features = [ "gfx" ] }
 image = { version = "0.23", default-features = false, features = [ "png" ] }

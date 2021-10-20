@@ -23,9 +23,9 @@ doctest = false
 bincode = "1.2"
 chrono = "0.4"
 image = { version = "0.23", default-features = false, features = [ "png" ] }
-rand = "0.7"
-rand_xorshift = "0.2"
-sdl2 = { version = "0.34", default-features = false, features = [ "gfx" ] }
+rand = "0.8"
+rand_xorshift = "0.3"
+sdl2 = { version = "0.35", default-features = false, features = [ "gfx" ] }
 serde = "1.0"
 serde_derive = "1.0"
 tempfile = "3.1"
@@ -33,7 +33,7 @@ toml = "0.5"
 
 [dev-dependencies]
 criterion = "0.3"
-pretty_assertions = "0.6"
+pretty_assertions = "1.0"
 
 [target.'cfg(windows)'.build-dependencies]
 vcpkg = "0.2"
